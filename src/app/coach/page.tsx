@@ -292,7 +292,7 @@ export default function CoachDashboard() {
                                     <div key={goalie.id} className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center justify-between group hover:border-zinc-700 transition-colors">
                                         <div>
                                             <div className="font-bold text-white text-sm">{goalie.name}</div>
-                                            <div className="text-xs text-zinc-500">Session {goalie.session} Complete</div>
+                                            <div className="text-xs text-zinc-500 font-mono">S{goalie.session} L{goalie.lesson} • Complete</div>
                                         </div>
                                         <Link
                                             href={`/coach/log-session/${goalie.id}`}
