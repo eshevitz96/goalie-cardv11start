@@ -13,6 +13,8 @@ import {
 import { useState } from "react";
 import { clsx } from "clsx";
 
+import { supabase } from "@/utils/supabase/client";
+
 // Type for the parsed data
 type CSVData = {
     goalieName: string;
@@ -25,7 +27,8 @@ type CSVData = {
 
 export default function AdminDashboard() {
     const [isDragging, setIsDragging] = useState(false);
-    const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success">("idle");
+    const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+    const [uploadCount, setUploadCount] = useState(0);
     const [parsedData, setParsedData] = useState<CSVData[]>([]);
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -37,58 +40,82 @@ export default function AdminDashboard() {
         setIsDragging(false);
     };
 
-    const parseCSV = (text: string) => {
+    const parseAndUpload = async (text: string) => {
+        setUploadStatus("uploading");
         const lines = text.split('\n');
-        const headers = lines[0].split(','); // Simple split, might need regex for quoted fields in real prod
 
-        // Basic mapping logic based on user's provided columns
-        const data: CSVData[] = lines.slice(1).filter(l => l.trim()).map((line, idx) => {
-            // Handle quoted CSV fields crudely for demo (regex is better for prod)
+        // Skip header
+        const rows = lines.slice(1).filter(l => l.trim());
+
+        const payload = rows.map((line, idx) => {
+            // Very basic CSV regex logic
             const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
             const values = matches.map(m => m.replace(/^"|"$/g, '').trim());
 
-            // Index mapping based on USER'S provided column order:
-            // 1: Player First Name, 2: Player Last Name
-            // 4: Player Graduation Year
-            // 6: Club Team Name
-            // 13: Guardian First & Last Name
-            // 15: Guardian Email
+            // Map columns
+            // 1: First Name, 2: Last Name
+            // 4: Grad Year
+            // 6: Club Team
+            // 12: Parent Name
+            // 15: Parent Email
 
-            // NOTE: This relies on the exact column order provided in the request.
-            // Using a safer fallback if columns missing.
             const firstName = values[1] || "Unknown";
             const lastName = values[2] || "Goalie";
-            const gradYear = values[4] || "20??";
+            const gradYearRaw = values[4] || "2030";
             const team = values[6] || "Unassigned";
-            const parentName = values[12] || "Unknown Parent"; // Adj for potential column shift
-            const email = values[15] && values[15].includes('@') ? values[15] : (values.find(v => v.includes('@')) || "no-email@example.com"); // Prefer Col 15 (Guardian Email)
+            const parentName = values[12] || "Unknown Parent";
+            const email = values[15] && values[15].includes('@') ? values[15] : (values.find(v => v.includes('@')) || `no-email-${idx}@example.com`);
+
+            // Generate clean Grad Year
+            const gradYear = parseInt(gradYearRaw) || 2030;
+
+            // Generate "Unique ID"
+            const uniqueId = `GC-${8000 + idx + Math.floor(Math.random() * 100)}`; // Simple randomizer
 
             return {
-                goalieName: `${firstName} ${lastName}`,
-                parentEmail: email,
-                gradYear,
-                team,
-                parentName,
-                phone: "555-0123" // Placeholder or mapped
+                email: email,
+                goalie_name: `${firstName} ${lastName}`,
+                parent_name: parentName,
+                parent_phone: values[14] || "",
+                grad_year: gradYear,
+                team: team,
+                assigned_unique_id: uniqueId,
+                is_claimed: false
             };
         });
 
-        // Simulate "Master Database" update
-        setParsedData(prev => [...data.slice(0, 5), ...prev]); // Show first 5 imported
+        // 1. Update UI Preview
+        setParsedData(payload.map(p => ({
+            goalieName: p.goalie_name,
+            parentEmail: p.email,
+            gradYear: p.grad_year.toString(),
+            team: p.team,
+            parentName: p.parent_name,
+            phone: p.parent_phone
+        })));
+
+        // 2. Perform Supabase Insert
+        const { error } = await supabase.from('roster_uploads').insert(payload);
+
+        if (error) {
+            console.error(error);
+            setUploadStatus("error");
+            alert("Upload failed: " + error.message);
+        } else {
+            setUploadCount(payload.length);
+            setUploadStatus("success");
+        }
     };
 
     const handleDrop = async (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-        setUploadStatus("uploading");
 
         const file = e.dataTransfer.files[0];
         if (file) {
             const text = await file.text();
-            parseCSV(text);
+            await parseAndUpload(text);
         }
-
-        setTimeout(() => setUploadStatus("success"), 1500);
     };
 
     return (
