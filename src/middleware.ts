@@ -8,7 +8,12 @@ export async function middleware(request: NextRequest) {
         },
     })
 
+    // TEMPORARY: DISABLED MIDDLEWARE REFRESH TO DEBUG VERCEL LOOP
+    // We are trusting the Client Side Login to handle auth for now.
+    // Once the Loop is identified (likely Env Var on Edge), we will restore this.
+
     try {
+        /*
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -63,13 +68,9 @@ export async function middleware(request: NextRequest) {
                 return NextResponse.redirect(new URL('/login', request.url))
             }
         }
+        */
     } catch (e) {
-        // If middleware fails, allow traffic to proceed to login page at least
         console.error("Middleware Error:", e);
-        if (request.nextUrl.pathname.startsWith('/coach') || request.nextUrl.pathname.startsWith('/admin')) {
-            // In case of error, playing it safe and redirecting to login is better than crashing
-            return NextResponse.redirect(new URL('/login', request.url))
-        }
     }
 
     return response

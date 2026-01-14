@@ -50,7 +50,7 @@ export default function LoginPage() {
 
             <div className="w-full max-w-md bg-zinc-900/50 border border-zinc-800 backdrop-blur-xl rounded-3xl p-8 relative z-10 shadow-2xl">
                 <div className="flex flex-col items-center mb-8">
-                    <div className="w-16 h-16 relative mb-4">
+                    <div className="w-32 h-32 relative mb-6">
                         <Image
                             src="/logo.png"
                             alt="Logo"
