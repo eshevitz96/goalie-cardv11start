@@ -61,7 +61,7 @@ export default function AdminDashboard() {
             const gradYear = values[4] || "20??";
             const team = values[6] || "Unassigned";
             const parentName = values[12] || "Unknown Parent"; // Adj for potential column shift
-            const email = values.find(v => v.includes('@')) || "no-email@example.com"; // Heuristic search for email
+            const email = values[15] && values[15].includes('@') ? values[15] : (values.find(v => v.includes('@')) || "no-email@example.com"); // Prefer Col 15 (Guardian Email)
 
             return {
                 goalieName: `${firstName} ${lastName}`,
