@@ -142,7 +142,25 @@ export default function AdminDashboard() {
             console.warn("Could not auto-detect header row. Defaulting to row 0.");
         }
 
-        const potentialHeaders = lines[headerRowIndex].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.toLowerCase().replace(/['"]+/g, '').trim());
+        // 2. Identify Delimiter (Comma, Tab, Semicolon)
+        const headerLine = lines[headerRowIndex];
+        let delimiter = ',';
+        if ((headerLine.match(/\t/g) || []).length > (headerLine.match(/,/g) || []).length) delimiter = '\t';
+        else if ((headerLine.match(/;/g) || []).length > (headerLine.match(/,/g) || []).length) delimiter = ';';
+
+        console.log("Detected Delimiter:", delimiter === '\t' ? 'TAB' : delimiter === ',' ? 'COMMA' : 'SEMICOLON');
+
+        // Regex for splitting CSV with quotes, adapted for dynamic delimiter
+        // Note: Simple split for tabs usually works, but commas need regex for quotes.
+        const splitLine = (line: string) => {
+            if (delimiter === ',') {
+                return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, '').trim());
+            } else {
+                return line.split(delimiter).map(v => v.replace(/^"|"$/g, '').trim());
+            }
+        };
+
+        const potentialHeaders = splitLine(headerLine).map(h => h.toLowerCase().replace(/['"]+/g, '').trim());
 
         // Map Columns dyanmically
         const map = {
@@ -167,7 +185,7 @@ export default function AdminDashboard() {
             // Skip garbage lines (empty or crazy long instructions)
             if (line.length > 500 || line.includes("https://") || line.toLowerCase().includes("leave blank")) return null;
 
-            const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, '').trim());
+            const values = splitLine(line);
 
             // Helpers
             const getVal = (idx: number) => (idx > -1 && values[idx]) ? values[idx] : "";
@@ -181,7 +199,7 @@ export default function AdminDashboard() {
             } else if (map.fullName > -1) {
                 goalieName = getVal(map.fullName);
             } else {
-                // Double Fallback
+                // Double Fallback (Explicitly 1 and 2)
                 const first = values[1] || "";
                 const last = values[2] || "";
                 goalieName = `${first.replace(/['"]+/g, '')} ${last.replace(/['"]+/g, '')}`.trim();
