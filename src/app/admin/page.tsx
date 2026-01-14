@@ -31,7 +31,6 @@ type RosterItem = {
     assigned_unique_id: string;
     is_claimed: boolean;
     created_at: string;
-    // New Payment Fields (might be null if old record)
     payment_status?: string;
     amount_paid?: number;
 };
@@ -148,15 +147,24 @@ export default function AdminDashboard() {
 
         // Map Columns dyanmically
         const map = {
-            email: potentialHeaders.findIndex(h => h.includes('email')),
+            email: potentialHeaders.findIndex(h => h.includes('email') || h.includes('address')),
             firstName: potentialHeaders.findIndex(h => h.includes('first') && h.includes('name')),
             lastName: potentialHeaders.findIndex(h => h.includes('last') && h.includes('name')),
-            fullName: potentialHeaders.findIndex(h => h === 'name' || h === 'goalie name' || h === 'player name'),
+            // Fallback for full name
+            fullName: potentialHeaders.findIndex(h => h === 'name' || h === 'goalie name' || h === 'player name' || h === 'goalie'),
             gradYear: potentialHeaders.findIndex(h => h.includes('grad') || h.includes('year') || h.includes('class')),
-            team: potentialHeaders.findIndex(h => h.includes('team') || h.includes('club')),
+            // Prioritize Club Team, then just Team
+            team: potentialHeaders.findIndex(h => h.includes('club') || h.includes('team') || h.includes('organization') || h.includes('club team name')),
+            // School District
+            school: potentialHeaders.findIndex(h => h.includes('school') || h.includes('district')),
             parentName: potentialHeaders.findIndex(h => (h.includes('parent') || h.includes('guardian')) && h.includes('name')),
             phone: potentialHeaders.findIndex(h => h.includes('phone') || h.includes('cell'))
         };
+
+        // FORCE DEFAULTS if not found (per user: "combine first two columns for name")
+        // If FIRST NAME mapping failed, use Col 0 and Col 1 as First/Last Name
+        if (map.firstName === -1 && map.fullName === -1) map.firstName = 0;
+        if (map.lastName === -1 && map.fullName === -1) map.lastName = 1;
 
         console.log("Detected Columns:", map, "at Row:", headerRowIndex);
 
@@ -166,16 +174,33 @@ export default function AdminDashboard() {
             // Helpers
             const getVal = (idx: number) => (idx > -1 && values[idx]) ? values[idx] : "";
 
-            // Logic
+            // Logic: Name
             let goalieName = "Unknown";
             if (map.firstName > -1 && map.lastName > -1) {
-                goalieName = `${getVal(map.firstName)} ${getVal(map.lastName)}`;
+                const first = getVal(map.firstName);
+                const last = getVal(map.lastName);
+                // Clean up any extra quotes
+                goalieName = `${first.replace(/['"]+/g, '')} ${last.replace(/['"]+/g, '')}`.trim();
             } else if (map.fullName > -1) {
                 goalieName = getVal(map.fullName);
             } else {
-                // Fallback: Try index 0 and 1 if standard
-                goalieName = (values[0] && values[1]) ? `${values[0]} ${values[1]}` : (values[0] || "Unknown");
+                // Double Fallback
+                const first = values[0] || "";
+                const last = values[1] || "";
+                goalieName = `${first.replace(/['"]+/g, '')} ${last.replace(/['"]+/g, '')}`.trim();
             }
+
+            // Logic: Team (Combine Club + School if needed, or prioritized)
+            let team = getVal(map.team);
+            const school = getVal(map.school);
+
+            if (!team && school) {
+                team = school; // Fallback to school if no club
+            } else if (team && school && team !== school) {
+                // Option: "Club Name (School District)"
+                team = `${team} (${school})`;
+            }
+            if (!team) team = "Unassigned";
 
             // Email Logic: Try mapped, then try scanning for "@"
             let email = getVal(map.email);
@@ -187,9 +212,6 @@ export default function AdminDashboard() {
             // Grad Year
             let gradYear = getVal(map.gradYear);
             if (!gradYear) gradYear = values.find(v => v.match(/^20[2-3][0-9]$/)) || "2030";
-
-            // Team
-            let team = getVal(map.team) || "Unassigned";
 
             // ID Generation
             const uniqueId = `GC-${8000 + dbData.length + idx + Math.floor(Math.random() * 99)}`;
@@ -380,7 +402,7 @@ export default function AdminDashboard() {
                                             <tr key={entry.id} className="group hover:bg-zinc-800/20 transition-colors">
                                                 <td className="p-4 pl-6">
                                                     <div className="font-bold text-white text-sm">{entry.goalie_name}</div>
-                                                    <div className="text-xs text-zinc-500">{entry.grad_year} • {entry.team?.slice(0, 15)}</div>
+                                                    <div className="text-xs text-zinc-500">{entry.grad_year} • {entry.team?.slice(0, 30)}</div>
                                                 </td>
                                                 <td className="p-4">
                                                     <div className="font-mono text-xs text-zinc-300">
