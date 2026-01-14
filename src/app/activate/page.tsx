@@ -118,8 +118,24 @@ export default function ActivatePage() {
 
     const handleFinish = async () => {
         setIsLoading(true);
+        // Save the ID so the Dashboard knows who we are
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('activated_id', accessId.toUpperCase());
+        }
+
         // Here we would create the Profile and Mark as Claimed
-        // For now, redirect to Dashboard
+        // Need to update DB is_claimed = true
+        try {
+            const { error } = await supabase
+                .from('roster_uploads')
+                .update({ is_claimed: true })
+                .eq('assigned_unique_id', accessId.toUpperCase());
+
+            if (error) console.error("Claim Error", error);
+        } catch (e) {
+            console.error(e);
+        }
+
         await new Promise(r => setTimeout(r, 1000));
         router.push('/parent');
     };
