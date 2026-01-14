@@ -124,9 +124,27 @@ export default function AdminDashboard() {
             return;
         }
 
-        // 1. Identify Header Row (Look for "Email" or "Name")
+        // 1. Identify Header Row (Look for "Email" and "Name/First" with limit)
         let headerRowIndex = 0;
-        const potentialHeaders = lines[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.toLowerCase().replace(/['"]+/g, '').trim());
+        let foundHeader = false;
+
+        // Scan first 25 lines to find the header
+        for (let i = 0; i < Math.min(lines.length, 25); i++) {
+            const rowLower = lines[i].toLowerCase();
+            // A valid header row usually has "Email" AND some form of Name
+            // Expanded criteria to be more robust
+            if (rowLower.includes('email') && (rowLower.includes('name') || rowLower.includes('first') || rowLower.includes('goalie'))) {
+                headerRowIndex = i;
+                foundHeader = true;
+                break;
+            }
+        }
+
+        if (!foundHeader) {
+            console.warn("Could not auto-detect header row. Defaulting to row 0. Result may be garbage.");
+        }
+
+        const potentialHeaders = lines[headerRowIndex].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.toLowerCase().replace(/['"]+/g, '').trim());
 
         // Map Columns dyanmically
         const map = {
@@ -140,9 +158,9 @@ export default function AdminDashboard() {
             phone: potentialHeaders.findIndex(h => h.includes('phone') || h.includes('cell'))
         };
 
-        console.log("Detected Columns:", map);
+        console.log("Detected Columns:", map, "at Row:", headerRowIndex);
 
-        const payload = lines.slice(1).map((line, idx) => {
+        const payload = lines.slice(headerRowIndex + 1).map((line, idx) => {
             const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, '').trim());
 
             // Helpers
