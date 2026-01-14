@@ -13,7 +13,9 @@ import {
     RefreshCw,
     Loader2,
     AlertCircle,
-    DollarSign
+    DollarSign,
+    Plus,
+    X
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { clsx } from "clsx";
@@ -41,6 +43,16 @@ export default function AdminDashboard() {
     const [dbData, setDbData] = useState<RosterItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [showManualAdd, setShowManualAdd] = useState(false);
+    const [manualForm, setManualForm] = useState({
+        firstName: "",
+        lastName: "",
+        email: "",
+        team: "",
+        gradYear: "2030",
+        parentName: "",
+        phone: ""
+    });
 
     // Fetch Real Data on Mount
     useEffect(() => {
@@ -109,6 +121,40 @@ export default function AdminDashboard() {
         if (file) {
             const text = await file.text();
             await parseAndUpload(text);
+        }
+    };
+
+    const handleManualSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!manualForm.email || !manualForm.firstName || !manualForm.lastName) {
+            alert("Email, First Name, and Last Name are required.");
+            return;
+        }
+
+        try {
+            const uniqueId = `GC-${8000 + dbData.length + Math.floor(Math.random() * 999)}`;
+            const payload = {
+                email: manualForm.email,
+                goalie_name: `${manualForm.firstName} ${manualForm.lastName}`,
+                parent_name: manualForm.parentName,
+                parent_phone: manualForm.phone,
+                grad_year: parseInt(manualForm.gradYear) || 2030,
+                team: manualForm.team || "Unassigned",
+                assigned_unique_id: uniqueId,
+                is_claimed: false,
+                payment_status: 'pending',
+                amount_paid: 0
+            };
+
+            const { error } = await supabase.from('roster_uploads').insert([payload]);
+            if (error) throw error;
+
+            setManualForm({ firstName: "", lastName: "", email: "", team: "", gradYear: "2030", parentName: "", phone: "" });
+            setShowManualAdd(false);
+            await fetchRoster();
+            alert("Goalie Added Successfully!");
+        } catch (err: any) {
+            alert("Error adding goalie: " + err.message);
         }
     };
 
@@ -376,6 +422,12 @@ export default function AdminDashboard() {
 
                             <div className="flex gap-2">
                                 <button
+                                    onClick={() => setShowManualAdd(true)}
+                                    className="bg-primary hover:bg-primary/80 text-black text-xs font-bold px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                    <Plus size={14} /> Add Goalie
+                                </button>
+                                <button
                                     onClick={handleClearDatabase}
                                     className="bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 border border-red-500/20 text-xs font-bold px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
                                 >
@@ -505,6 +557,115 @@ export default function AdminDashboard() {
                 </div>
 
             </div>
+
+            {/* Manual Add Modal */}
+            {showManualAdd && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl"
+                    >
+                        <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
+                            <h3 className="font-bold text-lg text-white">Manual Entry</h3>
+                            <button onClick={() => setShowManualAdd(false)} className="text-zinc-500 hover:text-white">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleManualSubmit} className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-zinc-400 uppercase">First Name</label>
+                                    <input
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
+                                        placeholder="John"
+                                        value={manualForm.firstName}
+                                        onChange={e => setManualForm({ ...manualForm, firstName: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-zinc-400 uppercase">Last Name</label>
+                                    <input
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
+                                        placeholder="Doe"
+                                        value={manualForm.lastName}
+                                        onChange={e => setManualForm({ ...manualForm, lastName: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-zinc-400 uppercase">Parent Email (Required)</label>
+                                <input
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
+                                    placeholder="parent@example.com"
+                                    type="email"
+                                    value={manualForm.email}
+                                    onChange={e => setManualForm({ ...manualForm, email: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-zinc-400 uppercase">Grad Year</label>
+                                    <input
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
+                                        placeholder="2030"
+                                        value={manualForm.gradYear}
+                                        onChange={e => setManualForm({ ...manualForm, gradYear: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-zinc-400 uppercase">Team Name</label>
+                                    <input
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
+                                        placeholder="e.g. Madlax, St. Pauls"
+                                        value={manualForm.team}
+                                        onChange={e => setManualForm({ ...manualForm, team: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-zinc-400 uppercase">Parent Name</label>
+                                    <input
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
+                                        placeholder="Jane Doe"
+                                        value={manualForm.parentName}
+                                        onChange={e => setManualForm({ ...manualForm, parentName: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-zinc-400 uppercase">Parent Phone</label>
+                                    <input
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
+                                        placeholder="555-123-4567"
+                                        value={manualForm.phone}
+                                        onChange={e => setManualForm({ ...manualForm, phone: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="pt-4 flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowManualAdd(false)}
+                                    className="px-4 py-2 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-300 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 rounded bg-primary hover:bg-primary/90 text-xs font-bold text-black transition-colors"
+                                >
+                                    Create Record
+                                </button>
+                            </div>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
+
         </main>
     );
 }
