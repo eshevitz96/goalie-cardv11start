@@ -29,7 +29,7 @@ export default function LandingPortal() {
 
             {/* Parent Portal Side */}
             <Link
-                href="/parent"
+                href="/activate"
                 className="group relative flex-1 flex flex-col items-center justify-center p-12 hover:bg-zinc-900/40 transition-all duration-500"
             >
                 <div className="bg-zinc-900 border border-zinc-800 rounded-full w-24 h-24 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:border-blue-500/50 transition-all duration-300 shadow-2xl">

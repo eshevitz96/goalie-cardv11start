@@ -1,92 +1,141 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { QrCode, ChevronRight, Check, User, Shield, CreditCard, Loader2 } from "lucide-react";
+import { ChevronRight, Check, User, Shield, CreditCard, Loader2, AlertCircle, ArrowRight } from "lucide-react";
 import { clsx } from "clsx";
-import { useApp } from "@/context/AppContext";
 import { useRouter } from "next/navigation";
-import { RosterEntry } from "@/context/AppContext";
+import Link from "next/link";
+import { supabase } from "@/utils/supabase/client";
 
 const STEPS = [
-    { id: 1, title: "Scan Card", icon: QrCode },
-    { id: 2, title: "Select Coach", icon: User },
-    { id: 3, title: "Player Info", icon: Shield },
+    { id: 1, title: "Email", icon: User },
+    { id: 2, title: "Access ID", icon: Shield },
+    { id: 3, title: "Review", icon: Check },
     { id: 4, title: "Payment", icon: CreditCard },
-    { id: 5, title: "Activate", icon: Check },
-];
-
-const AVAILABLE_COACHES = [
-    { id: 1, name: "Coach Mike", org: "Baltimore Goalies", role: "Head Coach" },
-    { id: 2, name: "Coach Sarah", org: "Elite Stoppers", role: "Senior Instructor" },
-    { id: 3, name: "Coach Dave", org: "Next Level GK", role: "Director" },
+    { id: 5, title: "Finish", icon: ArrowRight },
 ];
 
 export default function ActivatePage() {
-    const { submitActivationRequest, checkRoster } = useApp();
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(1);
-    const [scannedCode, setScannedCode] = useState<string | null>(null);
-    const [selectedCoach, setSelectedCoach] = useState<number | null>(null);
-    const [rosterMatch, setRosterMatch] = useState<RosterEntry | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Data State
+    const [email, setEmail] = useState("");
+    const [accessId, setAccessId] = useState("");
+    const [rosterData, setRosterData] = useState<any>(null); // Data from Supabase
+
+    // Editable Form Data
     const [formData, setFormData] = useState({
         parentName: "",
         goalieName: "",
-        email: "",
         phone: "",
+        gradYear: "",
         height: "",
         weight: "",
-        birthYear: ""
     });
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const ROSTER_DATA: RosterEntry[] = []; // Placeholder to fix lint; logic uses context checkRoster
+    const handleStep1 = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+        if (!email.includes("@")) {
+            setError("Please enter a valid email.");
+            return;
+        }
+        setCurrentStep(2);
+    };
 
-    const handleNext = async () => {
-        if (currentStep < 5) {
-            setCurrentStep(prev => prev + 1);
+    const handleStep2 = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+        setIsLoading(true);
+
+        try {
+            // Check Supabase for match
+            const { data, error } = await supabase
+                .from('roster_uploads')
+                .select('*')
+                .ilike('email', email.trim())
+                .eq('assigned_unique_id', accessId.trim().toUpperCase())
+                .single();
+
+            if (error || !data) {
+                console.error("Lookup Error:", error);
+                setError("No roster record found with this Email and ID combo. Please check your credentials.");
+                setIsLoading(false);
+                return;
+            }
+
+            if (data.is_claimed) {
+                setError("This account is already active. Redirecting...");
+                setTimeout(() => router.push('/parent'), 2000);
+                setIsLoading(false);
+                return;
+            }
+
+            // Success - Found Data
+            setRosterData(data);
+            setFormData({
+                parentName: data.parent_name || "",
+                goalieName: data.goalie_name || "",
+                phone: data.parent_phone || "",
+                gradYear: data.grad_year?.toString() || "",
+                height: "",
+                weight: ""
+            });
+            setIsLoading(false);
+            setCurrentStep(3);
+
+        } catch (err) {
+            console.error(err);
+            setError("Connection error. Please try again.");
+            setIsLoading(false);
         }
     };
 
+    const handleStep3 = () => {
+        // Validation could go here
+        setCurrentStep(4);
+    };
 
-    const handleSubmit = async () => {
-        setIsSubmitting(true);
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        const coach = AVAILABLE_COACHES.find(c => c.id === selectedCoach);
-
-        submitActivationRequest({
-            parentName: formData.parentName,
-            goalieName: formData.goalieName,
-            coachId: coach ? coach.name : "Unknown Coach"
-        });
-
-        setIsSubmitting(false);
-        // Move to success step
+    const handleStep4 = async () => {
+        // Payment Logic (Mocked)
+        setIsLoading(true);
+        // Simulate Stripe
+        await new Promise(r => setTimeout(r, 1500));
+        setIsLoading(false);
         setCurrentStep(5);
+    };
+
+    const handleFinish = async () => {
+        setIsLoading(true);
+        // Here we would create the Profile and Mark as Claimed
+        // For now, redirect to Dashboard
+        await new Promise(r => setTimeout(r, 1000));
+        router.push('/parent');
     };
 
     return (
         <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
             {/* Background Ambient */}
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-purple-500 to-rose-600" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-purple-500/50 to-rose-600/50" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
             {/* Progress Header */}
             <div className="absolute top-8 left-0 w-full px-8 flex justify-between items-center z-20">
-                <Link href="/" className="text-zinc-500 hover:text-white transition-colors text-sm font-bold uppercase tracking-wider">
-                    Cancel
+                <Link href="/" className="text-zinc-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                    Esc
                 </Link>
                 <div className="flex gap-2">
-                    {STEPS.map((s, i) => (
-                        <div key={s.id} className={clsx("h-1.5 rounded-full transition-all duration-500", currentStep === s.id ? "w-8 bg-white" : currentStep > s.id ? "w-2 bg-primary" : "w-2 bg-zinc-800")} />
+                    {STEPS.map((s) => (
+                        <div key={s.id} className={clsx("h-1 rounded-full transition-all duration-500", currentStep === s.id ? "w-8 bg-white" : currentStep > s.id ? "w-2 bg-primary" : "w-2 bg-zinc-800")} />
                     ))}
                 </div>
             </div>
 
-            <div className="w-full max-w-lg relative z-10 mt-12">
+            <div className="w-full max-w-md relative z-10 mt-12">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={currentStep}
@@ -95,242 +144,131 @@ export default function ActivatePage() {
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.3 }}
                     >
-                        {/* Step 1: Scan Card */}
+                        {/* Step 1: Email */}
                         {currentStep === 1 && (
-                            <div className="space-y-8 text-center">
-                                <h1 className="text-3xl font-black italic tracking-tighter">SCAN<span className="text-primary">CARD</span></h1>
-                                <div className="relative mx-auto w-64 h-64 bg-zinc-900 border-2 border-dashed border-zinc-700 rounded-3xl flex items-center justify-center overflow-hidden group hover:border-primary/50 transition-colors cursor-pointer" onClick={() => setScannedCode("GC-2024-X8J2")}>
-                                    {scannedCode ? (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 animate-in fade-in zoom-in">
-                                            <Check size={64} className="text-emerald-500" />
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <QrCode size={64} className="text-zinc-700 group-hover:text-zinc-500 transition-colors" />
-                                            <div className="absolute inset-0 bg-primary/5 animate-pulse" />
-                                        </>
-                                    )}
-                                </div>
-                                <div>
-                                    <p className="text-zinc-400 text-sm">Tap the box to simulate scanning your physical card.</p>
-                                </div>
-                                {scannedCode && (
-                                    <button
-                                        onClick={() => setCurrentStep(2)}
-                                        className="w-full py-4 bg-primary hover:bg-rose-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
-                                    >
-                                        Card Verified - Continue <ChevronRight size={18} />
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Step 2: Select Coach */}
-                        {currentStep === 2 && (
-                            <div className="space-y-6">
+                            <form onSubmit={handleStep1} className="space-y-6">
                                 <div className="text-center mb-8">
-                                    <h2 className="text-2xl font-black text-white uppercase tracking-tight">Select Your Coach</h2>
-                                    <p className="text-zinc-500 text-sm">Who are you training with?</p>
+                                    <h1 className="text-3xl font-black italic tracking-tighter text-white mb-2">PARENT <span className="text-primary">ACCESS</span></h1>
+                                    <p className="text-zinc-500 text-sm">Enter your email to verify your roster spot.</p>
                                 </div>
-                                <div className="space-y-3">
-                                    {AVAILABLE_COACHES.map((coach) => (
-                                        <button
-                                            key={coach.id}
-                                            onClick={() => setSelectedCoach(coach.id)}
-                                            className={clsx(
-                                                "w-full p-4 rounded-xl border text-left transition-all relative overflow-hidden group",
-                                                selectedCoach === coach.id
-                                                    ? "bg-primary/10 border-primary"
-                                                    : "bg-zinc-900 border-zinc-800 hover:border-zinc-700"
-                                            )}
-                                        >
-                                            <div className="relative z-10 flex justify-between items-center">
-                                                <div>
-                                                    <div className={clsx("font-bold text-lg", selectedCoach === coach.id ? "text-primary" : "text-white")}>{coach.name}</div>
-                                                    <div className="text-xs text-zinc-500">{coach.role} • {coach.org}</div>
-                                                </div>
-                                                {selectedCoach === coach.id && (
-                                                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                                                        <Check size={14} className="text-white" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </button>
-                                    ))}
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Email Address</label>
+                                    <input
+                                        type="email"
+                                        autoFocus
+                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-primary transition-colors placeholder:text-zinc-700 text-lg"
+                                        placeholder="parent@example.com"
+                                    />
                                 </div>
-                                <button
-                                    onClick={() => setCurrentStep(3)}
-                                    disabled={!selectedCoach}
-                                    className="w-full py-4 bg-primary disabled:bg-zinc-800 disabled:text-zinc-500 hover:bg-rose-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary/20 disabled:shadow-none flex items-center justify-center gap-2 mt-4"
-                                >
+
+                                {error && <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg"><AlertCircle size={14} /> {error}</div>}
+
+                                <button type="submit" className="w-full bg-white hover:bg-zinc-200 text-black font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2">
                                     Continue <ChevronRight size={18} />
                                 </button>
-                            </div>
+
+                                <div className="text-center mt-6">
+                                    <Link href="/parent" className="text-xs text-zinc-600 hover:text-white transition-colors">
+                                        Already activated? Enter Dashboard
+                                    </Link>
+                                </div>
+                            </form>
                         )}
 
-                        {/* Step 3: Player Info */}
+                        {/* Step 2: Access ID */}
+                        {currentStep === 2 && (
+                            <form onSubmit={handleStep2} className="space-y-6">
+                                <div className="text-center mb-8">
+                                    <h1 className="text-3xl font-black italic tracking-tighter text-white mb-2">ACCESS <span className="text-primary">ID</span></h1>
+                                    <p className="text-zinc-500 text-sm">Enter the Unique ID from your invite or card.</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Unique ID</label>
+                                    <input
+                                        type="text"
+                                        autoFocus
+                                        required
+                                        value={accessId}
+                                        onChange={(e) => setAccessId(e.target.value.toUpperCase())}
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-primary transition-colors placeholder:text-zinc-700 text-lg font-mono tracking-widest uppercase text-center"
+                                        placeholder="GC-XXXX-XXXX"
+                                    />
+                                </div>
+
+                                {error && <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg"><AlertCircle size={14} /> {error}</div>}
+
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className="w-full bg-white hover:bg-zinc-200 text-black font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    {isLoading ? <Loader2 className="animate-spin" /> : <>Verify Access <ChevronRight size={18} /></>}
+                                </button>
+
+                                <button type="button" onClick={() => setCurrentStep(1)} className="w-full text-zinc-500 text-sm py-2">Back</button>
+                            </form>
+                        )}
+
+                        {/* Step 3: Review Info */}
                         {currentStep === 3 && (
                             <div className="space-y-6">
                                 <div className="text-center mb-6">
-                                    <h2 className="text-2xl font-black text-white uppercase tracking-tight">Player Profile</h2>
-                                    <p className="text-zinc-500 text-sm">Create your digital roster spot.</p>
-                                </div>
-                                <div className="space-y-4">
-                                    {/* Email First for Lookup */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Parent Email</label>
-                                        <div className="relative">
-                                            <input
-                                                type="email"
-                                                value={formData.email}
-                                                onChange={(e) => {
-                                                    const em = e.target.value;
-                                                    setFormData({ ...formData, email: em });
-                                                    // Simple lookup check
-                                                    if (em.includes('@') && em.length > 5) { // Basic validation for lookup
-                                                        const match = checkRoster(em);
-                                                        if (match) {
-                                                            setRosterMatch(match);
-                                                            setFormData(prev => ({
-                                                                ...prev,
-                                                                parentName: match.parentName,
-                                                                goalieName: match.goalieName,
-                                                                // Pre-fill others if we had them or keep existing
-                                                            }));
-                                                        } else {
-                                                            setRosterMatch(null);
-                                                            // Clear fields if email doesn't match a roster spot
-                                                            setFormData(prev => ({
-                                                                ...prev,
-                                                                parentName: "",
-                                                                goalieName: ""
-                                                            }));
-                                                        }
-                                                    } else {
-                                                        setRosterMatch(null);
-                                                    }
-                                                }}
-                                                className={clsx(
-                                                    "w-full bg-zinc-900 border rounded-xl px-4 py-3 text-white focus:outline-none placeholder:text-zinc-700 transition-colors",
-                                                    rosterMatch ? "border-emerald-500/50 focus:border-emerald-500" : "border-zinc-800 focus:border-primary"
-                                                )}
-                                                placeholder="sarah@example.com"
-                                            />
-                                            {rosterMatch && (
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500">
-                                                    <Check size={18} />
-                                                </div>
-                                            )}
-                                        </div>
+                                    <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+                                        <Check size={32} className="text-emerald-500" />
                                     </div>
+                                    <h2 className="text-2xl font-black text-white uppercase tracking-tight">Record Found</h2>
+                                    <p className="text-zinc-500 text-sm">Please review and confirm your details.</p>
+                                </div>
 
-                                    {/* Auto-Populated or Manual Fields */}
-                                    <AnimatePresence>
-                                        {rosterMatch && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: 'auto' }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                transition={{ duration: 0.3 }}
-                                                className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 mb-4 overflow-hidden"
-                                            >
-                                                <div className="flex items-start gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                                                        <User size={20} className="text-emerald-500" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold text-white text-sm">Welcome back, {rosterMatch.goalieName}!</div>
-                                                        <div className="text-xs text-zinc-400 mt-1">
-                                                            We found your roster spot.
-                                                            <div className="flex gap-2 mt-2">
-                                                                <span className="bg-black/50 px-2 py-1 rounded text-[10px] text-zinc-300 border border-zinc-700 font-mono">ID: {rosterMatch.gcId}</span>
-                                                                <span className="bg-black/50 px-2 py-1 rounded text-[10px] text-zinc-300 border border-zinc-700 font-mono">Grad: {rosterMatch.gradYear}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
+                                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="col-span-2">
-                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Parent Name</label>
+                                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Goalie Name</label>
                                             <input
-                                                type="text"
-                                                value={formData.parentName}
-                                                onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
-                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary placeholder:text-zinc-700"
-                                                placeholder="John Smith"
+                                                value={formData.goalieName}
+                                                onChange={(e) => setFormData({ ...formData, goalieName: e.target.value })}
+                                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm focus:border-emerald-500 outline-none"
                                             />
                                         </div>
                                         <div className="col-span-2">
-                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Goalie Name</label>
+                                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Parent Name</label>
                                             <input
-                                                type="text"
-                                                value={formData.goalieName}
-                                                readOnly={!!rosterMatch}
-                                                onChange={(e) => setFormData({ ...formData, goalieName: e.target.value })}
-                                                className={clsx(
-                                                    "w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary placeholder:text-zinc-700",
-                                                    rosterMatch && "opacity-50 cursor-not-allowed"
-                                                )}
-                                                placeholder="Leo Smith"
-                                            />
-                                        </div>
-
-                                        {/* Birth Year - ALWAYS Required & Editable */}
-                                        <div>
-                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Birth Year <span className="text-rose-500">*</span></label>
-                                            <input
-                                                type="text"
-                                                // Don't bind to rosterMatch.gradYear because we need actual Birth Year
-                                                value={formData.birthYear || ""}
-                                                onChange={(e) => setFormData({ ...formData, birthYear: e.target.value })}
-                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary placeholder:text-zinc-700"
-                                                placeholder="2010"
+                                                value={formData.parentName}
+                                                onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
+                                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm focus:border-emerald-500 outline-none"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Phone</label>
+                                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Grad Year</label>
                                             <input
-                                                type="tel"
+                                                value={formData.gradYear}
+                                                onChange={(e) => setFormData({ ...formData, gradYear: e.target.value })}
+                                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm focus:border-emerald-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Phone</label>
+                                            <input
                                                 value={formData.phone}
                                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary placeholder:text-zinc-700"
-                                                placeholder="(555) 123-4567"
+                                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm focus:border-emerald-500 outline-none"
                                             />
                                         </div>
-
-                                        {/* Extra Optional */}
-                                        <div>
-                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Height <span className="text-zinc-700 normal-case">(Optional)</span></label>
-                                            <input
-                                                type="text"
-                                                value={formData.height}
-                                                onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                                                placeholder="e.g. 5'8"
-                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary placeholder:text-zinc-700"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Weight <span className="text-zinc-700 normal-case">(Optional)</span></label>
-                                            <input
-                                                type="text"
-                                                value={formData.weight}
-                                                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                                                placeholder="lbs"
-                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary placeholder:text-zinc-700"
-                                            />
-                                        </div>
+                                        {rosterData?.team && (
+                                            <div className="col-span-2 pt-2 border-t border-zinc-800 text-center">
+                                                <span className="text-xs text-zinc-500">Team: <span className="text-white font-bold">{rosterData.team}</span></span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setCurrentStep(4)}
-                                    disabled={!formData.parentName || !formData.goalieName || !formData.email}
-                                    className="w-full py-4 bg-primary disabled:bg-zinc-800 disabled:text-zinc-500 hover:bg-rose-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary/20 disabled:shadow-none flex items-center justify-center gap-2"
-                                >
-                                    Continue <ChevronRight size={18} />
+
+                                <button onClick={handleStep3} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
+                                    Confirm Details
                                 </button>
                             </div>
                         )}
@@ -338,53 +276,37 @@ export default function ActivatePage() {
                         {/* Step 4: Payment */}
                         {currentStep === 4 && (
                             <div className="space-y-6 text-center">
-                                <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl">
+                                <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600" />
                                     <CreditCard size={48} className="text-zinc-600 mx-auto mb-4" />
-                                    <h3 className="text-xl font-bold text-white mb-2">Add Payment Method</h3>
-                                    <p className="text-zinc-400 text-sm mb-6">Securely link your card for session payments.</p>
-                                    <button className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl border border-zinc-700 transition-colors flex items-center justify-center gap-2">
-                                        <CreditCard size={16} /> Link via Stripe
+                                    <h3 className="text-xl font-bold text-white mb-2">Link Payment Method</h3>
+                                    <p className="text-zinc-400 text-sm mb-6">Securely link a card for automated lesson payments.</p>
+                                    <button className="w-full py-3 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
+                                        <CreditCard size={16} /> Add Card via Stripe
                                     </button>
                                 </div>
                                 <button
-                                    onClick={handleSubmit}
+                                    onClick={handleStep4}
                                     className="w-full py-4 bg-primary hover:bg-rose-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
                                 >
-                                    {isSubmitting ? <Loader2 className="animate-spin" /> : <>Finish Activation <Check size={18} /></>}
-                                </button>
-                                <button
-                                    onClick={handleSubmit}
-                                    className="w-full text-zinc-500 hover:text-white text-sm font-medium transition-colors"
-                                >
-                                    Skip for now
+                                    {isLoading ? <Loader2 className="animate-spin" /> : <>Complete Activation <Check size={18} /></>}
                                 </button>
                             </div>
                         )}
 
-                        {/* Step 5: Success / Activate */}
+                        {/* Step 5: Success */}
                         {currentStep === 5 && (
-                            <div className="text-center py-10">
-                                <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
-                                    <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4">
-                                        <Check size={48} className="text-emerald-500" />
-                                    </div>
-                                    <h2 className="text-3xl font-black text-white italic">REQUEST SENT</h2>
-                                    <p className="text-zinc-400 max-w-xs mx-auto mb-8 text-lg">
-                                        Your activation request has been sent to <span className="text-white font-bold">{AVAILABLE_COACHES.find(c => c.id === selectedCoach)?.name || "your coach"}</span>.
-                                    </p>
-
-                                    <div className="p-4 bg-zinc-900 rounded-xl border border-zinc-800 mb-8 max-w-xs mx-auto">
-                                        <div className="text-xs uppercase text-zinc-500 font-bold tracking-widest mb-1">Status</div>
-                                        <div className="text-lg font-bold text-white flex items-center justify-center gap-2">
-                                            <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-                                            Pending Approval
-                                        </div>
-                                    </div>
-
-                                    <Link href="/" className="px-8 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-full transition-colors">
-                                        Return to Dashboard
-                                    </Link>
+                            <div className="text-center py-10 space-y-6">
+                                <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto animate-in zoom-in duration-500">
+                                    <Check size={48} className="text-emerald-500" />
                                 </div>
+                                <div>
+                                    <h2 className="text-3xl font-black text-white italic tracking-tight">YOU'RE IN</h2>
+                                    <p className="text-zinc-400 mt-2">Goalie Card Activated Successfully.</p>
+                                </div>
+                                <button onClick={handleFinish} className="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-zinc-200 transition-colors w-full">
+                                    Open Dashboard
+                                </button>
                             </div>
                         )}
                     </motion.div>
