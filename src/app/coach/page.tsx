@@ -24,27 +24,44 @@ import {
 import { clsx } from "clsx";
 import Link from "next/link";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase/client";
 
-const INCOMING_REQUESTS = [
-    { id: 1, parent: "Sarah Vance", goalie: "Leo Vance", requestedDate: "Nov 3, 4:00 PM", status: "pending", note: "Focus on glove hand" },
-    { id: 2, parent: "Mike Ross", goalie: "Jamie Ross", requestedDate: "Nov 4, 5:30 PM", status: "pending", note: "Butterfly slides" },
-];
-
-const PENDING_ACTIVATIONS = [
-    { id: 1, parent: "John Smith", goalie: "Tyler Smith 2010", status: "waiting_id" }
-];
-
-const GOALIE_ROSTER = [
-    { id: 1, name: "Leo Vance", session: 1, lesson: 3, status: "active", lastSeen: "2 days ago" },
-    { id: 2, name: "Jamie Ross", session: 2, lesson: 1, status: "active", lastSeen: "5 days ago" },
-    { id: 3, name: "Max Power", session: 1, lesson: 4, status: "renew_needed", lastSeen: "1 week ago" },
-    { id: 4, name: "Sarah Connor", session: 3, lesson: 2, status: "active", lastSeen: "Yesterday" },
-];
 
 export default function CoachDashboard() {
+    const [roster, setRoster] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchTeamData = async () => {
+            const { data, error } = await supabase.from('roster_uploads').select('*');
+            if (data) {
+                // For now, assume all uploaded goalies are "assigned" to this coach view
+                setRoster(data.map(g => ({
+                    id: g.id,
+                    name: g.goalie_name,
+                    session: 1, // Placeholder
+                    lesson: 1, // Placeholder
+                    status: g.is_claimed ? 'active' : 'pending',
+                    lastSeen: 'N/A'
+                })));
+            }
+            setIsLoading(false);
+        };
+        fetchTeamData();
+    }, []);
+
     const [issuedIds, setIssuedIds] = useState<Record<number, string>>({});
-    const PENDING_REVIEWS = GOALIE_ROSTER.filter(g => g.lesson >= 4);
+
+    // We will hook these up to real data later
+    const INCOMING_REQUESTS: any[] = [];
+    const PENDING_REVIEWS: any[] = [];
+    const PENDING_ACTIVATIONS: any[] = [];
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        window.location.href = "/login";
+    };
 
     return (
         <main className="min-h-screen bg-black text-white p-4 md:p-8">
@@ -68,7 +85,10 @@ export default function CoachDashboard() {
                                 <Download size={16} /> Export CSV
                             </button>
                             <div className="h-px bg-zinc-800 my-1" />
-                            <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2">
+                            <button
+                                onClick={handleLogout}
+                                className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                            >
                                 Sign Out
                             </button>
                         </div>
@@ -89,43 +109,18 @@ export default function CoachDashboard() {
                             </h3>
                         </div>
 
-                        <div className="grid gap-4">
-                            {INCOMING_REQUESTS.map((req) => (
-                                <motion.div
-                                    key={req.id}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 group hover:border-zinc-700 transition-all"
-                                >
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-lg font-bold text-zinc-400 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                                            {req.goalie[0]}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-lg">{req.goalie}</h4>
-                                            <div className="text-sm text-zinc-400 flex items-center gap-2">
-                                                <span className="text-zinc-500">Parent:</span> {req.parent}
-                                            </div>
-                                            <div className="mt-2 text-sm bg-zinc-950/50 p-2 rounded-lg border border-zinc-800/50 text-zinc-300 italic">
-                                                "{req.note}"
-                                            </div>
-                                        </div>
-                                    </div>
+                        {INCOMING_REQUESTS.length === 0 ? (
+                            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl text-center text-zinc-500 text-sm">
+                                All caught up! No pending requests.
+                            </div>
+                        ) : (
+                            <div className="grid gap-4">
+                                {INCOMING_REQUESTS.map((req: any) => (
+                                    <div key={req.id}>Request Card</div>
+                                ))}
+                            </div>
+                        )}
 
-                                    <div className="flex flex-col items-end gap-3 min-w-[140px]">
-                                        <div className="font-mono font-bold text-primary">{req.requestedDate}</div>
-                                        <div className="flex gap-2 w-full">
-                                            <button className="flex-1 bg-zinc-800 hover:bg-zinc-700 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition-colors border border-zinc-700 hover:border-zinc-600">
-                                                Decline
-                                            </button>
-                                            <button className="flex-1 bg-primary hover:bg-rose-600 py-2 rounded-lg text-xs font-bold text-white transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-1">
-                                                <CheckCircle2 size={14} /> Accept
-                                            </button>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
                     </section>
 
                     <section>
@@ -221,7 +216,7 @@ export default function CoachDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-800/50">
-                                    {GOALIE_ROSTER.map((goalie) => (
+                                    {roster.map((goalie) => (
                                         <tr key={goalie.id} className="hover:bg-zinc-800/30 transition-colors">
                                             <td className="p-4 pl-6">
                                                 <div className="font-bold text-white">{goalie.name}</div>
@@ -278,33 +273,36 @@ export default function CoachDashboard() {
                 {/* Right Column: Quick Actions */}
                 <div className="space-y-6">
                     {/* Pending Reviews */}
-                    {PENDING_REVIEWS.length > 0 && (
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 -mt-6 -mr-6 h-24 w-24 rounded-full bg-primary/20 blur-2xl" />
-                            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 relative z-10">
-                                <FileEdit size={18} className="text-primary" />
-                                Pending Reviews
-                                <span className="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full">{PENDING_REVIEWS.length}</span>
-                            </h3>
+                    {/* Pending Reviews */}
+                    {
+                        PENDING_REVIEWS.length > 0 && (
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 -mt-6 -mr-6 h-24 w-24 rounded-full bg-primary/20 blur-2xl" />
+                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2 relative z-10">
+                                    <FileEdit size={18} className="text-primary" />
+                                    Pending Reviews
+                                    <span className="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full">{PENDING_REVIEWS.length}</span>
+                                </h3>
 
-                            <div className="space-y-3 relative z-10">
-                                {PENDING_REVIEWS.map((goalie) => (
-                                    <div key={goalie.id} className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center justify-between group hover:border-zinc-700 transition-colors">
-                                        <div>
-                                            <div className="font-bold text-white text-sm">{goalie.name}</div>
-                                            <div className="text-xs text-zinc-500 font-mono">S{goalie.session} L{goalie.lesson} • Complete</div>
+                                <div className="space-y-3 relative z-10">
+                                    {PENDING_REVIEWS.map((goalie) => (
+                                        <div key={goalie.id} className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center justify-between group hover:border-zinc-700 transition-colors">
+                                            <div>
+                                                <div className="font-bold text-white text-sm">{goalie.name}</div>
+                                                <div className="text-xs text-zinc-500 font-mono">S{goalie.session} L{goalie.lesson} • Complete</div>
+                                            </div>
+                                            <Link
+                                                href={`/coach/log-session/${goalie.id}`}
+                                                className="px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                                            >
+                                                Review <ArrowRight size={12} />
+                                            </Link>
                                         </div>
-                                        <Link
-                                            href={`/coach/log-session/${goalie.id}`}
-                                            className="px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-2"
-                                        >
-                                            Review <ArrowRight size={12} />
-                                        </Link>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    }
                     {/* Pending Activations */}
                     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -406,9 +404,9 @@ export default function CoachDashboard() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div >
 
-            </div>
-        </main>
+            </div >
+        </main >
     );
 }
