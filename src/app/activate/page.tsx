@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Check, User, Shield, CreditCard, Loader2, AlertCircle, ArrowRight } from "lucide-react";
+import { ChevronRight, Check, User, Shield, CreditCard, Loader2, AlertCircle, ArrowRight, FileText } from "lucide-react";
 import { clsx } from "clsx";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -12,7 +12,7 @@ const STEPS = [
     { id: 1, title: "Email", icon: User },
     { id: 2, title: "Access ID", icon: Shield },
     { id: 3, title: "Review", icon: Check },
-    { id: 4, title: "Payment", icon: CreditCard },
+    { id: 4, title: "Terms", icon: FileText },
     { id: 5, title: "Finish", icon: ArrowRight },
 ];
 
@@ -26,6 +26,7 @@ export default function ActivatePage() {
     const [email, setEmail] = useState("");
     const [accessId, setAccessId] = useState("");
     const [rosterData, setRosterData] = useState<any>(null); // Data from Supabase
+    const [termsAccepted, setTermsAccepted] = useState(false);
 
     // Editable Form Data
     const [formData, setFormData] = useState({
@@ -101,6 +102,12 @@ export default function ActivatePage() {
     };
 
     const handleStep4 = async () => {
+        if (!termsAccepted) {
+            setError("You must accept the terms to proceed.");
+            return;
+        }
+        setError(null);
+
         // Payment Logic (Mocked)
         setIsLoading(true);
         // Simulate Stripe
@@ -273,21 +280,46 @@ export default function ActivatePage() {
                             </div>
                         )}
 
-                        {/* Step 4: Payment */}
+                        {/* Step 4: Terms & Payment */}
                         {currentStep === 4 && (
-                            <div className="space-y-6 text-center">
-                                <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600" />
-                                    <CreditCard size={48} className="text-zinc-600 mx-auto mb-4" />
-                                    <h3 className="text-xl font-bold text-white mb-2">Link Payment Method</h3>
-                                    <p className="text-zinc-400 text-sm mb-6">Securely link a card for automated lesson payments.</p>
-                                    <button className="w-full py-3 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
-                                        <CreditCard size={16} /> Add Card via Stripe
-                                    </button>
+                            <div className="space-y-6">
+                                <div className="text-center mb-4">
+                                    <h3 className="text-xl font-bold text-white mb-2">Final Step</h3>
+                                    <p className="text-zinc-500 text-sm">Terms of Service & Verification.</p>
                                 </div>
+
+                                <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 space-y-6">
+                                    {/* Terms Box */}
+                                    <div className="bg-zinc-950 rounded-xl p-4 border border-zinc-800 text-xs text-zinc-400 h-32 overflow-y-auto leading-relaxed">
+                                        <p className="font-bold text-white mb-2">Liability Waiver & Terms</p>
+                                        <p className="mb-2">I hereby authorize the staff of GoalieGuard to act for me according to their best judgment in any emergency requiring medical attention. I hereby waive and release GoalieGuard from any and all liability for any injuries or illnesses incurred while at the GoalieGuard program.</p>
+                                        <p className="mb-2">I have no knowledge of any physical impairment that would be affected by the above named camper's participation in the program.</p>
+                                        <p>I also understand the camp retains the right to use for publicity and advertising purposes, photographs of campers taken at camp.</p>
+                                    </div>
+
+                                    {/* Checkbox */}
+                                    <div
+                                        onClick={() => setTermsAccepted(!termsAccepted)}
+                                        className="flex items-start gap-4 p-4 rounded-xl bg-zinc-950 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition-colors"
+                                    >
+                                        <div className={clsx("w-6 h-6 rounded-md border flex items-center justify-center transition-all mt-0.5", termsAccepted ? "bg-primary border-primary text-white" : "border-zinc-700 bg-zinc-900")}>
+                                            {termsAccepted && <Check size={14} />}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-bold text-sm text-white">I accept the Terms & Conditions</div>
+                                            <div className="text-xs text-zinc-500 mt-1">By checking this box, you agree to the liability waiver and privacy policy.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {error && <div className="text-red-500 text-sm text-center animate-pulse">{error}</div>}
+
                                 <button
                                     onClick={handleStep4}
-                                    className="w-full py-4 bg-primary hover:bg-rose-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                                    className={clsx(
+                                        "w-full py-4 font-bold rounded-xl transition-all flex items-center justify-center gap-2",
+                                        termsAccepted ? "bg-primary hover:bg-rose-600 text-white shadow-lg shadow-primary/20" : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                                    )}
                                 >
                                     {isLoading ? <Loader2 className="animate-spin" /> : <>Complete Activation <Check size={18} /></>}
                                 </button>
