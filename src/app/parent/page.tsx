@@ -6,84 +6,99 @@ import { ScheduleRequest } from "@/components/ScheduleRequest";
 import { PostGameReport } from "@/components/PostGameReport";
 import { EventsList } from "@/components/EventsList";
 import { motion } from "framer-motion";
-import { Bell, ChevronLeft, ChevronRight, User, Settings, CreditCard, LogOut, Plus } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, User, Settings, CreditCard, LogOut, Plus, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-
-// Data Mock
-const GOALIE_DATA = [
-  {
-    id: 1,
-    name: "Leo Vance",
-    coach: "Coach Mike",
-    session: 1,
-    lesson: 4,
-    stats: { gaa: "2.10", sv: ".925" },
-    events: [
-      {
-        id: 1,
-        name: "GS Baltimore Camp",
-        date: "Dec 12-14, 2024",
-        location: "Reistertown Sportsplex",
-        status: "upcoming" as const, // Cast to literal type
-        image: "from-blue-600 to-indigo-600"
-      }
-    ],
-    feedback: [
-      {
-        id: 1,
-        date: "Today, 10:00 AM",
-        coach: "Coach Mike",
-        title: "Glove Hand Precision",
-        content: "Leo was electric today. We really focused on keeping that glove hand elevated during the butterfly slide. He needs to keep tracking the puck all the way into the pocket.",
-        rating: 5,
-        hasVideo: true,
-      },
-      {
-        id: 2,
-        date: "Oct 24, 2023",
-        coach: "Coach Sarah",
-        title: "Post-Post Integration",
-        content: "Solid session. The RVH entry is getting smoother, but watch for the gap on the short side. Good intensity.",
-        rating: 4,
-        hasVideo: false,
-      }
-    ]
-  },
-  {
-    id: 2,
-    name: "Jamie Vance",
-    coach: "Coach Dave",
-    session: 2,
-    lesson: 1,
-    stats: { gaa: "3.45", sv: ".890" },
-    events: [
-      {
-        id: 2,
-        name: "GS Georgia Clinic",
-        date: "Jan 05, 2025",
-        location: "The Cooler, Alpharetta",
-        status: "open" as const,
-        image: "from-orange-500 to-red-600"
-      }
-    ],
-    feedback: [
-      {
-        id: 3,
-        date: "Yesterday, 4:00 PM",
-        coach: "Coach Dave",
-        title: "Butterfly Slides",
-        content: "Jamie is getting faster but needs to stay square to the shooter. Good progress on the recoveries.",
-        rating: 3,
-        hasVideo: true,
-      }
-    ]
-  }
-];
+import { useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const [currentGoalieIndex, setCurrentGoalieIndex] = useState(0);
-  const activeGoalie = GOALIE_DATA[currentGoalieIndex];
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [goalies, setGoalies] = useState<any[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Initial Load Logic
+  useEffect(() => {
+    const fetchMyGoalies = async () => {
+      // 1. Try to get ID from LocalStorage (set during activation)
+      const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
+
+      // 2. Fetch from Roster Uploads if we have an ID
+      if (localId) {
+        const { data, error } = await supabase
+          .from('roster_uploads')
+          .select('*')
+          .eq('assigned_unique_id', localId);
+
+        if (data && data.length > 0) {
+          // Transform DB data to UI Model
+          const realGoalies = data.map(g => ({
+            id: g.id,
+            name: g.goalie_name,
+            coach: "Assigned Coach", // Placeholder
+            session: 1, // Default
+            lesson: 1, // Default
+            stats: { gaa: "0.00", sv: ".000" }, // Default
+            events: [], // Default
+            feedback: [] // Default
+          }));
+          setGoalies(realGoalies);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // 3. Fallback: Use Mock Data if no local ID found (Test Mode)
+      // Or redirect to activate?
+      // For seamless demo, we'll keep the Mock Data as "Demo Mode" for now
+      // But let's show an empty state or redirect if strictly production.
+      // We'll keep Mock for demo purposes so it doesn't break if you just visit the page directly.
+
+      setGoalies([
+        {
+          id: 1,
+          name: "Leo Vance (Demo)",
+          coach: "Coach Mike",
+          session: 1,
+          lesson: 4,
+          stats: { gaa: "2.10", sv: ".925" },
+          events: [
+            {
+              id: 1,
+              name: "GS Baltimore Camp",
+              date: "Dec 12-14, 2024",
+              location: "Reistertown Sportsplex",
+              status: "upcoming",
+              image: "from-blue-600 to-indigo-600"
+            }
+          ],
+          feedback: [
+            {
+              id: 1,
+              date: "Today, 10:00 AM",
+              coach: "Coach Mike",
+              title: "Glove Hand Precision",
+              content: "Leo was electric today. We really focused on keeping that glove hand elevated.",
+              rating: 5,
+              hasVideo: true,
+            }
+          ]
+        }
+      ]);
+      setIsLoading(false);
+    };
+
+    fetchMyGoalies();
+  }, []);
+
+  const activeGoalie = goalies[currentIndex];
+
+  if (isLoading) {
+    return <div className="min-h-screen bg-black flex items-center justify-center text-white"><Loader2 className="animate-spin text-primary" size={32} /></div>;
+  }
+
+  if (!activeGoalie) return <div className="min-h-screen bg-black text-white p-8">No Goalies Found. <Link href="/activate" className="text-primary underline">Activate a Card</Link></div>;
 
   return (
     <main className="min-h-screen bg-black p-4 md:p-8 overflow-x-hidden selection:bg-primary selection:text-white">
@@ -106,7 +121,7 @@ export default function Home() {
               <div className="absolute right-0 top-full mt-2 w-56 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right translate-y-2 group-hover:translate-y-0">
                 <div className="px-3 py-2 border-b border-zinc-800 mb-1">
                   <div className="text-sm font-bold text-white">Parent Account</div>
-                  <div className="text-xs text-zinc-500">managed by leovance@gmail.com</div>
+                  <div className="text-xs text-zinc-500">managed account</div>
                 </div>
 
                 <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-2">
@@ -120,7 +135,13 @@ export default function Home() {
                 </Link>
 
                 <div className="h-px bg-zinc-800 my-1" />
-                <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('activated_id');
+                    router.push('/');
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                >
                   <LogOut size={16} /> Sign Out
                 </button>
               </div>
@@ -148,33 +169,37 @@ export default function Home() {
                 className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-[500px]"
               />
 
-              {/* Switcher Controls (Mocked for 2 goalies) */}
-              <div className="absolute top-1/2 -left-4 -translate-y-1/2 md:-left-12">
-                <button
-                  onClick={() => setCurrentGoalieIndex(prev => prev === 0 ? 1 : 0)}
-                  className="p-1.5 bg-zinc-900/80 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 backdrop-blur-sm border border-zinc-700/50 shadow-xl transition-all"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-              </div>
-              <div className="absolute top-1/2 -right-4 -translate-y-1/2 md:-right-12">
-                <button
-                  onClick={() => setCurrentGoalieIndex(prev => prev === 0 ? 1 : 0)}
-                  className="p-1.5 bg-zinc-900/80 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 backdrop-blur-sm border border-zinc-700/50 shadow-xl transition-all"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
+              {/* Switcher Controls */}
+              {goalies.length > 1 && (
+                <>
+                  <div className="absolute top-1/2 -left-4 -translate-y-1/2 md:-left-12">
+                    <button
+                      onClick={() => setCurrentIndex(prev => prev === 0 ? goalies.length - 1 : prev - 1)}
+                      className="p-1.5 bg-zinc-900/80 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 backdrop-blur-sm border border-zinc-700/50 shadow-xl transition-all"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                  </div>
+                  <div className="absolute top-1/2 -right-4 -translate-y-1/2 md:-right-12">
+                    <button
+                      onClick={() => setCurrentIndex(prev => prev === goalies.length - 1 ? 0 : prev + 1)}
+                      className="p-1.5 bg-zinc-900/80 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 backdrop-blur-sm border border-zinc-700/50 shadow-xl transition-all"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
 
-              <div className="flex justify-center gap-2 mt-4">
-                {GOALIE_DATA.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setCurrentGoalieIndex(idx)}
-                    className={`h-2 rounded-full transition-all ${currentGoalieIndex === idx ? "w-8 bg-primary" : "w-2 bg-zinc-800 hover:bg-zinc-700"}`}
-                  />
-                ))}
-              </div>
+                  <div className="flex justify-center gap-2 mt-4">
+                    {goalies.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentIndex(idx)}
+                        className={`h-2 rounded-full transition-all ${currentIndex === idx ? "w-8 bg-primary" : "w-2 bg-zinc-800 hover:bg-zinc-700"}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
 
@@ -196,7 +221,13 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            <EventsList events={activeGoalie.events} />
+            {activeGoalie.events.length > 0 ? (
+              <EventsList events={activeGoalie.events} />
+            ) : (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 text-center text-zinc-500 text-sm">
+                No upcoming events.
+              </div>
+            )}
           </motion.div>
         </section>
 
@@ -218,10 +249,14 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <PostGameReport report={activeGoalie.feedback} />
+            {activeGoalie.feedback.length > 0 ? (
+              <PostGameReport report={activeGoalie.feedback} />
+            ) : (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 text-center text-zinc-500 text-sm">
+                No session reports yet.
+              </div>
+            )}
           </motion.div>
-
-
 
           <motion.div
             initial={{ opacity: 0, x: 20 }}
