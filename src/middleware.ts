@@ -8,60 +8,69 @@ export async function middleware(request: NextRequest) {
         },
     })
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return request.cookies.get(name)?.value
+    try {
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    get(name: string) {
+                        return request.cookies.get(name)?.value
+                    },
+                    set(name: string, value: string, options: CookieOptions) {
+                        request.cookies.set({
+                            name,
+                            value,
+                            ...options,
+                        })
+                        response = NextResponse.next({
+                            request: {
+                                headers: request.headers,
+                            },
+                        })
+                        response.cookies.set({
+                            name,
+                            value,
+                            ...options,
+                        })
+                    },
+                    remove(name: string, options: CookieOptions) {
+                        request.cookies.set({
+                            name,
+                            value: '',
+                            ...options,
+                        })
+                        response = NextResponse.next({
+                            request: {
+                                headers: request.headers,
+                            },
+                        })
+                        response.cookies.set({
+                            name,
+                            value: '',
+                            ...options,
+                        })
+                    },
                 },
-                set(name: string, value: string, options: CookieOptions) {
-                    request.cookies.set({
-                        name,
-                        value,
-                        ...options,
-                    })
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    })
-                    response.cookies.set({
-                        name,
-                        value,
-                        ...options,
-                    })
-                },
-                remove(name: string, options: CookieOptions) {
-                    request.cookies.set({
-                        name,
-                        value: '',
-                        ...options,
-                    })
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    })
-                    response.cookies.set({
-                        name,
-                        value: '',
-                        ...options,
-                    })
-                },
-            },
-        }
-    )
+            }
+        )
 
-    const { data: { user } } = await supabase.auth.getUser()
+        const { data: { user } } = await supabase.auth.getUser()
 
-    // Protected Routes
-    if (request.nextUrl.pathname.startsWith('/coach') || request.nextUrl.pathname.startsWith('/admin')) {
-        if (!user) {
-            return NextResponse.redirect(new URL('/login', request.url))
+        // Protected Routes
+        if (request.nextUrl.pathname.startsWith('/coach') || request.nextUrl.pathname.startsWith('/admin')) {
+            if (!user) {
+                return NextResponse.redirect(new URL('/login', request.url))
+            }
         }
-        // TODO: Add refined Role Checking here (e.g. check if user.user_metadata.role === 'coach')
+    } catch (e) {
+        // If Supabase client fails to initialize (e.g. missing env vars), 
+        // we should not crash the entire site, but let the public pages load.
+        // However, we must block protected routes if we can't verify auth.
+        console.error("Middleware Error:", e);
+        if (request.nextUrl.pathname.startsWith('/coach') || request.nextUrl.pathname.startsWith('/admin')) {
+            return NextResponse.redirect(new URL('/login?error=middleware_fail', request.url))
+        }
     }
 
     return response
