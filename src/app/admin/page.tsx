@@ -188,22 +188,41 @@ export default function AdminDashboard() {
             console.warn("Could not auto-detect header row. Defaulting to row 0.");
         }
 
-        // 2. Identify Delimiter (Comma, Tab, Semicolon)
+        // 2. Identify Delimiter (Smart Check)
         const headerLine = lines[headerRowIndex];
+        // Count occurrences
+        const commas = (headerLine.match(/,/g) || []).length;
+        const tabs = (headerLine.match(/\t/g) || []).length;
+        const semis = (headerLine.match(/;/g) || []).length;
+
         let delimiter = ',';
-        if ((headerLine.match(/\t/g) || []).length > (headerLine.match(/,/g) || []).length) delimiter = '\t';
-        else if ((headerLine.match(/;/g) || []).length > (headerLine.match(/,/g) || []).length) delimiter = ';';
+        if (tabs > commas && tabs > semis) delimiter = '\t';
+        else if (semis > commas && semis > tabs) delimiter = ';';
 
-        console.log("Detected Delimiter:", delimiter === '\t' ? 'TAB' : delimiter === ',' ? 'COMMA' : 'SEMICOLON');
+        console.log(`Detected Delimiter: '${delimiter}' (Commas: ${commas}, Tabs: ${tabs}, Semis: ${semis})`);
 
-        // Regex for splitting CSV with quotes, adapted for dynamic delimiter
-        // Note: Simple split for tabs usually works, but commas need regex for quotes.
+        // Robust Splitter
         const splitLine = (line: string) => {
-            if (delimiter === ',') {
-                return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, '').trim());
-            } else {
-                return line.split(delimiter).map(v => v.replace(/^"|"$/g, '').trim());
+            if (delimiter === '\t') return line.split('\t').map(v => v.trim());
+            if (delimiter === ';') return line.split(';').map(v => v.trim());
+
+            // Comma Regex that handles quotes correctly
+            // Matches: , followed by even number of quotes (meaning we are outside a quoted string)
+            const parts = [];
+            let current = '';
+            let inQuote = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') { inQuote = !inQuote; continue; }
+                if (char === ',' && !inQuote) {
+                    parts.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
             }
+            parts.push(current.trim());
+            return parts;
         };
 
         const potentialHeaders = splitLine(headerLine).map(h => h.toLowerCase().replace(/['"]+/g, '').trim());
@@ -222,6 +241,7 @@ export default function AdminDashboard() {
         };
 
         // FORCE DEFAULTS (Col 1=First, Col 2=Last)
+        // Only if mapping completely failed
         if (map.firstName === -1 && map.fullName === -1) map.firstName = 1;
         if (map.lastName === -1 && map.fullName === -1) map.lastName = 2;
 
