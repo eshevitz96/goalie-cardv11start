@@ -161,10 +161,10 @@ export default function AdminDashboard() {
             phone: potentialHeaders.findIndex(h => h.includes('phone') || h.includes('cell'))
         };
 
-        // FORCE DEFAULTS if not found (per user: "combine first two columns for name")
-        // If FIRST NAME mapping failed, use Col 0 and Col 1 as First/Last Name
-        if (map.firstName === -1 && map.fullName === -1) map.firstName = 0;
-        if (map.lastName === -1 && map.fullName === -1) map.lastName = 1;
+        // FORCE DEFAULTS if not found (per user evidence: Col 1=First, Col 2=Last)
+        // If FIRST NAME mapping failed, force indices 1 and 2
+        if (map.firstName === -1 && map.fullName === -1) map.firstName = 1;
+        if (map.lastName === -1 && map.fullName === -1) map.lastName = 2;
 
         console.log("Detected Columns:", map, "at Row:", headerRowIndex);
 
@@ -176,17 +176,17 @@ export default function AdminDashboard() {
 
             // Logic: Name
             let goalieName = "Unknown";
+            // Use strict map if available, otherwise fallback to 1 and 2
             if (map.firstName > -1 && map.lastName > -1) {
                 const first = getVal(map.firstName);
                 const last = getVal(map.lastName);
-                // Clean up any extra quotes
                 goalieName = `${first.replace(/['"]+/g, '')} ${last.replace(/['"]+/g, '')}`.trim();
             } else if (map.fullName > -1) {
                 goalieName = getVal(map.fullName);
             } else {
-                // Double Fallback
-                const first = values[0] || "";
-                const last = values[1] || "";
+                // Double Fallback (Explicitly 1 and 2)
+                const first = values[1] || "";
+                const last = values[2] || "";
                 goalieName = `${first.replace(/['"]+/g, '')} ${last.replace(/['"]+/g, '')}`.trim();
             }
 
