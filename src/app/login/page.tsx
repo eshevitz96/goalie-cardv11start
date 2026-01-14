@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Lock, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
+import { Lock, ArrowRight, AlertCircle, Loader2, Shield } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 
 export default function LoginPage() {
@@ -50,13 +50,8 @@ export default function LoginPage() {
 
             <div className="w-full max-w-md bg-zinc-900/50 border border-zinc-800 backdrop-blur-xl rounded-3xl p-8 relative z-10 shadow-2xl">
                 <div className="flex flex-col items-center mb-8">
-                    <div className="w-32 h-32 relative mb-6">
-                        <Image
-                            src="/logo.png"
-                            alt="Logo"
-                            fill
-                            className="object-contain"
-                        />
+                    <div className="w-24 h-24 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 border border-primary/20 shadow-lg shadow-primary/5">
+                        <Shield className="w-12 h-12 text-primary" strokeWidth={2} />
                     </div>
                     <h1 className="text-2xl font-black italic tracking-tighter text-white">
                         GOALIE<span className="text-primary">GUARD</span>

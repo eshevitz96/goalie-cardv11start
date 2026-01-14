@@ -23,12 +23,12 @@ export function GoalieCard({ name, session, lesson, className }: GoalieCardProps
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className={twMerge(
-                "relative overflow-hidden rounded-3xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl",
+                "relative overflow-hidden rounded-3xl bg-card border border-border p-6 shadow-2xl transition-colors",
                 className
             )}
         >
             {/* Background decoration */}
-            <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+            <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-40 w-40 rounded-full bg-accent/10 blur-3xl" />
 
             <div className="relative z-10 flex flex-col h-full justify-between">
@@ -38,27 +38,27 @@ export function GoalieCard({ name, session, lesson, className }: GoalieCardProps
                             <Shield size={24} strokeWidth={2.5} />
                         </div>
                         <div>
-                            <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                                 Goalie Profile
-                                <span className="px-1.5 py-0.5 rounded-md bg-zinc-800 text-[10px] text-zinc-500 font-bold border border-zinc-700">2008 YOB</span>
+                                <span className="px-1.5 py-0.5 rounded-md bg-secondary text-[10px] text-muted-foreground font-bold border border-border">2008 YOB</span>
                             </h2>
-                            <h1 className="text-3xl font-bold text-white tracking-tight">
+                            <h1 className="text-3xl font-bold text-card-foreground tracking-tight">
                                 {name}
                             </h1>
-                            <div className="flex items-center gap-3 mt-1 text-sm text-zinc-400 font-medium whitespace-nowrap">
-                                <span className="text-white">U16 AAA Jr. Kings</span>
-                                <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                                <span>Catch: <span className="text-white">Left</span></span>
-                                <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground font-medium whitespace-nowrap">
+                                <span className="text-foreground">U16 AAA Jr. Kings</span>
+                                <span className="w-1 h-1 rounded-full bg-border" />
+                                <span>Catch: <span className="text-foreground">Left</span></span>
+                                <span className="w-1 h-1 rounded-full bg-border" />
                                 <span>6'1" / 175lbs</span>
                             </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button className="p-2 rounded-full hover:bg-zinc-800 transition-colors text-zinc-500 hover:text-white group relative border border-transparent hover:border-zinc-700" title="View Wallet ID">
+                        <button className="p-2 rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground group relative border border-transparent hover:border-border" title="View Wallet ID">
                             <QrCode size={18} />
                         </button>
-                        <Link href="/parent/profile" className="p-2 rounded-full hover:bg-zinc-800 transition-colors text-zinc-500 hover:text-white group relative border border-transparent hover:border-zinc-700">
+                        <Link href="/parent/profile" className="p-2 rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground group relative border border-transparent hover:border-border">
                             <span className="sr-only">Edit Profile</span>
                             {/* Edit Icon */}
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg>
@@ -69,7 +69,7 @@ export function GoalieCard({ name, session, lesson, className }: GoalieCardProps
                 <div className="space-y-4">
                     <div className="flex justify-between items-end">
                         <div>
-                            <div className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-1">Current Camp Status</div>
+                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Current Camp Status</div>
                             <div className="text-xl font-mono font-bold text-accent">
                                 Session {session} • Lesson {lesson}
                             </div>
@@ -77,7 +77,7 @@ export function GoalieCard({ name, session, lesson, className }: GoalieCardProps
                         <span className="text-sm font-bold text-primary">{lesson} / {maxLessons}</span>
                     </div>
 
-                    <div className="h-4 w-full bg-zinc-800 rounded-full overflow-hidden border border-zinc-700/50">
+                    <div className="h-4 w-full bg-secondary rounded-full overflow-hidden border border-border/50">
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${progress}%` }}
@@ -104,7 +104,7 @@ export function GoalieCard({ name, session, lesson, className }: GoalieCardProps
                             </Link>
                         </motion.div>
                     ) : (
-                        <div className="flex justify-between text-xs text-zinc-500 font-medium pt-2 px-1">
+                        <div className="flex justify-between text-xs text-muted-foreground font-medium pt-2 px-1">
                             <span>Keep grinding!</span>
                             <span>{maxLessons - lesson} lessons to go</span>
                         </div>

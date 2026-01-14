@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 import { AppProvider } from "@/context/AppContext";
+import { ThemeProvider } from "@/context/ThemeProvider";
 
 export default function RootLayout({
   children,
@@ -20,13 +21,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${outfit.variable} antialiased`}
       >
-        <AppProvider>
-          {children}
-        </AppProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AppProvider>
+            {children}
+          </AppProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
