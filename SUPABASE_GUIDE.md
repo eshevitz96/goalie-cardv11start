@@ -13,23 +13,18 @@ This will create all the necessary tables: `profiles`, `sessions`, `schedule_req
 
 ## 2. Formatting Your Roster CSV
 
-To migrate your "Master Book of Goalies" into the system via the Admin Portal, your CSV file should match the following column structure.
+The Admin Portal is now configured to accept your **export format** directly. You do not need to reformat your spreadsheet.
 
-**Required Columns:**
-*   `Goalie Name` (Text)
-*   `Parent Email` (Text) - *This is the key used for auto-claiming accounts*
-*   `YOB` (Number) - *Year of Birth*
-*   `Team` (Text)
-
-**Example CSV Content:**
-
-```csv
-Goalie Name,Parent Email,YOB,Team
-Leo Vance,leovance@gmail.com,2008,U16 AAA Jr. Kings
-Jamie Ross,mike.ross@email.com,2010,U14 AA Ducks
-Tyler Smith,sarah.smith@email.com,2012,U12 A Kings
-Jordan Lee,jlee@email.com,2009,U15 AAA Elite
-```
+**Supported Column Order (Based on your export):**
+No changes needed. Ensure your CSV has these columns in order:
+*   (Col 1) Email Address
+*   (Col 2) Player First Name
+*   (Col 3) Player Last Name
+*   (Col 4) Email
+*   (Col 5) Player Graduation Year
+*   (Col 7) Club Team Name
+*   (Col 13) Guardian First & Last Name
+*   (Col 16) Guardian Email (**Crucial**: This is used for account matching)
 
 ## 3. How Migration Works
 
@@ -37,5 +32,5 @@ Jordan Lee,jlee@email.com,2009,U15 AAA Elite
 2.  **ID Generation**: A unique GoalieCard ID (e.g., `GC-8821`) is generated for each entry.
 3.  **Claiming**:
     *   When a parent goes to **Activate New Card**, they sign up using their email.
-    *   The system checks the `Parent Email` column in your uploaded roster.
+    *   The system checks the `Guardian Email` column in your uploaded roster.
     *   If a match is found, their account is instantly linked to the existing Goalie Profile and their Card is activated with the pre-assigned ID.
