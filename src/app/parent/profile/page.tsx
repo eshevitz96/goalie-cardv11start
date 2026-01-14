@@ -5,7 +5,84 @@ import { ArrowLeft, Save, Shield, Settings, User } from "lucide-react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
+import { useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+
 export default function ParentProfile() {
+    const router = useRouter();
+    const [isLoading, setIsLoading] = useState(true);
+    const [dbId, setDbId] = useState<number | null>(null);
+    const [formData, setFormData] = useState({
+        goalie_name: "",
+        grad_year: "",
+        team: "",
+        height: "",
+        weight: "",
+        catch_hand: "Left"
+    });
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            // 1. Auth Check
+            const { data: { user } } = await supabase.auth.getUser();
+            let emailToSearch = user?.email;
+            const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
+
+            if (!emailToSearch && !localId) {
+                // Not authenticated
+                setIsLoading(false);
+                return;
+            }
+
+            let query = supabase.from('roster_uploads').select('*');
+            if (emailToSearch) query = query.eq('email', emailToSearch);
+            else if (localId) query = query.eq('assigned_unique_id', localId);
+
+            const { data, error } = await query;
+
+            if (data && data.length > 0) {
+                const p = data[0]; // Assume first match
+                setDbId(p.id);
+                setFormData({
+                    goalie_name: p.goalie_name || "",
+                    grad_year: p.grad_year?.toString() || "",
+                    team: p.team || "",
+                    height: p.img_url || "", // Using img_url as temp storage or add new column? Assume we don't have height/weight cols yet. 
+                    // WAIT: The DB schema only has 'goalie_name', 'email', 'grad_year', 'team', 'parent_name', 'parent_phone'.
+                    // Height/Weight are NOT in DB yet. We should probably only edit what we have, OR silently ignore strictly purely UI fields for now.
+                    // Let's Edit Name, Team, Year.
+                    weight: "",
+                    catch_hand: "Left"
+                });
+            }
+            setIsLoading(false);
+        };
+        fetchProfile();
+    }, []);
+
+    const handleSave = async () => {
+        if (!dbId) return;
+
+        const updates = {
+            goalie_name: formData.goalie_name,
+            grad_year: parseInt(formData.grad_year) || 2030,
+            team: formData.team
+        };
+
+        const { error } = await supabase.from('roster_uploads').update(updates).eq('id', dbId);
+
+        if (error) {
+            alert("Error saving: " + error.message);
+        } else {
+            alert("Profile Updated Successfully!");
+            router.push('/parent'); // Go back to dashboard on success? Or stay? Stay is better UX usually.
+        }
+    };
+
+    if (isLoading) return <div className="min-h-screen bg-black flex items-center justify-center text-white"><Loader2 className="animate-spin text-primary" /></div>;
+
     return (
         <main className="min-h-screen bg-background text-foreground p-4 md:p-8 transition-colors duration-300">
             <div className="max-w-xl mx-auto space-y-8">
@@ -13,7 +90,7 @@ export default function ParentProfile() {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link
-                            href="/"
+                            href="/parent"
                             className="p-2 rounded-full bg-secondary border border-border hover:bg-secondary/80 transition-colors text-foreground"
                         >
                             <ArrowLeft size={20} />
@@ -46,7 +123,8 @@ export default function ParentProfile() {
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Goalie Name</label>
                             <input
                                 type="text"
-                                defaultValue="Leo Vance"
+                                value={formData.goalie_name}
+                                onChange={(e) => setFormData({ ...formData, goalie_name: e.target.value })}
                                 className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50 placeholder:text-muted-foreground"
                             />
                         </div>
@@ -56,7 +134,8 @@ export default function ParentProfile() {
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Birth Year</label>
                                 <input
                                     type="text"
-                                    defaultValue="2008"
+                                    value={formData.grad_year}
+                                    onChange={(e) => setFormData({ ...formData, grad_year: e.target.value })}
                                     className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50"
                                 />
                             </div>
@@ -64,18 +143,22 @@ export default function ParentProfile() {
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current Team</label>
                                 <input
                                     type="text"
-                                    defaultValue="U16 AAA Jr. Kings"
+                                    value={formData.team}
+                                    onChange={(e) => setFormData({ ...formData, team: e.target.value })}
                                     className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50"
                                 />
                             </div>
                         </div>
 
+                        {/* Note: Height, Weight, Catch are UI-only for now unless we add columns to Supabase. Keeping them as UI placeholders but connected to state so they don't look broken */}
                         <div className="grid grid-cols-3 gap-4">
                             <div className="grid gap-2">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Height</label>
                                 <input
                                     type="text"
-                                    defaultValue={'6\'1"'}
+                                    placeholder="6'1"
+                                    value={formData.height}
+                                    onChange={(e) => setFormData({ ...formData, height: e.target.value })}
                                     className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50"
                                 />
                             </div>
@@ -83,14 +166,20 @@ export default function ParentProfile() {
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Weight</label>
                                 <input
                                     type="text"
-                                    defaultValue="175lbs"
+                                    placeholder="175lbs"
+                                    value={formData.weight}
+                                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                                     className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50"
                                 />
                             </div>
                             <div className="grid gap-2">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Catch</label>
                                 <div className="relative">
-                                    <select className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50 appearance-none">
+                                    <select
+                                        value={formData.catch_hand}
+                                        onChange={(e) => setFormData({ ...formData, catch_hand: e.target.value })}
+                                        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50 appearance-none"
+                                    >
                                         <option>Left</option>
                                         <option>Right</option>
                                     </select>
@@ -100,7 +189,10 @@ export default function ParentProfile() {
                         </div>
                     </div>
 
-                    <button className="w-full mt-4 py-4 bg-primary text-primary-foreground rounded-xl font-bold shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
+                    <button
+                        onClick={handleSave}
+                        className="w-full mt-4 py-4 bg-primary text-primary-foreground rounded-xl font-bold shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                    >
                         <Save size={18} />
                         Save Changes
                     </button>

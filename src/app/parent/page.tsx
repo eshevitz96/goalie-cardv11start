@@ -21,81 +21,78 @@ export default function Home() {
   // Initial Load Logic
   useEffect(() => {
     const fetchMyGoalies = async () => {
-      // 1. Try to get ID from LocalStorage (set during activation)
+      // 1. Check Auth User first (Most reliable)
+      const { data: { user } } = await supabase.auth.getUser();
+      let emailToSearch = user?.email;
       const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
 
-      // 2. Fetch from Roster Uploads if we have an ID
-      if (localId) {
-        const { data, error } = await supabase
-          .from('roster_uploads')
-          .select('*')
-          .eq('assigned_unique_id', localId);
-
-        if (data && data.length > 0) {
-          // Transform DB data to UI Model
-          const realGoalies = data.map(g => ({
-            id: g.id,
-            name: g.goalie_name,
-            coach: "Assigned Coach", // Placeholder
-            session: 1, // Default
-            lesson: 1, // Default
-            stats: { gaa: "0.00", sv: ".000" }, // Default
-            events: [], // Default
-            feedback: [] // Default
-          }));
-          setGoalies(realGoalies);
-          setIsLoading(false);
-          return;
-        }
+      if (!emailToSearch && !localId) {
+        // No user, no local ID -> Nothing to show
+        setGoalies([]);
+        setIsLoading(false);
+        return;
       }
 
-      // 3. Fallback: Use Mock Data if no local ID found (Test Mode)
-      // Or redirect to activate?
-      // For seamless demo, we'll keep the Mock Data as "Demo Mode" for now
-      // But let's show an empty state or redirect if strictly production.
-      // We'll keep Mock for demo purposes so it doesn't break if you just visit the page directly.
+      // Query Roster
+      let query = supabase.from('roster_uploads').select('*');
 
-      setGoalies([
-        {
-          id: 1,
-          name: "Leo Vance (Demo)",
-          coach: "Coach Mike",
+      // Prefer Email match if logged in
+      if (emailToSearch) {
+        query = query.eq('email', emailToSearch);
+      } else if (localId) {
+        // Fallback to local ID
+        query = query.eq('assigned_unique_id', localId);
+      }
+
+      const { data, error } = await query;
+
+      if (data && data.length > 0) {
+        // Transform DB data to UI Model
+        const realGoalies = data.map(g => ({
+          id: g.id,
+          name: g.goalie_name,
+          team: g.team,
+          gradYear: g.grad_year,
+          coach: "Assigned Coach",
           session: 1,
-          lesson: 4,
-          stats: { gaa: "2.10", sv: ".925" },
-          events: [
-            {
-              id: 1,
-              name: "GS Baltimore Camp",
-              date: "Dec 12-14, 2024",
-              location: "Reistertown Sportsplex",
-              status: "upcoming",
-              image: "from-blue-600 to-indigo-600"
-            }
-          ],
-          feedback: [
-            {
-              id: 1,
-              date: "Today, 10:00 AM",
-              coach: "Coach Mike",
-              title: "Glove Hand Precision",
-              content: "Leo was electric today. We really focused on keeping that glove hand elevated.",
-              rating: 5,
-              hasVideo: true,
-            }
-          ]
-        }
-      ]);
+          lesson: 1,
+          stats: { gaa: "0.00", sv: ".000" },
+          events: [],
+          feedback: []
+        }));
+        setGoalies(realGoalies);
+      } else {
+        console.log("No roster record found for this user.");
+        setGoalies([]);
+      }
       setIsLoading(false);
     };
 
     fetchMyGoalies();
   }, []);
 
+  const handleLogout = async () => {
+    if (!confirm("Are you sure you want to sign out?")) return;
+    await supabase.auth.signOut();
+    localStorage.removeItem('activated_id'); // Clear local session too
+    router.push('/login');
+  };
+
   const activeGoalie = goalies[currentIndex];
 
   if (isLoading) {
     return <div className="min-h-screen bg-black flex items-center justify-center text-white"><Loader2 className="animate-spin text-primary" size={32} /></div>;
+  }
+
+  // If no goalies found, showing Empty State or Redirect
+  if (goalies.length === 0) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white p-6 text-center">
+        <h1 className="text-2xl font-bold mb-4">No Goalie Profile Found</h1>
+        <p className="text-zinc-400 mb-8 max-w-md">We couldn't link your account to a roster. Please contact support or try activating again.</p>
+        <button onClick={() => router.push('/login')} className="bg-zinc-800 px-6 py-3 rounded-xl font-bold">Back to Login</button>
+      </div>
+    );
   }
 
   if (!activeGoalie) return <div className="min-h-screen bg-black text-white p-8">No Goalies Found. <Link href="/activate" className="text-primary underline">Activate a Card</Link></div>;
@@ -136,10 +133,7 @@ export default function Home() {
 
                 <div className="h-px bg-zinc-800 my-1" />
                 <button
-                  onClick={() => {
-                    localStorage.removeItem('activated_id');
-                    router.push('/');
-                  }}
+                  onClick={handleLogout}
                   className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2"
                 >
                   <LogOut size={16} /> Sign Out
