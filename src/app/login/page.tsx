@@ -13,6 +13,10 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Debug Check
+    const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const hasKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -110,10 +114,19 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                <div className="mt-8 text-center">
+                <div className="mt-8 text-center space-y-2">
                     <p className="text-[10px] text-zinc-600">
-                        Restricted System • v11.0.5 • Monitor: {isLoading ? "Connecting..." : "Active"}
+                        Restricted System • v11.0.6 • Monitor: {isLoading ? "Connecting..." : "Active"}
                     </p>
+                    <div className="flex justify-center gap-2 text-[10px] font-mono">
+                        <span className={hasUrl ? "text-green-500" : "text-red-500"}>
+                            URL: {hasUrl ? "OK" : "MISSING"}
+                        </span>
+                        <span className="text-zinc-600">|</span>
+                        <span className={hasKey ? "text-green-500" : "text-red-500"}>
+                            KEY: {hasKey ? "OK" : "MISSING"}
+                        </span>
+                    </div>
                 </div>
             </div>
         </main>
