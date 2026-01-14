@@ -341,7 +341,7 @@ export default function AdminDashboard() {
                             </div>
                             <div className="flex items-center gap-3 text-xs p-2 bg-black/40 rounded-lg border border-primary/30">
                                 <span className="font-bold text-white">3</span>
-                                <span className="text-white font-bold">Parent enters Email -> Auto-Match!</span>
+                                <span className="text-white font-bold">Parent enters Email -&gt; Auto-Match!</span>
                             </div>
                         </div>
                     </div>
