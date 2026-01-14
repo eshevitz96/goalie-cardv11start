@@ -15,7 +15,8 @@ import {
     AlertCircle,
     DollarSign,
     Plus,
-    X
+    X,
+    Pencil
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { clsx } from "clsx";
@@ -44,6 +45,7 @@ export default function AdminDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [showManualAdd, setShowManualAdd] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
     const [manualForm, setManualForm] = useState({
         firstName: "",
         lastName: "",
@@ -132,7 +134,6 @@ export default function AdminDashboard() {
         }
 
         try {
-            const uniqueId = `GC-${8000 + dbData.length + Math.floor(Math.random() * 999)}`;
             const payload = {
                 email: manualForm.email,
                 goalie_name: `${manualForm.firstName} ${manualForm.lastName}`,
@@ -140,22 +141,57 @@ export default function AdminDashboard() {
                 parent_phone: manualForm.phone,
                 grad_year: parseInt(manualForm.gradYear) || 2030,
                 team: manualForm.team || "Unassigned",
-                assigned_unique_id: uniqueId,
-                is_claimed: false,
-                payment_status: 'pending',
-                amount_paid: 0
             };
 
-            const { error } = await supabase.from('roster_uploads').insert([payload]);
-            if (error) throw error;
+            if (editingId) {
+                // UPDATE Existing
+                const { error } = await supabase.from('roster_uploads').update(payload).eq('id', editingId);
+                if (error) throw error;
+                alert("Goalie Updated!");
+            } else {
+                // CREATE New
+                const uniqueId = `GC-${8000 + dbData.length + Math.floor(Math.random() * 999)}`;
+                const { error } = await supabase.from('roster_uploads').insert([{
+                    ...payload,
+                    assigned_unique_id: uniqueId,
+                    is_claimed: false,
+                    payment_status: 'pending',
+                    amount_paid: 0
+                }]);
+                if (error) throw error;
+                alert("Goalie Added Successfully!");
+            }
 
-            setManualForm({ firstName: "", lastName: "", email: "", team: "", gradYear: "2030", parentName: "", phone: "" });
-            setShowManualAdd(false);
+            closeModal();
             await fetchRoster();
-            alert("Goalie Added Successfully!");
+
         } catch (err: any) {
-            alert("Error adding goalie: " + err.message);
+            alert("Error: " + err.message);
         }
+    };
+
+    const handleEditClick = (item: RosterItem) => {
+        const nameParts = item.goalie_name.split(' ');
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(' ') || "";
+
+        setManualForm({
+            firstName,
+            lastName,
+            email: item.email || "",
+            team: item.team || "",
+            gradYear: item.grad_year?.toString() || "2030",
+            parentName: item.parent_name || "",
+            phone: item.parent_phone || ""
+        });
+        setEditingId(item.id);
+        setShowManualAdd(true);
+    };
+
+    const closeModal = () => {
+        setManualForm({ firstName: "", lastName: "", email: "", team: "", gradYear: "2030", parentName: "", phone: "" });
+        setEditingId(null);
+        setShowManualAdd(false);
     };
 
     // --- SMART PARSER ---
@@ -526,12 +562,22 @@ export default function AdminDashboard() {
                                                     )}
                                                 </td>
                                                 <td className="p-4 text-right">
-                                                    <button
-                                                        onClick={() => handleDeleteRow(entry.id)}
-                                                        className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded text-zinc-600 transition-colors"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <button
+                                                            onClick={() => handleEditClick(entry)}
+                                                            className="p-2 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white transition-colors"
+                                                            title="Edit"
+                                                        >
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteRow(entry.id)}
+                                                            className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded text-zinc-600 transition-colors"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))
@@ -578,7 +624,7 @@ export default function AdminDashboard() {
 
             </div>
 
-            {/* Manual Add Modal */}
+            {/* Manual Add / Edit Modal */}
             {showManualAdd && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <motion.div
@@ -587,8 +633,8 @@ export default function AdminDashboard() {
                         className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl"
                     >
                         <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
-                            <h3 className="font-bold text-lg text-white">Manual Entry</h3>
-                            <button onClick={() => setShowManualAdd(false)} className="text-zinc-500 hover:text-white">
+                            <h3 className="font-bold text-lg text-white">{editingId ? 'Edit Goalie' : 'Manual Entry'}</h3>
+                            <button onClick={closeModal} className="text-zinc-500 hover:text-white">
                                 <X size={20} />
                             </button>
                         </div>
@@ -669,7 +715,7 @@ export default function AdminDashboard() {
                             <div className="pt-4 flex justify-end gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => setShowManualAdd(false)}
+                                    onClick={closeModal}
                                     className="px-4 py-2 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-300 transition-colors"
                                 >
                                     Cancel
@@ -678,7 +724,7 @@ export default function AdminDashboard() {
                                     type="submit"
                                     className="px-4 py-2 rounded bg-primary hover:bg-primary/90 text-xs font-bold text-black transition-colors"
                                 >
-                                    Create Record
+                                    {editingId ? 'Save Changes' : 'Create Record'}
                                 </button>
                             </div>
                         </form>
