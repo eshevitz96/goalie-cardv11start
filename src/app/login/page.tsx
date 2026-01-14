@@ -18,20 +18,27 @@ export default function LoginPage() {
         setIsLoading(true);
         setError(null);
 
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log("Attempting login with:", { email, hasPassword: !!password });
+        console.log("Supabase Config Check:", {
+            hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+            hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        });
+
+        const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
 
+        console.log("Supabase Response:", { data, error });
+
         if (error) {
+            console.error("Login Error:", error);
             setError(error.message);
             setIsLoading(false);
         } else {
-            // Login successful
-            // We could check the role here if we wanted to be specific, but middleware handles protection.
-            // For now, default redirect to Coach OS. Admin can nav from there or type URL.
+            console.log("Login Success, redirecting...");
             router.push("/coach");
-            router.refresh(); // Refresh to update middleware state
+            router.refresh();
         }
     };
 
