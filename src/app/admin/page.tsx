@@ -123,16 +123,15 @@ export default function AdminDashboard() {
             return;
         }
 
-        // 1. Identify Header Row (Look for "Email" and "Name/First" with limit)
+        // 1. Identify Header Row (Strict Search)
         let headerRowIndex = 0;
         let foundHeader = false;
 
-        // Scan first 25 lines to find the header
-        for (let i = 0; i < Math.min(lines.length, 25); i++) {
+        // Scan first 50 lines to find the REAL header
+        for (let i = 0; i < Math.min(lines.length, 50); i++) {
             const rowLower = lines[i].toLowerCase();
-            // A valid header row usually has "Email" AND some form of Name
-            // Expanded criteria to be more robust
-            if (rowLower.includes('email') && (rowLower.includes('name') || rowLower.includes('first') || rowLower.includes('goalie'))) {
+            // Look for specific known headers from your screenshot
+            if (rowLower.includes('player first name') || rowLower.includes('player last name') || (rowLower.includes('email') && rowLower.includes('name') && rowLower.length < 300)) {
                 headerRowIndex = i;
                 foundHeader = true;
                 break;
@@ -140,7 +139,7 @@ export default function AdminDashboard() {
         }
 
         if (!foundHeader) {
-            console.warn("Could not auto-detect header row. Defaulting to row 0. Result may be garbage.");
+            console.warn("Could not auto-detect header row. Defaulting to row 0.");
         }
 
         const potentialHeaders = lines[headerRowIndex].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.toLowerCase().replace(/['"]+/g, '').trim());
@@ -150,25 +149,24 @@ export default function AdminDashboard() {
             email: potentialHeaders.findIndex(h => h.includes('email') || h.includes('address')),
             firstName: potentialHeaders.findIndex(h => h.includes('first') && h.includes('name')),
             lastName: potentialHeaders.findIndex(h => h.includes('last') && h.includes('name')),
-            // Fallback for full name
             fullName: potentialHeaders.findIndex(h => h === 'name' || h === 'goalie name' || h === 'player name' || h === 'goalie'),
             gradYear: potentialHeaders.findIndex(h => h.includes('grad') || h.includes('year') || h.includes('class')),
-            // Prioritize Club Team, then just Team
             team: potentialHeaders.findIndex(h => h.includes('club') || h.includes('team') || h.includes('organization') || h.includes('club team name')),
-            // School District
             school: potentialHeaders.findIndex(h => h.includes('school') || h.includes('district')),
             parentName: potentialHeaders.findIndex(h => (h.includes('parent') || h.includes('guardian')) && h.includes('name')),
             phone: potentialHeaders.findIndex(h => h.includes('phone') || h.includes('cell'))
         };
 
-        // FORCE DEFAULTS if not found (per user evidence: Col 1=First, Col 2=Last)
-        // If FIRST NAME mapping failed, force indices 1 and 2
+        // FORCE DEFAULTS (Col 1=First, Col 2=Last)
         if (map.firstName === -1 && map.fullName === -1) map.firstName = 1;
         if (map.lastName === -1 && map.fullName === -1) map.lastName = 2;
 
         console.log("Detected Columns:", map, "at Row:", headerRowIndex);
 
         const payload = lines.slice(headerRowIndex + 1).map((line, idx) => {
+            // Skip garbage lines (empty or crazy long instructions)
+            if (line.length > 500 || line.includes("https://") || line.toLowerCase().includes("leave blank")) return null;
+
             const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, '').trim());
 
             // Helpers
@@ -176,7 +174,6 @@ export default function AdminDashboard() {
 
             // Logic: Name
             let goalieName = "Unknown";
-            // Use strict map if available, otherwise fallback to 1 and 2
             if (map.firstName > -1 && map.lastName > -1) {
                 const first = getVal(map.firstName);
                 const last = getVal(map.lastName);
@@ -184,30 +181,29 @@ export default function AdminDashboard() {
             } else if (map.fullName > -1) {
                 goalieName = getVal(map.fullName);
             } else {
-                // Double Fallback (Explicitly 1 and 2)
+                // Double Fallback
                 const first = values[1] || "";
                 const last = values[2] || "";
                 goalieName = `${first.replace(/['"]+/g, '')} ${last.replace(/['"]+/g, '')}`.trim();
             }
 
-            // Logic: Team (Combine Club + School if needed, or prioritized)
+            // Logic: Team
             let team = getVal(map.team);
             const school = getVal(map.school);
-
             if (!team && school) {
-                team = school; // Fallback to school if no club
+                team = school;
             } else if (team && school && team !== school) {
-                // Option: "Club Name (School District)"
                 team = `${team} (${school})`;
             }
             if (!team) team = "Unassigned";
 
-            // Email Logic: Try mapped, then try scanning for "@"
+            // Email Logic
             let email = getVal(map.email);
             if (!email || !email.includes('@')) {
-                email = values.find(v => v.includes('@') && v.includes('.')) || "";
+                email = values.find(v => v.includes('@') && v.includes('.') && !v.includes(' ')) || "";
             }
-            if (!email) email = `missing-email-${idx}-${Date.now()}@example.com`;
+            // Strict Email check to avoid "instructions" being valid
+            if (!email || email.includes(' ') || email.length > 100) return null;
 
             // Grad Year
             let gradYear = getVal(map.gradYear);
@@ -228,7 +224,7 @@ export default function AdminDashboard() {
                 payment_status: 'pending',
                 amount_paid: 0
             };
-        });
+        }).filter(item => item !== null); // Remove nulls
 
         // 2. Perform Supabase Insert
         const { error } = await supabase.from('roster_uploads').insert(payload);
