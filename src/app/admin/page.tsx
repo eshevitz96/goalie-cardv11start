@@ -59,12 +59,14 @@ export default function AdminDashboard() {
             // 12: Parent Name
             // 15: Parent Email
 
-            const firstName = values[1] || "Unknown";
-            const lastName = values[2] || "Goalie";
-            const gradYearRaw = values[4] || "2030";
-            const team = values[6] || "Unassigned";
-            const parentName = values[12] || "Unknown Parent";
-            const email = values[15] && values[15].includes('@') ? values[15] : (values.find(v => v.includes('@')) || `no-email-${idx}@example.com`);
+            // Shifted indices due to missing first column title
+            const firstName = values[0] || "Unknown";
+            const lastName = values[1] || "Goalie";
+            const gradYearRaw = values[3] || "2030";
+            const team = values[5] || "Unassigned";
+            const parentName = values[11] || "Unknown Parent";
+            // Look for email in column 14 (shifted from 15) OR search for @ pattern
+            const email = (values[14] && values[14].includes('@')) ? values[14] : (values.find(v => v.includes('@')) || `no-email-${idx}@example.com`);
 
             // Generate clean Grad Year
             const gradYear = parseInt(gradYearRaw) || 2030;
