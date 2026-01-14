@@ -124,14 +124,21 @@ export default function ActivatePage() {
         }
 
         // Here we would create the Profile and Mark as Claimed
-        // Need to update DB is_claimed = true
+        // Need to update DB is_claimed = true AND record payment
         try {
+            // We assume payment succeeded in Step 4
+            const paymentAmount = 250.00; // Example fee
+
             const { error } = await supabase
                 .from('roster_uploads')
-                .update({ is_claimed: true })
+                .update({
+                    is_claimed: true,
+                    payment_status: 'paid',
+                    amount_paid: paymentAmount
+                })
                 .eq('assigned_unique_id', accessId.toUpperCase());
 
-            if (error) console.error("Claim Error", error);
+            if (error) console.error("Claim/Payment Record Error", error);
         } catch (e) {
             console.error(e);
         }

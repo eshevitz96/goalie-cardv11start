@@ -12,7 +12,8 @@ import {
     Trash2,
     RefreshCw,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    DollarSign
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { clsx } from "clsx";
@@ -30,6 +31,9 @@ type RosterItem = {
     assigned_unique_id: string;
     is_claimed: boolean;
     created_at: string;
+    // New Payment Fields (might be null if old record)
+    payment_status?: string;
+    amount_paid?: number;
 };
 
 export default function AdminDashboard() {
@@ -180,7 +184,9 @@ export default function AdminDashboard() {
                 grad_year: parseInt(gradYear) || 2030,
                 team: team,
                 assigned_unique_id: uniqueId,
-                is_claimed: false
+                is_claimed: false,
+                payment_status: 'pending',
+                amount_paid: 0
             };
         });
 
@@ -190,7 +196,7 @@ export default function AdminDashboard() {
         if (error) {
             console.error(error);
             setUploadStatus("error");
-            alert("Upload failed: " + error.message + "\n\nTip: Run the SQL Policy to enable writing.");
+            alert("Upload failed: " + error.message + "\n\nTip: You need to add 'payment_status' column to DB.");
         } else {
             setUploadStatus("success");
             await fetchRoster();
@@ -206,6 +212,9 @@ export default function AdminDashboard() {
 
     const pendingCount = dbData.filter(i => !i.is_claimed).length;
 
+    // Revenue Calc
+    const totalRevenue = dbData.reduce((acc, item) => acc + (Number(item.amount_paid) || 0), 0);
+
     return (
         <main className="min-h-screen bg-black text-white p-4 md:p-8">
             <header className="flex justify-between items-center mb-10">
@@ -216,7 +225,10 @@ export default function AdminDashboard() {
                     </h1>
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className="text-xs text-zinc-500 font-mono">Real-Time</span>
+                    <div className="flex flex-col items-end mr-4">
+                        <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Total Revenue</span>
+                        <span className="text-lg font-mono font-bold text-emerald-500">${totalRevenue.toLocaleString()}</span>
+                    </div>
                     <div className="h-8 w-[1px] bg-zinc-800 mx-2" />
                     <button
                         onClick={fetchRoster}
@@ -248,12 +260,9 @@ export default function AdminDashboard() {
                                         Smart Import
                                     </h2>
                                     <p className="text-zinc-400 text-sm max-w-md">
-                                        Drop any CSV. We'll auto-detect Email, Name, Year, and Team columns.
+                                        Drop any CSV. We'll auto-detect Email, Name, Year, and Team.
                                     </p>
                                 </div>
-                                <button className="text-xs font-bold text-zinc-500 flex items-center gap-1 hover:text-white transition-colors">
-                                    <Download size={14} /> Spec Sheet
-                                </button>
                             </div>
 
                             <div
@@ -338,15 +347,16 @@ export default function AdminDashboard() {
                                         <th className="p-4 pl-6">Goalie</th>
                                         <th className="p-4">Email</th>
                                         <th className="p-4">ID</th>
+                                        <th className="p-4">Payment</th>{/* New Column */}
                                         <th className="p-4">Status</th>
                                         <th className="p-4 text-right">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-800">
                                     {isLoading ? (
-                                        <tr><td colSpan={5} className="p-8 text-center text-zinc-500"><Loader2 className="animate-spin mx-auto mb-2" /> Loading Records...</td></tr>
+                                        <tr><td colSpan={6} className="p-8 text-center text-zinc-500"><Loader2 className="animate-spin mx-auto mb-2" /> Loading Records...</td></tr>
                                     ) : filteredData.length === 0 ? (
-                                        <tr><td colSpan={5} className="p-8 text-center text-zinc-500">No records found. Upload a CSV to get started.</td></tr>
+                                        <tr><td colSpan={6} className="p-8 text-center text-zinc-500">No records found. Upload a CSV to get started.</td></tr>
                                     ) : (
                                         filteredData.map((entry) => (
                                             <tr key={entry.id} className="group hover:bg-zinc-800/20 transition-colors">
@@ -364,6 +374,20 @@ export default function AdminDashboard() {
                                                         {entry.assigned_unique_id}
                                                     </div>
                                                 </td>
+
+                                                {/* Payment Column */}
+                                                <td className="p-4">
+                                                    {entry.payment_status === 'paid' ? (
+                                                        <span className="flex items-center gap-1 text-emerald-500 text-xs font-bold">
+                                                            <DollarSign size={12} /> {entry.amount_paid}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-zinc-600 text-[10px] uppercase font-bold tracking-wider">
+                                                            Pending
+                                                        </span>
+                                                    )}
+                                                </td>
+
                                                 <td className="p-4">
                                                     {entry.is_claimed ? (
                                                         <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold border border-emerald-500/20 uppercase tracking-wide">
@@ -407,6 +431,10 @@ export default function AdminDashboard() {
                             <div className="flex items-center justify-between p-3 bg-zinc-950 rounded-xl border border-zinc-800/50">
                                 <span className="text-xs text-zinc-400">Pending Activation</span>
                                 <span className="text-lg font-bold text-amber-500">{pendingCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-zinc-950 rounded-xl border border-zinc-800/50">
+                                <span className="text-xs text-zinc-400">Total Revenue</span>
+                                <span className="text-lg font-bold text-emerald-500">${totalRevenue.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
