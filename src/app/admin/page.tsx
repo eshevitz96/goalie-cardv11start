@@ -266,20 +266,25 @@ export default function AdminDashboard() {
         // Map Columns dyanmically
         const map = {
             email: potentialHeaders.findIndex(h => h.includes('email') || h.includes('address')),
-            firstName: potentialHeaders.findIndex(h => h.includes('first') && h.includes('name')),
-            lastName: potentialHeaders.findIndex(h => h.includes('last') && h.includes('name')),
+            firstName: potentialHeaders.findIndex(h => h.includes('first') && h.includes('name') && !h.includes('parent') && !h.includes('guardian')),
+            lastName: potentialHeaders.findIndex(h => h.includes('last') && h.includes('name') && !h.includes('parent') && !h.includes('guardian')),
             fullName: potentialHeaders.findIndex(h => h === 'name' || h === 'goalie name' || h === 'player name' || h === 'goalie'),
             gradYear: potentialHeaders.findIndex(h => h.includes('grad') || h.includes('year') || h.includes('class')),
             team: potentialHeaders.findIndex(h => h.includes('club') || h.includes('team') || h.includes('organization') || h.includes('club team name')),
             school: potentialHeaders.findIndex(h => h.includes('school') || h.includes('district')),
-            parentName: potentialHeaders.findIndex(h => (h.includes('parent') || h.includes('guardian')) && h.includes('name')),
-            phone: potentialHeaders.findIndex(h => h.includes('phone') || h.includes('cell'))
+            // Parent Logic: Split or Full
+            parentFirst: potentialHeaders.findIndex(h => (h.includes('guardian') || h.includes('parent')) && h.includes('first')),
+            parentLast: potentialHeaders.findIndex(h => (h.includes('guardian') || h.includes('parent')) && h.includes('last')),
+            // Fallback for single "Guardian Name" column (ensure we don't grab Phone/Email or the First/Last cols we just found)
+            parentName: potentialHeaders.findIndex(h => (h.includes('guardian') || h.includes('parent') || h.includes('mother') || h.includes('father')) && !h.includes('email') && !h.includes('phone') && !h.includes('first') && !h.includes('last')),
+            phone: potentialHeaders.findIndex(h => h.includes('phone') || h.includes('cell') || h.includes('mobile'))
         };
 
         // FORCE DEFAULTS (Col 1=First, Col 2=Last)
-        // Only if mapping completely failed
         if (map.firstName === -1 && map.fullName === -1) map.firstName = 1;
         if (map.lastName === -1 && map.fullName === -1) map.lastName = 2;
+        // Fallback for Parent Name (Col 13/Index 12) per user guide
+        if (map.parentName === -1 && map.parentFirst === -1 && potentialHeaders.length > 12) map.parentName = 12;
 
         console.log("Detected Columns:", map, "at Row:", headerRowIndex);
 
@@ -289,10 +294,12 @@ export default function AdminDashboard() {
 
             const values = splitLine(line);
 
-            // Helpers
-            const getVal = (idx: number) => (idx > -1 && values[idx]) ? values[idx] : "";
+            // Helpers: Aggressive Sanitization
+            // Removes Null Bytes (\0) and Backslashes (\) which confuse Postgres
+            const clean = (s: string) => s ? s.replace(/\0/g, '').replace(/\\/g, '').trim() : "";
+            const getVal = (idx: number) => (idx > -1 && values[idx]) ? clean(values[idx]) : "";
 
-            // Logic: Name
+            // Logic: Goalie Name
             let goalieName = "Unknown";
             if (map.firstName > -1 && map.lastName > -1) {
                 const first = getVal(map.firstName);
@@ -304,7 +311,15 @@ export default function AdminDashboard() {
                 // Double Fallback (Explicitly 1 and 2)
                 const first = values[1] || "";
                 const last = values[2] || "";
-                goalieName = `${first.replace(/['"]+/g, '')} ${last.replace(/['"]+/g, '')}`.trim();
+                goalieName = `${clean(first).replace(/['"]+/g, '')} ${clean(last).replace(/['"]+/g, '')}`.trim();
+            }
+
+            // Logic: Parent Name (Handle Split or Full)
+            let parentNameStr = "Unknown Parent";
+            if (map.parentFirst > -1 && map.parentLast > -1) {
+                parentNameStr = `${getVal(map.parentFirst)} ${getVal(map.parentLast)}`.trim();
+            } else if (map.parentName > -1) {
+                parentNameStr = getVal(map.parentName);
             }
 
             // Logic: Team
@@ -320,8 +335,9 @@ export default function AdminDashboard() {
             // Email Logic
             let email = getVal(map.email);
             if (!email || !email.includes('@')) {
-                email = values.find(v => v.includes('@') && v.includes('.') && !v.includes(' ')) || "";
+                email = values.find(v => v.includes('@') && v.includes('.') && !v.includes(' ') && !v.includes('\\')) || "";
             }
+            email = clean(email);
             // Strict Email check to avoid "instructions" being valid
             if (!email || email.includes(' ') || email.length > 100) return null;
 
@@ -335,7 +351,7 @@ export default function AdminDashboard() {
             return {
                 email: email,
                 goalie_name: goalieName,
-                parent_name: getVal(map.parentName) || "Unknown Parent",
+                parent_name: parentNameStr,
                 parent_phone: getVal(map.phone),
                 grad_year: parseInt(gradYear) || 2030,
                 team: team,
@@ -346,13 +362,18 @@ export default function AdminDashboard() {
             };
         }).filter(item => item !== null); // Remove nulls
 
-        // 2. Perform Supabase Insert
-        const { error } = await supabase.from('roster_uploads').insert(payload);
+        // Deduplicate Payload by Email (Keep last occurrence)
+        const uniquePayload = Array.from(
+            new Map(payload.map(item => [item.email, item])).values()
+        );
+
+        // 2. Perform Supabase Insert (Upsert to handle duplicates)
+        const { error } = await supabase.from('roster_uploads').upsert(uniquePayload, { onConflict: 'email' });
 
         if (error) {
             console.error(error);
             setUploadStatus("error");
-            alert("Upload failed: " + error.message + "\n\nTip: You need to add 'payment_status' column to DB.");
+            alert("Upload failed: " + error.message + "\n\nPossible Causes:\n1. CSV encoding (try saving as standard .csv).\n2. Database Schema issue.");
         } else {
             setUploadStatus("success");
             await fetchRoster();

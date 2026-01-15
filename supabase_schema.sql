@@ -4,6 +4,7 @@ drop table if exists public.schedule_requests cascade;
 drop table if exists public.sessions cascade;
 drop table if exists public.profiles cascade;
 drop table if exists public.roster_uploads cascade;
+drop table if exists public.payments cascade;
 
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
@@ -21,6 +22,10 @@ create table public.roster_uploads (
   team text,
   assigned_unique_id text, -- The pre-generated GC-XXXX ID
   is_claimed boolean default false,
+  
+  -- Tracking columns
+  payment_status text default 'pending',
+  amount_paid numeric default 0,
   
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -81,14 +86,31 @@ create table public.reviews (
   rating_pads int,
   rating_iq int,
   notes text,
-  marketable_stat text, 
   marketable_quote text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 5. Payments (Stripe Sync)
+create table public.payments (
+  id uuid default uuid_generate_v4() primary key,
+  goalie_id uuid references public.profiles(id) on delete set null,
+  amount int, -- in cents
+  currency text default 'usd',
+  status text, -- 'succeeded', 'pending', 'failed'
+  stripe_payment_intent_id text unique,
+  description text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- RLS Policies
 alter table public.profiles enable row level security;
 alter table public.roster_uploads enable row level security;
+alter table public.payments enable row level security;
+
+-- Payments Policies
+create policy "Users can view own payments" on public.payments for select using (auth.uid() = goalie_id);
+create policy "Admins can view all payments" on public.payments for select using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+
 
 -- Public can read roster uploads to check for their email during signup
 create policy "Public can check roster" on public.roster_uploads for select using (true);
