@@ -34,23 +34,32 @@ export default function Home() {
       }
 
       // Query Roster
+      console.log("Checking for Local ID:", localId);
+      console.log("Checking for Auth Email:", emailToSearch);
+
       let query = supabase.from('roster_uploads').select('*');
 
-      // Construct OR query to find by Email (Case Insensitive) OR ID
-      const conditions = [];
-      if (emailToSearch) conditions.push(`email.ilike.${emailToSearch}`);
-      if (localId) conditions.push(`assigned_unique_id.eq.${localId}`);
-
-      if (conditions.length > 0) {
-        query = query.or(conditions.join(','));
+      if (emailToSearch && localId) {
+        // If we have both, check either
+        query = query.or(`email.ilike.${emailToSearch},assigned_unique_id.eq.${localId}`);
+      } else if (emailToSearch) {
+        // Only Email
+        query = query.ilike('email', emailToSearch);
+      } else if (localId) {
+        // Only Local ID
+        query = query.eq('assigned_unique_id', localId);
       } else {
-        // No identifiers
+        console.warn("No identifier found.");
         setGoalies([]);
         setIsLoading(false);
         return;
       }
 
       const { data, error } = await query;
+
+      if (error) {
+        console.error("Roster Fetch Error:", error);
+      }
 
       if (data && data.length > 0) {
         // Transform DB data to UI Model
