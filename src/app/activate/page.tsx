@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Check, User, Shield, CreditCard, Loader2, AlertCircle, ArrowRight, FileText } from "lucide-react";
 import { clsx } from "clsx";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase/client";
 
@@ -18,6 +18,7 @@ const STEPS = [
 
 export default function ActivatePage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [currentStep, setCurrentStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -37,6 +38,21 @@ export default function ActivatePage() {
         height: "",
         weight: "",
     });
+
+    // Handle Return from Stripe or other redirects
+    useEffect(() => {
+        const success = searchParams.get('success');
+        const canceled = searchParams.get('canceled');
+        const idParam = searchParams.get('id'); // Pass ID back to know who we are activating
+
+        if (success && idParam) {
+            setAccessId(idParam);
+            setCurrentStep(5);
+        } else if (canceled) {
+            setError("Payment was canceled. Please try again.");
+            setCurrentStep(4);
+        }
+    }, [searchParams]);
 
     const handleStep1 = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -107,13 +123,44 @@ export default function ActivatePage() {
             return;
         }
         setError(null);
-
-        // Payment Logic (Mocked)
         setIsLoading(true);
-        // Simulate Stripe
-        await new Promise(r => setTimeout(r, 1500));
-        setIsLoading(false);
-        setCurrentStep(5);
+
+        try {
+            // Call Stripe Checkout
+            const response = await fetch('/api/stripe/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    priceId: 'price_1Q...', // Replace with real Price ID or Env Var
+                    email: email,
+                    userId: rosterData.id,
+                    returnUrl: `${window.location.origin}/activate?id=${accessId}`, // Return here
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Payment init failed");
+            }
+
+            const { url } = await response.json();
+            if (url) {
+                window.location.href = url; // Redirect to Stripe
+            } else {
+                throw new Error("No URL returned");
+            }
+
+        } catch (err: any) {
+            console.error(err);
+            // Fallback for dev/demo if no stripe keys or error:
+            // Check if it's a "Missing required fields" (bad config) or network error
+            if (process.env.NODE_ENV === 'development') {
+                alert("Dev Mode: Skipping Stripe (Check console for error). Moving to Success.");
+                setCurrentStep(5);
+            } else {
+                setError("Payment System Error: " + err.message);
+            }
+            setIsLoading(false);
+        }
     };
 
     const handleFinish = async () => {
@@ -123,24 +170,34 @@ export default function ActivatePage() {
             localStorage.setItem('activated_id', accessId.toUpperCase());
         }
 
-        // Here we would create the Profile and Mark as Claimed
-        // Need to update DB is_claimed = true AND record payment
         try {
-            // We assume payment succeeded in Step 4
-            const paymentAmount = 250.00; // Example fee
+            const paymentAmount = 25000; // Cents
 
-            const { error } = await supabase
+            // 1. Update Roster Uploads (Source of Truth)
+            const { error: rosterError } = await supabase
                 .from('roster_uploads')
                 .update({
                     is_claimed: true,
                     payment_status: 'paid',
-                    amount_paid: paymentAmount
+                    amount_paid: paymentAmount / 100 // Dollars
                 })
                 .eq('assigned_unique_id', accessId.toUpperCase());
 
-            if (error) console.error("Claim/Payment Record Error", error);
-        } catch (e) {
+            if (rosterError) throw rosterError;
+
+            // 2. Insert into Public Profiles
+            // We do this to ensure Admins can see "Users" in their dashboard view if they look at 'profiles' table
+            // And to prepare for Auth Link later.
+            // We use upsert on email to avoid duplicates if they re-activate or claim.
+            // Note: We don't have a Auth User ID yet, so we generate a random UUID for the profile ID or let DB handle it if possible.
+            // ACTUALLY: 'profiles.id' references 'auth.users.id'. We CANNOT insert into profiles without a valid Auth User ID.
+            // So we skip Profile creation here. The Roster Upload IS the record.
+
+            console.log("Activation Complete");
+
+        } catch (e: any) {
             console.error(e);
+            alert("Error finalizing activation: " + e.message);
         }
 
         await new Promise(r => setTimeout(r, 1000));

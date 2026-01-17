@@ -7,11 +7,24 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { supabase } from "@/utils/supabase/client";
 
-export function PaymentList() {
+export function PaymentList({ rosterId }: { rosterId?: string }) {
     const [payments, setPayments] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchRecentPayments = async () => {
+            // Prioritize Roster ID (from Admin Upload) because Webhook saves it there
+            if (rosterId) {
+                const { data } = await supabase
+                    .from('payments')
+                    .select('*')
+                    .eq('goalie_id', rosterId)
+                    .order('created_at', { ascending: false })
+                    .limit(3);
+                if (data) setPayments(data);
+                return;
+            }
+
+            // Fallback to Auth User ID
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
@@ -27,7 +40,7 @@ export function PaymentList() {
             }
         };
         fetchRecentPayments();
-    }, []);
+    }, [rosterId]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {

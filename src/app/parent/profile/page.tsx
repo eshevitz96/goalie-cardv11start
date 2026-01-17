@@ -37,8 +37,14 @@ export default function ParentProfile() {
             }
 
             let query = supabase.from('roster_uploads').select('*');
-            if (emailToSearch) query = query.eq('email', emailToSearch);
-            else if (localId) query = query.eq('assigned_unique_id', localId);
+
+            const conditions = [];
+            if (emailToSearch) conditions.push(`email.ilike.${emailToSearch}`);
+            if (localId) conditions.push(`assigned_unique_id.eq.${localId}`);
+
+            if (conditions.length > 0) {
+                query = query.or(conditions.join(','));
+            }
 
             const { data, error } = await query;
 
@@ -140,7 +146,7 @@ export default function ParentProfile() {
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current Team</label>
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current Team (Club & School)</label>
                                 <input
                                     type="text"
                                     value={formData.team}

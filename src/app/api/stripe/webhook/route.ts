@@ -45,6 +45,22 @@ export async function POST(req: Request) {
             console.error("Supabase payment insert error:", error);
             return new NextResponse("Database Error", { status: 500 });
         }
+
+        // SYNC: Update Roster Uploads so Admin Dashboard sees it
+        // We assume session.metadata.userId is the Roster ID (passed from ActivatePage)
+        const { error: rosterError } = await supabase
+            .from('roster_uploads')
+            .update({
+                is_claimed: true,
+                payment_status: 'paid',
+                amount_paid: (session.amount_total || 0) / 100 // Convert cents to dollars
+            })
+            .eq('id', session.metadata.userId);
+
+        if (rosterError) {
+            console.error("Roster sync error:", rosterError);
+            // Don't fail the webhook for this, but log it
+        }
     }
 
     return new NextResponse(null, { status: 200 });

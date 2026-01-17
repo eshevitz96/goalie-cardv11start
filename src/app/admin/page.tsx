@@ -36,6 +36,7 @@ type RosterItem = {
     created_at: string;
     payment_status?: string;
     amount_paid?: number;
+    assigned_coach_id?: string;
 };
 
 export default function AdminDashboard() {
@@ -53,13 +54,25 @@ export default function AdminDashboard() {
         team: "",
         gradYear: "2030",
         parentName: "",
-        phone: ""
+        phone: "",
+        coachId: ""
     });
+
+    const [coaches, setCoaches] = useState<any[]>([]); // {id, name}
 
     // Fetch Real Data on Mount
     useEffect(() => {
         fetchRoster();
+        fetchCoaches();
     }, []);
+
+    const fetchCoaches = async () => {
+        const { data } = await supabase.from('profiles').select('id, goalie_name').eq('role', 'coach');
+        if (data) {
+            // Mapping goalie_name to 'Coach Name' since we reuse the profile table
+            setCoaches(data.map(c => ({ id: c.id, name: c.goalie_name || 'Unnamed Coach' })));
+        }
+    };
 
     const fetchRoster = async () => {
         try {
@@ -141,6 +154,7 @@ export default function AdminDashboard() {
                 parent_phone: manualForm.phone,
                 grad_year: parseInt(manualForm.gradYear) || 2030,
                 team: manualForm.team || "Unassigned",
+                assigned_coach_id: manualForm.coachId === "" ? null : manualForm.coachId
             };
 
             if (editingId) {
@@ -182,14 +196,15 @@ export default function AdminDashboard() {
             team: item.team || "",
             gradYear: item.grad_year?.toString() || "2030",
             parentName: item.parent_name || "",
-            phone: item.parent_phone || ""
+            phone: item.parent_phone || "",
+            coachId: item.assigned_coach_id || ""
         });
         setEditingId(item.id);
         setShowManualAdd(true);
     };
 
     const closeModal = () => {
-        setManualForm({ firstName: "", lastName: "", email: "", team: "", gradYear: "2030", parentName: "", phone: "" });
+        setManualForm({ firstName: "", lastName: "", email: "", team: "", gradYear: "2030", parentName: "", phone: "", coachId: "" });
         setEditingId(null);
         setShowManualAdd(false);
     };
@@ -345,8 +360,10 @@ export default function AdminDashboard() {
             let gradYear = getVal(map.gradYear);
             if (!gradYear) gradYear = values.find(v => v.match(/^20[2-3][0-9]$/)) || "2030";
 
-            // ID Generation
-            const uniqueId = `GC-${8000 + dbData.length + idx + Math.floor(Math.random() * 99)}`;
+            // ID Generation (Strict GC-XXXX format)
+            // Use 8000 base + index ensuring 4 digits
+            const idNum = 8000 + (dbData.length || 0) + idx;
+            const uniqueId = `GC-${idNum}`;
 
             return {
                 email: email,
@@ -545,7 +562,14 @@ export default function AdminDashboard() {
                                             <tr key={entry.id} className="group hover:bg-zinc-800/20 transition-colors">
                                                 <td className="p-4 pl-6">
                                                     <div className="font-bold text-white text-sm">{entry.goalie_name}</div>
-                                                    <div className="text-xs text-zinc-500">{entry.grad_year} • {entry.team?.slice(0, 30)}</div>
+                                                    <div className="text-xs text-zinc-500">
+                                                        {entry.grad_year} • {entry.team?.slice(0, 30)}
+                                                        {entry.assigned_coach_id && (
+                                                            <span className="ml-2 text-primary">
+                                                                (Coach: {coaches.find(c => c.id === entry.assigned_coach_id)?.name || 'Unknown'})
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="p-4">
                                                     <div className="font-mono text-xs text-zinc-300">
@@ -732,6 +756,17 @@ export default function AdminDashboard() {
                                         onChange={e => setManualForm({ ...manualForm, phone: e.target.value })}
                                     />
                                 </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-zinc-400 uppercase">Assigned Coach</label>
+                                <select
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
+                                    value={manualForm.coachId}
+                                    onChange={e => setManualForm({ ...manualForm, coachId: e.target.value })}
+                                >
+                                    <option value="">-- No Coach --</option>
+                                    {coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
                             </div>
                             <div className="pt-4 flex justify-end gap-2">
                                 <button

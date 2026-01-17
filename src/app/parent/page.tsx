@@ -36,12 +36,18 @@ export default function Home() {
       // Query Roster
       let query = supabase.from('roster_uploads').select('*');
 
-      // Prefer Email match if logged in
-      if (emailToSearch) {
-        query = query.eq('email', emailToSearch);
-      } else if (localId) {
-        // Fallback to local ID
-        query = query.eq('assigned_unique_id', localId);
+      // Construct OR query to find by Email (Case Insensitive) OR ID
+      const conditions = [];
+      if (emailToSearch) conditions.push(`email.ilike.${emailToSearch}`);
+      if (localId) conditions.push(`assigned_unique_id.eq.${localId}`);
+
+      if (conditions.length > 0) {
+        query = query.or(conditions.join(','));
+      } else {
+        // No identifiers
+        setGoalies([]);
+        setIsLoading(false);
+        return;
       }
 
       const { data, error } = await query;
@@ -101,12 +107,11 @@ export default function Home() {
     <main className="min-h-screen bg-black p-4 md:p-8 overflow-x-hidden selection:bg-primary selection:text-white">
       <div className="max-w-md mx-auto md:max-w-5xl md:grid md:grid-cols-2 md:gap-8 lg:gap-12">
 
-        {/* Header - Mobile only usually, but here global */}
         <header className="flex justify-between items-center mb-8 md:col-span-2">
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]">Parent Portal</span>
+            <span className="text-xs font-bold text-red-500 uppercase tracking-[0.2em] mb-1">Parent Portal</span>
             <h1 className="text-2xl md:text-3xl font-black text-white italic tracking-tighter">
-              GOALIE<span className="text-primary">CARD</span>
+              GOALIE CARD
             </h1>
           </div>
           <div className="flex items-center gap-4">
@@ -252,12 +257,47 @@ export default function Home() {
             )}
           </motion.div>
 
+          {/* Highlights Section */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.35 }}
+            className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 mb-6"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <span className="text-purple-500">★</span> Highlights
+              </h3>
+              <button
+                onClick={() => {
+                  const url = prompt("Enter Video URL (YouTube/Insta):");
+                  if (url) {
+                    supabase.from('highlights').insert({
+                      roster_id: activeGoalie.id,
+                      url: url,
+                      description: "Parent Upload"
+                    }).then(({ error }) => {
+                      if (error) alert("Error: " + error.message);
+                      else alert("Highlight Added!");
+                    });
+                  }
+                }}
+                className="text-xs bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-500 hover:text-white transition-colors"
+              >
+                + Add Video
+              </button>
+            </div>
+            <div className="text-center text-zinc-500 text-xs py-4">
+              Share game clips for coach review.
+            </div>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <PaymentList />
+            <PaymentList rosterId={activeGoalie.id} />
           </motion.div>
         </section>
       </div>

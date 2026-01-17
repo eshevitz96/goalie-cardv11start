@@ -25,7 +25,7 @@ export default function LoginPage() {
         // Debug logging
         console.log("Attempting login...");
 
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: authData, error } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
@@ -36,7 +36,21 @@ export default function LoginPage() {
             setIsLoading(false);
         } else {
             console.log("Login Success");
-            router.push("/coach");
+
+            // Check Role to Redirect Correctly
+            const user = authData.user;
+            if (user) {
+                const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+
+                if (profile?.role === 'coach') {
+                    router.push("/coach");
+                } else {
+                    router.push("/parent");
+                }
+            } else {
+                router.push("/parent"); // Fallback
+            }
+
             router.refresh();
         }
     };

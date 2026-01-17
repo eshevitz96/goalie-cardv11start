@@ -19,7 +19,8 @@ import {
     MapPin,
     ChevronRight,
     Upload,
-    ArrowRight
+    ArrowRight,
+    PlayCircle
 } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
@@ -30,30 +31,41 @@ import { supabase } from "@/utils/supabase/client";
 
 export default function CoachDashboard() {
     const [roster, setRoster] = useState<any[]>([]);
+    const [highlights, setHighlights] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [filter, setFilter] = useState<'all' | 'assigned'>('all');
 
     useEffect(() => {
-        const fetchTeamData = async () => {
-            const { data, error } = await supabase.from('roster_uploads').select('*');
-            if (data) {
-                // For now, assume all uploaded goalies are "assigned" to this coach view
-                setRoster(data.map(g => ({
+        const fetchData = async () => {
+            setIsLoading(true);
+            // 1. Fetch Roster
+            const { data: rosterData } = await supabase.from('roster_uploads').select('*');
+            if (rosterData) {
+                setRoster(rosterData.map(g => ({
                     id: g.id,
                     name: g.goalie_name,
                     session: 1, // Placeholder
                     lesson: 1, // Placeholder
                     status: g.is_claimed ? 'active' : 'pending',
-                    lastSeen: 'N/A'
+                    lastSeen: 'N/A',
+                    assigned_coach_id: g.assigned_coach_id
                 })));
             }
+
+            // 2. Fetch Highlights
+            const { data: highData } = await supabase.from('highlights').select('*, roster_uploads(goalie_name)').order('created_at', { ascending: false });
+            if (highData) {
+                setHighlights(highData);
+            }
+
             setIsLoading(false);
         };
-        fetchTeamData();
+        fetchData();
     }, []);
 
     const [issuedIds, setIssuedIds] = useState<Record<number, string>>({});
 
-    // We will hook these up to real data later
+    // Mock Data
     const INCOMING_REQUESTS: any[] = [];
     const PENDING_REVIEWS: any[] = [];
     const PENDING_ACTIVATIONS: any[] = [];
@@ -62,6 +74,8 @@ export default function CoachDashboard() {
         await supabase.auth.signOut();
         window.location.href = "/login";
     };
+
+    const filteredRoster = filter === 'all' ? roster : roster.filter(r => r.assigned_coach_id); // Simple filter for now
 
     return (
         <main className="min-h-screen bg-black text-white p-4 md:p-8">
@@ -100,88 +114,40 @@ export default function CoachDashboard() {
 
                 {/* Left Column: Inbox */}
                 <div className="lg:col-span-2 space-y-8">
+
+                    {/* HIGHLIGHTS SECTION */}
                     <section>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xl font-bold flex items-center gap-2">
-                                <Calendar className="text-primary" />
-                                Schedule Requests
-                                <span className="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full">{INCOMING_REQUESTS.length}</span>
+                                <span className="text-purple-500">★</span>
+                                Recent Highlights
+                                <span className="bg-purple-500 text-white text-[10px] px-2 py-0.5 rounded-full">{highlights.length}</span>
                             </h3>
                         </div>
-
-                        {INCOMING_REQUESTS.length === 0 ? (
+                        {highlights.length === 0 ? (
                             <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl text-center text-zinc-500 text-sm">
-                                All caught up! No pending requests.
+                                No highlights uploaded yet.
                             </div>
                         ) : (
-                            <div className="grid gap-4">
-                                {INCOMING_REQUESTS.map((req: any) => (
-                                    <div key={req.id}>Request Card</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {highlights.map((h: any) => (
+                                    <div key={h.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl group hover:border-purple-500/50 transition-colors">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="font-bold text-sm text-white">{h.roster_uploads?.goalie_name || "Unknown Goalie"}</div>
+                                            <span className="text-[10px] text-zinc-500">{new Date(h.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-2">
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <a href={h.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur rounded-full text-white font-bold text-xs transition-colors">
+                                                    <PlayCircle size={14} /> Watch Clip
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <div className="text-xs text-zinc-400 truncate">{h.description}</div>
+                                    </div>
                                 ))}
                             </div>
                         )}
-
-                    </section>
-
-                    <section>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold flex items-center gap-2">
-                                <Ticket className="text-pink-500" />
-                                Group Sessions
-                            </h3>
-                            <button className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold px-4 py-2 rounded-lg border border-zinc-800 transition-colors flex items-center gap-2">
-                                <Plus size={14} /> Create Event
-                            </button>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-4">
-                            {/* Create New Card (Mock helper) */}
-                            <div className="bg-zinc-900/30 border border-zinc-800 border-dashed rounded-2xl p-5 flex flex-col items-center justify-center text-center gap-3 hover:bg-zinc-900/50 transition-colors cursor-pointer group">
-                                <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <Plus size={24} className="text-zinc-600 group-hover:text-white" />
-                                </div>
-                                <div>
-                                    <div className="text-sm font-bold text-zinc-400 group-hover:text-white">New Session</div>
-                                    <div className="text-xs text-zinc-600">Issue Event Passes</div>
-                                </div>
-                            </div>
-
-                            {/* Active Session Card */}
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden group hover:border-zinc-700 transition-colors">
-                                <div className="h-2 bg-gradient-to-r from-blue-600 to-indigo-600" />
-                                <div className="p-5">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <h4 className="font-bold text-lg text-white">GS Baltimore Camp</h4>
-                                            <div className="text-xs text-zinc-500 flex items-center gap-2 mt-1">
-                                                <Calendar size={12} /> Dec 12-14
-                                                <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                                                <MapPin size={12} /> Reistertown
-                                            </div>
-                                        </div>
-                                        <span className="bg-emerald-500/10 text-emerald-500 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider border border-emerald-500/20">
-                                            12/15 Filled
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 pt-4 border-t border-zinc-800">
-                                        <div className="flex -space-x-2">
-                                            {[1, 2, 3].map(i => (
-                                                <div key={i} className="w-6 h-6 rounded-full bg-zinc-700 border border-zinc-900 text-[8px] flex items-center justify-center text-white font-bold">
-                                                    {['L', 'J', 'M'][i - 1]}
-                                                </div>
-                                            ))}
-                                            <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-900 text-[8px] flex items-center justify-center text-zinc-500 font-bold">
-                                                +9
-                                            </div>
-                                        </div>
-                                        <div className="flex-1" />
-                                        <button className="text-xs font-bold text-zinc-400 hover:text-white flex items-center gap-1 transition-colors">
-                                            Manage <ChevronRight size={12} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </section>
 
                     <section>
@@ -190,18 +156,19 @@ export default function CoachDashboard() {
                                 <Users className="text-accent" />
                                 Active Roster
                             </h3>
-                            <div className="flex items-center gap-2">
-                                <button className="bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold px-3 py-2 rounded-lg border border-zinc-800 transition-colors flex items-center gap-2">
-                                    <Upload size={14} /> <span className="hidden md:inline">Import CSV</span>
+                            <div className="flex bg-zinc-900 rounded-lg p-1 border border-zinc-800">
+                                <button
+                                    onClick={() => setFilter('all')}
+                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'all' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}
+                                >
+                                    All
                                 </button>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-                                    <input
-                                        type="text"
-                                        placeholder="Find goalie..."
-                                        className="bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-zinc-600 w-32 md:w-48"
-                                    />
-                                </div>
+                                <button
+                                    onClick={() => setFilter('assigned')}
+                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'assigned' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}
+                                >
+                                    My Goalies
+                                </button>
                             </div>
                         </div>
 
@@ -216,7 +183,7 @@ export default function CoachDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-800/50">
-                                    {roster.map((goalie) => (
+                                    {filteredRoster.map((goalie) => (
                                         <tr key={goalie.id} className="hover:bg-zinc-800/30 transition-colors">
                                             <td className="p-4 pl-6">
                                                 <div className="font-bold text-white">{goalie.name}</div>
@@ -272,7 +239,6 @@ export default function CoachDashboard() {
 
                 {/* Right Column: Quick Actions */}
                 <div className="space-y-6">
-                    {/* Pending Reviews */}
                     {/* Pending Reviews */}
                     {
                         PENDING_REVIEWS.length > 0 && (
@@ -337,44 +303,6 @@ export default function CoachDashboard() {
                         </div>
                     </div>
 
-                    {/* Manage Availability */}
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <Calendar size={18} className="text-blue-500" />
-                            Manage Availability
-                        </h3>
-
-                        <div className="space-y-4">
-                            <div className="flex gap-2">
-                                <input type="date" className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
-                                <select className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                                    <option>4:00 PM</option>
-                                    <option>5:30 PM</option>
-                                </select>
-                                <button className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-3 flex items-center justify-center">
-                                    <Plus size={16} />
-                                </button>
-                            </div>
-
-                            <div className="space-y-2">
-                                {[
-                                    { id: 1, date: "Wed, Dec 14", time: "4:00 PM" },
-                                    { id: 2, date: "Wed, Dec 14", time: "5:30 PM" },
-                                    { id: 3, date: "Fri, Dec 16", time: "6:00 AM" },
-                                ].map(slot => (
-                                    <div key={slot.id} className="flex items-center justify-between bg-zinc-950 border border-zinc-800 p-2 rounded-lg group hover:border-zinc-700">
-                                        <div className="text-xs font-medium text-zinc-300">
-                                            {slot.date} <span className="text-zinc-600">•</span> {slot.time}
-                                        </div>
-                                        <button className="text-zinc-600 hover:text-red-500 transition-colors">
-                                            <XCircle size={14} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
                     <div className="bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 rounded-3xl p-6 sticky top-8">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <MessageSquare size={18} className="text-green-500" />
@@ -391,17 +319,6 @@ export default function CoachDashboard() {
                                 <div className="font-bold text-sm text-zinc-200 group-hover:text-primary">Payment Reminders</div>
                                 <div className="text-xs text-zinc-500 mt-1">Auto-ping 2 parents (Renew Due)</div>
                             </button>
-                        </div>
-
-                        <div className="mt-8 pt-8 border-t border-zinc-800">
-                            <div className="text-center">
-                                <div className="text-4xl font-black text-white mb-1">
-                                    $1,250
-                                </div>
-                                <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                                    Est. Wk Revenue
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div >
