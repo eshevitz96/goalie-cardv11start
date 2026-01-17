@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Check, User, Shield, CreditCard, Loader2, AlertCircle, ArrowRight, FileText } from "lucide-react";
 import { clsx } from "clsx";
@@ -16,7 +16,7 @@ const STEPS = [
     { id: 5, title: "Finish", icon: ArrowRight },
 ];
 
-export default function ActivatePage() {
+function ActivateContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [currentStep, setCurrentStep] = useState(1);
@@ -425,5 +425,13 @@ export default function ActivatePage() {
                 </AnimatePresence>
             </div>
         </main>
+    );
+}
+
+export default function ActivatePage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-white"><Loader2 className="animate-spin" /></div>}>
+            <ActivateContent />
+        </Suspense>
     );
 }
