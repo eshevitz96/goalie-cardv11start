@@ -125,7 +125,7 @@ export default function LoginPage() {
 
                 <div className="mt-8 text-center space-y-2">
                     <p className="text-[10px] text-zinc-600">
-                        Restricted System • v11.0.6 • Monitor: {isLoading ? "Connecting..." : "Active"}
+                        Restricted System • v11.0.7 • Monitor: {isLoading ? "Connecting..." : "Active"}
                     </p>
                     <div className="flex justify-center gap-2 text-[10px] font-mono">
                         <span className={hasUrl ? "text-green-500" : "text-red-500"}>
