@@ -16,6 +16,8 @@ export default function Home() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [goalies, setGoalies] = useState<any[]>([]);
+  // Debug State
+  const [debugInfo, setDebugInfo] = useState<{ email: string | null, localId: string | null }>({ email: null, localId: null });
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Initial Load Logic
@@ -23,8 +25,11 @@ export default function Home() {
     const fetchMyGoalies = async () => {
       // 1. Check Auth User first (Most reliable)
       const { data: { user } } = await supabase.auth.getUser();
-      let emailToSearch = user?.email;
+      let emailToSearch = user?.email; // Fix type error by assuming string | undefined
       const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
+
+      setDebugInfo({ email: emailToSearch || null, localId: localId });
+
 
       if (!emailToSearch && !localId) {
         // No user, no local ID -> Nothing to show
@@ -105,6 +110,11 @@ export default function Home() {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white p-6 text-center">
         <h1 className="text-2xl font-bold mb-4">No Goalie Profile Found</h1>
         <p className="text-zinc-400 mb-8 max-w-md">We couldn't find a roster linked to this device. You may need to activate your access ID.</p>
+
+        <div className="mb-4 bg-zinc-900 border border-zinc-800 p-2 rounded text-xs font-mono text-zinc-500 overflow-hidden max-w-xs mx-auto">
+          DEBUG: {JSON.stringify(debugInfo)}
+        </div>
+
         <button onClick={() => router.push('/activate')} className="bg-primary text-black hover:bg-white transition-colors px-8 py-4 rounded-xl font-bold shadow-lg shadow-primary/20">
           Activate Account
         </button>

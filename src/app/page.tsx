@@ -19,13 +19,13 @@ export default function LandingPortal() {
             {/* Parent Portal Side */}
             <Link
                 href="/activate"
-                className="group relative flex-1 flex flex-col items-center justify-center p-12 hover:bg-secondary/40 transition-all duration-500"
+                className="group relative flex-1 flex flex-col items-center justify-center p-12 hover:bg-secondary/40 transition-colors duration-500"
             >
-                <div className="bg-secondary border border-border rounded-full w-24 h-24 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:border-blue-500/50 transition-all duration-300 shadow-2xl">
+                <div className="bg-secondary border border-border rounded-full w-24 h-24 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:border-blue-500/50 transition-transform duration-300 shadow-2xl">
                     <User size={32} className="text-muted-foreground group-hover:text-blue-500 transition-colors" />
                 </div>
 
-                <h2 className="text-3xl font-black italic tracking-tighter text-foreground mb-2 group-hover:tracking-normal transition-all">
+                <h2 className="text-3xl font-black italic tracking-tighter text-foreground mb-2 group-hover:scale-105 transition-transform duration-300 origin-center">
                     PARENT <span className="text-blue-500">PORTAL</span>
                 </h2>
 
@@ -41,13 +41,13 @@ export default function LandingPortal() {
             {/* Coach Portal Side */}
             <Link
                 href="/login"
-                className="group relative flex-1 flex flex-col items-center justify-center p-12 hover:bg-secondary/40 transition-all duration-500"
+                className="group relative flex-1 flex flex-col items-center justify-center p-12 hover:bg-secondary/40 transition-colors duration-500"
             >
-                <div className="bg-secondary border border-border rounded-full w-24 h-24 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:border-primary/50 transition-all duration-300 shadow-2xl">
+                <div className="bg-secondary border border-border rounded-full w-24 h-24 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:border-primary/50 transition-transform duration-300 shadow-2xl">
                     <Shield size={32} className="text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
 
-                <h2 className="text-3xl font-black italic tracking-tighter text-foreground mb-2 group-hover:tracking-normal transition-all">
+                <h2 className="text-3xl font-black italic tracking-tighter text-foreground mb-2 group-hover:scale-105 transition-transform duration-300 origin-center">
                     COACH <span className="text-primary">ACCESS</span>
                 </h2>
 
