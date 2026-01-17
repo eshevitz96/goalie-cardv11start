@@ -95,8 +95,13 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white p-6 text-center">
         <h1 className="text-2xl font-bold mb-4">No Goalie Profile Found</h1>
-        <p className="text-zinc-400 mb-8 max-w-md">We couldn't link your account to a roster. Please contact support or try activating again.</p>
-        <button onClick={() => router.push('/login')} className="bg-zinc-800 px-6 py-3 rounded-xl font-bold">Back to Login</button>
+        <p className="text-zinc-400 mb-8 max-w-md">We couldn't find a roster linked to this device. You may need to activate your access ID.</p>
+        <button onClick={() => router.push('/activate')} className="bg-primary text-black hover:bg-white transition-colors px-8 py-4 rounded-xl font-bold shadow-lg shadow-primary/20">
+          Activate Account
+        </button>
+        <button onClick={() => router.push('/login')} className="mt-4 text-xs text-zinc-500 hover:text-white underline">
+          Back to Login
+        </button>
       </div>
     );
   }
