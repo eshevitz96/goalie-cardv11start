@@ -283,7 +283,7 @@ export default function ActivatePage() {
                                         value={accessId}
                                         onChange={(e) => setAccessId(e.target.value.toUpperCase())}
                                         className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-primary transition-colors placeholder:text-zinc-700 text-lg font-mono tracking-widest uppercase text-center"
-                                        placeholder="GC-XXXX-XXXX"
+                                        placeholder="GC-XXXX"
                                     />
                                 </div>
 
