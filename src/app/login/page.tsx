@@ -108,10 +108,10 @@ export default function LoginPage() {
     };
 
     return (
-        <main className="min-h-screen bg-background text-foreground dark:bg-black dark:text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans transition-colors duration-300">
-            {/* Background Effects */}
-            <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-purple-500/10 dark:bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[-20%] right-[-20%] w-[500px] h-[500px] bg-blue-500/10 dark:bg-blue-900/20 rounded-full blur-[120px] pointer-events-none" />
+        <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            {/* Background Effects matching Activate */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-purple-500/50 to-rose-600/50" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
             <AnimatePresence mode="wait">
                 {step === 1 && (
@@ -120,30 +120,32 @@ export default function LoginPage() {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, x: -20 }}
-                        className="w-full max-w-sm space-y-8"
+                        className="w-full max-w-sm space-y-6"
                     >
-                        <div className="text-center space-y-4">
-                            <div className="w-20 h-20 bg-secondary/30 dark:bg-white/5 rounded-3xl mx-auto flex items-center justify-center backdrop-blur-sm border border-border/50 dark:border-white/10 shadow-2xl">
-                                <User size={40} className="text-muted-foreground dark:text-white/80" />
-                            </div>
-                            <h1 className="text-3xl font-bold tracking-tight text-foreground">Welcome Back</h1>
-                            <p className="text-muted-foreground text-sm">Enter your email to continue.</p>
+                        <div className="text-center mb-8">
+                            <h1 className="text-3xl font-black italic tracking-tighter text-foreground mb-2">
+                                ACCESS <span className="text-primary">PROFILE</span>
+                            </h1>
+                            <p className="text-muted-foreground text-sm">Enter your email to access your card.</p>
                         </div>
 
-                        <form onSubmit={handleEmailSubmit} className="space-y-4">
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
-                                className="w-full bg-secondary/50 dark:bg-white/5 border border-border dark:border-white/10 rounded-2xl p-4 text-center text-lg placeholder:text-muted-foreground/50 dark:placeholder:text-white/20 focus:outline-none focus:border-primary dark:focus:border-white/30 transition-all focus:bg-background dark:focus:bg-white/10 text-foreground"
-                                placeholder="name@example.com"
-                                autoFocus
-                                required
-                            />
-                            {error && <div className="text-red-500 dark:text-red-400 text-xs text-center">{error}</div>}
+                        <form onSubmit={handleEmailSubmit} className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Email Address</label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-lg placeholder:text-muted-foreground/50"
+                                    placeholder="goalie@example.com"
+                                    autoFocus
+                                    required
+                                />
+                            </div>
+                            {error && <div className="text-red-500 text-sm text-center bg-red-500/10 p-2 rounded-lg">{error}</div>}
                             <button
                                 disabled={isLoading}
-                                className="w-full bg-foreground text-background dark:bg-white dark:text-black font-bold py-4 rounded-2xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                                className="w-full bg-foreground text-background font-bold py-4 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                             >
                                 {isLoading ? <Loader2 className="animate-spin" /> : <>Next <ArrowRight size={18} /></>}
                             </button>
