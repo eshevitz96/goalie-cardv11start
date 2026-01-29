@@ -97,10 +97,10 @@ export default function LoginPage() {
     };
 
     return (
-        <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+        <main className="min-h-screen bg-background text-foreground dark:bg-black dark:text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans transition-colors duration-300">
             {/* Background Effects */}
-            <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[-20%] right-[-20%] w-[500px] h-[500px] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-purple-500/10 dark:bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-20%] right-[-20%] w-[500px] h-[500px] bg-blue-500/10 dark:bg-blue-900/20 rounded-full blur-[120px] pointer-events-none" />
 
             <AnimatePresence mode="wait">
                 {step === 1 && (
@@ -112,11 +112,11 @@ export default function LoginPage() {
                         className="w-full max-w-sm space-y-8"
                     >
                         <div className="text-center space-y-4">
-                            <div className="w-20 h-20 bg-white/5 rounded-3xl mx-auto flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-2xl">
-                                <User size={40} className="text-white/80" />
+                            <div className="w-20 h-20 bg-secondary/30 dark:bg-white/5 rounded-3xl mx-auto flex items-center justify-center backdrop-blur-sm border border-border/50 dark:border-white/10 shadow-2xl">
+                                <User size={40} className="text-muted-foreground dark:text-white/80" />
                             </div>
-                            <h1 className="text-3xl font-bold tracking-tight">Welcome Back</h1>
-                            <p className="text-white/40 text-sm">Enter your email to continue.</p>
+                            <h1 className="text-3xl font-bold tracking-tight text-foreground">Welcome Back</h1>
+                            <p className="text-muted-foreground text-sm">Enter your email to continue.</p>
                         </div>
 
                         <form onSubmit={handleEmailSubmit} className="space-y-4">
@@ -124,15 +124,15 @@ export default function LoginPage() {
                                 type="email"
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-lg placeholder:text-white/20 focus:outline-none focus:border-white/30 transition-all focus:bg-white/10"
+                                className="w-full bg-secondary/50 dark:bg-white/5 border border-border dark:border-white/10 rounded-2xl p-4 text-center text-lg placeholder:text-muted-foreground/50 dark:placeholder:text-white/20 focus:outline-none focus:border-primary dark:focus:border-white/30 transition-all focus:bg-background dark:focus:bg-white/10 text-foreground"
                                 placeholder="name@example.com"
                                 autoFocus
                                 required
                             />
-                            {error && <div className="text-red-400 text-xs text-center">{error}</div>}
+                            {error && <div className="text-red-500 dark:text-red-400 text-xs text-center">{error}</div>}
                             <button
                                 disabled={isLoading}
-                                className="w-full bg-white text-black font-bold py-4 rounded-2xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                                className="w-full bg-foreground text-background dark:bg-white dark:text-black font-bold py-4 rounded-2xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                             >
                                 {isLoading ? <Loader2 className="animate-spin" /> : <>Next <ArrowRight size={18} /></>}
                             </button>
@@ -148,11 +148,11 @@ export default function LoginPage() {
                         className="w-full max-w-sm space-y-8"
                     >
                         <div className="text-center space-y-4">
-                            <div className="w-20 h-20 bg-white/5 rounded-3xl mx-auto flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-2xl">
-                                <Lock size={40} className="text-white/80" />
+                            <div className="w-20 h-20 bg-secondary/30 dark:bg-white/5 rounded-3xl mx-auto flex items-center justify-center backdrop-blur-sm border border-border/50 dark:border-white/10 shadow-2xl">
+                                <Lock size={40} className="text-muted-foreground dark:text-white/80" />
                             </div>
-                            <h1 className="text-3xl font-bold tracking-tight">Enter PIN</h1>
-                            <p className="text-white/40 text-sm">Hello, <span className="text-white">{email}</span></p>
+                            <h1 className="text-3xl font-bold tracking-tight text-foreground">Enter PIN</h1>
+                            <p className="text-muted-foreground text-sm">Hello, <span className="text-foreground dark:text-white font-medium">{email}</span></p>
                         </div>
 
                         <form onSubmit={handlePinSubmit} className="space-y-6">
@@ -162,22 +162,22 @@ export default function LoginPage() {
                                 maxLength={4}
                                 value={pin}
                                 onChange={e => setPin(e.target.value)}
-                                className="w-full bg-transparent border-b-2 border-white/20 p-4 text-center text-5xl font-mono tracking-[0.5em] focus:outline-none focus:border-white transition-all placeholder:text-white/10"
+                                className="w-full bg-transparent border-b-2 border-border dark:border-white/20 p-4 text-center text-5xl font-mono tracking-[0.5em] focus:outline-none focus:border-primary dark:focus:border-white transition-all placeholder:text-muted-foreground/20 dark:placeholder:text-white/10 text-foreground"
                                 placeholder="••••"
                                 autoFocus
                                 required
                             />
 
-                            {error && <div className="text-red-400 text-xs text-center bg-red-900/20 p-2 rounded-lg">{error}</div>}
+                            {error && <div className="text-red-500 dark:text-red-400 text-xs text-center bg-red-100 dark:bg-red-900/20 p-2 rounded-lg">{error}</div>}
 
                             <button
                                 disabled={isLoading}
-                                className="w-full bg-white text-black font-bold py-4 rounded-2xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                                className="w-full bg-foreground text-background dark:bg-white dark:text-black font-bold py-4 rounded-2xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                             >
                                 {isLoading ? <Loader2 className="animate-spin" /> : "Unlock Dashboard"}
                             </button>
 
-                            <button type="button" onClick={() => setStep(1)} className="w-full text-white/30 text-xs hover:text-white transition-colors">
+                            <button type="button" onClick={() => setStep(1)} className="w-full text-muted-foreground text-xs hover:text-foreground dark:hover:text-white transition-colors">
                                 Use a different email
                             </button>
                         </form>
