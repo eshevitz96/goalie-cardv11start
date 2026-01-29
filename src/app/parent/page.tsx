@@ -701,6 +701,21 @@ export default function Home() {
             ) : (
               <div className="text-sm text-muted-foreground">No coach details available.</div>
             )}
+
+            {/* RESTORED: Coach OS Access for Adults/Graduates */}
+            {isPro && (
+              <div className="mt-6 pt-4 border-t border-border/50 relative z-10">
+                <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-xl border border-zinc-800">
+                  <div>
+                    <div className="font-bold text-sm text-foreground">Are you coaching?</div>
+                    <div className="text-xs text-muted-foreground">Build your roster on Coach OS</div>
+                  </div>
+                  <Link href="/coach" className="bg-foreground text-background text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1">
+                    Open Coach OS <Briefcase size={12} />
+                  </Link>
+                </div>
+              </div>
+            )}
           </motion.div>
 
           {/* Schedule Request - Hide for Pros */}
