@@ -133,6 +133,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
         }
 
         const { error } = await supabase.from('reflections').insert({
+            goalie_id: currentUserRole === 'goalie' ? (await supabase.auth.getUser()).data.user?.id : null,
             roster_id: rosterId,
             title: newEntry.title,
             content: newEntry.content,

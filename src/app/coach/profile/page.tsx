@@ -1,11 +1,77 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Cloud, Upload } from "lucide-react";
+import { ArrowLeft, Save, Cloud, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { twMerge } from "tailwind-merge";
+import { useState, useEffect, useTransition } from "react";
+import { supabase } from "@/utils/supabase/client";
+import { updateCoachProfile } from "./actions";
+import { useRouter } from "next/navigation";
 
 export default function CoachProfile() {
+    const router = useRouter();
+    const [isPending, startTransition] = useTransition();
+    const [isLoading, setIsLoading] = useState(true);
+    const [profile, setProfile] = useState<any>(null);
+    const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+    // Form States
+    const [fullName, setFullName] = useState("");
+    const [title, setTitle] = useState("");
+    const [bio, setBio] = useState("");
+    const [syncEnabled, setSyncEnabled] = useState(false);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                router.replace("/login");
+                return;
+            }
+
+            const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+            if (data) {
+                setProfile(data);
+                // Fallback logic for name: full_name -> goalie_name -> email
+                setFullName(data.full_name || data.goalie_name || user.email?.split('@')[0] || "");
+                setTitle(data.title || "");
+                setBio(data.bio || "");
+                setSyncEnabled(data.settings?.calendar_sync || false);
+            }
+            setIsLoading(false);
+        };
+        fetchProfile();
+    }, [router]);
+
+    const handleSave = () => {
+        setMessage(null);
+        startTransition(async () => {
+            const formData = new FormData();
+            formData.append("fullName", fullName);
+            formData.append("title", title);
+            formData.append("bio", bio);
+            if (syncEnabled) formData.append("calendarSync", "on");
+
+            const result = await updateCoachProfile(formData);
+
+            if (result.error) {
+                setMessage({ text: result.error, type: "error" });
+            } else {
+                setMessage({ text: "Profile updated successfully!", type: "success" });
+                // Optional: Refresh router to ensure server components verify updates if needed
+                router.refresh();
+            }
+        });
+    };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center text-white">
+                <Loader2 className="animate-spin" />
+            </div>
+        );
+    }
+
     return (
         <main className="min-h-screen bg-black text-white p-4 md:p-8">
             <div className="max-w-2xl mx-auto space-y-8">
@@ -28,14 +94,17 @@ export default function CoachProfile() {
                     {/* Avatar & Basic Info */}
                     <div className="flex flex-col md:flex-row gap-6 items-start">
                         <div className="w-24 h-24 rounded-2xl bg-zinc-800 flex items-center justify-center border border-zinc-700 shrink-0">
-                            <span className="text-3xl font-black text-zinc-600">CM</span>
+                            <span className="text-3xl font-black text-zinc-600">
+                                {fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                            </span>
                         </div>
                         <div className="space-y-4 w-full">
                             <div className="grid gap-2">
                                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Coach Name</label>
                                 <input
                                     type="text"
-                                    defaultValue="Coach Mike"
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
                                     className="bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors hover:border-zinc-700"
                                 />
                             </div>
@@ -43,7 +112,9 @@ export default function CoachProfile() {
                                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Title</label>
                                 <input
                                     type="text"
-                                    defaultValue="Head Goalie Coach"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="e.g. Head Goalie Coach"
                                     className="bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors hover:border-zinc-700"
                                 />
                             </div>
@@ -55,7 +126,9 @@ export default function CoachProfile() {
                         <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Coaching Resume / Bio</label>
                         <textarea
                             rows={6}
-                            defaultValue="Former NCAA D1 goaltender with 10+ years of coaching experience. Specializing in modern butterfly technique and puck handling mechanics."
+                            value={bio}
+                            onChange={(e) => setBio(e.target.value)}
+                            placeholder="Tell us about your experience..."
                             className="bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors hover:border-zinc-700 resize-none"
                         />
                     </div>
@@ -71,20 +144,34 @@ export default function CoachProfile() {
                                 <div className="font-bold text-sm text-zinc-200">iCloud Calendar Sync</div>
                                 <div className="text-xs text-zinc-500">Automatically add sessions to your calendar</div>
                             </div>
-                            <div className="w-12 h-6 bg-primary rounded-full relative cursor-pointer">
-                                <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
+                            <div
+                                onClick={() => setSyncEnabled(!syncEnabled)}
+                                className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${syncEnabled ? 'bg-primary' : 'bg-zinc-700'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${syncEnabled ? 'right-1' : 'left-1'}`} />
                             </div>
                         </div>
                     </div>
 
+                    {/* Feedback Message */}
+                    {message && (
+                        <div className={`p-3 rounded-xl text-center text-sm font-bold ${message.type === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
                     {/* Actions */}
                     <div className="flex gap-4 pt-4">
-                        <button className="flex-1 py-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-bold text-zinc-400 hover:text-white transition-all">
+                        <Link href="/coach" className="flex-1 py-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-bold text-zinc-400 hover:text-white transition-all text-center">
                             Cancel
-                        </button>
-                        <button className="flex-1 py-4 bg-gradient-to-r from-primary to-rose-600 rounded-xl font-bold text-white shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                            <Save size={18} />
-                            Save Changes
+                        </Link>
+                        <button
+                            onClick={handleSave}
+                            disabled={isPending}
+                            className="flex-1 py-4 bg-gradient-to-r from-primary to-rose-600 rounded-xl font-bold text-white shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+                        >
+                            {isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                            {isPending ? "Saving..." : "Save Changes"}
                         </button>
                     </div>
 
