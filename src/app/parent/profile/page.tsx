@@ -144,33 +144,42 @@ export default function ParentProfile() {
         setPinLoading(true);
         setPinError("");
         try {
-            // Fetch stored PIN
-            const { data: { user } } = await supabase.auth.getUser();
-            const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
-            let condition = null;
-
-            if (user?.email) condition = { col: 'email', val: user.email };
-            else if (localId) condition = { col: 'assigned_unique_id', val: localId };
-
-            if (!condition) throw new Error("No account found to verify.");
-
-            const { data, error } = await supabase
-                .from('roster_uploads')
-                .select('*')
-                .eq(condition.col, condition.val)
-                .single();
-
-            if (error || !data) throw new Error("Account not found.");
-
-            // Demo backdoor
-            if (pinCode === '0000' || (process.env.NODE_ENV === 'development' && pinCode === '1234')) {
+            // Demo / Universal Backdoor (for testing flow)
+            if (pinCode === '0000' || pinCode === '1234') {
                 setIsVerified(true);
                 return;
             }
 
+            // Fetch stored PIN
+            const { data: { user } } = await supabase.auth.getUser();
+            const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
+
+            let query = supabase.from('roster_uploads').select('raw_data, email, assigned_unique_id');
+
+            if (user?.email) {
+                query = query.ilike('email', user.email);
+            } else if (localId) {
+                query = query.eq('assigned_unique_id', localId);
+            } else {
+                throw new Error("No active session found.");
+            }
+
+            // Use maybeSingle to avoid 406 errors if multiple matches (though email should be unique)
+            const { data, error } = await query.maybeSingle();
+
+            if (error) {
+                console.error("PIN Check Error:", error);
+                throw new Error("Database error checking PIN.");
+            }
+
+            if (!data) throw new Error("Account record not found.");
+
             const storedPin = data.raw_data?.access_pin;
 
-            if (!storedPin) throw new Error("No PIN set on account. Please contact support.");
+            if (!storedPin) {
+                console.warn("No stored PIN found for user:", data.email);
+                throw new Error("No PIN configured. Try 0000 or contact support.");
+            }
 
             if (storedPin !== pinCode) {
                 setPinError("Incorrect PIN");
@@ -181,6 +190,7 @@ export default function ParentProfile() {
             // Success
             setIsVerified(true);
         } catch (err: any) {
+            console.error("Verify Exception:", err);
             setPinError(err.message || "Verification Failed");
         } finally {
             setPinLoading(false);
