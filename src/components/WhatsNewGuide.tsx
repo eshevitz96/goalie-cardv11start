@@ -40,7 +40,7 @@ export function WhatsNewGuide({ onClose }: WhatsNewGuideProps) {
                         {/* Apple-esque Header */}
                         <div className="text-center mb-8 mt-2">
                             <h2 className="text-3xl font-black text-foreground tracking-tight mb-2">
-                                Welcome to <span className="text-primary italic">Goalie Card</span>
+                                Welcome to Goalie Card
                             </h2>
                             <p className="text-muted-foreground font-medium text-lg">
                                 Your digital identity for the game.
@@ -48,43 +48,43 @@ export function WhatsNewGuide({ onClose }: WhatsNewGuideProps) {
                         </div>
 
                         {/* Feature List */}
-                        <div className="space-y-8 mb-10 pl-2">
+                        <div className="space-y-6 mb-10">
 
                             {/* Feature 1 */}
-                            <div className="flex gap-5 items-start">
-                                <div className="text-primary mt-1">
-                                    <CreditCard size={32} strokeWidth={1.5} />
+                            <div className="flex gap-4 items-center">
+                                <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                                    <CreditCard size={24} strokeWidth={2} />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-foreground text-lg mb-1">Official Digital ID</h3>
-                                    <p className="text-muted-foreground text-[15px] leading-relaxed">
-                                        Your verified stats, team history, and coaching lineage in one secure, sharable card.
+                                    <h3 className="font-bold text-foreground text-[17px] leading-tight mb-0.5">Official Digital ID</h3>
+                                    <p className="text-muted-foreground text-[15px] leading-snug">
+                                        Verified stats, team history, and coaching lineage in one secure card.
                                     </p>
                                 </div>
                             </div>
 
                             {/* Feature 2 */}
-                            <div className="flex gap-5 items-start">
-                                <div className="text-primary mt-1">
-                                    <BookOpen size={32} strokeWidth={1.5} />
+                            <div className="flex gap-4 items-center">
+                                <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
+                                    <BookOpen size={24} strokeWidth={2} />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-foreground text-lg mb-1">Performance Journal</h3>
-                                    <p className="text-muted-foreground text-[15px] leading-relaxed">
-                                        Track your mental game. Log post-game thoughts and monitor your confidence over the season.
+                                    <h3 className="font-bold text-foreground text-[17px] leading-tight mb-0.5">Performance Journal</h3>
+                                    <p className="text-muted-foreground text-[15px] leading-snug">
+                                        Track your mental game. Log post-game thoughts and confidence.
                                     </p>
                                 </div>
                             </div>
 
                             {/* Feature 3 */}
-                            <div className="flex gap-5 items-start">
-                                <div className="text-primary mt-1">
-                                    <Users size={32} strokeWidth={1.5} />
+                            <div className="flex gap-4 items-center">
+                                <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 shrink-0">
+                                    <Users size={24} strokeWidth={2} />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-foreground text-lg mb-1">Coach Connection</h3>
-                                    <p className="text-muted-foreground text-[15px] leading-relaxed">
-                                        Direct feedback loop. Receive lesson notes and training assignments directly from your staff.
+                                    <h3 className="font-bold text-foreground text-[17px] leading-tight mb-0.5">Coach Connection</h3>
+                                    <p className="text-muted-foreground text-[15px] leading-snug">
+                                        Receive lesson notes and training assignments directly from staff.
                                     </p>
                                 </div>
                             </div>

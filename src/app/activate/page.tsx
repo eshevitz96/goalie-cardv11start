@@ -190,8 +190,14 @@ function ActivateContent() {
                 if (claimError) console.error("Claim Update Error", claimError);
             }
 
+            // Save ID for Setup
+            if (rosterData?.id) {
+                localStorage.setItem('setup_roster_id', rosterData.id);
+            }
+
             setIsLoading(false);
-            setCurrentStep(4); // Move to Review
+            // Redirect to New Setup Flow
+            router.push('/setup');
         } catch (err: any) {
             setError("Invalid Code. " + err.message);
             setIsLoading(false);
