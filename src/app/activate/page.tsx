@@ -190,14 +190,13 @@ function ActivateContent() {
                 if (claimError) console.error("Claim Update Error", claimError);
             }
 
-            // Save ID for Setup
+            // Save ID for Setup (just in case)
             if (rosterData?.id) {
                 localStorage.setItem('setup_roster_id', rosterData.id);
             }
 
             setIsLoading(false);
-            // Redirect to New Setup Flow
-            router.push('/setup');
+            setCurrentStep(4); // Move to Review
         } catch (err: any) {
             setError("Invalid Code. " + err.message);
             setIsLoading(false);
@@ -326,34 +325,65 @@ function ActivateContent() {
         }
     };
 
+    // PIN State
+    const [pin, setPin] = useState("");
+    const [confirmPin, setConfirmPin] = useState("");
+
     const handleStep4 = async () => {
         if (!termsAccepted) {
             setError("You must accept the terms to proceed.");
             return;
         }
         setError(null);
+        // Skip Payment for Beta and go to PIN Creation
+        setCurrentStep(6.5);
+    };
+
+    const handlePinSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
         setIsLoading(true);
 
+        if (pin.length !== 4 || isNaN(Number(pin))) {
+            setError("PIN must be 4 digits.");
+            setIsLoading(false);
+            return;
+        }
+        if (pin !== confirmPin) {
+            setError("PINs do not match.");
+            setIsLoading(false);
+            return;
+        }
+
         try {
-            // Determine Price ID and Mode based on selection
-            const priceId = selectedPlan === 'onetime'
-                ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ONE_TIME
-                : process.env.NEXT_PUBLIC_STRIPE_PRICE_SUBSCRIPTION;
+            // Final Activation Save
+            if (rosterData && rosterData.id) {
+                // Save PIN to raw_data for Beta (In prod, use hashed auth column)
+                // Note: We are trusting client validation here for speed in Beta.
+                const { error: updateError } = await supabase
+                    .from('roster_uploads')
+                    .update({
+                        is_claimed: true,
+                        raw_data: {
+                            ...rosterData.raw_data, // Keep existing calls
+                            setup_complete: true,
+                            access_pin: pin, // Beta Simple PIN
+                            activation_date: new Date().toISOString()
+                        }
+                    })
+                    .eq('id', rosterData.id);
 
-            const mode = selectedPlan === 'onetime' ? 'payment' : 'subscription';
-
-            if (!priceId) {
-                // throw new Error("Price Configuration Missing.");
-                console.log("Mock Payment Init");
+                if (updateError) console.error("Activation Save Error", updateError);
             }
 
-            // Demo Mode: Skip Stripe if keys missing
-            await new Promise(r => setTimeout(r, 1500));
-            setCurrentStep(7);
+            // Simulate Delay
+            await new Promise(r => setTimeout(r, 1000));
+            setIsLoading(false);
+            setCurrentStep(7); // Success
 
         } catch (err: any) {
             console.error(err);
-            setError("Payment System Error: " + err.message);
+            setError("Activation Error: " + err.message);
             setIsLoading(false);
         }
     };
@@ -538,27 +568,33 @@ function ActivateContent() {
                                                 className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
                                             />
                                         </div>
-                                        <div className="col-span-2">
-                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Parent Name</label>
-                                            <input
-                                                value={formData.parentName}
-                                                onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
-                                                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
-                                            />
-                                        </div>
+
+                                        {userType === 'parent' && (
+                                            <>
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Parent Name</label>
+                                                    <input
+                                                        value={formData.parentName}
+                                                        onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
+                                                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
+                                                    />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Phone</label>
+                                                    <input
+                                                        value={formData.phone}
+                                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+
                                         <div>
                                             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Grad Year</label>
                                             <input
                                                 value={formData.gradYear}
                                                 onChange={(e) => setFormData({ ...formData, gradYear: e.target.value })}
-                                                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Phone</label>
-                                            <input
-                                                value={formData.phone}
-                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                                 className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
                                             />
                                         </div>
@@ -716,6 +752,53 @@ function ActivateContent() {
                                     {isLoading ? <Loader2 className="animate-spin" /> : <>Complete Activation <Check size={18} /></>}
                                 </button>
                             </div>
+                        )}
+
+                        {/* Step 6.5: PIN Creation */}
+                        {currentStep === 6.5 && (
+                            <form onSubmit={handlePinSubmit} className="space-y-6">
+                                <div className="text-center mb-8">
+                                    <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">SECURE <span className="text-primary">ACCESS</span></h2>
+                                    <p className="text-muted-foreground text-sm">Create a 4-digit PIN for future logins.</p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Create PIN</label>
+                                        <input
+                                            type="text"
+                                            maxLength={4}
+                                            required
+                                            value={pin}
+                                            onChange={(e) => setPin(e.target.value)}
+                                            className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-3xl font-mono tracking-[0.5em] text-center"
+                                            placeholder="XXXX"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Confirm PIN</label>
+                                        <input
+                                            type="text"
+                                            maxLength={4}
+                                            required
+                                            value={confirmPin}
+                                            onChange={(e) => setConfirmPin(e.target.value)}
+                                            className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-3xl font-mono tracking-[0.5em] text-center"
+                                            placeholder="XXXX"
+                                        />
+                                    </div>
+                                </div>
+
+                                {error && <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg"><AlertCircle size={14} /> {error}</div>}
+
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isLoading ? <Loader2 className="animate-spin" /> : <>Save PIN & Finish <Check size={18} /></>}
+                                </button>
+                            </form>
                         )}
 
                         {/* Step 7: Success */}

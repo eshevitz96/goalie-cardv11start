@@ -88,11 +88,24 @@ export default function OnboardingPage() {
                 // We proceed anyway to dashboard as data might be saved locally or non-critical blocking for beta
             }
 
-            // Simulate delay for effect
-            setTimeout(() => {
-                // Determine destination based on Role (defaulting to Parent/Goalie shared dashboard for now)
-                router.push('/parent');
-            }, 1500);
+            // Determine destination based on Role
+            let destination = '/parent'; // Default
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (user) {
+                const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role === 'goalie') {
+                    destination = '/goalie';
+                }
+            }
+
+            // Perform Routing IMMEDIATELY
+            // Force a hard redirect incase router.push gets stuck
+            if (typeof window !== 'undefined') {
+                window.location.href = destination;
+            } else {
+                router.push(destination);
+            }
 
         } catch (e) {
             console.error(e);
