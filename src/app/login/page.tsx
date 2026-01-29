@@ -72,14 +72,25 @@ export default function LoginPage() {
             if (typeof window !== 'undefined') {
                 localStorage.setItem('session_token', 'valid-beta-session');
                 localStorage.setItem('user_email', email);
-                localStorage.setItem('user_role', 'goalie'); // Default, will refine
+                localStorage.setItem('user_role', 'goalie'); // Default
+
+                // CRITICAL: Set IDs for data fetching & setup
+                if (userRecord.assigned_unique_id) {
+                    localStorage.setItem('activated_id', userRecord.assigned_unique_id);
+                }
+                if (userRecord.id) {
+                    localStorage.setItem('setup_roster_id', userRecord.id);
+                }
+
+                // Cleanup potentially conflicting modes
+                localStorage.removeItem('demo_mode');
             }
 
             // Determine Redirect Destination
-            let destination = '/parent';
+            let destination = '/setup'; // Default to setup (Questions)
+
             if (userRecord.raw_data?.setup_complete) {
-                // Eventually logic for Goalie vs Parent
-                destination = '/parent'; // Safety default
+                destination = '/parent';
             }
 
             // Force Redirect
