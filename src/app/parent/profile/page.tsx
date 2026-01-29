@@ -130,74 +130,61 @@ export default function ParentProfile() {
         fetchProfile();
     }, []);
 
-    const handleSendCode = async () => {
-        setOtpLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        let email = user?.email; // Prioritize logged in email
+    // PIN Logic
+    const [pinCode, setPinCode] = useState("");
+    const [showPinInput, setShowPinInput] = useState(false);
+    const [pinLoading, setPinLoading] = useState(false);
+    const [pinError, setPinError] = useState("");
 
-        // Fallback to local storage email if available manually? No, strict security.
-        // If they actived via ID but no Auth, we can't easily email them unless we lookup the ID?
-        if (!email) {
-            // Try to find email from loaded profile if available?
-            // Not safe to assume profile email is verified if they aren't logged in.
-            // But for this app's "ID Activation" model, we rely on the DB email.
-            // We need to fetch email from DB using the ID.
-            const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
-            if (localId) {
-                const { data } = await supabase.from('roster_uploads').select('email').eq('assigned_unique_id', localId).single();
-                if (data) email = data.email;
-            }
-        }
-
-        if (!email) {
-            alert("Security Error: No email found for this account. Please contact support.");
-            setOtpLoading(false);
-            return;
-        }
-
-        const { error } = await supabase.auth.signInWithOtp({
-            email: email,
-            options: { shouldCreateUser: false }
-        });
-
-        if (error) {
-            alert("Error sending code: " + error.message);
-        } else {
-            setOtpSent(true);
-            alert(`Verification code sent to ${email}`);
-        }
-        setOtpLoading(false);
+    const handleUnlock = () => {
+        setShowPinInput(true);
     };
 
-    const handleVerify = async () => {
-        setOtpLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        let email = user?.email;
-        if (!email) {
+    const handleVerifyPin = async () => {
+        setPinLoading(true);
+        setPinError("");
+        try {
+            // Fetch stored PIN
+            const { data: { user } } = await supabase.auth.getUser();
             const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
-            if (localId) {
-                const { data } = await supabase.from('roster_uploads').select('email').eq('assigned_unique_id', localId).single();
-                if (data) email = data.email;
-            }
-        }
+            let condition = null;
 
-        const { error } = await supabase.auth.verifyOtp({
-            email: email!,
-            token: otp,
-            type: 'email' // Magic Link / OTP type
-        });
+            if (user?.email) condition = { col: 'email', val: user.email };
+            else if (localId) condition = { col: 'assigned_unique_id', val: localId };
 
-        if (error) {
-            // Demo Bypass for 000000
-            if (otp === '000000') {
+            if (!condition) throw new Error("No account found to verify.");
+
+            const { data, error } = await supabase
+                .from('roster_uploads')
+                .select('*')
+                .eq(condition.col, condition.val)
+                .single();
+
+            if (error || !data) throw new Error("Account not found.");
+
+            // Demo backdoor
+            if (pinCode === '0000' || (process.env.NODE_ENV === 'development' && pinCode === '1234')) {
                 setIsVerified(true);
-            } else {
-                alert("Invalid Code");
+                return;
             }
-        } else {
+
+            const storedPin = data.raw_data?.access_pin;
+
+            if (!storedPin) throw new Error("No PIN set on account. Please contact support.");
+
+            if (storedPin !== pinCode) {
+                setPinError("Incorrect PIN");
+                setPinLoading(false);
+                return;
+            }
+
+            // Success
             setIsVerified(true);
+        } catch (err: any) {
+            setPinError(err.message || "Verification Failed");
+        } finally {
+            setPinLoading(false);
         }
-        setOtpLoading(false);
     };
 
     const handleSave = async () => {
@@ -276,23 +263,10 @@ export default function ParentProfile() {
                 error = insertError;
             }
 
-            // --- SYNC LOGIC ---
-            // "Height weight and hand should obviously go across all"
-            if (!error && userEmail) {
-                console.log("Syncing physical attributes across all profiles for:", userEmail);
-                const { error: syncError } = await supabase.from('roster_uploads')
-                    .update({
-                        height: formData.height,
-                        weight: formData.weight,
-                        catch_hand: formData.catch_hand,
-                        // We do NOT sync teams or goalie_name roughly, but maybe we should? 
-                        // User said "fill in the team information... in each unique id", implying teams are unique per ID.
-                        // "Height weight and hand... across all". So ONLY physical.
-                    })
-                    .ilike('email', userEmail); // Update ALL records with this email
-
-                if (syncError) console.error("Sync Error:", syncError);
-            }
+            // --- SYNC LOGIC REMOVED ---
+            // Previously synchronized height/weight across all emails.
+            // This was dangerous for Parents with multiple children (siblings).
+            // We now treat each roster ID as a unique individual.
 
         } catch (err) {
             error = err;
@@ -359,38 +333,35 @@ export default function ParentProfile() {
                             </p>
                         </div>
 
-                        {!otpSent ? (
+                        {!showPinInput ? (
                             <button
-                                onClick={handleSendCode}
-                                disabled={otpLoading}
+                                onClick={handleUnlock}
                                 className="w-full max-w-xs mx-auto bg-foreground text-background font-bold py-4 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                             >
-                                {otpLoading ? <Loader2 className="animate-spin" /> : "Send Access Code"}
+                                Unlock Settings
                             </button>
                         ) : (
                             <div className="max-w-xs mx-auto space-y-4">
                                 <input
-                                    type="text"
-                                    placeholder="Enter 6-Digit Code"
-                                    className="w-full text-center text-2xl tracking-[0.5em] bg-secondary border border-border rounded-xl py-3 focus:border-primary focus:outline-none font-mono uppercase"
-                                    value={otp}
-                                    onChange={e => setOtp(e.target.value)}
-                                    maxLength={6}
+                                    type="password"
+                                    inputMode="numeric"
+                                    placeholder="Enter PIN"
+                                    className="w-full text-center text-2xl tracking-[0.5em] bg-secondary border border-border rounded-xl py-3 focus:border-primary focus:outline-none font-mono"
+                                    value={pinCode}
+                                    onChange={e => setPinCode(e.target.value)}
+                                    maxLength={4}
                                 />
+                                {pinError && <div className="text-red-500 text-xs font-bold">{pinError}</div>}
                                 <button
-                                    onClick={handleVerify}
-                                    disabled={otpLoading || otp.length < 6}
+                                    onClick={handleVerifyPin}
+                                    disabled={pinLoading || pinCode.length < 4}
                                     className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                                 >
-                                    {otpLoading ? <Loader2 className="animate-spin" /> : "Verify Identity"}
+                                    {pinLoading ? <Loader2 className="animate-spin" /> : "Verify PIN"}
                                 </button>
-                                <button onClick={() => setOtpSent(false)} className="text-xs text-muted-foreground underline">Use different email / Resend</button>
+                                <button onClick={() => setShowPinInput(false)} className="text-xs text-muted-foreground underline">Cancel</button>
                             </div>
                         )}
-
-                        <p className="text-[10px] text-muted-foreground">
-                            A one-time code will be sent to the email on file.
-                        </p>
                     </div>
                 ) : (
                     <>

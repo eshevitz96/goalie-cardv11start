@@ -655,6 +655,23 @@ export default function AdminDashboard() {
                                             </td>
                                             <td className="p-4 text-gray-400">{session.location}</td>
                                             <td className="p-4 text-gray-500 max-w-md truncate">{session.notes}</td>
+                                            <td className="p-4 text-right">
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!confirm("Are you sure you want to delete this session?")) return;
+                                                        const { error } = await supabase.from('sessions').delete().eq('id', session.id);
+                                                        if (error) alert("Error deleting session: " + error.message);
+                                                        else {
+                                                            // Optimistic update
+                                                            setSessions(prev => prev.filter(s => s.id !== session.id));
+                                                        }
+                                                    }}
+                                                    className="p-2 hover:bg-red-500/10 text-zinc-500 hover:text-red-500 rounded-lg transition-colors"
+                                                    title="Delete Session"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
