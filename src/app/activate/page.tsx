@@ -36,11 +36,14 @@ function ActivateContent() {
     const [otp, setOtp] = useState("");
     const [isDemo, setIsDemo] = useState(false);
 
+    const [showCreateOption, setShowCreateOption] = useState(false);
+
     // Step 1: Email Lookup
     const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         setIsLoading(true);
+        setShowCreateOption(false);
 
         if (!email.includes("@") || email.length < 5) {
             setError("Please enter a valid email.");
@@ -63,8 +66,9 @@ function ActivateContent() {
                 .single();
 
             if (error || !data) {
-                console.error("Lookup Error:", error);
-                setError("No roster record found with this Email. Please contact your coach.");
+                // No record found -> Offer to Create
+                setError("No roster record found.");
+                setShowCreateOption(true);
                 setIsLoading(false);
                 return;
             }
@@ -77,6 +81,33 @@ function ActivateContent() {
         } catch (err: any) {
             console.error(err);
             setError("Connection error: " + (err.message || "Unknown"));
+            setIsLoading(false);
+        }
+    };
+
+    const handleCreateNew = async () => {
+        setIsLoading(true);
+        try {
+            // Generate a random GC-ID
+            const rId = 'GC-' + Math.floor(1000 + Math.random() * 9000);
+
+            const { data, error } = await supabase.from('roster_uploads').insert({
+                email: email.trim(),
+                goalie_name: "New Athlete", // Temp
+                assigned_unique_id: rId,
+                is_claimed: true,
+                sport: 'Hockey' // Default
+            }).select().single();
+
+            if (error) throw error;
+
+            console.log("New Card Created:", data);
+            setRosterData(data);
+            setIsLoading(false);
+            setCurrentStep(2); // Proceed to Identity
+
+        } catch (err: any) {
+            setError("Creation Error: " + err.message);
             setIsLoading(false);
         }
     };
@@ -358,17 +389,27 @@ function ActivateContent() {
         try {
             // Final Activation Save
             if (rosterData && rosterData.id) {
+                const { data: { user } } = await supabase.auth.getUser();
+
                 // Save PIN to raw_data for Beta (In prod, use hashed auth column)
                 // Note: We are trusting client validation here for speed in Beta.
                 const { error: updateError } = await supabase
                     .from('roster_uploads')
                     .update({
                         is_claimed: true,
+                        // CRITICAL: Bind the Auth user to this roster record
+                        // This allows RLS policies effectively.
+                        // Assuming column is 'user_id' or we rely on email mapping still.
+                        // For safety, we keep rely on email mapping primarily unless column exists.
+                        // But let's add it if schema supports (often 'goalie_id' or 'user_id').
+                        // Note: If schema doesn't have it, this might fail, but usually safe to ignore extra fields if not strict
+                        // Update: We'll stick to 'is_claimed' and raw_data for now to be safe against schema errors.
                         raw_data: {
                             ...rosterData.raw_data, // Keep existing calls
                             setup_complete: true,
                             access_pin: pin, // Beta Simple PIN
-                            activation_date: new Date().toISOString()
+                            activation_date: new Date().toISOString(),
+                            linked_user_id: user?.id // Validation reference
                         }
                     })
                     .eq('id', rosterData.id);
@@ -390,8 +431,8 @@ function ActivateContent() {
 
     const handleFinish = async () => {
         setIsLoading(true);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('activated_id', accessId.toUpperCase());
+        if (typeof window !== 'undefined' && rosterData?.assigned_unique_id) {
+            localStorage.setItem('activated_id', rosterData.assigned_unique_id);
         }
         console.log("Activation Complete");
         await new Promise(r => setTimeout(r, 1000));
@@ -450,11 +491,27 @@ function ActivateContent() {
                                     />
                                 </div>
 
-                                {error && <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg"><AlertCircle size={14} /> {error}</div>}
+                                {error && (
+                                    <div className="space-y-3">
+                                        <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg"><AlertCircle size={14} /> {error}</div>
 
-                                <button type="submit" disabled={isLoading} className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2">
-                                    {isLoading ? <Loader2 className="animate-spin" /> : <>Continue <ChevronRight size={18} /></>}
-                                </button>
+                                        {showCreateOption && (
+                                            <button
+                                                type="button"
+                                                onClick={handleCreateNew}
+                                                className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl transition-all border border-white/10"
+                                            >
+                                                Create New Card
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {!showCreateOption && (
+                                    <button type="submit" disabled={isLoading} className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2">
+                                        {isLoading ? <Loader2 className="animate-spin" /> : <>Continue <ChevronRight size={18} /></>}
+                                    </button>
+                                )}
 
                                 <div className="text-center mt-4">
                                     <Link href="/login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
