@@ -197,115 +197,105 @@ export default function ParentProfile() {
         }
     };
 
+    const [isSaving, setIsSaving] = useState(false);
+
     const handleSave = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        let userEmail = user?.email;
-        const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
-
-        // Validation for demo/fallback
-        if (!userEmail) {
-            // Check for Demo ID Bypass
-            if (localId && (localId === 'GC-PRO-HKY' || localId.startsWith('GC-'))) {
-                userEmail = 'thegoaliebrand@gmail.com';
-            } else {
-                alert("No authenticated user found.");
-                return;
-            }
-        }
-
-        // Validate Teams
-        const validTeams = formData.teams.filter(t => t.name.trim() !== "");
-
-        // --- VALIDATION RULES ---
-
-        // Rule 1: One School limit for Non-Pros
-        if (formData.level !== 'Pro') {
-            const explicitSchoolCount = validTeams.filter(t => t.type === 'School' || t.type === 'College' as any).length;
-            if (explicitSchoolCount > 1) {
-                alert("Non-Pro players can only have one active School team (High School or College).");
-                return;
-            }
-        }
-
-        // Rule 2: Pro players must identify years if multiple
-        if (formData.level === 'Pro' && validTeams.length > 1) {
-            const missingYears = validTeams.some(t => !t.years || t.years.trim() === "");
-            if (missingYears) {
-                alert("Pro players with multiple teams must identify the Years/Seasons for each team.");
-                return;
-            }
-        }
-
-        const primaryTeam = validTeams.length > 0 ? validTeams[0].name : "Unassigned";
-
-        const updates = {
-            email: userEmail,
-            goalie_name: formData.goalie_name,
-            grad_year: parseInt(formData.grad_year) || 0,
-            team: primaryTeam, // Legacy/Primary
-            height: formData.height,
-            weight: formData.weight,
-            catch_hand: formData.catch_hand,
-            assigned_unique_id: dbId ? undefined : (user?.id ? user.id.slice(0, 8).toUpperCase() : localId),
-            // Store complex data in raw_data to avoid schema changes
-            raw_data: {
-                level: formData.level,
-                teams: validTeams,
-            }
-        };
-
-
-        // If we have an ID, update specific row.
-        let error: any = null;
+        setIsSaving(true);
         try {
-            if (dbId) {
-                // First: Fetch current raw_data to merge
-                const { data: current } = await supabase.from('roster_uploads').select('raw_data').eq('id', dbId).single();
-                const newRawData = { ...(current?.raw_data || {}), teams: validTeams };
+            const { data: { user } } = await supabase.auth.getUser();
+            let userEmail = user?.email;
+            const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
 
-                const { error: updateError } = await supabase.from('roster_uploads')
-                    .update({ ...updates, raw_data: newRawData })
-                    .eq('id', dbId);
-                error = updateError;
-            } else {
-                // Create new profile if it doesn't exist
-                const { error: insertError } = await supabase.from('roster_uploads').upsert(updates, { onConflict: 'email' });
-                error = insertError;
+            // INTELLIGENT EMAIL RECOVERY
+            // If the user is not "logged in" via Auth (Step 70 Activation only uses localStorage), 
+            // we must fetch the email associated with their activated_id from the DB to perform the update.
+            if (!userEmail && localId) {
+                const { data: rosterCheck } = await supabase.from('roster_uploads').select('email').eq('assigned_unique_id', localId).single();
+                if (rosterCheck) {
+                    userEmail = rosterCheck.email;
+                }
             }
 
-            // --- SYNC LOGIC REMOVED ---
-            // Previously synchronized height/weight across all emails.
-            // This was dangerous for Parents with multiple children (siblings).
-            // We now treat each roster ID as a unique individual.
+            // Fallback for purely local demo (GC-PRO-HKY, etc) if DB fetch failed
+            if (!userEmail && localId && (localId === 'GC-PRO-HKY' || localId.startsWith('GC-DEMO'))) {
+                userEmail = 'thegoaliebrand@gmail.com';
+            }
 
-        } catch (err) {
-            error = err;
-        }
+            if (!userEmail) {
+                alert("Security Error: Unable to identify account. Please sign in again.");
+                setIsSaving(false);
+                return;
+            }
 
-        // DEMO BYPASS: If Auth/RLS fails but we are a Demo User, persist to LocalStorage and pretend success
-        if (error && (localId === 'GC-PRO-HKY' || localId?.startsWith('GC-'))) {
-            // ... (Simple demo persistence logic) ...
-            localStorage.setItem('demo_profile_override', JSON.stringify({
+            // Validate Teams
+            const validTeams = formData.teams.filter(t => t.name.trim() !== "");
+
+            // --- VALIDATION RULES ---
+
+            // Rule 1: One School limit for Non-Pros
+            if (formData.level !== 'Pro') {
+                const explicitSchoolCount = validTeams.filter(t => t.type === 'School' || t.type === 'College' as any).length;
+                if (explicitSchoolCount > 1) {
+                    alert("Non-Pro players can only have one active School team (High School or College).");
+                    setIsSaving(false);
+                    return;
+                }
+            }
+
+            // Rule 2: Pro players must identify years if multiple
+            if (formData.level === 'Pro' && validTeams.length > 1) {
+                const missingYears = validTeams.some(t => !t.years || t.years.trim() === "");
+                if (missingYears) {
+                    alert("Pro players with multiple teams must identify the Years/Seasons for each team.");
+                    setIsSaving(false);
+                    return;
+                }
+            }
+
+            const primaryTeam = validTeams.length > 0 ? validTeams[0].name : "Unassigned";
+
+            const updates = {
+                email: userEmail,
                 goalie_name: formData.goalie_name,
-                team: primaryTeam,
-                teams: validTeams, // Save teams to local
-                grad_year: formData.grad_year,
+                grad_year: parseInt(formData.grad_year) || 0,
+                team: primaryTeam, // Legacy/Primary
                 height: formData.height,
                 weight: formData.weight,
-                catch_hand: formData.catch_hand
-            }));
-            window.dispatchEvent(new Event('demo_profile_updated'));
-            alert("Profile Updated Successfully! (Reflected Locally)");
-            router.push('/parent');
-            return;
-        }
+                catch_hand: formData.catch_hand,
+                // Only set ID if creating new and we have one locally, otherwise let DB handle or keep existing
+                assigned_unique_id: dbId ? undefined : localId,
+                // Store complex data in raw_data to avoid schema changes
+                raw_data: {
+                    level: formData.level,
+                    teams: validTeams,
+                }
+            };
 
-        if (error) {
-            console.error("Save failed:", error);
-            alert(`Update failed: ${error?.message || "Unknown Error"}`);
-        } else {
+            if (dbId) {
+                const { data: current } = await supabase.from('roster_uploads').select('raw_data').eq('id', dbId).single();
+                const newRawData = { ...(current?.raw_data || {}), teams: validTeams };
+                const { error: updateError } = await supabase.from('roster_uploads').update({ ...updates, raw_data: newRawData }).eq('id', dbId);
+                if (updateError) throw updateError;
+            } else {
+                const { error: insertError } = await supabase.from('roster_uploads').upsert(updates, { onConflict: 'email' });
+                if (insertError) throw insertError;
+            }
+
             alert("Profile Updated Successfully!");
             router.push('/parent');
+
+        } catch (err: any) {
+            console.error("Save Failed:", err);
+            // Demo Fallback Check
+            const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
+            if (localId && (localId === 'GC-PRO-HKY' || localId.startsWith('GC-DEMO'))) {
+                alert("Profile Updated Successfully! (Demo Local Override)");
+                router.push('/parent');
+            } else {
+                alert(`Update failed: ${err.message || "Unknown Error"}`);
+            }
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -527,28 +517,6 @@ export default function ParentProfile() {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <button
-                                onClick={handleSave}
-                                className="w-full mt-4 py-4 bg-primary text-primary-foreground rounded-xl font-bold shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Save size={18} />
-                                Save Profile
-                            </button>
-
-                        </div>
-
-
-
-                        {/* Coaching Staff - NEW SECTION */}
-                        <div className="bg-card border border-border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-                                <Briefcase size={18} />
-                                <span className="text-xs font-bold uppercase tracking-wider">Coaching Staff</span>
-                            </div>
-
-                            <div className="grid gap-4">
                                 <div className="grid gap-2">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Head Coach</label>
                                     <div className="flex gap-2">
