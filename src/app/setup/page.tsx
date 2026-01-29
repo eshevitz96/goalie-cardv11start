@@ -248,6 +248,16 @@ export default function OnboardingPage() {
                                         className="w-full bg-secondary/50 border border-border rounded-xl p-3 text-sm focus:border-primary focus:outline-none h-24 resize-none"
                                     />
                                 </div>
+
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1 mb-1 block">3. Biggest Frustration Currently?</label>
+                                    <textarea
+                                        value={formData.baseline_frustration}
+                                        onChange={e => setFormData({ ...formData, baseline_frustration: e.target.value })}
+                                        placeholder="e.g. Inconsistent meaningful feedback..."
+                                        className="w-full bg-secondary/50 border border-border rounded-xl p-3 text-sm focus:border-primary focus:outline-none h-24 resize-none"
+                                    />
+                                </div>
                             </div>
                         </motion.div>
                     )}
@@ -279,6 +289,6 @@ export default function OnboardingPage() {
                     )}
                 </div>
             </div>
-        </main>
+        </main >
     );
 }
