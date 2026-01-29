@@ -6,14 +6,14 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { priceId, email, userId, returnUrl } = body;
+        const { priceId, email, userId, returnUrl, mode } = body;
 
         if (!priceId || !userId) {
             return new NextResponse("Missing required fields", { status: 400 });
         }
 
         const session = await stripe.checkout.sessions.create({
-            mode: "payment",
+            mode: mode || "payment",
             payment_method_types: ["card"],
             line_items: [
                 {

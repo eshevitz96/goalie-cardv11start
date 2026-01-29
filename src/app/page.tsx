@@ -1,76 +1,24 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, User, Shield } from "lucide-react";
-import { motion } from "framer-motion";
+import UnifiedEntry from "@/components/auth/UnifiedEntry";
 
-export default function LandingPortal() {
+export default function EntryPortal() {
     return (
-        <main className="min-h-screen bg-background flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border border-none md:overflow-hidden relative transition-colors duration-300">
-
-            {/* Decorative Blur */}
-            <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-[20%] left-[20%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[128px]" />
-                <div className="absolute bottom-[20%] right-[20%] w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[128px]" />
+        <main className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            {/* Background Effects matching screenshot style - Dark/void */}
+            <div className="fixed inset-0 pointer-events-none opacity-20">
+                <radialGradient id="grad1" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                    <stop offset="0%" style={{ stopColor: 'rgb(50,50,50)', stopOpacity: 1 }} />
+                    <stop offset="100%" style={{ stopColor: 'rgb(0,0,0)', stopOpacity: 1 }} />
+                </radialGradient>
+                <div className="absolute top-[30%] left-[50%] -translate-x-1/2 w-[600px] h-[600px] bg-zinc-800/20 rounded-full blur-[128px]" />
             </div>
 
+            <UnifiedEntry />
 
-            {/* Parent Portal Side */}
-            <Link
-                href="/activate"
-                className="group relative flex-1 flex flex-col items-center justify-center p-12 hover:bg-secondary/40 transition-colors duration-500"
-            >
-                <div className="bg-secondary border border-border rounded-full w-24 h-24 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:border-blue-500/50 transition-transform duration-300 shadow-2xl">
-                    <User size={32} className="text-muted-foreground group-hover:text-blue-500 transition-colors" />
-                </div>
-
-                <h2 className="text-3xl font-black italic tracking-tighter text-foreground mb-2 group-hover:scale-105 transition-transform duration-300 origin-center">
-                    PARENT <span className="text-blue-500">PORTAL</span>
-                </h2>
-
-                <p className="text-muted-foreground text-sm font-mono uppercase tracking-widest text-center max-w-xs mb-8">
-                    View Player Cards, Stats, Lessons, and Manage Payments.
-                </p>
-
-                <div className="flex items-center gap-2 text-blue-500 text-sm font-bold opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                    Enter Portal <ArrowRight size={16} />
-                </div>
-            </Link>
-
-            {/* Coach Portal Side */}
-            <Link
-                href="/login"
-                className="group relative flex-1 flex flex-col items-center justify-center p-12 hover:bg-secondary/40 transition-colors duration-500"
-            >
-                <div className="bg-secondary border border-border rounded-full w-24 h-24 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:border-primary/50 transition-transform duration-300 shadow-2xl">
-                    <Shield size={32} className="text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
-
-                <h2 className="text-3xl font-black italic tracking-tighter text-foreground mb-2 group-hover:scale-105 transition-transform duration-300 origin-center">
-                    COACH <span className="text-primary">ACCESS</span>
-                </h2>
-
-                <p className="text-muted-foreground text-sm font-mono uppercase tracking-widest text-center max-w-xs mb-8">
-                    Manage Rosters, Log Sessions, Review Video, and Analytics.
-                </p>
-
-                <div className="flex items-center gap-2 text-primary text-sm font-bold opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                    Secure Login <ArrowRight size={16} />
-                </div>
-            </Link>
-
-            {/* Admin Link */}
-            <div className="absolute bottom-6 right-6 z-50">
-                <Link href="/login" className="text-[10px] text-muted-foreground/50 hover:text-foreground font-mono flex items-center gap-1 transition-colors">
-                    ADMIN ACCESS
-                </Link>
+            <div className="absolute bottom-6 left-0 w-full text-center text-[10px] text-zinc-800 font-mono uppercase tracking-widest">
+                Secure Authentication v2.0
             </div>
-
-            <div className="absolute bottom-6 left-6 z-50 text-[10px] text-muted-foreground/30 font-mono">
-                v11.0.7
-            </div>
-
         </main>
     );
 }

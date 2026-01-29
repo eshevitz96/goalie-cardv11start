@@ -1,79 +1,362 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Calendar, MapPin, QrCode } from "lucide-react";
 
 export interface Event {
-    id: number;
+    id: string; // Changed from number to string (UUID)
     name: string;
     date: string;
     location: string;
     status: "upcoming" | "open" | "past";
     image: string;
+    price?: number;
+    access_code?: string;
+    sport?: string;
 }
 
 interface EventsListProps {
     events: Event[];
+    onRegister?: (eventId: string) => void;
+    onEventAdded?: () => void;
+    sport?: string;
+    maxItems?: number;
 }
 
-export function EventsList({ events }: EventsListProps) {
+export function EventsList({ events, onRegister, onEventAdded, sport, maxItems }: EventsListProps & {
+    // Add simulated payment handler if not already present in parent, 
+    // but for now we'll handle the logic inside to "simulate". 
+    // In real app, this would pass up to parent.
+}) {
+    // We need state to handle the "simulation" of payment flow
+    const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+    const [showPayModal, setShowPayModal] = useState(false);
+    const [showAddEventModal, setShowAddEventModal] = useState(false);
+    const [accessCodeInput, setAccessCodeInput] = useState("");
+
+    // Helper to format price
+    const formatPrice = (price: number) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+        }).format(price / 100);
+    };
+
+    const handleRegisterClick = (event: Event) => {
+        // If free or included
+        if (!event.price || event.price === 0) {
+            if (confirm(`Confirm registration for ${event.name}? (Team Included)`)) {
+                onRegister?.(event.id);
+            }
+            return;
+        }
+
+        // If paid, show options
+        setSelectedEvent(event);
+        setShowPayModal(true);
+        setAccessCodeInput("");
+    };
+
+    const handleAccessCode = () => {
+        // Simulate code check
+        // In real app, we'd verify with backend.
+        // For sim, we'll accept 'VIPGOALIE' or any generic code for now if user entered something.
+        if (accessCodeInput.trim().toUpperCase() === 'VIPGOALIE') {
+            alert("Code Accepted! Registration fees waived.");
+            onRegister?.(selectedEvent!.id);
+            setShowPayModal(false);
+        } else {
+            alert("Invalid Code. Try 'VIPGOALIE'.");
+        }
+    };
+
+    const handleStripePay = () => {
+        // Simulate Stripe
+        alert(`Redirecting to Stripe Checkout for ${formatPrice(selectedEvent!.price || 0)}... \n\n(Simulation: Payment Successful!)`);
+        // Simulate success return
+        onRegister?.(selectedEvent!.id);
+        setShowPayModal(false);
+    };
+
     return (
         <div className="w-full space-y-4">
             <div className="flex items-end justify-between mb-2">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Calendar className="text-pink-500" />
-                    Event Passes
+                <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
+                    <Calendar className="text-primary" />
+                    Event Passes & Schedule
                 </h3>
+                <button
+                    onClick={() => setShowAddEventModal(true)}
+                    className="text-xs font-bold text-primary hover:text-white transition-colors"
+                >
+                    + Add Game/Practice
+                </button>
             </div>
 
             {events.length === 0 ? (
-                <div className="text-center p-8 border border-zinc-800 border-dashed rounded-2xl text-zinc-500 text-sm">
+                <div className="text-center p-8 border border-border border-dashed rounded-2xl text-muted-foreground text-sm">
                     No upcoming events.
                 </div>
             ) : (
                 <div className="grid gap-4">
-                    {events.map((event, i) => (
+                    {(maxItems ? events.slice(0, maxItems) : events).map((event, i) => (
                         <motion.div
                             key={event.id}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.1 }}
-                            className="group relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col md:flex-row hover:border-zinc-700 transition-all"
+                            className="group relative overflow-hidden bg-card border border-border rounded-2xl flex flex-col md:flex-row hover:border-primary/50 transition-all"
                         >
                             {/* Event "Art" / Color Strip */}
-                            <div className={`h-24 md:h-auto md:w-2 bg-gradient-to-br ${event.image}`} />
+                            <div className={`h-24 md:h-28 md:w-2 bg-gradient-to-br ${event.image}`} />
 
-                            <div className="p-5 flex-1 flex flex-col justify-between">
+                            <div className="p-5 flex-1 flex flex-col justify-between text-foreground">
                                 <div>
                                     <div className="flex justify-between items-start mb-2">
-                                        <h4 className="font-bold text-lg leading-tight">{event.name}</h4>
+                                        <div className="font-bold text-lg leading-tight w-3/4 cursor-pointer hover:text-primary transition-colors" onClick={() => window.location.href = `/events`}>
+                                            {event.name}
+                                        </div>
                                         <div className="flex items-center gap-2">
-                                            {event.status === "upcoming" && (
-                                                <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-zinc-800 text-zinc-400 border border-zinc-700">
-                                                    Registered
-                                                </span>
+                                            {event.status === "upcoming" ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-muted text-muted-foreground border border-border">
+                                                        Registered
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-end gap-1">
+                                                    {event.price && event.price > 0 ? (
+                                                        <span className="text-xs font-bold text-foreground">{formatPrice(event.price)}</span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold text-primary uppercase tracking-wider bg-primary/10 px-2 py-0.5 rounded">Team Included</span>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleRegisterClick(event)}
+                                                        className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                                                    >
+                                                        {event.price && event.price > 0 ? "Purchase" : "Register"}
+                                                    </button>
+                                                </div>
                                             )}
-                                            <button className="p-2 rounded-full hover:bg-zinc-800 transition-colors text-zinc-500 hover:text-white group relative border border-transparent hover:border-zinc-700" title="Scan QR">
-                                                <QrCode size={18} />
-                                            </button>
                                         </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-xs text-zinc-400">
+                                    <div className="space-y-1 block group-hover:opacity-80 transition-opacity">
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                             <Calendar size={12} /> {event.date}
                                         </div>
-                                        <div className="flex items-center gap-2 text-xs text-zinc-400">
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                             <MapPin size={12} /> {event.location}
                                         </div>
                                     </div>
                                 </div>
-
-
                             </div>
                         </motion.div>
                     ))}
+
+                    {maxItems && events.length > maxItems && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="bg-card/50 border border-border border-dashed rounded-2xl p-4 text-center hover:bg-card hover:border-solid hover:border-primary/50 transition-all cursor-pointer group"
+                            onClick={() => window.location.href = '/events'}
+                        >
+                            <span className="text-sm font-bold text-muted-foreground group-hover:text-foreground">View All {events.length} Events</span>
+                        </motion.div>
+                    )}
                 </div>
             )}
+
+            {/* Simulated Payment Modal */}
+            {showPayModal && selectedEvent && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="bg-card border border-border rounded-3xl p-6 w-full max-w-sm space-y-6 shadow-2xl"
+                    >
+                        <div className="text-center">
+                            <h3 className="text-xl font-bold text-foreground mb-1">Complete Registration</h3>
+                            <p className="text-sm text-muted-foreground">{selectedEvent.name}</p>
+                        </div>
+
+                        <div className="bg-secondary/50 rounded-xl p-4 text-center">
+                            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Due</div>
+                            <div className="text-3xl font-black text-foreground">{formatPrice(selectedEvent.price || 0)}</div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <button
+                                onClick={handleStripePay}
+                                className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <div className="w-4 h-4 bg-background rounded-sm" /> {/* Fake card icon */}
+                                Pay with Card
+                            </button>
+
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-muted" />
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-card px-2 text-muted-foreground">Or used code</span>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={accessCodeInput}
+                                    onChange={(e) => setAccessCodeInput(e.target.value)}
+                                    placeholder="Enter access code..."
+                                    className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                                />
+                                <button
+                                    onClick={handleAccessCode}
+                                    className="px-4 bg-secondary border border-border text-foreground rounded-xl text-xs font-bold hover:bg-secondary/80"
+                                >
+                                    Apply
+                                </button>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setShowPayModal(false)}
+                            className="w-full py-2 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                            Cancel
+                        </button>
+                    </motion.div>
+                </div>
+            )}
+
+            <AddEventModal isOpen={showAddEventModal} onClose={() => setShowAddEventModal(false)} onAdded={() => onEventAdded?.()} defaultSport={sport} />
+        </div>
+    );
+}
+
+import { supabase } from "@/utils/supabase/client";
+
+function AddEventModal({ isOpen, onClose, onAdded, defaultSport }: { isOpen: boolean, onClose: () => void, onAdded?: () => void, defaultSport?: string }) {
+    const [mode, setMode] = useState<'manual' | 'upload'>('manual');
+    const [manualEvent, setManualEvent] = useState({ name: '', date: '', location: '', type: 'Game' });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleManualSubmit = async () => {
+        if (!manualEvent.name || !manualEvent.date) return alert("Please fill in required fields.");
+        setIsSubmitting(true);
+
+        // Insert into Supabase
+        const { error } = await supabase.from('events').insert({
+            name: `${manualEvent.type}: ${manualEvent.name}`,
+            date: new Date(manualEvent.date).toISOString(),
+            location: manualEvent.location || 'TBA',
+            sport: defaultSport || 'Hockey',
+            price: 0, // Personal schedule events are free/tracking only
+            image: "from-zinc-500 to-zinc-700" // Default team color
+        });
+
+        if (error) {
+            alert("Error adding event: " + error.message);
+        } else {
+            alert(`${manualEvent.type} Added to Schedule!`);
+            onAdded?.();
+            onClose();
+        }
+        setIsSubmitting(false);
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        alert(`Processing ${file.name}... \n(Logic would parse CSV/ICS here and insert to DB)`);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-card border border-border rounded-3xl p-6 w-full max-w-md space-y-6 shadow-2xl"
+            >
+                <div className="text-center">
+                    <h3 className="text-xl font-bold text-foreground mb-1">Add Event</h3>
+                    <p className="text-sm text-muted-foreground">Track your own schedule</p>
+                </div>
+
+                <div className="flex p-1 bg-muted rounded-xl">
+                    <button onClick={() => setMode('manual')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'manual' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>Manual Entry</button>
+                    <button onClick={() => setMode('upload')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'upload' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>Upload API/CSV</button>
+                </div>
+
+                {mode === 'manual' ? (
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-xs font-bold text-muted-foreground ml-1">Event Name</label>
+                            <input
+                                type="text"
+                                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                                value={manualEvent.name}
+                                onChange={e => setManualEvent({ ...manualEvent, name: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-muted-foreground ml-1">Date</label>
+                            <input
+                                type="date"
+                                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                                value={manualEvent.date}
+                                onChange={e => setManualEvent({ ...manualEvent, date: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-muted-foreground ml-1">Location</label>
+                            <input
+                                type="text"
+                                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                                value={manualEvent.location}
+                                onChange={e => setManualEvent({ ...manualEvent, location: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-muted-foreground ml-1">Type</label>
+                            <select
+                                value={manualEvent.type}
+                                onChange={e => setManualEvent({ ...manualEvent, type: e.target.value })}
+                                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                            >
+                                <option>Game</option>
+                                <option>Practice</option>
+                                <option>Workout</option>
+                                <option>Video Session</option>
+                            </select>
+                        </div>
+                        <button onClick={handleManualSubmit} disabled={isSubmitting} className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold hover:opacity-90 transition-colors disabled:opacity-50">
+                            {isSubmitting ? "Adding..." : "Add to Schedule"}
+                        </button>
+                    </div>
+                ) : (
+                    <div className="space-y-4 text-center py-4">
+                        <div className="border-2 border-dashed border-border rounded-2xl p-8 hover:border-primary/50 transition-colors cursor-pointer relative">
+                            <input type="file" accept=".csv,.ics" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                            <div className="text-muted-foreground">
+                                <QrCode className="mx-auto mb-2 opacity-50" size={32} />
+                                <p className="text-sm font-medium">Drop CSV or iCal file</p>
+                                <p className="text-xs opacity-50 mt-1">Supports standard schedule formats</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            We will parse the file and add events to your personal calendar.
+                        </p>
+                    </div>
+                )}
+
+                <button onClick={onClose} className="w-full py-2 text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+            </motion.div>
         </div>
     );
 }

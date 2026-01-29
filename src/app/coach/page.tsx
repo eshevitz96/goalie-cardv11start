@@ -27,7 +27,7 @@ import Link from "next/link";
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-
+import { CoachScheduler } from "@/components/CoachScheduler";
 
 export default function CoachDashboard() {
     const [roster, setRoster] = useState<any[]>([]);
@@ -44,8 +44,8 @@ export default function CoachDashboard() {
                 setRoster(rosterData.map(g => ({
                     id: g.id,
                     name: g.goalie_name,
-                    session: 1, // Placeholder
-                    lesson: 1, // Placeholder
+                    session: g.session_count || 1,
+                    lesson: g.lesson_count || 0,
                     status: g.is_claimed ? 'active' : 'pending',
                     lastSeen: 'N/A',
                     assigned_coach_id: g.assigned_coach_id
@@ -78,24 +78,24 @@ export default function CoachDashboard() {
     const filteredRoster = filter === 'all' ? roster : roster.filter(r => r.assigned_coach_id); // Simple filter for now
 
     return (
-        <main className="min-h-screen bg-black text-white p-4 md:p-8">
+        <main className="min-h-screen bg-background text-foreground p-4 md:p-8">
             <header className="flex justify-between items-center mb-10">
                 <div>
-                    <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em] mb-1">Command Center</h2>
+                    <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1">Command Center</h2>
                     <h1 className="text-3xl font-black italic tracking-tighter">
                         COACH<span className="text-primary">OS</span>
                     </h1>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="relative group z-50">
-                        <button className="h-10 w-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700 hover:bg-zinc-700 transition-colors">
+                        <button className="h-10 w-10 rounded-full bg-card flex items-center justify-center border border-border hover:bg-muted transition-colors">
                             <span className="font-bold">CM</span>
                         </button>
-                        <div className="absolute right-0 top-full mt-2 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right">
-                            <Link href="/coach/profile" className="w-full text-left px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-2">
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right backdrop-blur-md">
+                            <Link href="/coach/profile" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                                 <Users size={16} /> Coach Profile
                             </Link>
-                            <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-2">
+                            <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                                 <Download size={16} /> Export CSV
                             </button>
                             <div className="h-px bg-zinc-800 my-1" />
@@ -119,22 +119,22 @@ export default function CoachDashboard() {
                     <section>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xl font-bold flex items-center gap-2">
-                                <span className="text-purple-500">★</span>
+                                <span className="text-primary">★</span>
                                 Recent Highlights
-                                <span className="bg-purple-500 text-white text-[10px] px-2 py-0.5 rounded-full">{highlights.length}</span>
+                                <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full">{highlights.length}</span>
                             </h3>
                         </div>
                         {highlights.length === 0 ? (
-                            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl text-center text-zinc-500 text-sm">
+                            <div className="glass p-8 rounded-2xl text-center text-muted-foreground text-sm">
                                 No highlights uploaded yet.
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {highlights.map((h: any) => (
-                                    <div key={h.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl group hover:border-purple-500/50 transition-colors">
+                                    <div key={h.id} className="glass p-4 rounded-xl group hover:border-primary/50 transition-colors">
                                         <div className="flex justify-between items-start mb-2">
-                                            <div className="font-bold text-sm text-white">{h.roster_uploads?.goalie_name || "Unknown Goalie"}</div>
-                                            <span className="text-[10px] text-zinc-500">{new Date(h.created_at).toLocaleDateString()}</span>
+                                            <div className="font-bold text-sm text-foreground">{h.roster_uploads?.goalie_name || "Unknown Goalie"}</div>
+                                            <span className="text-[10px] text-muted-foreground">{new Date(h.created_at).toLocaleDateString()}</span>
                                         </div>
                                         <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-2">
                                             <div className="absolute inset-0 flex items-center justify-center">
@@ -143,7 +143,7 @@ export default function CoachDashboard() {
                                                 </a>
                                             </div>
                                         </div>
-                                        <div className="text-xs text-zinc-400 truncate">{h.description}</div>
+                                        <div className="text-xs text-muted-foreground truncate">{h.description}</div>
                                     </div>
                                 ))}
                             </div>
@@ -156,25 +156,25 @@ export default function CoachDashboard() {
                                 <Users className="text-accent" />
                                 Active Roster
                             </h3>
-                            <div className="flex bg-zinc-900 rounded-lg p-1 border border-zinc-800">
+                            <div className="flex bg-muted rounded-lg p-1 border border-border">
                                 <button
                                     onClick={() => setFilter('all')}
-                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'all' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}
+                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'all' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
                                 >
                                     All
                                 </button>
                                 <button
                                     onClick={() => setFilter('assigned')}
-                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'assigned' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300")}
+                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'assigned' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
                                 >
                                     My Goalies
                                 </button>
                             </div>
                         </div>
 
-                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl overflow-hidden">
+                        <div className="glass rounded-3xl overflow-hidden">
                             <table className="w-full text-left">
-                                <thead className="bg-zinc-900 border-b border-zinc-800 text-xs uppercase text-zinc-500 font-semibold tracking-wider">
+                                <thead className="bg-muted/50 border-b border-border text-xs uppercase text-muted-foreground font-semibold tracking-wider">
                                     <tr>
                                         <th className="p-4 pl-6">Goalie</th>
                                         <th className="p-4">Progress</th>
@@ -182,17 +182,17 @@ export default function CoachDashboard() {
                                         <th className="p-4 text-right">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-zinc-800/50">
+                                <tbody className="divide-y divide-border">
                                     {filteredRoster.map((goalie) => (
-                                        <tr key={goalie.id} className="hover:bg-zinc-800/30 transition-colors">
+                                        <tr key={goalie.id} className="hover:bg-muted/30 transition-colors">
                                             <td className="p-4 pl-6">
-                                                <div className="font-bold text-white">{goalie.name}</div>
-                                                <div className="text-xs text-zinc-500">Last seen: {goalie.lastSeen}</div>
+                                                <div className="font-bold text-foreground">{goalie.name}</div>
+                                                <div className="text-xs text-muted-foreground">Last seen: {goalie.lastSeen}</div>
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
-                                                    <span className="font-mono font-bold text-zinc-300">S{goalie.session} L{goalie.lesson}</span>
-                                                    <div className="w-24 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                                    <span className="font-mono font-bold text-muted-foreground">S{goalie.session} L{goalie.lesson}</span>
+                                                    <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
                                                         <div
                                                             className="h-full bg-primary"
                                                             style={{ width: `${(goalie.lesson / 4) * 100}%` }}
@@ -206,26 +206,24 @@ export default function CoachDashboard() {
                                                         Renew Due
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold border border-emerald-500/20">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
                                                         Active
                                                     </span>
                                                 )}
                                             </td>
                                             <td className="p-4 text-right">
                                                 <div className="relative group">
-                                                    <button className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white transition-colors">
+                                                    <button className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors">
                                                         <MoreVertical size={16} />
                                                     </button>
                                                     {/* Hover Dropdown */}
-                                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 mr-8 w-40 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl p-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                                                        <button className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-2">
+                                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 mr-8 w-40 glass rounded-xl shadow-xl p-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                                                        <button className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                                                             <Mail size={14} /> Message Parent
                                                         </button>
-                                                        {goalie.lesson >= 4 && (
-                                                            <Link href={`/coach/log-session/${goalie.id}`} className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-primary hover:text-white hover:bg-primary/10 transition-colors flex items-center gap-2">
-                                                                <FileEdit size={14} /> Log Session & Review
-                                                            </Link>
-                                                        )}
+                                                        <Link href={`/coach/log-session/${goalie.id}`} className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-primary hover:text-primary-foreground hover:bg-primary transition-colors flex items-center gap-2">
+                                                            <FileEdit size={14} /> Log Data
+                                                        </Link>
                                                     </div>
                                                 </div>
                                             </td>
@@ -235,31 +233,34 @@ export default function CoachDashboard() {
                             </table>
                         </div>
                     </section>
-                </div>
+                </div >
 
                 {/* Right Column: Quick Actions */}
-                <div className="space-y-6">
+                < div className="space-y-6" >
+                    {/* Schedule Manager */}
+                    < CoachScheduler />
+
                     {/* Pending Reviews */}
                     {
                         PENDING_REVIEWS.length > 0 && (
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden">
+                            <div className="glass rounded-3xl p-6 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 -mt-6 -mr-6 h-24 w-24 rounded-full bg-primary/20 blur-2xl" />
                                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2 relative z-10">
                                     <FileEdit size={18} className="text-primary" />
                                     Pending Reviews
-                                    <span className="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full">{PENDING_REVIEWS.length}</span>
+                                    <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full">{PENDING_REVIEWS.length}</span>
                                 </h3>
 
                                 <div className="space-y-3 relative z-10">
                                     {PENDING_REVIEWS.map((goalie) => (
-                                        <div key={goalie.id} className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center justify-between group hover:border-zinc-700 transition-colors">
+                                        <div key={goalie.id} className="p-3 bg-muted/40 border border-border rounded-xl flex items-center justify-between group hover:border-primary/50 transition-colors">
                                             <div>
-                                                <div className="font-bold text-white text-sm">{goalie.name}</div>
-                                                <div className="text-xs text-zinc-500 font-mono">S{goalie.session} L{goalie.lesson} • Complete</div>
+                                                <div className="font-bold text-foreground text-sm">{goalie.name}</div>
+                                                <div className="text-xs text-muted-foreground font-mono">S{goalie.session} L{goalie.lesson} • Complete</div>
                                             </div>
                                             <Link
                                                 href={`/coach/log-session/${goalie.id}`}
-                                                className="px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                                                className="px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground rounded-lg text-xs font-bold transition-all flex items-center gap-2"
                                             >
                                                 Review <ArrowRight size={12} />
                                             </Link>
@@ -270,19 +271,19 @@ export default function CoachDashboard() {
                         )
                     }
                     {/* Pending Activations */}
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+                    <div className="glass rounded-3xl p-6">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <Shield size={18} className="text-primary" />
                             Pending Activations
-                            <span className="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full">{PENDING_ACTIVATIONS.length}</span>
+                            <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full">{PENDING_ACTIVATIONS.length}</span>
                         </h3>
                         <div className="space-y-3">
                             {PENDING_ACTIVATIONS.map((req) => (
-                                <div key={req.id} className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl group hover:border-zinc-700 transition-colors">
+                                <div key={req.id} className="p-4 bg-muted/50 border border-border rounded-xl group hover:border-border transition-colors">
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
-                                            <div className="font-bold text-white text-sm">{req.goalie}</div>
-                                            <div className="text-xs text-zinc-500">Parent: {req.parent}</div>
+                                            <div className="font-bold text-foreground text-sm">{req.goalie}</div>
+                                            <div className="text-xs text-muted-foreground">Parent: {req.parent}</div>
                                         </div>
                                         <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                                     </div>
@@ -293,7 +294,7 @@ export default function CoachDashboard() {
                                     ) : (
                                         <button
                                             onClick={() => setIssuedIds({ ...issuedIds, [req.id]: "GC-1984" })}
-                                            className="w-full py-2 bg-zinc-800 hover:bg-white hover:text-black rounded-lg text-xs font-bold text-zinc-400 transition-all flex items-center justify-center gap-2"
+                                            className="w-full py-2 bg-muted hover:bg-foreground hover:text-background rounded-lg text-xs font-bold text-muted-foreground transition-all flex items-center justify-center gap-2"
                                         >
                                             <Plus size={14} /> Issue Activation ID
                                         </button>
@@ -303,21 +304,21 @@ export default function CoachDashboard() {
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 rounded-3xl p-6 sticky top-8">
+                    <div className="glass rounded-3xl p-6 sticky top-8">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <MessageSquare size={18} className="text-green-500" />
+                            <MessageSquare size={18} className="text-foreground" />
                             Quick Comms
                         </h3>
 
                         <div className="space-y-3">
-                            <button className="w-full text-left p-4 bg-zinc-950 border border-zinc-800 hover:border-green-500/50 rounded-xl transition-all group">
-                                <div className="font-bold text-sm text-zinc-200 group-hover:text-green-400">Blast: Session Openings</div>
-                                <div className="text-xs text-zinc-500 mt-1">Notify all Active parents of new slots</div>
+                            <button className="w-full text-left p-4 bg-muted/50 border border-border hover:border-foreground/50 rounded-xl transition-all group">
+                                <div className="font-bold text-sm text-foreground group-hover:text-primary">Blast: Session Openings</div>
+                                <div className="text-xs text-muted-foreground mt-1">Notify all Active parents of new slots</div>
                             </button>
 
-                            <button className="w-full text-left p-4 bg-zinc-950 border border-zinc-800 hover:border-primary/50 rounded-xl transition-all group">
-                                <div className="font-bold text-sm text-zinc-200 group-hover:text-primary">Payment Reminders</div>
-                                <div className="text-xs text-zinc-500 mt-1">Auto-ping 2 parents (Renew Due)</div>
+                            <button className="w-full text-left p-4 bg-muted/50 border border-border hover:border-primary/50 rounded-xl transition-all group">
+                                <div className="font-bold text-sm text-foreground group-hover:text-primary">Payment Reminders</div>
+                                <div className="text-xs text-muted-foreground mt-1">Auto-ping 2 parents (Renew Due)</div>
                             </button>
                         </div>
                     </div>

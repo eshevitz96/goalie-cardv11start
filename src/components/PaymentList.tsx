@@ -52,16 +52,16 @@ export function PaymentList({ rosterId }: { rosterId?: string }) {
     return (
         <div className="w-full space-y-4">
             <div className="flex items-end justify-between mb-4">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
                     <CreditCard className="text-accent" />
                     Payment History
                 </h3>
-                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Stripe Secure</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stripe Secure</span>
             </div>
 
             <div className="space-y-3">
                 {payments.length === 0 ? (
-                    <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl text-center text-zinc-500 text-sm">
+                    <div className="bg-card/50 border border-border p-4 rounded-xl text-center text-muted-foreground text-sm">
                         No payment history found.
                     </div>
                 ) : (
@@ -71,7 +71,7 @@ export function PaymentList({ rosterId }: { rosterId?: string }) {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="group relative overflow-hidden bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl flex items-center justify-between hover:bg-zinc-800/80 transition-colors"
+                            className="group relative overflow-hidden bg-card/50 border border-border p-4 rounded-xl flex items-center justify-between hover:bg-muted/80 transition-colors"
                         >
                             <div className="flex items-center gap-4">
                                 <div
@@ -89,16 +89,16 @@ export function PaymentList({ rosterId }: { rosterId?: string }) {
                                     )}
                                 </div>
                                 <div>
-                                    <div className="text-white font-bold">{new Date(payment.created_at).toLocaleDateString()}</div>
-                                    <div className="text-xs text-zinc-500 flex items-center gap-1.5">
+                                    <div className="text-foreground font-bold">{new Date(payment.created_at).toLocaleDateString()}</div>
+                                    <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                                         <span>{payment.stripe_payment_intent_id?.slice(-8) || 'Stripe'}</span>
-                                        <span className="w-1 h-1 rounded-full bg-zinc-600" />
-                                        <span className="text-zinc-400">{payment.description || 'Payment'}</span>
+                                        <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                                        <span className="text-muted-foreground">{payment.description || 'Payment'}</span>
                                     </div>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="text-lg font-bold text-white">{formatCurrency(payment.amount)}</div>
+                                <div className="text-lg font-bold text-foreground">{formatCurrency(payment.amount)}</div>
                                 <div
                                     className={clsx(
                                         "text-xs font-medium uppercase tracking-wider",
@@ -112,7 +112,7 @@ export function PaymentList({ rosterId }: { rosterId?: string }) {
                     )))}
             </div>
 
-            <Link href="/parent/payments" className="w-full mt-4 py-3 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition-all text-sm font-medium flex items-center justify-center">
+            <Link href="/parent/payments" className="w-full mt-4 py-3 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:border-primary transition-all text-sm font-medium flex items-center justify-center">
                 View All Transactions
             </Link>
         </div>

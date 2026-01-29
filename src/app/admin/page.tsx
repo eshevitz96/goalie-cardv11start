@@ -1,75 +1,90 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/utils/supabase/client';
+import { motion } from 'framer-motion';
+import clsx from 'clsx';
 import {
-    Upload,
-    FileSpreadsheet,
-    CheckCircle2,
-    Search,
-    Users,
-    Shield,
-    Download,
-    Trash2,
-    RefreshCw,
-    Loader2,
-    AlertCircle,
-    DollarSign,
-    Plus,
-    X,
-    Pencil
-} from "lucide-react";
-import { useState, useEffect } from "react";
-import { clsx } from "clsx";
-import { supabase } from "@/utils/supabase/client";
+    Loader2, UploadCloud, CheckCircle, Database, Search,
+    X, Trash2, Pencil, Users, Shield, DollarSign,
+    RefreshCw, FileSpreadsheet, Plus, BarChart3
+} from 'lucide-react';
+import TrainingInsights from '@/components/TrainingInsights';
 
-// Type for the DB data
 type RosterItem = {
-    id: number;
+    id: string;
+    email: string;
     goalie_name: string;
-    email: string; // parent email
-    grad_year: number;
-    team: string;
     parent_name: string;
     parent_phone: string;
+    grad_year: number;
+    team: string;
     assigned_unique_id: string;
+    assigned_coach_id: string | null;
     is_claimed: boolean;
+    payment_status: string;
+    amount_paid: number;
+    session_count: string; // often stored as text/int
+    lesson_count: string;
+    raw_data: Record<string, any>;
     created_at: string;
-    payment_status?: string;
-    amount_paid?: number;
-    assigned_coach_id?: string;
 };
 
 export default function AdminDashboard() {
-    const [isDragging, setIsDragging] = useState(false);
-    const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
-    const [dbData, setDbData] = useState<RosterItem[]>([]);
+    // UI State
+    const [activeTab, setActiveTab] = useState<'roster' | 'insights' | 'sessions'>('roster');
     const [isLoading, setIsLoading] = useState(true);
+    const [isDragging, setIsDragging] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
     const [searchTerm, setSearchTerm] = useState("");
+
+    // Data State
+    const [dbData, setDbData] = useState<RosterItem[]>([]);
+    const [coaches, setCoaches] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<any[]>([]);
+
+    // Refs
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Modal State
     const [showManualAdd, setShowManualAdd] = useState(false);
-    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [manualForm, setManualForm] = useState({
         firstName: "",
         lastName: "",
         email: "",
+        goalieEmail: "",
         team: "",
         gradYear: "2030",
         parentName: "",
         phone: "",
-        coachId: ""
+        coachId: "",
+        rawData: {} as any
     });
+    const [targetGoalieId, setTargetGoalieId] = useState<string>("");
 
-    const [coaches, setCoaches] = useState<any[]>([]); // {id, name}
-
-    // Fetch Real Data on Mount
     useEffect(() => {
         fetchRoster();
         fetchCoaches();
+        fetchSessions();
     }, []);
 
+    const [currentUser, setCurrentUser] = useState<any>(null);
+
     const fetchCoaches = async () => {
+        // 1. Get Current User
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            setCurrentUser({ ...user, role: profile?.role || 'user' });
+
+            if (profile?.role !== 'admin') {
+                alert("WARNING: You are logged in as '" + (profile?.role || 'user') + "', but you need 'admin' rights to upload CSVs.\\nPlease update your role in the 'profiles' table.");
+            }
+        }
+
         const { data } = await supabase.from('profiles').select('id, goalie_name').eq('role', 'coach');
         if (data) {
-            // Mapping goalie_name to 'Coach Name' since we reuse the profile table
             setCoaches(data.map(c => ({ id: c.id, name: c.goalie_name || 'Unnamed Coach' })));
         }
     };
@@ -91,61 +106,414 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleClearDatabase = async () => {
-        if (!confirm("ARE YOU SURE? This will delete ALL goalie records (`roster_uploads`). This action cannot be undone.")) return;
+    const fetchSessions = async () => {
+        const { data, error } = await supabase
+            .from('sessions')
+            .select(`
+                *,
+                roster:roster_uploads (goalie_name, assigned_unique_id, team)
+            `)
+            .order('date', { ascending: false });
 
+        if (data) setSessions(data);
+    };
+
+    // CSV Parsing Logic
+    const parseAndUpload = async (csvText: string) => {
+        setUploadStatus("processing");
         try {
-            setIsLoading(true);
-            const { error } = await supabase.from('roster_uploads').delete().neq('id', 0); // Delete all
-            if (error) throw error;
+            // Pre-process: Remove BOM if present
+            csvText = csvText.replace(/^\uFEFF/, '');
+
+            const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
+            if (lines.length < 2) {
+                alert("CSV is empty or invalid.");
+                setUploadStatus("error");
+                return;
+            }
+
+            // Helper to split CSV lines correctly (handling quotes)
+            const splitLine = (line: string) => {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                result.push(current.trim());
+                return result;
+            };
+
+            // Header Detection
+            // Look for the first row that contains "Email" or "Goalie Name"
+            let headerRowIndex = 0;
+            let map = {
+                email: -1,
+                firstName: -1,
+                lastName: -1,
+                fullName: -1,
+                gradYear: -1,
+                team: -1,
+                school: -1,
+                parentFirst: -1,
+                parentLast: -1,
+                parentName: -1, // Full Name fallback
+                phone: -1,
+                // Training Counts
+                sessionCount: -1,
+                lessonCount: -1,
+                // Session History Details
+                date: -1,
+                startTime: -1,
+                endTime: -1,
+                location: -1,
+                notes: -1,
+                coach: -1
+            };
+
+            let rawHeaders: string[] = [];
+
+            // Find the selected goalie object if any
+            const targetGoalie = dbData.find(g => g.id === targetGoalieId);
+
+            for (let i = 0; i < Math.min(lines.length, 10); i++) {
+                const row = splitLine(lines[i].toLowerCase());
+
+                // Enhanced Detection: If target is set, we can look for Date/Session headers too
+                const isStandardHeader = row.some(c => c.includes('email') || c.includes('goalie'));
+                const isDataHeader = targetGoalieId && row.some(c => c.includes('date') || c.includes('session') || c.includes('s#') || c.includes('notes'));
+
+                if (isStandardHeader || isDataHeader) {
+                    headerRowIndex = i;
+                    rawHeaders = splitLine(lines[i]); // Keep original case for raw_data
+                    const potentialHeaders = row;
+
+                    map = {
+                        email: potentialHeaders.findIndex(h => h === 'email' || h === 'parent email' || h.includes('email')),
+                        firstName: potentialHeaders.findIndex(h => h === 'first' || h.includes('first name') || h === 'goalie first'),
+                        lastName: potentialHeaders.findIndex(h => h === 'last' || h.includes('last name') || h === 'goalie last'),
+                        fullName: potentialHeaders.findIndex(h => h === 'name' || h === 'goalie' || h === 'goalie name' || h === 'player'),
+                        gradYear: potentialHeaders.findIndex(h => h.includes('year') || h.includes('grad') || h.includes('dob') || h.includes('birth')),
+                        team: potentialHeaders.findIndex(h => h.includes('team') || h.includes('club')),
+                        school: potentialHeaders.findIndex(h => h.includes('school')),
+                        parentFirst: potentialHeaders.findIndex(h => h.includes('parent first') || h.includes('mom') || h.includes('dad')),
+                        parentLast: potentialHeaders.findIndex(h => h.includes('parent last')),
+                        parentName: potentialHeaders.findIndex(h => h.includes('parent') && !h.includes('email') && !h.includes('phone')),
+                        phone: potentialHeaders.findIndex(h => h.includes('phone') || h.includes('cell') || h.includes('mobile')),
+
+                        sessionCount: potentialHeaders.findIndex(h => h === 's#' || h === 'session' || h.includes('session number') || h.includes('session #') || (h.includes('session') && (h.includes('count') || h.includes('completed') || h.includes('#')))),
+                        lessonCount: potentialHeaders.findIndex(h => h === 'l#' || h === 'lesson' || h.includes('lesson number') || h.includes('lesson #') || (h.includes('lesson') && (h.includes('count') || h.includes('completed') || h.includes('#')))),
+
+                        date: potentialHeaders.findIndex(h => h.includes('date') || h.includes('start datetime')), // Catch 'Start Datetime' as valid date source
+                        startTime: potentialHeaders.findIndex(h => (h.includes('start') && (h.includes('time') || h.includes('datetime')))),
+                        endTime: potentialHeaders.findIndex(h => (h.includes('end') && (h.includes('time') || h.includes('datetime')))),
+                        location: potentialHeaders.findIndex(h => h.includes('location') || h.includes('rink') || h.includes('venue')),
+                        notes: potentialHeaders.findIndex(h => h.includes('notes') || h.includes('comments') || h.includes('raw summary')), // Catch 'raw summary'
+                        coach: potentialHeaders.findIndex(h => h.includes('coach') || h.includes('instructor'))
+                    };
+                    console.log("CSV Header Mapping:", map); // DEBUG
+
+                    if (map.email === -1 && !targetGoalie) {
+                        alert(`Error: Could not find an 'Email' column in the CSV.\n\nHeaders Found: ${potentialHeaders.join(', ')}\n\nEither add an 'Email' column OR select a 'Target Goalie' from the dropdown above to force-assign these records.`);
+                        setUploadStatus("error");
+                        return;
+                    }
+                    break;
+                }
+            }
+
+            // FORCE DEFAULTS
+            if (map.firstName === -1 && map.fullName === -1) map.firstName = 1;
+            if (map.lastName === -1 && map.fullName === -1) map.lastName = 2;
+
+            // 0. Pre-fetch Data for Intelligence
+            const { data: existingProfiles } = await supabase.from('profiles').select('id, email');
+            const activeEmailMap = new Map<string, string>(); // email -> uuid
+            existingProfiles?.forEach(p => {
+                if (p.email) activeEmailMap.set(p.email.toLowerCase(), p.id);
+            });
+
+            const activeEmails = new Set(activeEmailMap.keys());
+
+            const allParsedRows = lines.slice(headerRowIndex + 1).map((line, idx) => {
+                if (line.length > 500 || line.includes("https://") || line.toLowerCase().includes("leave blank")) return null;
+                const values = splitLine(line);
+
+                // Capture Raw Data
+                const rawData: Record<string, any> = {};
+                rawHeaders.forEach((h, i) => {
+                    if (values[i]) rawData[h] = values[i];
+                });
+
+                const clean = (s: string) => s ? s.replace(/\0/g, '').replace(/\\/g, '').trim() : "";
+                const getVal = (idx: number) => (idx > -1 && values[idx]) ? clean(values[idx]) : "";
+
+                let goalieName = "Unknown";
+                if (map.firstName > -1 && map.lastName > -1) {
+                    goalieName = `${getVal(map.firstName)} ${getVal(map.lastName)}`.trim();
+                } else if (map.fullName > -1) {
+                    goalieName = getVal(map.fullName);
+                } else {
+                    goalieName = `${clean(values[1] || '')} ${clean(values[2] || '')}`.trim();
+                }
+
+                // Coach Assignment (Default to Elliott if not specified)
+                let coachName = getVal(map.coach);
+                if (!coachName || coachName.length < 2) coachName = "Elliott Shevitz";
+
+                let parentNameStr = "Unknown Parent";
+                if (map.parentFirst > -1 && map.parentLast > -1) {
+                    parentNameStr = `${getVal(map.parentFirst)} ${getVal(map.parentLast)}`.trim();
+                } else if (map.parentName > -1) {
+                    parentNameStr = getVal(map.parentName);
+                }
+
+                let team = getVal(map.team) || getVal(map.school) || "Unassigned";
+
+                let email = "";
+                if (targetGoalie) {
+                    email = targetGoalie.email;
+                    goalieName = targetGoalie.goalie_name;
+                } else {
+                    email = getVal(map.email);
+                    if (!email || !email.includes('@')) {
+                        email = values.find(v => v.includes('@') && v.includes('.') && !v.includes(' ')) || "";
+                    }
+                }
+                email = clean(email);
+
+                // Auto-Link Logic
+                let existingRecord = dbData.find(r => r.email?.toLowerCase() === email.toLowerCase());
+                if (!existingRecord && !email && goalieName && goalieName !== "Unknown") {
+                    existingRecord = dbData.find(r => r.goalie_name?.toLowerCase().trim() === goalieName.toLowerCase().trim());
+                    if (existingRecord) email = existingRecord.email;
+                }
+
+                if (!email || email.includes(' ') || email.length > 100) {
+                    console.warn(`Skipping row ${idx}: Invalid Email (${email})`, values);
+                    return null;
+                }
+
+                let gradYear = getVal(map.gradYear);
+                if (!gradYear && targetGoalie) gradYear = targetGoalie.grad_year.toString();
+                if (!gradYear) gradYear = values.find(v => v.match(/^20[2-3][0-9]$/)) || "2030";
+
+                // Counts
+                const sCount = parseInt(getVal(map.sessionCount)) || 0;
+                const lCount = parseInt(getVal(map.lessonCount)) || 0;
+
+                // Dates
+                const dateStr = getVal(map.date);
+                let isoDate = null;
+                let finalLocation = getVal(map.location);
+
+                if (dateStr) {
+                    const d = new Date(dateStr);
+                    if (!isNaN(d.getTime())) isoDate = d.toISOString();
+                }
+
+                // Default fallback if no date found
+                if (!isoDate) {
+                    const d = new Date("2024-01-01T12:00:00Z");
+                    isoDate = d.toISOString();
+                    if (!finalLocation) finalLocation = "";
+                } else {
+                    if (!finalLocation) finalLocation = "Unknown Location";
+                }
+
+                // ID Logic: Preserve existing or Generate new based on MAX ID
+                // We calculate maxId outside to ensure safety
+                const currentMaxId = dbData.reduce((max, item) => {
+                    const parts = item.assigned_unique_id?.split('-') || [];
+                    const num = parseInt(parts[1] || '0');
+                    if (isNaN(num)) return max;
+                    return num > max ? num : max;
+                }, 7999);
+
+                let uniqueId = targetGoalie ? targetGoalie.assigned_unique_id : existingRecord?.assigned_unique_id;
+
+                // If we need a new ID, we must be careful not to collide with others in this SAME batch
+                // We'll use a virtual index for new items only, but since we are in a map, 
+                // we can just use the loop index + max + offset. 
+                // Better: use a counter if we could, but map is functional.
+                // Safe bet: max + 1 + idx. (Even if idx 0 was an existing user, it's fine, we just skip "holes" potentially, 
+                // but for new users, we will definitely be > max).
+                if (!uniqueId) {
+                    // To avoid collisions within the batch itself if we have multiple new users,
+                    // we simply add the current index to the max.
+                    // Note: This leaves gaps if some indices were existing users, but guarantees uniqueness.
+                    uniqueId = `GC-${currentMaxId + 1 + idx}`;
+                }
+
+                // Claimed Status Logic
+                // If they have a profile, they are claimed.
+                const isClaimed = activeEmails.has(email.toLowerCase());
+
+                const payload: any = {
+                    email: email,
+                    goalie_name: goalieName,
+                    parent_name: parentNameStr,
+                    parent_phone: getVal(map.phone),
+                    grad_year: parseInt(gradYear) || 2030,
+                    team: team,
+                    assigned_unique_id: uniqueId,
+                    session_count: sCount,
+                    lesson_count: lCount,
+                    raw_data: { ...rawData, _coachName: coachName },
+                    _session_log: {
+                        date: isoDate,
+                        start_time: getVal(map.startTime) ? new Date(getVal(map.startTime)).toISOString() : null,
+                        end_time: getVal(map.endTime) ? new Date(getVal(map.endTime)).toISOString() : null,
+                        location: finalLocation,
+                        notes: getVal(map.notes),
+                        session_number: sCount,
+                        lesson_number: lCount
+                    }
+                };
+
+                // Only strictly enforce true. If false, let DB decide (unless we strongly want reset, but usually preserving current state is safer if logic is complex).
+                // Actually, if activeEmails has it, we MUST set it to true.
+                if (isClaimed) payload.is_claimed = true;
+
+                return payload;
+            }).filter(item => item !== null);
+
+            // 1. Roster Update (Upsert)
+            const uniquePayload = Array.from(new Map(allParsedRows.map(item => {
+                const { _session_log, ...cleanItem } = item; // Explicitly remove _session_log
+                return [cleanItem.email, cleanItem];
+            })).values());
+
+            console.log(`Parsed ${allParsedRows.length} rows. Unique payloads: ${uniquePayload.length}`);
+
+            if (uniquePayload.length === 0) {
+                alert("Upload Failed: No valid rows found! Please check your CSV format.\nEnsure there is a valid 'Email' column and that the file is not empty.");
+                setUploadStatus("error");
+                return;
+            }
+
+            const { error } = await supabase.from('roster_uploads').upsert(uniquePayload, { onConflict: 'email' });
+
+            if (error) {
+                throw new Error("Roster Update Failed: " + error.message);
+            }
+
+            // 2. Session History Update
+            // Get IDs
+            const { data: currentRoster, error: fetchError } = await supabase.from('roster_uploads').select('id, email');
+            if (fetchError) throw new Error("Failed to fetch fresh roster: " + fetchError.message);
+
+            const emailToId: Record<string, string> = {};
+            currentRoster?.forEach(r => emailToId[r.email.toLowerCase()] = r.id);
+
+            const sessionRows: any[] = [];
+            const affectedRosterIds = new Set<string>();
+
+            allParsedRows.forEach(row => {
+                const emailKey = row.email.toLowerCase();
+                if (row._session_log?.date && emailToId[emailKey]) {
+                    const rId = emailToId[emailKey];
+                    affectedRosterIds.add(rId);
+                    sessionRows.push({
+                        roster_id: rId,
+                        date: row._session_log.date,
+                        start_time: row._session_log.start_time || row._session_log.date,
+                        end_time: row._session_log.end_time || row._session_log.date, // Prevent null constraint if strict
+                        location: row._session_log.location || "Unknown",
+                        notes: row._session_log.notes,
+                        session_number: row._session_log.session_number,
+                        lesson_number: row._session_log.lesson_number,
+                        is_active: false
+                    });
+                }
+            });
+
+            console.log(`Matched ${sessionRows.length} session logs for import.`);
+
+            if (sessionRows.length > 0) {
+                const affectedIdsArray = Array.from(affectedRosterIds);
+
+                // Batch Delete
+                const deleteBatchSize = 100;
+                for (let i = 0; i < affectedIdsArray.length; i += deleteBatchSize) {
+                    const batch = affectedIdsArray.slice(i, i + deleteBatchSize);
+                    const { error: deleteError } = await supabase.from('sessions').delete().in('roster_id', batch);
+                    if (deleteError) throw new Error("Failed to clear old sessions: " + deleteError.message);
+                }
+
+                // Batch Insert
+                const insertBatchSize = 100;
+                for (let i = 0; i < sessionRows.length; i += insertBatchSize) {
+                    const batch = sessionRows.slice(i, i + insertBatchSize);
+                    const { error: insertError } = await supabase.from('sessions').insert(batch);
+                    if (insertError) throw new Error("Failed to insert sessions: " + insertError.message);
+                }
+            }
+
+            setUploadStatus("success");
             await fetchRoster();
-            alert("Database Cleared.");
+            setTimeout(() => setUploadStatus("idle"), 3000);
+
         } catch (e: any) {
-            console.error(e);
-            alert("Failed to delete. Check RLS policies (SQL). " + e.message);
-        } finally {
-            setIsLoading(false);
+            console.error("Upload Error:", e);
+            setUploadStatus("error");
+            alert("Upload Error: " + (e.message || "Unknown error occurred"));
         }
     };
 
-    const handleDeleteRow = async (id: number) => {
-        if (!confirm("Delete this record?")) return;
-        try {
-            const { error } = await supabase.from('roster_uploads').delete().eq('id', id);
-            if (error) throw error;
-            await fetchRoster();
-        } catch (e: any) {
-            alert("Delete failed: " + e.message);
-        }
-    };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
-
-    const handleDragLeave = () => {
-        setIsDragging(false);
-    };
-
+    // Helper Actions
+    const handleDrag = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(e.type === 'dragenter' || e.type === 'dragover'); };
     const handleDrop = async (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-
         const file = e.dataTransfer.files[0];
+        if (file) parseAndUpload(await file.text());
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
         if (file) {
-            const text = await file.text();
-            await parseAndUpload(text);
+            parseAndUpload(await file.text());
+            // Reset input value to allow selecting the same file again
+            e.target.value = '';
         }
+    };
+
+    const handleEditClick = (entry: any) => {
+        setEditingId(entry.id);
+        const [first, ...last] = (entry.goalie_name || "").split(" ");
+        setManualForm({
+            firstName: first || "",
+            lastName: last.join(" ") || "",
+            email: entry.email,
+            goalieEmail: entry.raw_data?.goalie_email || "",
+            team: entry.team,
+            gradYear: entry.grad_year?.toString() || "2030",
+            parentName: entry.parent_name || "",
+            phone: entry.parent_phone || "",
+            coachId: entry.assigned_coach_id || "",
+            rawData: entry.raw_data || {}
+        });
+        setShowManualAdd(true);
+    };
+
+    const closeModal = () => {
+        setShowManualAdd(false);
+        setEditingId(null);
+        setEditingId(null);
+        setManualForm({ firstName: "", lastName: "", email: "", goalieEmail: "", team: "", gradYear: "2030", parentName: "", phone: "", coachId: "", rawData: {} });
     };
 
     const handleManualSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!manualForm.email || !manualForm.firstName || !manualForm.lastName) {
-            alert("Email, First Name, and Last Name are required.");
-            return;
-        }
-
         try {
             const payload = {
                 email: manualForm.email,
@@ -154,640 +522,343 @@ export default function AdminDashboard() {
                 parent_phone: manualForm.phone,
                 grad_year: parseInt(manualForm.gradYear) || 2030,
                 team: manualForm.team || "Unassigned",
-                assigned_coach_id: manualForm.coachId === "" ? null : manualForm.coachId
+                assigned_coach_id: manualForm.coachId === "" ? null : manualForm.coachId,
+                raw_data: { ...manualForm.rawData, goalie_email: manualForm.goalieEmail }
             };
 
             if (editingId) {
-                // UPDATE Existing
-                const { error } = await supabase.from('roster_uploads').update(payload).eq('id', editingId);
-                if (error) throw error;
-                alert("Goalie Updated!");
+                await supabase.from('roster_uploads').update(payload).eq('id', editingId);
             } else {
-                // CREATE New
-                const uniqueId = `GC-${8000 + dbData.length + Math.floor(Math.random() * 999)}`;
-                const { error } = await supabase.from('roster_uploads').insert([{
-                    ...payload,
-                    assigned_unique_id: uniqueId,
-                    is_claimed: false,
-                    payment_status: 'pending',
-                    amount_paid: 0
-                }]);
-                if (error) throw error;
-                alert("Goalie Added Successfully!");
-            }
+                // Calculate next ID strictly based on MAX existing ID to ensure GC-8XXX standard
+                const currentMaxId = dbData.reduce((max, item) => {
+                    const parts = item.assigned_unique_id?.split('-') || [];
+                    if (parts[0] !== 'GC') return max;
+                    const num = parseInt(parts[1] || '0');
+                    if (isNaN(num)) return max;
+                    // Only consider IDs in the 8000+ range to stick to standard
+                    return (num >= 8000 && num > max) ? num : max;
+                }, 7999);
 
+                const nextId = currentMaxId + 1;
+                const uniqueId = `GC-${nextId}`;
+
+                await supabase.from('roster_uploads').insert([{ ...payload, assigned_unique_id: uniqueId, is_claimed: true, payment_status: 'paid' }]); // Defaulting to claimed/paid for admin-created users
+            }
             closeModal();
-            await fetchRoster();
-
+            fetchRoster();
         } catch (err: any) {
-            alert("Error: " + err.message);
+            alert(err.message);
         }
     };
 
-    const handleEditClick = (item: RosterItem) => {
-        const nameParts = item.goalie_name.split(' ');
-        const firstName = nameParts[0] || "";
-        const lastName = nameParts.slice(1).join(' ') || "";
+    const handleDelete = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this goalie? This action cannot be undone.")) return;
 
-        setManualForm({
-            firstName,
-            lastName,
-            email: item.email || "",
-            team: item.team || "",
-            gradYear: item.grad_year?.toString() || "2030",
-            parentName: item.parent_name || "",
-            phone: item.parent_phone || "",
-            coachId: item.assigned_coach_id || ""
-        });
-        setEditingId(item.id);
-        setShowManualAdd(true);
-    };
+        try {
+            // Delete sessions first (if not cascading)
+            const { error: sessionError } = await supabase.from('sessions').delete().eq('roster_id', id);
 
-    const closeModal = () => {
-        setManualForm({ firstName: "", lastName: "", email: "", team: "", gradYear: "2030", parentName: "", phone: "", coachId: "" });
-        setEditingId(null);
-        setShowManualAdd(false);
-    };
+            const { error } = await supabase.from('roster_uploads').delete().eq('id', id);
 
-    // --- SMART PARSER ---
-    const parseAndUpload = async (text: string) => {
-        setUploadStatus("uploading");
-        const lines = text.split('\n').filter(l => l.trim().length > 0);
+            if (error) throw error;
 
-        if (lines.length < 1) {
-            alert("Empty File");
-            setUploadStatus("error");
-            return;
-        }
-
-        // 1. Identify Header Row (Strict Search)
-        let headerRowIndex = 0;
-        let foundHeader = false;
-
-        // Scan first 50 lines to find the REAL header
-        for (let i = 0; i < Math.min(lines.length, 50); i++) {
-            const rowLower = lines[i].toLowerCase();
-            // Look for specific known headers from your screenshot
-            if (rowLower.includes('player first name') || rowLower.includes('player last name') || (rowLower.includes('email') && rowLower.includes('name') && rowLower.length < 300)) {
-                headerRowIndex = i;
-                foundHeader = true;
-                break;
-            }
-        }
-
-        if (!foundHeader) {
-            console.warn("Could not auto-detect header row. Defaulting to row 0.");
-        }
-
-        // 2. Identify Delimiter (Smart Check)
-        const headerLine = lines[headerRowIndex];
-        // Count occurrences
-        const commas = (headerLine.match(/,/g) || []).length;
-        const tabs = (headerLine.match(/\t/g) || []).length;
-        const semis = (headerLine.match(/;/g) || []).length;
-
-        let delimiter = ',';
-        if (tabs > commas && tabs > semis) delimiter = '\t';
-        else if (semis > commas && semis > tabs) delimiter = ';';
-
-        console.log(`Detected Delimiter: '${delimiter}' (Commas: ${commas}, Tabs: ${tabs}, Semis: ${semis})`);
-
-        // Robust Splitter
-        const splitLine = (line: string) => {
-            if (delimiter === '\t') return line.split('\t').map(v => v.trim());
-            if (delimiter === ';') return line.split(';').map(v => v.trim());
-
-            // Comma Regex that handles quotes correctly
-            // Matches: , followed by even number of quotes (meaning we are outside a quoted string)
-            const parts = [];
-            let current = '';
-            let inQuote = false;
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') { inQuote = !inQuote; continue; }
-                if (char === ',' && !inQuote) {
-                    parts.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            parts.push(current.trim());
-            return parts;
-        };
-
-        const potentialHeaders = splitLine(headerLine).map(h => h.toLowerCase().replace(/['"]+/g, '').trim());
-
-        // Map Columns dyanmically
-        const map = {
-            email: potentialHeaders.findIndex(h => h.includes('email') || h.includes('address')),
-            firstName: potentialHeaders.findIndex(h => h.includes('first') && h.includes('name') && !h.includes('parent') && !h.includes('guardian')),
-            lastName: potentialHeaders.findIndex(h => h.includes('last') && h.includes('name') && !h.includes('parent') && !h.includes('guardian')),
-            fullName: potentialHeaders.findIndex(h => h === 'name' || h === 'goalie name' || h === 'player name' || h === 'goalie'),
-            gradYear: potentialHeaders.findIndex(h => h.includes('grad') || h.includes('year') || h.includes('class')),
-            team: potentialHeaders.findIndex(h => h.includes('club') || h.includes('team') || h.includes('organization') || h.includes('club team name')),
-            school: potentialHeaders.findIndex(h => h.includes('school') || h.includes('district')),
-            // Parent Logic: Split or Full
-            parentFirst: potentialHeaders.findIndex(h => (h.includes('guardian') || h.includes('parent')) && h.includes('first')),
-            parentLast: potentialHeaders.findIndex(h => (h.includes('guardian') || h.includes('parent')) && h.includes('last')),
-            // Fallback for single "Guardian Name" column (ensure we don't grab Phone/Email or the First/Last cols we just found)
-            parentName: potentialHeaders.findIndex(h => (h.includes('guardian') || h.includes('parent') || h.includes('mother') || h.includes('father')) && !h.includes('email') && !h.includes('phone') && !h.includes('first') && !h.includes('last')),
-            phone: potentialHeaders.findIndex(h => h.includes('phone') || h.includes('cell') || h.includes('mobile'))
-        };
-
-        // FORCE DEFAULTS (Col 1=First, Col 2=Last)
-        if (map.firstName === -1 && map.fullName === -1) map.firstName = 1;
-        if (map.lastName === -1 && map.fullName === -1) map.lastName = 2;
-        // Fallback for Parent Name (Col 13/Index 12) per user guide
-        if (map.parentName === -1 && map.parentFirst === -1 && potentialHeaders.length > 12) map.parentName = 12;
-
-        console.log("Detected Columns:", map, "at Row:", headerRowIndex);
-
-        const payload = lines.slice(headerRowIndex + 1).map((line, idx) => {
-            // Skip garbage lines (empty or crazy long instructions)
-            if (line.length > 500 || line.includes("https://") || line.toLowerCase().includes("leave blank")) return null;
-
-            const values = splitLine(line);
-
-            // Helpers: Aggressive Sanitization
-            // Removes Null Bytes (\0) and Backslashes (\) which confuse Postgres
-            const clean = (s: string) => s ? s.replace(/\0/g, '').replace(/\\/g, '').trim() : "";
-            const getVal = (idx: number) => (idx > -1 && values[idx]) ? clean(values[idx]) : "";
-
-            // Logic: Goalie Name
-            let goalieName = "Unknown";
-            if (map.firstName > -1 && map.lastName > -1) {
-                const first = getVal(map.firstName);
-                const last = getVal(map.lastName);
-                goalieName = `${first.replace(/['"]+/g, '')} ${last.replace(/['"]+/g, '')}`.trim();
-            } else if (map.fullName > -1) {
-                goalieName = getVal(map.fullName);
-            } else {
-                // Double Fallback (Explicitly 1 and 2)
-                const first = values[1] || "";
-                const last = values[2] || "";
-                goalieName = `${clean(first).replace(/['"]+/g, '')} ${clean(last).replace(/['"]+/g, '')}`.trim();
-            }
-
-            // Logic: Parent Name (Handle Split or Full)
-            let parentNameStr = "Unknown Parent";
-            if (map.parentFirst > -1 && map.parentLast > -1) {
-                parentNameStr = `${getVal(map.parentFirst)} ${getVal(map.parentLast)}`.trim();
-            } else if (map.parentName > -1) {
-                parentNameStr = getVal(map.parentName);
-            }
-
-            // Logic: Team
-            let team = getVal(map.team);
-            const school = getVal(map.school);
-            if (!team && school) {
-                team = school;
-            } else if (team && school && team !== school) {
-                team = `${team} (${school})`;
-            }
-            if (!team) team = "Unassigned";
-
-            // Email Logic
-            let email = getVal(map.email);
-            if (!email || !email.includes('@')) {
-                email = values.find(v => v.includes('@') && v.includes('.') && !v.includes(' ') && !v.includes('\\')) || "";
-            }
-            email = clean(email);
-            // Strict Email check to avoid "instructions" being valid
-            if (!email || email.includes(' ') || email.length > 100) return null;
-
-            // Grad Year
-            let gradYear = getVal(map.gradYear);
-            if (!gradYear) gradYear = values.find(v => v.match(/^20[2-3][0-9]$/)) || "2030";
-
-            // ID Generation (Strict GC-XXXX format)
-            // Use 8000 base + index ensuring 4 digits
-            const idNum = 8000 + (dbData.length || 0) + idx;
-            const uniqueId = `GC-${idNum}`;
-
-            return {
-                email: email,
-                goalie_name: goalieName,
-                parent_name: parentNameStr,
-                parent_phone: getVal(map.phone),
-                grad_year: parseInt(gradYear) || 2030,
-                team: team,
-                assigned_unique_id: uniqueId,
-                is_claimed: false,
-                payment_status: 'pending',
-                amount_paid: 0
-            };
-        }).filter(item => item !== null); // Remove nulls
-
-        // Deduplicate Payload by Email (Keep last occurrence)
-        const uniquePayload = Array.from(
-            new Map(payload.map(item => [item.email, item])).values()
-        );
-
-        // 2. Perform Supabase Insert (Upsert to handle duplicates)
-        const { error } = await supabase.from('roster_uploads').upsert(uniquePayload, { onConflict: 'email' });
-
-        if (error) {
-            console.error(error);
-            setUploadStatus("error");
-            alert("Upload failed: " + error.message + "\n\nPossible Causes:\n1. CSV encoding (try saving as standard .csv).\n2. Database Schema issue.");
-        } else {
-            setUploadStatus("success");
-            await fetchRoster();
+            alert("Goalie deleted successfully.");
+            fetchRoster();
+        } catch (err: any) {
+            console.error("Delete failure:", err);
+            alert("Delete failed: " + err.message);
         }
     };
-
-    // Filter Logic
-    const filteredData = dbData.filter(item =>
-        item.goalie_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.assigned_unique_id?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const pendingCount = dbData.filter(i => !i.is_claimed).length;
-
-    // Revenue Calc
-    const totalRevenue = dbData.reduce((acc, item) => acc + (Number(item.amount_paid) || 0), 0);
 
     return (
-        <main className="min-h-screen bg-black text-white p-4 md:p-8">
-            <header className="flex justify-between items-center mb-10">
+        <div className="min-h-screen bg-background text-foreground p-8 font-sans">
+            <header className="max-w-7xl mx-auto mb-12 flex justify-between items-center glass p-6 rounded-2xl">
                 <div>
-                    <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em] mb-1">System Administration</h2>
-                    <h1 className="text-3xl font-black italic tracking-tighter">
-                        ADMIN<span className="text-primary">CONSOLE</span>
+                    <h1 className="text-4xl font-black tracking-tight text-foreground">
+                        Admin Console
                     </h1>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-end mr-4">
-                        <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Total Revenue</span>
-                        <span className="text-lg font-mono font-bold text-emerald-500">${totalRevenue.toLocaleString()}</span>
+                    <div className="flex items-center gap-2 mt-2">
+                        <p className="text-muted-foreground font-medium">Master Command Center</p>
+                        {currentUser && (
+                            <>
+                                <span className={`px-2 py-0.5 rounded text-xs uppercase font-bold ${currentUser.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-red-500/10 text-red-500'}`}>
+                                    {currentUser.role}
+                                </span>
+                                <span className="text-xs text-muted-foreground">({currentUser.email})</span>
+                            </>
+                        )}
                     </div>
-                    <div className="h-8 w-[1px] bg-zinc-800 mx-2" />
+                </div>
+                <div className="flex gap-2 bg-muted p-1 rounded-lg border border-border">
                     <button
-                        onClick={fetchRoster}
-                        className="h-10 w-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700 hover:bg-zinc-700 transition-colors"
-                        title="Refresh Data"
+                        onClick={() => setActiveTab('roster')}
+                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'roster' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                     >
-                        <RefreshCw size={16} className={clsx(isLoading && "animate-spin")} />
+                        <Database size={16} /> Roster
                     </button>
-                    <button className="h-10 w-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700 hover:bg-zinc-700 transition-colors">
-                        <span className="font-bold text-xs">AD</span>
+                    <button
+                        onClick={() => setActiveTab('sessions')}
+                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'sessions' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                        <FileSpreadsheet size={16} /> Event Log
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('insights')}
+                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'insights' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                        <BarChart3 size={16} /> Training Dashboard
                     </button>
                 </div>
             </header>
 
-            <div className="grid lg:grid-cols-3 gap-8">
-
-                {/* Left Column: Migration Tools */}
-                <div className="lg:col-span-2 space-y-8">
-
-                    {/* Migration Zone */}
-                    <section className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
-                                        <FileSpreadsheet className="text-emerald-500" />
-                                        Smart Import
-                                    </h2>
-                                    <p className="text-zinc-400 text-sm max-w-md">
-                                        Drop any CSV. We'll auto-detect Email, Name, Year, and Team.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleDrop}
-                                className={clsx(
-                                    "border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 flex flex-col items-center justify-center gap-4 group cursor-pointer",
-                                    isDragging
-                                        ? "border-primary bg-primary/10 scale-[1.01]"
-                                        : "border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800/50 bg-zinc-900"
-                                )}
-                            >
-                                {uploadStatus === "success" ? (
-                                    <motion.div
-                                        initial={{ scale: 0.5, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        className="text-emerald-500"
-                                    >
-                                        <CheckCircle2 size={48} className="mb-2 mx-auto" />
-                                        <div className="font-bold text-lg text-white">Import Successful</div>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); setUploadStatus("idle"); }}
-                                            className="mt-4 px-4 py-2 bg-zinc-800 rounded-lg text-xs font-bold text-white hover:bg-zinc-700"
-                                        >
-                                            Process Another File
-                                        </button>
-                                    </motion.div>
-                                ) : uploadStatus === "uploading" ? (
-                                    <div className="flex flex-col items-center animate-pulse">
-                                        <Loader2 size={48} className="text-primary mb-2 animate-spin" />
-                                        <div className="font-bold text-zinc-300">Parsing & Uploading...</div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xl">
-                                            <Upload size={24} className="text-zinc-400 group-hover:text-white" />
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-lg text-white">Drag & Drop CSV</div>
-                                            <div className="text-sm text-zinc-500 mt-1">Auto-mapping enabled</div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
+            <main className="max-w-7xl mx-auto space-y-8">
+                {activeTab === 'insights' ? (
+                    <TrainingInsights />
+                ) : activeTab === 'sessions' ? (
+                    <div className="glass rounded-2xl p-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold flex items-center gap-2">
+                                <FileSpreadsheet className="text-primary" />
+                                Coaching Events Master Log
+                            </h2>
+                            <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold">{sessions.length} Records</span>
                         </div>
-                    </section>
-
-                    {/* Master Database View */}
-                    <section>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold flex items-center gap-2">
-                                <Users className="text-zinc-400" />
-                                Database Records
-                                <span className="bg-zinc-800 text-zinc-400 text-[10px] px-2 py-0.5 rounded-full border border-zinc-700">{dbData.length}</span>
-                            </h3>
-
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setShowManualAdd(true)}
-                                    className="bg-primary hover:bg-primary/80 text-black text-xs font-bold px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
-                                >
-                                    <Plus size={14} /> Add Goalie
-                                </button>
-                                <button
-                                    onClick={handleClearDatabase}
-                                    className="bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 border border-red-500/20 text-xs font-bold px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
-                                >
-                                    <Trash2 size={14} /> Reset Roster
-                                </button>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
-                                    <input
-                                        type="text"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Search..."
-                                        className="bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-primary w-48"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-zinc-950/50 text-xs uppercase text-zinc-500 font-semibold tracking-wider border-b border-zinc-800">
-                                    <tr>
-                                        <th className="p-4 pl-6">Goalie</th>
-                                        <th className="p-4">Email</th>
-                                        <th className="p-4">ID</th>
-                                        <th className="p-4">Payment</th>{/* New Column */}
-                                        <th className="p-4">Status</th>
-                                        <th className="p-4 text-right">Action</th>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                    <tr className="border-b border-white/10 text-gray-400">
+                                        <th className="p-4">Date</th>
+                                        <th className="p-4">Goalie / ID</th>
+                                        <th className="p-4">Session Details</th>
+                                        <th className="p-4">Location</th>
+                                        <th className="p-4">Notes</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-zinc-800">
-                                    {isLoading ? (
-                                        <tr><td colSpan={6} className="p-8 text-center text-zinc-500"><Loader2 className="animate-spin mx-auto mb-2" /> Loading Records...</td></tr>
-                                    ) : filteredData.length === 0 ? (
-                                        <tr><td colSpan={6} className="p-8 text-center text-zinc-500">No records found. Upload a CSV to get started.</td></tr>
-                                    ) : (
-                                        filteredData.map((entry) => (
-                                            <tr key={entry.id} className="group hover:bg-zinc-800/20 transition-colors">
-                                                <td className="p-4 pl-6">
-                                                    <div className="font-bold text-white text-sm">{entry.goalie_name}</div>
-                                                    <div className="text-xs text-zinc-500">
-                                                        {entry.grad_year} • {entry.team?.slice(0, 30)}
-                                                        {entry.assigned_coach_id && (
-                                                            <span className="ml-2 text-primary">
-                                                                (Coach: {coaches.find(c => c.id === entry.assigned_coach_id)?.name || 'Unknown'})
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="font-mono text-xs text-zinc-300">
-                                                        {entry.email}
-                                                    </div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="font-mono text-xs font-bold text-accent tracking-wider">
-                                                        {entry.assigned_unique_id}
-                                                    </div>
-                                                </td>
-
-                                                {/* Payment Column */}
-                                                <td className="p-4">
-                                                    {entry.payment_status === 'paid' ? (
-                                                        <span className="flex items-center gap-1 text-emerald-500 text-xs font-bold">
-                                                            <DollarSign size={12} /> {entry.amount_paid}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-zinc-600 text-[10px] uppercase font-bold tracking-wider">
-                                                            Pending
-                                                        </span>
-                                                    )}
-                                                </td>
-
-                                                <td className="p-4">
-                                                    {entry.is_claimed ? (
-                                                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold border border-emerald-500/20 uppercase tracking-wide">
-                                                            Joined
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">
-                                                            Pending
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        <button
-                                                            onClick={() => handleEditClick(entry)}
-                                                            className="p-2 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white transition-colors"
-                                                            title="Edit"
-                                                        >
-                                                            <Pencil size={14} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteRow(entry.id)}
-                                                            className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded text-zinc-600 transition-colors"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
+                                <tbody>
+                                    {sessions.map((session, i) => (
+                                        <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+                                            <td className="p-4 font-mono text-zinc-400">
+                                                {new Date(session.date).toLocaleDateString()}
+                                                <div className="text-xs text-zinc-600">{new Date(session.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="font-bold">{session.roster?.goalie_name || "Unknown"}</div>
+                                                <div className="text-xs text-primary font-mono">{session.roster?.assigned_unique_id}</div>
+                                                <div className="text-xs text-zinc-500">{session.roster?.team}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className="inline-flex items-center gap-2 bg-white/5 px-3 py-1 rounded-lg border border-white/5">
+                                                    <span className="text-xs font-bold text-gray-400">S{session.session_number}</span>
+                                                    <span className="text-zinc-600">|</span>
+                                                    <span className="text-xs font-bold text-white">Lesson {session.lesson_number}</span>
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-gray-400">{session.location}</td>
+                                            <td className="p-4 text-gray-500 max-w-md truncate">{session.notes}</td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
+                            {sessions.length === 0 && (
+                                <div className="p-8 text-center text-muted-foreground">
+                                    No sessions found. Upload a CSV or log sessions manually.
+                                </div>
+                            )}
                         </div>
-                    </section>
-                </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-8">
+                            {/* Import Section */}
+                            <section className="glass rounded-2xl p-8 relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                <div className="relative">
+                                    <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                                        <UploadCloud className="text-primary" />
+                                        Smart Import
+                                    </h2>
 
-                {/* Right Column: System Status */}
-                <div className="space-y-6">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <Shield size={18} className="text-primary" />
-                            System Health
-                        </h3>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-3 bg-zinc-950 rounded-xl border border-zinc-800/50">
-                                <span className="text-xs text-zinc-400">Total Goalies</span>
-                                <span className="text-lg font-bold text-white">{dbData.length}</span>
+                                    <div className="mb-4">
+                                        <label className="text-xs font-bold text-muted-foreground mb-1 block">Target Goalie (Optional - For missing Email columns)</label>
+                                        <select
+                                            className="w-full bg-muted/50 border border-border rounded-lg p-2 text-sm text-foreground focus:border-primary outline-none"
+                                            value={targetGoalieId}
+                                            onChange={(e) => setTargetGoalieId(e.target.value)}
+                                        >
+                                            <option value="">-- Auto-Detect from Email Column --</option>
+                                            {dbData.map(g => (
+                                                <option key={g.id} value={g.id}>{g.goalie_name} ({g.email})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div
+                                        className={`
+                                            border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300 cursor-pointer mt-6
+                                            ${isDragging ? 'border-primary bg-primary/10 scale-[1.02]' : 'border-border hover:border-foreground/50 hover:bg-muted/50'}
+                                        `}
+                                        onDragEnter={handleDrag}
+                                        onDragLeave={handleDrag}
+                                        onDragOver={handleDrag}
+                                        onDrop={handleDrop}
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            onChange={handleFileSelect}
+                                            className="hidden"
+                                            accept=".csv"
+                                        />
+                                        <div className="flex flex-col items-center gap-4">
+                                            {uploadStatus === 'processing' ? <Loader2 className="animate-spin" size={32} /> : <UploadCloud size={32} />}
+                                            <p className="font-bold text-lg">
+                                                {uploadStatus === 'processing' ? 'Processing...' : uploadStatus === 'success' ? 'Success!' : 'Drag & Drop CSV or Click to Upload'}
+                                            </p>
+                                            <p className="text-gray-500 text-sm">Supports partial updates (Email required)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Database Table */}
+                            <div className="glass rounded-2xl p-8">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                                        <Database className="text-primary" />
+                                        Roster Database
+                                    </h2>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={async () => {
+                                                if (!confirm('EXTREME DANGER: This will delete ALL roster and session data. Are you sure?')) return;
+                                                setUploadStatus("processing");
+                                                try {
+                                                    // Client-side delete
+                                                    // 1. Delete Sessions FIRST (Child records)
+                                                    await supabase.from('sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+                                                    // 2. Delete Roster (Parent records)
+                                                    const { error } = await supabase.from('roster_uploads').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                                                    if (error) throw error;
+
+                                                    alert("Database Wiped Clean.");
+                                                    await fetchRoster();
+                                                } catch (e: any) {
+                                                    alert("Delete failed: " + e.message + "\n\nPLEASE RUN THE SQL FIX IN SUPABASE DASHBOARD.");
+                                                } finally {
+                                                    setUploadStatus("idle");
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-red-500/10 text-red-500 rounded-lg text-sm font-bold hover:bg-red-500/20 transition-colors"
+                                        >
+                                            Reset Database
+                                        </button>
+                                        <button
+                                            onClick={() => setShowManualAdd(true)}
+                                            className="px-4 py-2 bg-white text-black rounded-lg text-sm font-bold hover:scale-105 transition-transform"
+                                        >
+                                            + Add
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="mb-6 relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                                    <input
+                                        placeholder="Search..."
+                                        className="w-full bg-muted/50 border border-border rounded-lg pl-10 pr-4 py-2 focus:border-primary outline-none text-foreground placeholder:text-muted-foreground"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse text-sm">
+                                        <thead>
+                                            <tr className="border-b border-white/10 text-gray-400">
+                                                <th className="p-4">ID</th>
+                                                <th className="p-4">Goalie</th>
+                                                <th className="p-4">Team</th>
+                                                <th className="p-4">Data</th>
+                                                <th className="p-4">Status</th>
+                                                <th className="p-4 text-right">Edit</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {dbData.filter(i => i.goalie_name?.toLowerCase().includes(searchTerm.toLowerCase()) || i.email?.includes(searchTerm)).map((entry, i) => (
+                                                <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+                                                    <td className="p-4 font-mono text-zinc-500">{entry.assigned_unique_id}</td>
+                                                    <td className="p-4 font-bold">{entry.goalie_name}<br /><span className="text-xs text-gray-500 font-normal">{entry.email}</span></td>
+                                                    <td className="p-4 text-gray-400">{entry.team} ({entry.grad_year})</td>
+                                                    <td className="p-4">{Object.keys(entry.raw_data || {}).length > 0 ? <CheckCircle size={14} className="text-emerald-500" /> : '-'}</td>
+                                                    <td className="p-4">
+                                                        <span className={`px-2 py-1 rounded-full text-[10px] uppercase font-bold ${entry.is_claimed ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                                            {entry.is_claimed ? 'Active' : 'Pending'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right flex items-center justify-end gap-2">
+                                                        <button onClick={() => handleDelete(entry.id)} className="p-2 hover:bg-red-500/20 rounded-full group transition-colors">
+                                                            <Trash2 size={16} className="text-gray-400 group-hover:text-red-500" />
+                                                        </button>
+                                                        <button onClick={() => handleEditClick(entry)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                                            <Pencil size={16} className="text-gray-400 hover:text-white" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                            <div className="flex items-center justify-between p-3 bg-zinc-950 rounded-xl border border-zinc-800/50">
-                                <span className="text-xs text-zinc-400">Pending Activation</span>
-                                <span className="text-lg font-bold text-amber-500">{pendingCount}</span>
+                        </div>
+
+                        {/* Stats Sidebar */}
+                        <div className="space-y-6">
+                            <div className="glass p-6 rounded-2xl">
+                                <div className="text-4xl font-black text-foreground">{dbData.length}</div>
+                                <div className="text-sm text-muted-foreground">Total Roster</div>
                             </div>
-                            <div className="flex items-center justify-between p-3 bg-zinc-950 rounded-xl border border-zinc-800/50">
-                                <span className="text-xs text-zinc-400">Total Revenue</span>
-                                <span className="text-lg font-bold text-emerald-500">${totalRevenue.toLocaleString()}</span>
+                            <div className="glass p-6 rounded-2xl">
+                                <div className="text-4xl font-black text-primary">{dbData.filter(d => d.is_claimed).length}</div>
+                                <div className="text-sm text-muted-foreground">Active Users</div>
                             </div>
                         </div>
                     </div>
+                )}
+            </main>
 
-                    <div className="bg-gradient-to-br from-primary/20 to-zinc-900 border border-primary/20 rounded-3xl p-6 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                            <Users size={100} />
-                        </div>
-                        <h3 className="text-lg font-bold mb-2 text-primary">Pre-Validation Flow</h3>
-                        <p className="text-xs text-zinc-300 leading-relaxed mb-4">
-                            When you migrate a roster, the system generates unique IDs. Parents claim these IDs via the Activation Portal.
-                        </p>
-                    </div>
-                </div>
-
-            </div>
-
-            {/* Manual Add / Edit Modal */}
+            {/* Manual Edit Modal */}
             {showManualAdd && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl"
-                    >
-                        <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
-                            <h3 className="font-bold text-lg text-white">{editingId ? 'Edit Goalie' : 'Manual Entry'}</h3>
-                            <button onClick={closeModal} className="text-zinc-500 hover:text-white">
-                                <X size={20} />
-                            </button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold flex items-center gap-2"><Users className="text-primary" /> {editingId ? 'Edit' : 'Add'} Goalie</h3>
+                            <button onClick={closeModal}><X size={20} className="text-muted-foreground hover:text-foreground" /></button>
                         </div>
-                        <form onSubmit={handleManualSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleManualSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-zinc-400 uppercase">First Name</label>
-                                    <input
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
-                                        placeholder="John"
-                                        value={manualForm.firstName}
-                                        onChange={e => setManualForm({ ...manualForm, firstName: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-zinc-400 uppercase">Last Name</label>
-                                    <input
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
-                                        placeholder="Doe"
-                                        value={manualForm.lastName}
-                                        onChange={e => setManualForm({ ...manualForm, lastName: e.target.value })}
-                                        required
-                                    />
-                                </div>
+                                <input placeholder="First Name" value={manualForm.firstName} onChange={e => setManualForm({ ...manualForm, firstName: e.target.value })} className="bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" required />
+                                <input placeholder="Last Name" value={manualForm.lastName} onChange={e => setManualForm({ ...manualForm, lastName: e.target.value })} className="bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" required />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-zinc-400 uppercase">Parent Email (Required)</label>
-                                <input
-                                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
-                                    placeholder="parent@example.com"
-                                    type="email"
-                                    value={manualForm.email}
-                                    onChange={e => setManualForm({ ...manualForm, email: e.target.value })}
-                                    required
-                                />
-                            </div>
+                            <input placeholder="Parent Email" type="email" value={manualForm.email} onChange={e => setManualForm({ ...manualForm, email: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none mb-4" required />
+                            <input placeholder="Goalie Email (Optional - for Minors)" type="email" value={manualForm.goalieEmail} onChange={e => setManualForm({ ...manualForm, goalieEmail: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" />
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-zinc-400 uppercase">Grad Year</label>
-                                    <input
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
-                                        placeholder="2030"
-                                        value={manualForm.gradYear}
-                                        onChange={e => setManualForm({ ...manualForm, gradYear: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-zinc-400 uppercase">Team Name</label>
-                                    <input
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
-                                        placeholder="e.g. Madlax, St. Pauls"
-                                        value={manualForm.team}
-                                        onChange={e => setManualForm({ ...manualForm, team: e.target.value })}
-                                    />
-                                </div>
+                                <input placeholder="Team" value={manualForm.team} onChange={e => setManualForm({ ...manualForm, team: e.target.value })} className="bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" />
+                                <input placeholder="Grad Year" value={manualForm.gradYear} onChange={e => setManualForm({ ...manualForm, gradYear: e.target.value })} className="bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-zinc-400 uppercase">Parent Name</label>
-                                    <input
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
-                                        placeholder="Jane Doe"
-                                        value={manualForm.parentName}
-                                        onChange={e => setManualForm({ ...manualForm, parentName: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-zinc-400 uppercase">Parent Phone</label>
-                                    <input
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
-                                        placeholder="555-123-4567"
-                                        value={manualForm.phone}
-                                        onChange={e => setManualForm({ ...manualForm, phone: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-zinc-400 uppercase">Assigned Coach</label>
-                                <select
-                                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:border-primary focus:outline-none"
-                                    value={manualForm.coachId}
-                                    onChange={e => setManualForm({ ...manualForm, coachId: e.target.value })}
-                                >
-                                    <option value="">-- No Coach --</option>
-                                    {coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="pt-4 flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={closeModal}
-                                    className="px-4 py-2 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-300 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 rounded bg-primary hover:bg-primary/90 text-xs font-bold text-black transition-colors"
-                                >
-                                    {editingId ? 'Save Changes' : 'Create Record'}
-                                </button>
+                            <select className="w-full bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" value={manualForm.coachId} onChange={e => setManualForm({ ...manualForm, coachId: e.target.value })}>
+                                <option value="">-- No Coach --</option>
+                                {coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                            <div className="flex justify-end gap-2 pt-4">
+                                <button type="button" onClick={closeModal} className="px-4 py-2 text-muted-foreground hover:text-foreground">Cancel</button>
+                                <button type="submit" className="px-6 py-2 bg-primary text-primary-foreground hover:opacity-90 rounded font-bold">Save</button>
                             </div>
                         </form>
                     </motion.div>
                 </div>
             )}
-
-        </main>
+        </div>
     );
 }

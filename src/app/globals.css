@@ -23,49 +23,71 @@
 }
 
 :root {
-  /* Light Mode Defaults */
-  --background: #ffffff;
-  --foreground: #09090b; /* Zinc 950 */
-  --card: #ffffff;
-  --card-foreground: #09090b;
-  --popover: #ffffff;
-  --popover-foreground: #09090b;
-  --primary: #e11d48; /* Pink/Red 600 */
+  /* Light Mode - Nike B&W / Apple Glass */
+  --background: #f5f5f7;
+  /* Apple light gray */
+  --foreground: #000000;
+  /* Pure Black */
+
+  --card: rgba(255, 255, 255, 0.7);
+  --card-foreground: #000000;
+
+  --popover: rgba(255, 255, 255, 0.8);
+  --popover-foreground: #000000;
+
+  --primary: #000000;
+  /* Black branding */
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5; /* Zinc 100 */
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f59e0b; /* Amber */
-  --accent-foreground: #ffffff;
+
+  --secondary: #ffffff;
+  --secondary-foreground: #000000;
+
+  --muted: #e5e5e5;
+  --muted-foreground: #737373;
+
+  --accent: #f5f5f7;
+  --accent-foreground: #000000;
+
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e4e4e7; /* Zinc 200 */
-  --input: #e4e4e7;
-  --ring: #e11d48;
+
+  --border: rgba(0, 0, 0, 0.1);
+  --input: rgba(0, 0, 0, 0.1);
+  --ring: #000000;
 }
 
 .dark {
-  /* Dark Mode Defaults */
-  --background: #09090b; /* Zinc 950 */
-  --foreground: #fafafa; /* Zinc 50 */
-  --card: #18181b; /* Zinc 900 */
-  --card-foreground: #fafafa;
-  --popover: #09090b;
-  --popover-foreground: #fafafa;
-  --primary: #e11d48;
-  --primary-foreground: #ffffff;
-  --secondary: #27272a; /* Zinc 800 */
-  --secondary-foreground: #fafafa;
+  /* Dark Mode - Apple Dark Glass / Nike Dark */
+  --background: #000000;
+  /* Pure Black */
+  --foreground: #ffffff;
+
+  --card: rgba(28, 28, 30, 0.6);
+  /* Translucent dark gray */
+  --card-foreground: #ffffff;
+
+  --popover: rgba(28, 28, 30, 0.8);
+  --popover-foreground: #ffffff;
+
+  --primary: #ffffff;
+  /* White branding */
+  --primary-foreground: #000000;
+
+  --secondary: #1c1c1e;
+  --secondary-foreground: #ffffff;
+
   --muted: #27272a;
   --muted-foreground: #a1a1aa;
-  --accent: #f59e0b;
-  --accent-foreground: #fafafa;
-  --destructive: #7f1d1d;
-  --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #e11d48;
+
+  --accent: #1c1c1e;
+  --accent-foreground: #ffffff;
+
+  --destructive: #ff453a;
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(255, 255, 255, 0.15);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: #ffffff;
 }
 
 body {
@@ -75,8 +97,27 @@ body {
   antialiased: true;
 }
 
+/* Glass Effect Utilities */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+
+  .glass {
+    background-color: var(--card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+  }
+}
+
+/* Global Glass override for standard card usage if possible, 
+   or we just rely on users updating their components. 
+   Given 'overhaul', forcing it on common patterns helps. */
+.bg-card {
+  background-color: var(--card);
+  /* Ensure it uses the var */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
 }
