@@ -796,6 +796,7 @@ export default function AdminDashboard() {
                                             <tr className="border-b border-white/10 text-gray-400">
                                                 <th className="p-4">ID</th>
                                                 <th className="p-4">Goalie</th>
+                                                <th className="p-4">Parent Info</th>
                                                 <th className="p-4">Team</th>
                                                 <th className="p-4">Data</th>
                                                 <th className="p-4">Status</th>
@@ -806,9 +807,30 @@ export default function AdminDashboard() {
                                             {dbData.filter(i => i.goalie_name?.toLowerCase().includes(searchTerm.toLowerCase()) || i.email?.includes(searchTerm)).map((entry, i) => (
                                                 <tr key={i} className="border-b border-white/5 hover:bg-white/5">
                                                     <td className="p-4 font-mono text-zinc-500">{entry.assigned_unique_id}</td>
-                                                    <td className="p-4 font-bold">{entry.goalie_name}<br /><span className="text-xs text-gray-500 font-normal">{entry.email}</span></td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold">{entry.goalie_name}</div>
+                                                        {entry.raw_data?.goalie_email && (
+                                                            <div className="text-xs text-primary mt-0.5">
+                                                                Goalie: {entry.raw_data.goalie_email}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="text-sm font-medium text-foreground">{entry.email}</div>
+                                                        <div className="text-xs text-muted-foreground">{entry.parent_name}</div>
+                                                        {entry.parent_phone && <div className="text-xs text-muted-foreground">{entry.parent_phone}</div>}
+                                                    </td>
                                                     <td className="p-4 text-gray-400">{entry.team} ({entry.grad_year})</td>
-                                                    <td className="p-4">{Object.keys(entry.raw_data || {}).length > 0 ? <CheckCircle size={14} className="text-emerald-500" /> : '-'}</td>
+                                                    <td className="p-4">
+                                                        {Object.keys(entry.raw_data || {}).length > 0 ? (
+                                                            <div className="group relative cursor-help">
+                                                                <CheckCircle size={14} className="text-emerald-500" />
+                                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-black/90 border border-white/10 rounded text-xs text-white opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-pre-wrap">
+                                                                    {JSON.stringify(entry.raw_data, null, 2)}
+                                                                </div>
+                                                            </div>
+                                                        ) : '-'}
+                                                    </td>
                                                     <td className="p-4">
                                                         <span className={`px-2 py-1 rounded-full text-[10px] uppercase font-bold ${entry.is_claimed ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
                                                             {entry.is_claimed ? 'Active' : 'Pending'}

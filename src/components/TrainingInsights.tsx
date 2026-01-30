@@ -222,17 +222,27 @@ export default function TrainingInsights() {
 
             {/* HEADER / NAVIGATION */}
             <div className="flex items-center justify-between">
-                {activeView !== 'overview' && (
-                    <button
-                        onClick={() => setActiveView('overview')}
-                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-lg"
-                    >
-                        <ArrowLeft size={16} /> Back to Dashboard
-                    </button>
-                )}
-                {activeView === 'overview' && <h2 className="text-xl font-bold text-foreground">Dashboard Overview</h2>}
-                {activeView === 'volume' && <h2 className="text-xl font-bold text-foreground">Volume Analysis</h2>}
-                {activeView === 'goalies' && <h2 className="text-xl font-bold text-foreground">Goalie Performance & Analytics</h2>}
+                <div className="flex items-center gap-4">
+                    {activeView !== 'overview' && (
+                        <button
+                            onClick={() => setActiveView('overview')}
+                            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-lg"
+                        >
+                            <ArrowLeft size={16} /> Back to Dashboard
+                        </button>
+                    )}
+                    {activeView === 'overview' && <h2 className="text-xl font-bold text-foreground">Dashboard Overview</h2>}
+                    {activeView === 'volume' && <h2 className="text-xl font-bold text-foreground">Volume Analysis</h2>}
+                    {activeView === 'goalies' && <h2 className="text-xl font-bold text-foreground">Goalie Performance & Analytics</h2>}
+                </div>
+                <button
+                    onClick={fetchData}
+                    disabled={loading}
+                    className="p-2 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+                    title="Refresh Data"
+                >
+                    <Loader2 size={16} className={loading ? "animate-spin" : ""} />
+                </button>
             </div>
 
             {/* OVERVIEW: Interactive Metric Grid */}

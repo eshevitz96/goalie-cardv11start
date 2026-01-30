@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Loader2, Lock, ArrowRight, User } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
@@ -149,6 +150,11 @@ export default function LoginPage() {
                             >
                                 {isLoading ? <Loader2 className="animate-spin" /> : <>Next <ArrowRight size={18} /></>}
                             </button>
+                            <div className="text-center mt-4">
+                                <Link href="/activate" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                    Not yet activated? Activate Profile
+                                </Link>
+                            </div>
                         </form>
                     </motion.div>
                 )}

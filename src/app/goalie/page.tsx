@@ -317,22 +317,24 @@ export default function Home() {
     }
   };
 
-  const [notification, setNotification] = useState<{ id: string, title: string, message: string } | null>(null);
+  const [notification, setNotification] = useState<{ id: string, title: string, message: string, type?: string } | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchLatestNotification = async () => {
+    const fetchNotifications = async () => {
       const { data } = await supabase
         .from('notifications')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(5);
 
       if (data) {
-        setNotification(data);
+        setNotifications(data);
+        const urgent = data.find(n => n.type === 'alert');
+        if (urgent) setNotification(urgent);
       }
     };
-    fetchLatestNotification();
+    fetchNotifications();
   }, []);
 
   const activeGoalie = goalies[currentIndex];
@@ -368,13 +370,13 @@ export default function Home() {
       <div className="max-w-md mx-auto md:max-w-5xl md:grid md:grid-cols-2 md:gap-8 lg:gap-12">
 
         {/* Notification Banner */}
-        {notification && (
+        {notification && notification.type === 'alert' && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="md:col-span-2 mb-6 bg-gradient-to-r from-primary/10 to-transparent border-l-4 border-primary p-4 rounded-r-lg flex items-start gap-3 backdrop-blur-sm"
+            className="md:col-span-2 mb-6 bg-gradient-to-r from-red-500/10 to-transparent border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3 backdrop-blur-sm"
           >
-            <div className="p-2 bg-primary/20 rounded-full text-primary">
+            <div className="p-2 bg-red-500/20 rounded-full text-red-500">
               <Bell size={16} />
             </div>
             <div className="flex-1">
@@ -423,10 +425,39 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <button className="relative p-3 bg-card rounded-full hover:bg-muted transition-colors">
-              <Bell size={20} className="text-muted-foreground" />
-              <span className="absolute top-3 right-3 w-2 h-2 bg-primary rounded-full animate-pulse" />
-            </button>
+            {/* Notification Bell */}
+            <div className="relative group z-50">
+              <button className="h-10 w-10 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted hover:border-primary transition-all">
+                <Bell size={18} className={`text-muted-foreground group-hover:text-foreground ${notifications.length > 0 ? 'text-primary' : ''}`} />
+                {notifications.length > 0 && (
+                  <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-background" />
+                )}
+              </button>
+
+              <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-2xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right translate-y-2 group-hover:translate-y-0 max-h-96 overflow-y-auto">
+                <div className="px-3 py-2 border-b border-border mb-1 flex justify-between items-center">
+                  <div className="text-sm font-bold text-foreground">Notifications</div>
+                  <span className="text-[10px] text-muted-foreground">{notifications.length} New</span>
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-muted-foreground">No new notifications</div>
+                ) : (
+                  notifications.map((n: any, i) => (
+                    <div key={i} className="px-3 py-3 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer border-b border-border/50 last:border-0">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${n.type === 'lesson' ? 'bg-blue-500/10 text-blue-500' :
+                          n.type === 'event' ? 'bg-purple-500/10 text-purple-500' :
+                            'bg-green-500/10 text-green-500'
+                          }`}>{n.type || 'Update'}</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-foreground leading-tight mb-1">{n.title}</h4>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </header>
 

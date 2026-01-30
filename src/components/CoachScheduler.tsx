@@ -50,7 +50,11 @@ export function CoachScheduler() {
         });
 
         if (error) {
-            alert(error.message);
+            if (error.code === '23503') {
+                alert("Account Error: You are not registered as a Coach in our system. Please contact support.");
+            } else {
+                alert(error.message);
+            }
         } else {
             fetchSlots();
             // Optional: clear inputs?

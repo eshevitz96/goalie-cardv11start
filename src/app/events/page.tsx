@@ -14,8 +14,20 @@ export default function EventsPage() {
     const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
     const [loading, setLoading] = useState(true);
 
+    const [backLink, setBackLink] = useState("/parent");
+
     useEffect(() => {
         const fetchEvents = async () => {
+            // 0. Determine Back Link based on Role
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role === 'goalie') setBackLink("/goalie");
+                else if (profile?.role === 'coach') setBackLink("/coach");
+                else if (profile?.role === 'admin') setBackLink("/admin");
+                // Default is parent
+            }
+
             // For Demo: Use PRO_SCHEDULE + DB Events
             // 1. Fetch DB Events
             const { data: dbEvents } = await supabase.from('events').select('*').order('date', { ascending: true });
@@ -64,10 +76,10 @@ export default function EventsPage() {
 
     return (
         <main className="min-h-screen bg-background p-4 md:p-8">
-            <div className="max-w-2xl mx-auto space-y-8">
+            <div className="max-w-6xl mx-auto space-y-8">
                 <div className="flex items-center gap-4">
                     <Link
-                        href="/parent"
+                        href={backLink}
                         className="p-2 rounded-full bg-secondary border border-border hover:bg-secondary/80 transition-colors text-foreground"
                     >
                         <ArrowLeft size={20} />
@@ -78,7 +90,7 @@ export default function EventsPage() {
                 </div>
 
                 {/* Filter Controls */}
-                <div className="flex p-1 bg-muted rounded-xl">
+                <div className="flex p-1 bg-muted rounded-xl max-w-md">
                     <button onClick={() => setFilter('upcoming')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${filter === 'upcoming' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>Upcoming</button>
                     <button onClick={() => setFilter('past')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${filter === 'past' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>Past</button>
                     <button onClick={() => setFilter('all')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${filter === 'all' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>All</button>

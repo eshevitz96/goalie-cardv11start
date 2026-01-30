@@ -269,7 +269,10 @@ export default function Home() {
             image: e.image || "from-gray-500 to-gray-600",
             price: e.price,
             sport: e.sport
-          })) || [];
+          }))
+          // FILTER: Only show Registered Events (My Schedule)
+          // "open" events (Marketplace) are hidden from the dashboard view by default
+          .filter(e => e.status === 'upcoming') || [];
 
         // MOCK EVENTS REMOVED BY USER REQUEST
         // if (g.id === 'demo-pro-id-001' || g.goalie_name.includes('Pro')) { ... }
@@ -386,23 +389,27 @@ export default function Home() {
     }
   };
 
-  const [notification, setNotification] = useState<{ id: string, title: string, message: string } | null>(null);
+  const [notification, setNotification] = useState<{ id: string, title: string, message: string, type?: string } | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchLatestNotification = async () => {
+    const fetchNotifications = async () => {
+      // Fetch specifically targeting the user or visible to 'all'
+      // For now, we fetch 'all' or broadcast notifications
       const { data } = await supabase
         .from('notifications')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(5);
 
       if (data) {
-        // You might want to check if it's "recent" (e.g. last 7 days)
-        setNotification(data);
+        setNotifications(data);
+        // Set most recent as banner if urgent (logic handled in render)
+        const urgent = data.find(n => n.type === 'alert');
+        if (urgent) setNotification(urgent);
       }
     };
-    fetchLatestNotification();
+    fetchNotifications();
   }, []);
 
   const activeGoalie = goalies[currentIndex];
@@ -448,14 +455,14 @@ export default function Home() {
     <main className="min-h-screen bg-background p-4 md:p-8 overflow-x-hidden selection:bg-primary selection:text-white">
       <div className="max-w-md mx-auto md:max-w-5xl md:grid md:grid-cols-2 md:gap-8 lg:gap-12">
 
-        {/* ... (Notifications Header) ... */}
-        {notification && (
+        {/* Notification Banner - Only show if URGENT or Important, otherwise in bell */}
+        {notification && notification.type === 'alert' && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="md:col-span-2 mb-6 bg-gradient-to-r from-primary/10 to-transparent border-l-4 border-primary p-4 rounded-r-lg flex items-start gap-3 backdrop-blur-sm"
+            className="md:col-span-2 mb-6 bg-gradient-to-r from-red-500/10 to-transparent border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3 backdrop-blur-sm"
           >
-            <div className="p-2 bg-primary/20 rounded-full text-primary">
+            <div className="p-2 bg-red-500/20 rounded-full text-red-500">
               <Bell size={16} />
             </div>
             <div className="flex-1">
@@ -702,8 +709,8 @@ export default function Home() {
               <div className="text-sm text-muted-foreground">No coach details available.</div>
             )}
 
-            {/* RESTORED: Coach OS Access for Adults/Graduates */}
-            {isPro && (
+            {/* Coach OS Access - Only for Coaches/Admins */}
+            {(userRole === 'coach' || userRole === 'admin') && (
               <div className="mt-6 pt-4 border-t border-border/50 relative z-10">
                 <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-xl border border-zinc-800">
                   <div>

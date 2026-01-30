@@ -86,12 +86,24 @@ export function EventsList({ events, onRegister, onEventAdded, sport, maxItems }
                     <Calendar className="text-primary" />
                     Event Passes & Schedule
                 </h3>
-                <button
-                    onClick={() => setShowAddEventModal(true)}
-                    className="text-xs font-bold text-primary hover:text-white transition-colors"
-                >
-                    + Add Game/Practice
-                </button>
+                <div className="flex items-center gap-3">
+                    {/* View All Icon Link - Always visible if constrained */}
+                    {maxItems && (
+                        <button
+                            onClick={() => window.location.href = '/events'}
+                            className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                            title="View Full Calendar"
+                        >
+                            View All
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setShowAddEventModal(true)}
+                        className="text-xs font-bold text-primary hover:text-white transition-colors"
+                    >
+                        + Add Game/Practice
+                    </button>
+                </div>
             </div>
 
             {events.length === 0 ? (
@@ -277,86 +289,125 @@ function AddEventModal({ isOpen, onClose, onAdded, defaultSport }: { isOpen: boo
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+
+        <>
+            {/* Backdrop */}
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+                />
+            )}
+
+            {/* Side Sheet */}
             <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="bg-card border border-border rounded-3xl p-6 w-full max-w-md space-y-6 shadow-2xl"
+                initial={{ x: "100%" }}
+                animate={{ x: isOpen ? 0 : "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-card border-l border-border shadow-2xl overflow-y-auto"
             >
-                <div className="text-center">
-                    <h3 className="text-xl font-bold text-foreground mb-1">Add Event</h3>
-                    <p className="text-sm text-muted-foreground">Track your own schedule</p>
-                </div>
-
-                <div className="flex p-1 bg-muted rounded-xl">
-                    <button onClick={() => setMode('manual')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'manual' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>Manual Entry</button>
-                    <button onClick={() => setMode('upload')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'upload' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>Upload API/CSV</button>
-                </div>
-
-                {mode === 'manual' ? (
-                    <div className="space-y-3">
+                <div className="p-6 h-full flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
                         <div>
-                            <label className="text-xs font-bold text-muted-foreground ml-1">Event Name</label>
-                            <input
-                                type="text"
-                                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
-                                value={manualEvent.name}
-                                onChange={e => setManualEvent({ ...manualEvent, name: e.target.value })}
-                            />
+                            <h3 className="text-xl font-bold text-foreground">Add Event</h3>
+                            <p className="text-sm text-muted-foreground">Add game or practice to schedule</p>
                         </div>
-                        <div>
-                            <label className="text-xs font-bold text-muted-foreground ml-1">Date</label>
-                            <input
-                                type="date"
-                                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
-                                value={manualEvent.date}
-                                onChange={e => setManualEvent({ ...manualEvent, date: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-muted-foreground ml-1">Location</label>
-                            <input
-                                type="text"
-                                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
-                                value={manualEvent.location}
-                                onChange={e => setManualEvent({ ...manualEvent, location: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-muted-foreground ml-1">Type</label>
-                            <select
-                                value={manualEvent.type}
-                                onChange={e => setManualEvent({ ...manualEvent, type: e.target.value })}
-                                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
-                            >
-                                <option>Game</option>
-                                <option>Practice</option>
-                                <option>Workout</option>
-                                <option>Video Session</option>
-                            </select>
-                        </div>
-                        <button onClick={handleManualSubmit} disabled={isSubmitting} className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold hover:opacity-90 transition-colors disabled:opacity-50">
-                            {isSubmitting ? "Adding..." : "Add to Schedule"}
+                        <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground">
+                            <span className="sr-only">Close</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                         </button>
                     </div>
-                ) : (
-                    <div className="space-y-4 text-center py-4">
-                        <div className="border-2 border-dashed border-border rounded-2xl p-8 hover:border-primary/50 transition-colors cursor-pointer relative">
-                            <input type="file" accept=".csv,.ics" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                            <div className="text-muted-foreground">
-                                <QrCode className="mx-auto mb-2 opacity-50" size={32} />
-                                <p className="text-sm font-medium">Drop CSV or iCal file</p>
-                                <p className="text-xs opacity-50 mt-1">Supports standard schedule formats</p>
-                            </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            We will parse the file and add events to your personal calendar.
-                        </p>
-                    </div>
-                )}
 
-                <button onClick={onClose} className="w-full py-2 text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                    <div className="flex p-1 bg-muted rounded-xl mb-6">
+                        <button onClick={() => setMode('manual')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'manual' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>Manual Entry</button>
+                        <button onClick={() => setMode('upload')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'upload' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>Upload API/CSV</button>
+                    </div>
+
+                    <div className="flex-1">
+                        {mode === 'manual' ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1 mb-1 block">Event Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Game vs. Knights"
+                                        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+                                        value={manualEvent.name}
+                                        onChange={e => setManualEvent({ ...manualEvent, name: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1 mb-1 block">Date & Time</label>
+                                    <input
+                                        type="datetime-local"
+                                        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+                                        value={manualEvent.date}
+                                        onChange={e => setManualEvent({ ...manualEvent, date: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1 mb-1 block">Location</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Arena / Facility"
+                                        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+                                        value={manualEvent.location}
+                                        onChange={e => setManualEvent({ ...manualEvent, location: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1 mb-1 block">Type</label>
+                                    <select
+                                        value={manualEvent.type}
+                                        onChange={e => setManualEvent({ ...manualEvent, type: e.target.value })}
+                                        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary transition-colors appearance-none"
+                                    >
+                                        <option>Game</option>
+                                        <option>Practice</option>
+                                        <option>Workout</option>
+                                        <option>Video Session</option>
+                                    </select>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 text-center py-10">
+                                <div className="border-2 border-dashed border-border rounded-2xl p-8 hover:border-primary/50 transition-colors cursor-pointer relative group">
+                                    <input type="file" accept=".csv,.ics" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                    <div className="text-muted-foreground group-hover:text-primary transition-colors">
+                                        <QrCode className="mx-auto mb-4 opacity-50 group-hover:opacity-100 transition-opacity" size={48} />
+                                        <p className="text-base font-bold">Drop CSV or iCal file</p>
+                                        <p className="text-xs opacity-50 mt-1">Supports standard schedule formats</p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                                    We will automatically parse the file and add the events to your personal calendar.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mt-6 flex flex-col gap-3">
+                        {mode === 'manual' && (
+                            <button
+                                onClick={handleManualSubmit}
+                                disabled={isSubmitting}
+                                className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-50 text-base"
+                            >
+                                {isSubmitting ? "Adding..." : "Add to Schedule"}
+                            </button>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3 text-sm text-muted-foreground hover:text-foreground font-medium"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
             </motion.div>
-        </div>
+        </>
     );
 }

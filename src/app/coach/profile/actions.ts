@@ -30,7 +30,7 @@ export async function updateCoachProfile(formData: FormData) {
     // Only update full_name if provided (some flows might use goalie_name)
     if (fullName) {
         updateData.full_name = fullName;
-        updateData.goalie_name = fullName; // Sync both for consistency if schema allows
+        updateData.goalie_name = fullName; // Sync both for consistency
     }
 
     const { error } = await supabase
@@ -39,8 +39,8 @@ export async function updateCoachProfile(formData: FormData) {
         .eq("id", user.id);
 
     if (error) {
-        console.error("Profile Update Error:", error);
-        return { error: "Failed to update profile" };
+        console.error("Profile Update Error Details:", error);
+        return { error: `Failed to update profile: ${error.message}` };
     }
 
     revalidatePath("/coach/profile");

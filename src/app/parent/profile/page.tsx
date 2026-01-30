@@ -16,6 +16,7 @@ export default function ParentProfile() {
     const [dbId, setDbId] = useState<number | null>(null);
     const [formData, setFormData] = useState<{
         goalie_name: string;
+        email: string;
         grad_year: string;
         level: string; // New Level Field
         team: string; // Legacy/Primary team
@@ -25,6 +26,7 @@ export default function ParentProfile() {
         catch_hand: string;
     }>({
         goalie_name: "",
+        email: "",
         grad_year: "",
         level: "Youth",
         team: "",
@@ -92,6 +94,7 @@ export default function ParentProfile() {
 
                 setFormData({
                     goalie_name: p.goalie_name || "",
+                    email: p.email || "",
                     grad_year: p.grad_year?.toString() || "",
                     level: loadedLevel,
                     team: p.team || "",
@@ -104,6 +107,7 @@ export default function ParentProfile() {
                 // Fallback for Demo User if DB is empty (fix "no name or team" bug)
                 setFormData({
                     goalie_name: "Elliott Shevitz",
+                    email: "thegoaliebrand@gmail.com",
                     grad_year: "2018",
                     level: "Pro",
                     team: "Arizona Coyotes",
@@ -255,7 +259,7 @@ export default function ParentProfile() {
             const primaryTeam = validTeams.length > 0 ? validTeams[0].name : "Unassigned";
 
             const updates = {
-                email: userEmail,
+                email: formData.email, // Use editable email
                 goalie_name: formData.goalie_name,
                 grad_year: parseInt(formData.grad_year) || 0,
                 team: primaryTeam, // Legacy/Primary
@@ -317,6 +321,15 @@ export default function ParentProfile() {
                             GOALIE <span className="text-primary">PROFILE</span>
                         </h1>
                     </div>
+                    {isVerified && (
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="p-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                        >
+                            {isSaving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
+                        </button>
+                    )}
                 </div>
 
 
@@ -378,6 +391,17 @@ export default function ParentProfile() {
                                         onChange={(e) => setFormData({ ...formData, goalie_name: e.target.value })}
                                         className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50 placeholder:text-muted-foreground"
                                     />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email Address (Login & Notifications)</label>
+                                    <input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50 placeholder:text-muted-foreground"
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">Changing this will update where you receive notifications. For security, your login email will remain unchanged until you confirm via Supabase Auth (if enabled).</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
