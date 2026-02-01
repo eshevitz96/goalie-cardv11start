@@ -82,10 +82,21 @@ export default function AdminDashboard() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-            setCurrentUser({ ...user, role: profile?.role || 'user' });
 
-            if (profile?.role !== 'admin') {
-                alert("WARNING: You are logged in as '" + (profile?.role || 'user') + "', but you need 'admin' rights to upload CSVs.\\nPlease update your role in the 'profiles' table.");
+            // EMAIL ALLOWLIST CHECK - Update this list to add more admins
+            const ADMIN_EMAILS = ['thegoaliebrand@gmail.com', 'elliott@goaliecard.app'];
+
+            const userEmail = user.email?.toLowerCase() || '';
+            const isEmailAllowed = ADMIN_EMAILS.includes(userEmail);
+
+            // Force admin role if on allowlist, otherwise trust DB but warn if not allowed
+            const effectiveRole = isEmailAllowed ? 'admin' : (profile?.role || 'user');
+
+            setCurrentUser({ ...user, role: effectiveRole });
+
+            if (!isEmailAllowed && effectiveRole !== 'admin') {
+                alert("ACCESS DENIED: You are logged in as '" + userEmail + "'. This area is restricted to authorized administrators only.");
+                // router.push('/'); // Uncomment to strict redirect
             }
         }
 

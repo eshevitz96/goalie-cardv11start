@@ -29,7 +29,7 @@ export function GoalieCard({ name, session, lesson, team, height, weight, catchH
     // Determine if Pro (passed via level prop or inferred from session/lesson 0)
     // Note: User might pass specific level string later, but for now we infer or check prop if we add it. 
     // Let's assume implied Pro if session/lesson is 0 for backward compatibility with existing usages
-    const isPro = (session === 0 && lesson === 0);
+    const isPro = (Number(session) === 0 && Number(lesson) === 0);
 
     // Season Progress Calculation for Pros (approx Sept - April)
     const getSeasonProgress = () => {
@@ -158,7 +158,7 @@ export function GoalieCard({ name, session, lesson, team, height, weight, catchH
                                             >
                                                 <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                                                 <span className="relative z-10 flex items-center gap-2">
-                                                    Renew for Session {session + 1}
+                                                    Renew for Session {(Number(session) || 0) + 1}
                                                     <CheckCircle size={18} className="text-primary-foreground/80" />
                                                 </span>
                                             </Link>

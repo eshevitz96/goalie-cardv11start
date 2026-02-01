@@ -324,7 +324,7 @@ export default function Home() {
         }));
 
         // Total Analysis: DB Sessions (Coach) + Reflections (User) + Past Events (System)
-        const totalActivityCount = (g.session_count || 0) + reflectionCount + pastEventsCount;
+        const totalActivityCount = (Number(g.session_count) || 0) + reflectionCount + pastEventsCount;
 
         return {
           id: g.id,
@@ -339,14 +339,14 @@ export default function Home() {
           coachIds: assignedCoachIds,
           coachDetails: primaryCoachDetails,
           coachId: g.assigned_coach_id,
-          session: g.session_count || 0,
-          lesson: g.lesson_count || 0,
+          session: Number(g.session_count) || 0,
+          lesson: Number(g.lesson_count) || 0,
           stats: {
             gaa: "0.00",
             sv: ".000",
             memberSince: g.id === 'demo-pro-id-001' ? 2018 : (gSessions.length > 0 ? new Date(gSessions[gSessions.length - 1].date).getFullYear() : new Date().getFullYear()),
             totalSessions: totalActivityCount, // DYNAMIC MERGE
-            totalLessons: g.lesson_count || 0,
+            totalLessons: Number(g.lesson_count) || 0,
             games: g.games_count || 0,
             practices: g.practice_count || 0
           },
