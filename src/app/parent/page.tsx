@@ -31,6 +31,22 @@ export default function Home() {
   const [showPostGame, setShowPostGame] = useState(false);
   const [showProgress, setShowProgress] = useState(true); // User toggle for Goalie Card counts
 
+  const activeGoalie = goalies[currentIndex];
+  // Determine if Pro (no sessions/lessons tracking)
+  // Logic Update: ANYONE under 18 (Grad Year > Current Year - 1) gets the full development view (lessons/sessions)
+  // Pro/Adults get the streamlined view
+  const currentYear = new Date().getFullYear();
+  const isAdult = activeGoalie ? (activeGoalie.gradYear && (activeGoalie.gradYear < currentYear)) : false;
+  // If they are Youth (not Adult), we force show progress even if 0 sessions
+  const isPro = isAdult;
+
+  // Sync Toggle Default: Hide for Pro by default, Show for Youth
+  useEffect(() => {
+    if (activeGoalie) {
+      setShowProgress(!isPro);
+    }
+  }, [activeGoalie, isPro]);
+
   // Initial Load Logic
   const fetchMyGoalies = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
@@ -430,7 +446,7 @@ export default function Home() {
     fetchNotifications();
   }, []);
 
-  const activeGoalie = goalies[currentIndex];
+
 
   // LOOP PREVENTION: Removed auto-redirect
   // useEffect(() => {
@@ -457,20 +473,7 @@ export default function Home() {
 
   if (!activeGoalie) return <div className="min-h-screen bg-black text-white p-8">No Goalies Found. <Link href="/activate" className="text-primary underline">Activate a Card</Link></div>;
 
-  // Determine if Pro (no sessions/lessons tracking)
-  // Logic Update: ANYONE under 18 (Grad Year > Current Year - 1) gets the full development view (lessons/sessions)
-  // Pro/Adults get the streamlined view
-  const currentYear = new Date().getFullYear();
-  const isAdult = (activeGoalie.gradYear && (activeGoalie.gradYear < currentYear));
-  // If they are Youth (not Adult), we force show progress even if 0 sessions
-  const isPro = isAdult;
 
-  // Sync Toggle Default: Hide for Pro by default, Show for Youth
-  useEffect(() => {
-    if (activeGoalie) {
-      setShowProgress(!isPro);
-    }
-  }, [activeGoalie?.id, isPro]);
 
   // Live Mode Logic
   const isLiveCalc = activeGoalie.events.some((e: any) => e.date === new Date().toLocaleDateString() && (e.name.includes('Game') || e.name.includes('LIVE')));

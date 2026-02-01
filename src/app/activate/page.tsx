@@ -722,13 +722,39 @@ function ActivateContent() {
                                         </div>
                                         <div className="grid grid-cols-2 gap-4 col-span-2">
                                             <div>
-                                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Height</label>
-                                                <input
-                                                    value={formData.height}
-                                                    onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                                                    className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
-                                                    placeholder="e.g. 6-0"
-                                                />
+                                                <label className="text-xs font-bold uppercase text-muted-foreground ml-1 mb-1 block">Height</label>
+                                                <div className="flex gap-2">
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            type="number"
+                                                            min="3" max="7"
+                                                            value={formData.height.split("'")[0] || ''}
+                                                            onChange={e => {
+                                                                const ft = e.target.value;
+                                                                const inch = formData.height.split("'")[1] || '';
+                                                                setFormData({ ...formData, height: `${ft}'${inch}` });
+                                                            }}
+                                                            placeholder="Ft"
+                                                            className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-4 pr-4 focus:border-primary focus:outline-none"
+                                                        />
+                                                        <span className="absolute right-3 top-3 text-muted-foreground text-xs font-bold">ft</span>
+                                                    </div>
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            type="number"
+                                                            min="0" max="11"
+                                                            value={formData.height.split("'")[1] || ''}
+                                                            onChange={e => {
+                                                                const ft = formData.height.split("'")[0] || '';
+                                                                const inch = e.target.value;
+                                                                setFormData({ ...formData, height: `${ft}'${inch}` });
+                                                            }}
+                                                            placeholder="In"
+                                                            className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-4 pr-4 focus:border-primary focus:outline-none"
+                                                        />
+                                                        <span className="absolute right-3 top-3 text-muted-foreground text-xs font-bold">in</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div>
                                                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Weight</label>

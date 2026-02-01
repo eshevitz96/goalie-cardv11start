@@ -149,15 +149,38 @@ export default function OnboardingPage() {
                         >
                             <div className="space-y-4 bg-card border border-border p-6 rounded-3xl">
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Height</label>
-                                    <div className="relative">
-                                        <Ruler className="absolute left-3 top-3 text-muted-foreground" size={18} />
-                                        <input
-                                            value={formData.height}
-                                            onChange={e => setFormData({ ...formData, height: e.target.value })}
-                                            placeholder="e.g. 5'11"
-                                            className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-10 pr-4 focus:border-primary focus:outline-none"
-                                        />
+                                    <label className="text-xs font-bold uppercase text-muted-foreground ml-1 mb-1 block">Height</label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <input
+                                                type="number"
+                                                min="3" max="7"
+                                                value={formData.height.split("'")[0] || ''}
+                                                onChange={e => {
+                                                    const ft = e.target.value;
+                                                    const inch = formData.height.split("'")[1] || '';
+                                                    setFormData({ ...formData, height: `${ft}'${inch}` });
+                                                }}
+                                                placeholder="Ft"
+                                                className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-4 pr-4 focus:border-primary focus:outline-none"
+                                            />
+                                            <span className="absolute right-3 top-3 text-muted-foreground text-xs font-bold">ft</span>
+                                        </div>
+                                        <div className="relative flex-1">
+                                            <input
+                                                type="number"
+                                                min="0" max="11"
+                                                value={formData.height.split("'")[1] || ''}
+                                                onChange={e => {
+                                                    const ft = formData.height.split("'")[0] || '';
+                                                    const inch = e.target.value;
+                                                    setFormData({ ...formData, height: `${ft}'${inch}` });
+                                                }}
+                                                placeholder="In"
+                                                className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-4 pr-4 focus:border-primary focus:outline-none"
+                                            />
+                                            <span className="absolute right-3 top-3 text-muted-foreground text-xs font-bold">in</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div>
