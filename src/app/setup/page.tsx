@@ -33,16 +33,13 @@ export default function OnboardingPage() {
     });
 
     const handleNext = () => {
-        if (step === 1 && (!formData.height || !formData.weight)) {
-            alert("Please complete your physical profile.");
-            return;
-        }
-        if (step === 2 && !formData.accepted_terms) {
-            alert("Please accept the terms to continue.");
-            return;
-        }
-        if (step === 3 && !formData.baseline_goal.trim()) {
+        if (step === 2 && !formData.baseline_goal.trim()) {
             alert("Please share a goal for the season.");
+            return;
+        }
+
+        if (step === 3 && !formData.accepted_terms) {
+            alert("Please accept the terms to continue.");
             return;
         }
 
@@ -132,18 +129,12 @@ export default function OnboardingPage() {
 
                     {/* Header */}
                     <div className="text-center space-y-2">
-                        <h1 className="text-3xl font-black text-foreground tracking-tight">
+                        <h1 className="text-3xl font-black text-foreground tracking-tight uppercase">
                             {step === 1 && "Start Your Profile"}
                             {step === 2 && "Establish Baseline"}
                             {step === 3 && "Terms of Service"}
                             {step === 4 && "You're All Set"}
                         </h1>
-                        <p className="text-muted-foreground">
-                            {step === 1 && "Let's get your digital card set up."}
-                            {step === 2 && "Where is your head at right now?"}
-                            {step === 3 && "Important legal stuff for your protection."}
-                            {step === 4 && "Welcome to the future of goaltending."}
-                        </p>
                     </div>
 
                     {/* Step 1: Profile Details */}
@@ -311,7 +302,7 @@ export default function OnboardingPage() {
                             disabled={isLoading}
                             className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 group"
                         >
-                            {step === 2 ? "Activate Account" : "Continue"}
+                            {step === 2 ? "Continue" : "Continue"}
                             <ArrowRight className={`transition-transform ${step !== 2 ? 'group-hover:translate-x-1' : ''}`} size={20} />
                         </button>
                     )}

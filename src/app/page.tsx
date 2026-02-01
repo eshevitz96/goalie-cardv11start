@@ -33,21 +33,21 @@ export default function EntryPortal() {
                         className="flex flex-col items-center justify-center space-y-6"
                     >
                         <motion.h1
-                            className="text-4xl md:text-5xl font-semibold text-white tracking-tight text-center px-4"
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.2, duration: 1 }}
+                            className="text-5xl md:text-7xl font-black text-white italic tracking-tighter text-center px-4 uppercase"
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ duration: 0.4, ease: "easeOut" }}
                         >
-                            Welcome to Goalie Card
+                            Goalie Card
                         </motion.h1>
 
                         <motion.div
                             initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.5 }}
-                            transition={{ delay: 1, duration: 1 }}
-                            className="text-white/50 text-sm font-medium tracking-widest uppercase"
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.3, duration: 0.5 }}
+                            className="text-white text-xs font-bold uppercase tracking-[0.2em]"
                         >
-                            Loading Experience
+                            Studio Pending
                         </motion.div>
                     </motion.div>
                 )}
