@@ -232,6 +232,7 @@ function ActivateContent() {
             // Pre-fill form data for Review Step
             setFormData({
                 parentName: rosterData.parent_name || "",
+                parentEmail: rosterData.raw_data?.parent_email || "",
                 goalieName: rosterData.goalie_name || "",
                 phone: rosterData.parent_phone || "",
                 gradYear: rosterData.grad_year?.toString() || "",
@@ -246,7 +247,8 @@ function ActivateContent() {
             if (isLoggedIn) {
                 setCurrentStep(4); // Skip OTP Verify if already logged in
             } else {
-                setCurrentStep(3.5); // OTP Step
+                // SKIP OTP - GO DIRECTLY TO REVIEW
+                setCurrentStep(4);
             }
             return;
 
@@ -307,6 +309,7 @@ function ActivateContent() {
     // Editable Form Data
     const [formData, setFormData] = useState({
         parentName: "",
+        parentEmail: "",
         goalieName: "",
         phone: "",
         gradYear: "",
@@ -338,7 +341,12 @@ function ActivateContent() {
                         grad_year: gradYearInt,
                         height: formData.height,
                         weight: formData.weight,
-                        team: formData.team
+                        team: formData.team,
+                        // Determine if we need to update raw_data
+                        raw_data: {
+                            ...rosterData.raw_data,
+                            parent_email: formData.parentEmail // Save Guardian Email
+                        }
                     })
                     .eq('id', rosterData.id);
 
@@ -672,6 +680,15 @@ function ActivateContent() {
                                                 className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
                                             />
                                         </div>
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Goalie Email (Login)</label>
+                                            <input
+                                                type="email"
+                                                value={email} // Using primary email state
+                                                disabled // Locked for now as it is the ID
+                                                className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-muted-foreground text-sm focus:border-emerald-500 outline-none cursor-not-allowed"
+                                            />
+                                        </div>
 
                                         {userType === 'parent' && (
                                             <>
@@ -681,6 +698,16 @@ function ActivateContent() {
                                                         value={formData.parentName}
                                                         onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
                                                         className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
+                                                    />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Guardian Email</label>
+                                                    <input
+                                                        type="email"
+                                                        value={formData.parentEmail}
+                                                        onChange={(e) => setFormData({ ...formData, parentEmail: e.target.value })}
+                                                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
+                                                        placeholder="guardian@example.com"
                                                     />
                                                 </div>
                                                 <div className="col-span-2">
