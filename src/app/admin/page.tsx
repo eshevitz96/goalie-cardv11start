@@ -84,7 +84,7 @@ export default function AdminDashboard() {
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
 
             // EMAIL ALLOWLIST CHECK - Update this list to add more admins
-            const ADMIN_EMAILS = ['thegoaliebrand@gmail.com', 'elliott@goaliecard.app'];
+            const ADMIN_EMAILS = ['thegoaliebrand@gmail.com'];
 
             const userEmail = user.email?.toLowerCase() || '';
             const isEmailAllowed = ADMIN_EMAILS.includes(userEmail);
