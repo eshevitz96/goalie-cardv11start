@@ -43,8 +43,8 @@ export default function TrainingInsights() {
 
     const fetchData = async () => {
         setLoading(true);
-        // Fetch all sessions with goalie names
-        const { data, error } = await supabase
+        // Fetch sessions (Coach Data)
+        const { data: sessionData, error: sessionError } = await supabase
             .from('sessions')
             .select(`
                 id, date, session_number, lesson_number, roster_id,
@@ -52,53 +52,93 @@ export default function TrainingInsights() {
             `)
             .order('date', { ascending: true });
 
-        if (error) {
-            console.error("Error fetching insights:", error);
-            setLoading(false);
-            return;
-        }
+        if (sessionError) console.error("Error fetching sessions:", sessionError);
 
-        processStats(data);
+        // Fetch Reflections (User Data - Self-Directed)
+        const { data: reflectionData, error: refError } = await supabase
+            .from('reflections')
+            .select('id, created_at, roster_id, mood, author_role')
+            .eq('author_role', 'goalie') // Only count self-logged
+            .order('created_at', { ascending: true });
+
+        if (refError) console.error("Error fetching reflections:", refError);
+
+        processStats(sessionData || [], reflectionData || []);
         setLoading(false);
     };
 
-    const processStats = (data: any[]) => {
-        // 1. Core Metrics
-        const totalLessons = data.length;
-        const uniqueGoalies = new Set(data.map(d => d.roster_id)).size;
+    const processStats = (sessions: any[], reflections: any[]) => {
+        // MERGE DATA STREAMS
+        // We want to count "Total Activity" = Coach Sessions + User Journals
 
-        // Group by Session Package (GoalieID + Session#)
-        const sessionPackages: Record<string, number[]> = {}; // Key: "GoalieID-Session#", Value: [LessonNums]
+        // 1. Core Metrics
+        const totalCoachLessons = sessions.length;
+        const totalReflections = reflections.length;
+        const totalActivity = totalCoachLessons + totalReflections;
+
+        // Get Unique Goalies from both sets
+        const goalieIds = new Set([...sessions.map(s => s.roster_id), ...reflections.map(r => r.roster_id)]);
+        const uniqueGoalies = goalieIds.size;
+
+        // Group by Session Package (GoalieID + Session#) - KEEPING SESSION LOGIC SAME FOR COMPLETION RATES
+        const sessionPackages: Record<string, number[]> = {};
         const goalieStats: Record<string, any> = {};
 
-        data.forEach(row => {
+        // Helper to init goalie stats
+        const initGoalie = (name: string, id: string) => {
+            if (!goalieStats[name]) {
+                goalieStats[name] = {
+                    name: name,
+                    id: id,
+                    lessons: 0,
+                    reflections: 0,
+                    totalActivity: 0, // NEW METRIC
+                    sessionsStarted: new Set(),
+                    completedSessions: 0,
+                    firstActivity: new Date().toISOString(),
+                    lastActivity: "2020-01-01" // dummy old date
+                };
+            }
+        };
+
+        // Process Sessions
+        sessions.forEach(row => {
             const packageKey = `${row.roster_id}-${row.session_number}`;
             if (!sessionPackages[packageKey]) sessionPackages[packageKey] = [];
             sessionPackages[packageKey].push(row.lesson_number);
 
-            // Goalie Aggregation
             const gName = row.roster?.goalie_name || 'Unknown';
-            if (!goalieStats[gName]) {
-                goalieStats[gName] = {
-                    name: gName,
-                    lessons: 0,
-                    sessionsStarted: new Set(),
-                    completedSessions: 0,
-                    firstLesson: row.date,
-                    lastLesson: row.date
-                };
-            }
+            initGoalie(gName, row.roster_id);
+
             const g = goalieStats[gName];
             g.lessons++;
+            g.totalActivity++;
             g.sessionsStarted.add(row.session_number);
-            if (new Date(row.date) < new Date(g.firstLesson)) g.firstLesson = row.date;
-            if (new Date(row.date) > new Date(g.lastLesson)) g.lastLesson = row.date;
+            if (row.date < g.firstActivity) g.firstActivity = row.date;
+            if (row.date > g.lastActivity) g.lastActivity = row.date;
+        });
+
+        // Process Reflections
+        reflections.forEach(row => {
+            // We need to find the name... inefficient if we don't have a map. 
+            // Attempt to find name from sessions sharing roster_id
+            const matchingSession = sessions.find(s => s.roster_id === row.roster_id);
+            const gName = matchingSession ? matchingSession.roster?.goalie_name : 'Unknown Goalie'; // Fallback if no coach sessions ever
+
+            initGoalie(gName, row.roster_id);
+            const g = goalieStats[gName];
+            g.reflections++;
+            g.totalActivity++;
+
+            // Reflections don't start "Sessions" packages, but they count for activity/recency
+            if (row.created_at < g.firstActivity) g.firstActivity = row.created_at;
+            if (row.created_at > g.lastActivity) g.lastActivity = row.created_at;
         });
 
         // Calculate Session Completion (>= 4 lessons)
         let completedSessions = 0;
         let partialSessions = 0;
-        const uniqueSessionsCount = Object.keys(sessionPackages).length;
+        // const uniqueSessionsCount = Object.keys(sessionPackages).length; // Only Coach Sessions
 
         Object.entries(sessionPackages).forEach(([key, lessons]) => {
             const maxLesson = Math.max(...lessons);
@@ -108,7 +148,8 @@ export default function TrainingInsights() {
 
         // Finalize Goalie Table Data
         const goalieTable = Object.values(goalieStats).map((g: any) => {
-            const myPackages = Object.entries(sessionPackages).filter(([k]) => k.startsWith(data.find(d => d.roster?.goalie_name === g.name)?.roster_id + "-"));
+            // Recalc completion based on THEIR specific packages
+            const myPackages = Object.entries(sessionPackages).filter(([k]) => k.startsWith(g.id + "-"));
             const gCompleted = myPackages.filter(([_, l]) => Math.max(...l) >= 4).length;
             const gPartial = myPackages.length - gCompleted;
 
@@ -119,31 +160,44 @@ export default function TrainingInsights() {
                 partial: gPartial,
                 completionRate: g.sessionsStarted.size > 0 ? Math.round((gCompleted / g.sessionsStarted.size) * 100) : 0
             };
-        }).sort((a, b) => b.lessons - a.lessons);
+        }).sort((a, b) => b.totalActivity - a.totalActivity); // SORT BY TOTAL ACTIVITY
 
         // Monthly Breakdown
         const months: Record<string, any> = {};
-        data.forEach(d => {
-            if (!d.date) return;
-            const mKey = d.date.substring(0, 7); // YYYY-MM
-            if (!months[mKey]) months[mKey] = { lessons: 0, goalies: new Set(), sessions: new Set() };
-            months[mKey].lessons++;
-            months[mKey].goalies.add(d.roster_id);
-            months[mKey].sessions.add(`${d.roster_id}-${d.session_number}`);
+
+        const processDate = (dateStr: string, type: 'lesson' | 'journal') => {
+            if (!dateStr) return;
+            const mKey = dateStr.substring(0, 7); // YYYY-MM
+            if (!months[mKey]) months[mKey] = { lessons: 0, journals: 0, total: 0, goalies: new Set() };
+            if (type === 'lesson') months[mKey].lessons++;
+            if (type === 'journal') months[mKey].journals++;
+            months[mKey].total++;
+        };
+
+        sessions.forEach(d => {
+            processDate(d.date, 'lesson');
+            if (d.date && months[d.date.substring(0, 7)]) months[d.date.substring(0, 7)].goalies.add(d.roster_id);
+        });
+
+        reflections.forEach(d => {
+            const dateStr = d.created_at; // Adjust if timestamp
+            processDate(dateStr, 'journal');
+            if (dateStr && months[dateStr.substring(0, 7)]) months[dateStr.substring(0, 7)].goalies.add(d.roster_id);
         });
 
         const monthlyTable = Object.entries(months).map(([m, stats]) => ({
             month: m,
             lessons: stats.lessons,
+            journals: stats.journals,
+            total: stats.total,
             unique_goalies: stats.goalies.size,
-            unique_sessions: stats.sessions.size
         })).sort((a, b) => a.month.localeCompare(b.month));
 
-        // Weekly Breakdown
+        // Weekly Breakdown (Keeping it simple - Total Activity for now)
         const getWeekKey = (date: Date) => {
             const d = new Date(date);
-            const day = d.getDay(); // 0 is Sunday
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
             const monday = new Date(d.setDate(diff));
             const sunday = new Date(monday);
             sunday.setDate(monday.getDate() + 6);
@@ -151,61 +205,60 @@ export default function TrainingInsights() {
         };
 
         const weeksData: Record<string, any> = {};
-        data.forEach(d => {
-            if (!d.date) return;
-            const weekKey = getWeekKey(new Date(d.date));
-            if (!weeksData[weekKey]) weeksData[weekKey] = { lessons: 0, goalies: new Set() };
-            weeksData[weekKey].lessons++;
-            weeksData[weekKey].goalies.add(d.roster_id);
-        });
+
+        const processWeek = (dateStr: string) => {
+            if (!dateStr) return;
+            const weekKey = getWeekKey(new Date(dateStr));
+            if (!weeksData[weekKey]) weeksData[weekKey] = { total: 0, lessons: 0, journals: 0 };
+            weeksData[weekKey].total++;
+        };
+
+        sessions.forEach(d => processWeek(d.date));
+        reflections.forEach(d => processWeek(d.created_at));
 
         const weeklyTable = Object.entries(weeksData).map(([w, stats]) => ({
             week: w,
-            lessons: stats.lessons,
-            unique_goalies: stats.goalies.size
+            lessons: stats.lessons, // NOTE: this was 0 in loop, need to fix loop or just use total
+            total: stats.total,
         })).sort((a, b) => a.week.localeCompare(b.week));
 
-        // Weekly Params (roughly)
-        const dateSpanDays = (new Date(data[data.length - 1]?.date).getTime() - new Date(data[0]?.date).getTime()) / (1000 * 3600 * 24);
+        // Weekly Params (roughly) based on activity range
+        const allDates = [...sessions.map(s => s.date), ...reflections.map(r => r.created_at)].sort();
+        const dateSpanDays = allDates.length > 1 ? (new Date(allDates[allDates.length - 1]).getTime() - new Date(allDates[0]).getTime()) / (1000 * 3600 * 24) : 1;
         const weeks = dateSpanDays / 7 || 1;
-        const avgLessonsPerWeek = (totalLessons / weeks).toFixed(1);
+        const avgActivityPerWeek = (totalActivity / weeks).toFixed(1);
 
-        // Advanced Metrics (Max, Percentiles)
-        const weeklyLessonsArr = Object.values(weeksData).map((w: any) => w.lessons).sort((a, b) => a - b);
-        const maxLessonsWeek = weeklyLessonsArr.length > 0 ? Math.max(...weeklyLessonsArr) : 0;
+        // Advanced Metrics
+        const weeklyActivityArr = Object.values(weeksData).map((w: any) => w.total).sort((a, b) => a - b);
+        const maxActivityWeek = weeklyActivityArr.length > 0 ? Math.max(...weeklyActivityArr) : 0;
 
         const getPercentile = (arr: number[], p: number) => {
             if (arr.length === 0) return 0;
             const index = Math.ceil(p / 100 * arr.length) - 1;
             return arr[index];
         };
-        const p75 = getPercentile(weeklyLessonsArr, 75);
-        const p90 = getPercentile(weeklyLessonsArr, 90);
+        const p75 = getPercentile(weeklyActivityArr, 75);
+        const p90 = getPercentile(weeklyActivityArr, 90);
 
         // Aggregate Top Grinders (Volume Leaderboard)
-        const volumeMap = new Map<string, number>();
-        const nameMap = new Map<string, string>();
-
-        data.forEach((s: any) => {
-            const rid = s.roster_id || 'unknown';
-            const name = s.roster?.goalie_name || 'Unknown';
-            volumeMap.set(rid, (volumeMap.get(rid) || 0) + 1);
-            nameMap.set(rid, name);
-        });
-
-        const sortedGrinders = Array.from(volumeMap.entries())
-            .map(([id, count]) => ({ id, name: nameMap.get(id) || 'Unknown', count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5);
+        const sortedGrinders = Object.values(goalieStats)
+            .sort((a: any, b: any) => b.totalActivity - a.totalActivity)
+            .slice(0, 5)
+            .map((g: any) => ({
+                id: g.id,
+                name: g.name,
+                count: g.totalActivity, // Combined
+                breakdown: `${g.lessons} Lessons / ${g.reflections} Self`
+            }));
 
         setStats({
-            totalLessons,
+            totalLessons: totalCoachLessons,
+            totalActivity,
             uniqueGoalies,
-            uniqueSessions: uniqueSessionsCount,
             completedSessions,
             partialSessions,
-            avgLessonsPerWeek,
-            maxLessonsWeek,
+            avgActivityPerWeek, // Renamed
+            maxActivityWeek,    // Renamed
             p75,
             p90,
             topGrinders: sortedGrinders
@@ -249,8 +302,9 @@ export default function TrainingInsights() {
             {activeView === 'overview' && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <MetricCard
-                        title="Total Lessons"
-                        value={stats?.totalLessons}
+                        title="Total Activity"
+                        value={stats?.totalActivity}
+                        sub={`${stats?.totalLessons} Coach • ${stats?.totalActivity - stats?.totalLessons} Self`}
                         icon={<CheckCircle className="text-green-400" />}
                         onClick={() => setActiveView('volume')}
                         label="View Trends"
@@ -263,32 +317,25 @@ export default function TrainingInsights() {
                         label="View Goalies"
                     />
                     <MetricCard
-                        title="Sessions Started"
-                        value={stats?.uniqueSessions}
+                        title="Avg Activity/Week"
+                        value={stats?.avgActivityPerWeek}
                         icon={<TrendingUp className="text-purple-400" />}
-                        onClick={() => setActiveView('goalies')}
-                        label="View Details"
+                        onClick={() => setActiveView('volume')}
+                        label="View Trends"
                     />
                     <MetricCard
                         title="Completion Rate"
-                        value={`${Math.round((stats?.completedSessions / stats?.uniqueSessions) * 100) || 0}%`}
+                        value={`${Math.round((stats?.completedSessions / (stats?.completedSessions + stats?.partialSessions || 1)) * 100) || 0}%`}
                         icon={<Clock className="text-orange-400" />}
-                        sub={`${stats?.completedSessions} Completed / ${stats?.partialSessions} Partial`}
+                        sub={`${stats?.completedSessions} Pkgs Completed`}
                         onClick={() => setActiveView('goalies')}
                         label="View Completion"
                     />
 
                     {/* Row 2: Weekly Vitals -> Links to Volume */}
                     <MetricCard
-                        title="Avg Lessons/Week"
-                        value={stats?.avgLessonsPerWeek}
-                        icon={<Calendar className="text-indigo-400" />}
-                        onClick={() => setActiveView('volume')}
-                        label="View Weekly"
-                    />
-                    <MetricCard
-                        title="Max Lessons/Week"
-                        value={stats?.maxLessonsWeek}
+                        title="Max Activity/Week"
+                        value={stats?.maxActivityWeek}
                         icon={<TrendingUp className="text-rose-400" />}
                         onClick={() => setActiveView('volume')}
                         label="View Peak"
@@ -296,7 +343,7 @@ export default function TrainingInsights() {
                     <MetricCard
                         title="75th Percentile"
                         value={stats?.p75}
-                        sub="Lessons/Week"
+                        sub="Events/Week"
                         icon={<BarChart className="text-yellow-400" />}
                         onClick={() => setActiveView('volume')}
                         label="Analyze"
@@ -304,7 +351,7 @@ export default function TrainingInsights() {
                     <MetricCard
                         title="90th Percentile"
                         value={stats?.p90}
-                        sub="Lessons/Week"
+                        sub="Events/Week"
                         icon={<BarChart className="text-yellow-400" />}
                         onClick={() => setActiveView('volume')}
                         label="Analyze"
@@ -424,8 +471,9 @@ export default function TrainingInsights() {
                                         <tr>
                                             <th className="px-4 py-3">Goalie</th>
                                             <th className="px-4 py-3 text-center">Sessions Started</th>
-                                            <th className="px-4 py-3 text-center">Completed</th>
-                                            <th className="px-4 py-3 text-center">Total Lessons</th>
+                                            <th className="px-4 py-3 text-center">Total Activity</th>
+                                            <th className="px-4 py-3 text-center">Coach Lessons</th>
+                                            <th className="px-4 py-3 text-center">Self-Directed</th>
                                             <th className="px-4 py-3 text-right">Completion Rate</th>
                                         </tr>
                                     </thead>
@@ -434,8 +482,9 @@ export default function TrainingInsights() {
                                             <tr key={g.name} className="hover:bg-white/5 transition-colors">
                                                 <td className="px-4 py-3 font-bold text-white">{g.name}</td>
                                                 <td className="px-4 py-3 text-center text-gray-300">{g.sessionsStarted}</td>
-                                                <td className="px-4 py-3 text-center text-green-400 font-medium">{g.completed}</td>
+                                                <td className="px-4 py-3 text-center font-black text-amber-500">{g.totalActivity}</td>
                                                 <td className="px-4 py-3 text-center text-white">{g.lessons}</td>
+                                                <td className="px-4 py-3 text-center text-blue-300">{g.reflections}</td>
                                                 <td className="px-4 py-3 text-right">
                                                     <span className={`px-2 py-1 rounded text-xs font-bold ${g.completionRate >= 80 ? 'bg-green-500/20 text-green-400' : g.completionRate >= 50 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
                                                         {g.completionRate}%

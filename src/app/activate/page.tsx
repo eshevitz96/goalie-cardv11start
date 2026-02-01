@@ -87,7 +87,23 @@ function ActivateContent() {
 
     const handleCreateNew = async () => {
         setIsLoading(true);
+        setError(null);
         try {
+            // DUPLICATE CHECK: Before creating, retry finding the user just in case
+            const { data: existing } = await supabase
+                .from('roster_uploads')
+                .select('*')
+                .ilike('email', email.trim())
+                .maybeSingle();
+
+            if (existing) {
+                console.log("Found existing record during Create New:", existing);
+                setRosterData(existing);
+                setIsLoading(false);
+                setCurrentStep(2);
+                return;
+            }
+
             // Generate a random GC-ID
             const rId = 'GC-' + Math.floor(1000 + Math.random() * 9000);
 
@@ -112,22 +128,74 @@ function ActivateContent() {
         }
     };
 
-    // Step 2: Birthday verification -> OTP Trigger
+    // Step 2: Birthday verification -> Logic Fork (Login vs Activate)
     const handleBirthdaySubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         setIsLoading(true);
 
-        // Here we Accept the birthday as the "Lock" key or just data entry.
-        // Then we trigger OTP
-
         try {
-            // Check if already authenticated with this email (e.g. from Magic Link redirect)
+            // 1. Verify Birthday Match (if data exists)
+            const storedDob = rosterData.raw_data?.dob;
+            // Strict check only if we HAVE a reliable DOB on file
+            if (storedDob && storedDob !== birthdayInput) {
+                setError("Incorrect Date of Birth.");
+                setIsLoading(false);
+                return;
+            }
+
+            // 2. Check for "Returning User" status (Login Flow)
+            // Criteria: Claimed + Setup Complete flag
+            const isSetup = rosterData.is_claimed && (rosterData.raw_data?.setup_complete || rosterData.setup_complete);
+
+            if (isSetup) {
+                console.log("Returning User Detected - Logging In...");
+
+                // --- LOGIN SUCCESS LOGIC ---
+                if (typeof window !== 'undefined') {
+                    // Set Session Tokens
+                    localStorage.setItem('session_token', 'valid-session-' + Date.now());
+                    localStorage.setItem('user_email', email);
+
+                    // Determine Role (could be stored, or derived from birthday/grade)
+                    // For now, default to 'goalie' or 'parent' based on the age check we did dynamically, 
+                    // or fetch from profiles table if we want to be 100% sure.
+                    // Let's do a quick calculation or re-use existing logic.
+                    const birthDate = new Date(birthdayInput);
+                    const today = new Date();
+                    let age = today.getFullYear() - birthDate.getFullYear();
+                    const m = today.getMonth() - birthDate.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+                    const role = age >= 18 ? 'goalie' : 'parent';
+
+                    localStorage.setItem('user_role', role);
+
+                    if (rosterData.assigned_unique_id) {
+                        localStorage.setItem('activated_id', rosterData.assigned_unique_id);
+                    }
+                    if (rosterData.id) {
+                        localStorage.setItem('setup_roster_id', rosterData.id);
+                    }
+
+                    // Cleanup
+                    localStorage.removeItem('demo_mode');
+                }
+
+                // Redirect
+                const dest = '/parent'; // Default dashboard for now
+                router.push(dest);
+                return;
+            }
+
+            // 3. New/Pending User Flow -> Trigger OTP (Activation)
+            console.log("New/Pending User - Starting Activation...");
+
+            // Check if already authenticated at Supabase level
             const { data: { user } } = await supabase.auth.getUser();
             const isLoggedIn = user?.email?.toLowerCase() === email.trim().toLowerCase();
 
             if (isLoggedIn) {
-                console.log("User already logged in - skipping OTP");
+                console.log("User already authenticated via Supabase - skipping OTP send");
             } else if (email.includes('example.com') || email.includes('demo@')) {
                 console.log("Demo Email detected - skipping real OTP send");
                 setIsDemo(true);
@@ -150,7 +218,7 @@ function ActivateContent() {
                 }
             }
 
-            // Calculate Role based on Birthday
+            // Calculate Role for Activation Context
             const birthDate = new Date(birthdayInput);
             const today = new Date();
             let age = today.getFullYear() - birthDate.getFullYear();
@@ -159,7 +227,6 @@ function ActivateContent() {
                 age--;
             }
             const determinedRole = age >= 18 ? 'goalie' : 'parent';
-            console.log(`Age: ${age}, Role Assigned: ${determinedRole}`);
             setUserType(determinedRole);
 
             // Pre-fill form data for Review Step
@@ -171,7 +238,7 @@ function ActivateContent() {
                 height: rosterData.height || "",
                 weight: rosterData.weight || "",
                 team: rosterData.team || "",
-                birthday: birthdayInput // Carry forward the entered birthday
+                birthday: birthdayInput // Carry forward
             });
 
             setIsLoading(false);
@@ -184,7 +251,7 @@ function ActivateContent() {
             return;
 
         } catch (err: any) {
-            setError("Error sending code: " + err.message);
+            setError("Error processing request: " + err.message);
             setIsLoading(false);
         }
     };
@@ -387,34 +454,14 @@ function ActivateContent() {
         }
 
         try {
-            // Final Activation Save
+            // Use Server Action for reliable saving
+            const { activateUserCard } = await import('./actions');
+
             if (rosterData && rosterData.id) {
-                const { data: { user } } = await supabase.auth.getUser();
-
-                // Save PIN to raw_data for Beta (In prod, use hashed auth column)
-                // Note: We are trusting client validation here for speed in Beta.
-                const { error: updateError } = await supabase
-                    .from('roster_uploads')
-                    .update({
-                        is_claimed: true,
-                        // CRITICAL: Bind the Auth user to this roster record
-                        // This allows RLS policies effectively.
-                        // Assuming column is 'user_id' or we rely on email mapping still.
-                        // For safety, we keep rely on email mapping primarily unless column exists.
-                        // But let's add it if schema supports (often 'goalie_id' or 'user_id').
-                        // Note: If schema doesn't have it, this might fail, but usually safe to ignore extra fields if not strict
-                        // Update: We'll stick to 'is_claimed' and raw_data for now to be safe against schema errors.
-                        raw_data: {
-                            ...rosterData.raw_data, // Keep existing calls
-                            setup_complete: true,
-                            access_pin: pin, // Beta Simple PIN
-                            activation_date: new Date().toISOString(),
-                            linked_user_id: user?.id // Validation reference
-                        }
-                    })
-                    .eq('id', rosterData.id);
-
-                if (updateError) console.error("Activation Save Error", updateError);
+                const result = await activateUserCard(rosterData.id, pin, rosterData);
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
             }
 
             // Simulate Delay

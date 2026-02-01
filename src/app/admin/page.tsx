@@ -5,9 +5,9 @@ import { supabase } from '@/utils/supabase/client';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import {
-    Loader2, UploadCloud, CheckCircle, Database, Search,
-    X, Trash2, Pencil, Users, Shield, DollarSign,
-    RefreshCw, FileSpreadsheet, Plus, BarChart3
+    Loader2, UploadCloud, Database, Search,
+    X, Trash2, Pencil, Users, Shield, DollarSign, ChevronRight, CheckCircle, User,
+    RefreshCw, FileSpreadsheet, Plus, BarChart3, Calendar
 } from 'lucide-react';
 import TrainingInsights from '@/components/TrainingInsights';
 
@@ -52,13 +52,19 @@ export default function AdminDashboard() {
     const [manualForm, setManualForm] = useState({
         firstName: "",
         lastName: "",
-        email: "",
-        goalieEmail: "",
+        // Consolidated Email/Phone logic:
+        email: "", // Primary (which will serve as 'Account Email') - usually Guardian for youth
+        guardianEmail: "",
+        guardianPhone: "",
+        athleteEmail: "",
+        athletePhone: "",
         team: "",
         gradYear: "2030",
         parentName: "",
-        phone: "",
+        phone: "", // Legacy
         coachId: "",
+        birthday: "",
+        step: 1, // Wizard Step
         rawData: {} as any
     });
     const [targetGoalieId, setTargetGoalieId] = useState<string>("");
@@ -105,6 +111,58 @@ export default function AdminDashboard() {
             setIsLoading(false);
         }
     };
+
+    const recalculateCounts = async () => {
+        if (!confirm("This will scan the 'sessions' table and update S#/Lesson # for ALL goalies based on actual records found. Continue?")) return;
+
+        setIsLoading(true);
+        try {
+            // 1. Fetch all roster IDs
+            const { data: roster, error: rError } = await supabase.from('roster_uploads').select('id, goalie_name');
+            if (rError) throw rError;
+
+            let updatedCount = 0;
+
+            for (const person of roster || []) {
+                // 2. Count sessions for this person
+                const { count: sCount, error: sError } = await supabase
+                    .from('sessions')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('roster_id', person.id);
+
+                // Note: We don't have a strict 'Lesson' type field in sessions table usually, 
+                // but the CSV parser puts lesson_number into the table. 
+                // Let's count where lesson_number > 0
+                const { count: lCount, error: lError } = await supabase
+                    .from('sessions')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('roster_id', person.id)
+                    .gt('lesson_number', 0);
+
+                if (sError || lError) {
+                    console.error(`Error counting for ${person.goalie_name}`, sError || lError);
+                    continue;
+                }
+
+                // 3. Update Roster
+                await supabase.from('roster_uploads').update({
+                    session_count: sCount || 0,
+                    lesson_count: lCount || 0
+                }).eq('id', person.id);
+
+                updatedCount++;
+            }
+
+            alert(`Recalculation Complete. Updated ${updatedCount} profiles.`);
+            fetchRoster();
+
+        } catch (e: any) {
+            alert("Recalculation Failed: " + e.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
 
     const fetchSessions = async () => {
         const { data, error } = await supabase
@@ -494,12 +552,19 @@ export default function AdminDashboard() {
             firstName: first || "",
             lastName: last.join(" ") || "",
             email: entry.email,
-            goalieEmail: entry.raw_data?.goalie_email || "",
+            // Try explicit fields first, fallback to legacy/raw
+            guardianEmail: (entry as any).guardian_email || entry.email,
+            guardianPhone: (entry as any).guardian_phone || entry.parent_phone || "",
+            athleteEmail: (entry as any).athlete_email || entry.raw_data?.goalie_email || "",
+            athletePhone: (entry as any).athlete_phone || "",
+
             team: entry.team,
             gradYear: entry.grad_year?.toString() || "2030",
             parentName: entry.parent_name || "",
             phone: entry.parent_phone || "",
             coachId: entry.assigned_coach_id || "",
+            birthday: entry.birthday || "",
+            step: 1,
             rawData: entry.raw_data || {}
         });
         setShowManualAdd(true);
@@ -509,21 +574,37 @@ export default function AdminDashboard() {
         setShowManualAdd(false);
         setEditingId(null);
         setEditingId(null);
-        setManualForm({ firstName: "", lastName: "", email: "", goalieEmail: "", team: "", gradYear: "2030", parentName: "", phone: "", coachId: "", rawData: {} });
+        setManualForm({
+            firstName: "", lastName: "", email: "",
+            guardianEmail: "", guardianPhone: "", athleteEmail: "", athletePhone: "",
+            team: "", gradYear: "2030", parentName: "", phone: "", coachId: "", birthday: "", rawData: {},
+            step: 1
+        });
     };
 
     const handleManualSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            // Determine Primary Email (Guardian preferred for account management)
+            const primaryEmail = manualForm.guardianEmail || manualForm.athleteEmail || manualForm.email;
+
             const payload = {
-                email: manualForm.email,
+                email: primaryEmail, // Critical: Update primary email
                 goalie_name: `${manualForm.firstName} ${manualForm.lastName}`,
                 parent_name: manualForm.parentName,
-                parent_phone: manualForm.phone,
+                parent_phone: manualForm.guardianPhone || manualForm.phone,
+
+                // New Fields
+                guardian_email: manualForm.guardianEmail,
+                guardian_phone: manualForm.guardianPhone,
+                athlete_email: manualForm.athleteEmail,
+                athlete_phone: manualForm.athletePhone,
+
                 grad_year: parseInt(manualForm.gradYear) || 2030,
                 team: manualForm.team || "Unassigned",
                 assigned_coach_id: manualForm.coachId === "" ? null : manualForm.coachId,
-                raw_data: { ...manualForm.rawData, goalie_email: manualForm.goalieEmail }
+                birthday: manualForm.birthday,
+                raw_data: { ...manualForm.rawData, goalie_email: manualForm.athleteEmail }
             };
 
             if (editingId) {
@@ -772,6 +853,14 @@ export default function AdminDashboard() {
                                             Reset Database
                                         </button>
                                         <button
+                                            onClick={recalculateCounts}
+                                            className="px-4 py-2 bg-blue-500/10 text-blue-500 rounded-lg text-sm font-bold hover:bg-blue-500/20 transition-colors flex items-center gap-2"
+                                            title="Sync counts with actual session records"
+                                        >
+                                            <RefreshCw size={14} />
+                                            Recalc
+                                        </button>
+                                        <button
                                             onClick={() => setShowManualAdd(true)}
                                             className="px-4 py-2 bg-white text-black rounded-lg text-sm font-bold hover:scale-105 transition-transform"
                                         >
@@ -867,34 +956,241 @@ export default function AdminDashboard() {
                 )}
             </main>
 
-            {/* Manual Edit Modal */}
+            {/* Manual Edit Modal - Multi-Step Wizard */}
             {showManualAdd && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass rounded-2xl w-full max-w-lg p-6 shadow-2xl">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold flex items-center gap-2"><Users className="text-primary" /> {editingId ? 'Edit' : 'Add'} Goalie</h3>
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass rounded-2xl w-full max-w-lg p-0 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-6 border-b border-border bg-muted/20 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold flex items-center gap-2"><Users className="text-primary" /> {editingId ? 'Edit' : 'Add'} Goalie</h3>
+                                <div className="flex items-center gap-2 mt-2">
+                                    {[1, 2, 3].map(step => (
+                                        <div key={step} className={`h-1.5 rounded-full transition-all duration-300 ${manualForm.step >= step ? 'w-8 bg-primary' : 'w-2 bg-muted-foreground/30'}`} />
+                                    ))}
+                                    <span className="text-xs text-muted-foreground ml-2">Step {manualForm.step} of 3</span>
+                                </div>
+                            </div>
                             <button onClick={closeModal}><X size={20} className="text-muted-foreground hover:text-foreground" /></button>
                         </div>
-                        <form onSubmit={handleManualSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <input placeholder="First Name" value={manualForm.firstName} onChange={e => setManualForm({ ...manualForm, firstName: e.target.value })} className="bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" required />
-                                <input placeholder="Last Name" value={manualForm.lastName} onChange={e => setManualForm({ ...manualForm, lastName: e.target.value })} className="bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" required />
-                            </div>
-                            <input placeholder="Parent Email" type="email" value={manualForm.email} onChange={e => setManualForm({ ...manualForm, email: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none mb-4" required />
-                            <input placeholder="Goalie Email (Optional - for Minors)" type="email" value={manualForm.goalieEmail} onChange={e => setManualForm({ ...manualForm, goalieEmail: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" />
-                            <div className="grid grid-cols-2 gap-4">
-                                <input placeholder="Team" value={manualForm.team} onChange={e => setManualForm({ ...manualForm, team: e.target.value })} className="bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" />
-                                <input placeholder="Grad Year" value={manualForm.gradYear} onChange={e => setManualForm({ ...manualForm, gradYear: e.target.value })} className="bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" />
-                            </div>
-                            <select className="w-full bg-black/50 border border-white/10 rounded p-3 focus:border-indigo-500 outline-none" value={manualForm.coachId} onChange={e => setManualForm({ ...manualForm, coachId: e.target.value })}>
-                                <option value="">-- No Coach --</option>
-                                {coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                            <div className="flex justify-end gap-2 pt-4">
-                                <button type="button" onClick={closeModal} className="px-4 py-2 text-muted-foreground hover:text-foreground">Cancel</button>
-                                <button type="submit" className="px-6 py-2 bg-primary text-primary-foreground hover:opacity-90 rounded font-bold">Save</button>
-                            </div>
-                        </form>
+
+                        {/* Body */}
+                        <div className="p-6 overflow-y-auto flex-1">
+                            <form id="wizard-form" onSubmit={handleManualSubmit} className="space-y-6">
+
+                                {/* Step 1: Identity */}
+                                {/* Step 1: Identity */}
+                                {manualForm.step === 1 && (
+                                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                                        <div className="flex items-center gap-3 mb-6 bg-primary/10 p-4 rounded-xl border border-primary/20">
+                                            <Shield size={32} className="text-primary" />
+                                            <div>
+                                                <h4 className="text-sm font-bold text-foreground uppercase tracking-wider">Goalie Identity</h4>
+                                                <p className="text-xs text-muted-foreground">Establish the athlete's core profile.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">First Name</label>
+                                                <input
+                                                    value={manualForm.firstName}
+                                                    onChange={e => setManualForm({ ...manualForm, firstName: e.target.value })}
+                                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                                    placeholder="e.g. Wayne"
+                                                    required
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Last Name</label>
+                                                <input
+                                                    value={manualForm.lastName}
+                                                    onChange={e => setManualForm({ ...manualForm, lastName: e.target.value })}
+                                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                                    placeholder="e.g. Gretzky"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Grad Year</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        value={manualForm.gradYear}
+                                                        onChange={e => setManualForm({ ...manualForm, gradYear: e.target.value })}
+                                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                                        placeholder="2030"
+                                                    />
+                                                    {manualForm.gradYear && (
+                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                            {parseInt(manualForm.gradYear) > (new Date().getFullYear() + 4) ? (
+                                                                <span className="bg-blue-500/20 text-blue-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Youth</span>
+                                                            ) : (
+                                                                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">HS+</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Birthday</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="date"
+                                                        value={manualForm.birthday}
+                                                        onChange={e => setManualForm({ ...manualForm, birthday: e.target.value })}
+                                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors pl-10"
+                                                        required
+                                                    />
+                                                    <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {/* Step 2: Contact & Relations */}
+                                {manualForm.step === 2 && (
+                                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+
+                                        {/* Athlete Contact */}
+                                        <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-3">
+                                            <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                                                <User size={14} /> Athlete Contact
+                                            </h4>
+                                            <div className="space-y-3">
+                                                <input
+                                                    type="email"
+                                                    value={manualForm.athleteEmail}
+                                                    onChange={e => setManualForm({ ...manualForm, athleteEmail: e.target.value })}
+                                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors"
+                                                    placeholder="athlete@example.com (Optional)"
+                                                />
+                                                <input
+                                                    type="tel"
+                                                    value={manualForm.athletePhone}
+                                                    onChange={e => setManualForm({ ...manualForm, athletePhone: e.target.value })}
+                                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors"
+                                                    placeholder="Athlete Phone (Optional)"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Guardian Contact */}
+                                        <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-xl space-y-3">
+                                            <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
+                                                <Shield size={14} /> Guardian Info
+                                            </h4>
+                                            <input
+                                                value={manualForm.parentName}
+                                                onChange={e => setManualForm({ ...manualForm, parentName: e.target.value })}
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none transition-colors"
+                                                placeholder="Guardian Name"
+                                            />
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <input
+                                                    type="email"
+                                                    value={manualForm.guardianEmail}
+                                                    onChange={e => setManualForm({ ...manualForm, guardianEmail: e.target.value })}
+                                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none transition-colors"
+                                                    placeholder="guardian@example.com"
+                                                />
+                                                <input
+                                                    type="tel"
+                                                    value={manualForm.guardianPhone}
+                                                    onChange={e => setManualForm({ ...manualForm, guardianPhone: e.target.value })}
+                                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none transition-colors"
+                                                    placeholder="Guardian Phone"
+                                                />
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                * This email will have <strong>Parent Portal</strong> access.
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {/* Step 3: Assignment */}
+                                {manualForm.step === 3 && (
+                                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                                        <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Training & Assignment</h4>
+
+                                        <div>
+                                            <label className="text-xs font-bold text-muted-foreground mb-1 block">Team / Organization</label>
+                                            <input
+                                                value={manualForm.team}
+                                                onChange={e => setManualForm({ ...manualForm, team: e.target.value })}
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                                placeholder="e.g. Junior Kings AAA"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-bold text-muted-foreground mb-1 block">Assigned Coach</label>
+                                            <select
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                                value={manualForm.coachId}
+                                                onChange={e => setManualForm({ ...manualForm, coachId: e.target.value })}
+                                            >
+                                                <option value="">-- Select Primary Coach --</option>
+                                                {coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                        </div>
+
+                                        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mt-6">
+                                            <h5 className="font-bold text-yellow-500 text-sm mb-1">Confirm Details</h5>
+                                            <p className="text-xs text-muted-foreground mb-2">
+                                                User <strong>{manualForm.firstName} {manualForm.lastName}</strong> will be added.
+                                                Access will be linked to <strong>{manualForm.guardianEmail || manualForm.athleteEmail || manualForm.email}</strong>.
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                            </form>
+                        </div>
+
+                        {/* Footer / Controls */}
+                        <div className="p-6 border-t border-border bg-muted/20 flex justify-between items-center">
+                            {manualForm.step > 1 ? (
+                                <button
+                                    onClick={() => setManualForm(prev => ({ ...prev, step: prev.step - 1 }))}
+                                    className="px-4 py-2 text-muted-foreground hover:text-foreground text-sm font-bold flex items-center gap-2 transition-colors"
+                                >
+                                    Start Over
+                                </button>
+                            ) : (
+                                <button onClick={closeModal} className="px-4 py-2 text-muted-foreground hover:text-foreground text-sm font-bold transition-colors">Cancel</button>
+                            )}
+
+                            {manualForm.step < 3 ? (
+                                <button
+                                    onClick={() => {
+                                        // Basic validation before next
+                                        if (manualForm.step === 1 && (!manualForm.firstName || !manualForm.lastName || !manualForm.birthday)) {
+                                            alert("Please complete all required fields.");
+                                            return;
+                                        }
+                                        setManualForm(prev => ({ ...prev, step: prev.step + 1 }));
+                                    }}
+                                    className="px-6 py-2 bg-foreground text-background hover:bg-primary hover:text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                                >
+                                    Next Step <ChevronRight size={14} />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={(e) => handleManualSubmit(e as any)}
+                                    className="px-6 py-2 bg-emerald-500 text-white hover:bg-emerald-600 rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+                                >
+                                    <CheckCircle size={14} /> Save to Roster
+                                </button>
+                            )}
+                        </div>
+
                     </motion.div>
                 </div>
             )}

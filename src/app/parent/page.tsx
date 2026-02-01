@@ -29,6 +29,7 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLiveOverride, setIsLiveOverride] = useState<boolean | null>(null);
   const [showPostGame, setShowPostGame] = useState(false);
+  const [showProgress, setShowProgress] = useState(true); // User toggle for Goalie Card counts
 
   // Initial Load Logic
   const fetchMyGoalies = async (showLoading = true) => {
@@ -268,14 +269,20 @@ export default function Home() {
             status: registeredIds.has(e.id) ? "upcoming" : "open",
             image: e.image || "from-gray-500 to-gray-600",
             price: e.price,
-            sport: e.sport
+            sport: e.sport,
+            rawDate: new Date(e.date) // Keep raw date for logic
           }))
           // FILTER: Only show Registered Events (My Schedule)
           // "open" events (Marketplace) are hidden from the dashboard view by default
           .filter(e => e.status === 'upcoming') || [];
 
-        // MOCK EVENTS REMOVED BY USER REQUEST
-        // if (g.id === 'demo-pro-id-001' || g.goalie_name.includes('Pro')) { ... }
+        // Calculate User-Generated Activity Volume
+        // 1. Reflections (Self-Reported Sessions)
+        const myReflections = refData?.filter(r => r.roster_id === g.id && (r.author_role === 'goalie' || r.author_role === null)) || [];
+        const reflectionCount = myReflections.length;
+
+        // 2. Past Events (Completed Sessions via Registration)
+        const pastEventsCount = goalieEvents.filter(e => e.rawDate < new Date()).length;
 
         // Resolve Coach
         let assignedCoachName = "Assigned Coach";
@@ -308,6 +315,9 @@ export default function Home() {
           hasVideo: false
         }));
 
+        // Total Analysis: DB Sessions (Coach) + Reflections (User) + Past Events (System)
+        const totalActivityCount = (g.session_count || 0) + reflectionCount + pastEventsCount;
+
         return {
           id: g.id,
           name: g.goalie_name,
@@ -327,7 +337,7 @@ export default function Home() {
             gaa: "0.00",
             sv: ".000",
             memberSince: g.id === 'demo-pro-id-001' ? 2018 : (gSessions.length > 0 ? new Date(gSessions[gSessions.length - 1].date).getFullYear() : new Date().getFullYear()),
-            totalSessions: g.session_count || 0,
+            totalSessions: totalActivityCount, // DYNAMIC MERGE
             totalLessons: g.lesson_count || 0,
             games: g.games_count || 0,
             practices: g.practice_count || 0
@@ -445,7 +455,14 @@ export default function Home() {
   const currentYear = new Date().getFullYear();
   const isAdult = (activeGoalie.gradYear && (activeGoalie.gradYear < currentYear));
   // If they are Youth (not Adult), we force show progress even if 0 sessions
-  const isPro = isAdult; // Map isPro to isAdult for existing conditional logic downstream
+  const isPro = isAdult;
+
+  // Sync Toggle Default: Hide for Pro by default, Show for Youth
+  useEffect(() => {
+    if (activeGoalie) {
+      setShowProgress(!isPro);
+    }
+  }, [activeGoalie?.id, isPro]);
 
   // Live Mode Logic
   const isLiveCalc = activeGoalie.events.some((e: any) => e.date === new Date().toLocaleDateString() && (e.name.includes('Game') || e.name.includes('LIVE')));
@@ -572,9 +589,20 @@ export default function Home() {
                 height={activeGoalie.height}
                 weight={activeGoalie.weight}
                 catchHand={activeGoalie.catchHand}
-                showProgress={!isPro || (activeGoalie.session > 0 || activeGoalie.lesson > 0)}
+                showProgress={showProgress}
                 className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-[500px]"
               />
+
+              {/* Display Controls */}
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={() => setShowProgress(!showProgress)}
+                  className="flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/30 px-3 py-1.5 rounded-full"
+                >
+                  {showProgress ? <span className="text-primary">●</span> : <span className="text-muted-foreground">○</span>}
+                  {showProgress ? "Hide Activity Counts" : "Show Activity Counts"}
+                </button>
+              </div>
 
               {/* Switcher Controls */}
               {goalies.length >= 1 && (
@@ -723,6 +751,16 @@ export default function Home() {
                 </div>
               </div>
             )}
+          </motion.div>
+
+          {/* Payment History / Transactions - RESTORED */}
+          <motion.div
+            key={`payments-${activeGoalie.id}`}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.28 }}
+          >
+            <PaymentList rosterId={activeGoalie.id} />
           </motion.div>
 
           {/* Schedule Request - Hide for Pros */}

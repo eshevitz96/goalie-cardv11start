@@ -9,6 +9,7 @@ import { Reflections } from "@/components/Reflections";
 import { BetaFeedback } from "@/components/BetaFeedback";
 import { WhatsNewGuide } from "@/components/WhatsNewGuide";
 import { EventsList } from "@/components/EventsList";
+import TrainingInsights from "@/components/TrainingInsights";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, ChevronLeft, ChevronRight, User, Settings, CreditCard, LogOut, Plus, Loader2, Medal, Briefcase } from "lucide-react";
 import Link from "next/link";
@@ -26,6 +27,8 @@ export default function Home() {
   const [debugInfo, setDebugInfo] = useState<{ email: string | null, localId: string | null }>({ email: null, localId: null });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expandedBlock, setExpandedBlock] = useState<'journal' | 'notes' | null>(null);
+  const [showProgress, setShowProgress] = useState(true);
+
 
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -57,12 +60,19 @@ export default function Home() {
 
     // 2. Query Roster (Find the Goalie's Card)
     let query = supabase.from('roster_uploads').select('*');
-    if (emailToSearch && localId) {
-      query = query.or(`email.ilike.${emailToSearch},assigned_unique_id.eq.${localId}`);
-    } else if (emailToSearch) {
-      query = query.ilike('email', emailToSearch);
+
+    // PRIORITY: Authenticated User ID matches 'claimed' record
+    if (user?.email) {
+      // We prefer checking by email if available as it is the stable identifier
+      query = query.ilike('email', user.email);
     } else if (localId) {
+      // Fallback to local ID
       query = query.eq('assigned_unique_id', localId);
+    } else {
+      // Should have been caught above, but safety
+      setGoalies([]);
+      setIsLoading(false);
+      return;
     }
 
     let { data: rosterData, error: rosterError } = await query;
@@ -339,6 +349,17 @@ export default function Home() {
 
   const activeGoalie = goalies[currentIndex];
 
+  // Pro Logic for Default Toggle
+  const currentYear = new Date().getFullYear();
+  const isPro = activeGoalie && activeGoalie.gradYear && (isPastSeniorSeason(activeGoalie.gradYear) || activeGoalie.team?.toLowerCase().includes('blue') || activeGoalie.team?.toLowerCase().includes('pro'));
+
+  useEffect(() => {
+    if (activeGoalie) {
+      // Default: Hide for Pro, Show for Youth
+      setShowProgress(!isPro);
+    }
+  }, [activeGoalie?.id, isPro]);
+
   // LOOP PREVENTION: Removed auto-redirect
   // useEffect(() => {
   //   if (!isLoading && goalies.length === 0) {
@@ -466,6 +487,11 @@ export default function Home() {
           <AiCoachRecommendation lastMood={activeGoalie.latestMood} rosterId={activeGoalie.id} sport={activeGoalie.sport} />
         </div>
 
+        {/* PRO TRAINING INSIGHTS */}
+        <div className="md:col-span-2 mb-8">
+          <TrainingInsights />
+        </div>
+
         {/* EXPANDABLE JOURNAL & NOTES BLOCK */}
         <section className="md:col-span-2 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -519,8 +545,20 @@ export default function Home() {
                 height={activeGoalie.height}
                 weight={activeGoalie.weight}
                 catchHand={activeGoalie.catchHand}
+                showProgress={showProgress}
                 className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-[500px]"
               />
+
+              {/* Display Controls */}
+              <div className="flex justify-center mt-4 mb-2">
+                <button
+                  onClick={() => setShowProgress(!showProgress)}
+                  className="flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/30 px-3 py-1.5 rounded-full"
+                >
+                  {showProgress ? <span className="text-primary">●</span> : <span className="text-muted-foreground">○</span>}
+                  {showProgress ? "Hide Activity Counts" : "Show Activity Counts"}
+                </button>
+              </div>
 
               {/* Switcher Controls */}
               {goalies.length > 1 && (

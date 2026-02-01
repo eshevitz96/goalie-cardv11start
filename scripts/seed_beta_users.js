@@ -22,7 +22,9 @@ async function run() {
             grad_year: 2006, // DOB Year
             sport: 'Mens Lacrosse',
             team: null,
-            id_code: 'GC-BETA-01'
+            id_code: 'GC-BETA-01',
+            session_count: 8,
+            lesson_count: 4
         },
         {
             goalie_name: 'Elliott Shevitz',
@@ -31,7 +33,9 @@ async function run() {
             grad_year: 1997,
             sport: 'Lacrosse, Hockey',
             team: 'Ladue Rams',
-            id_code: 'GC-BETA-02'
+            id_code: 'GC-BETA-02',
+            session_count: 12,
+            lesson_count: 6
         },
         {
             goalie_name: 'Birdie Wilson',
@@ -40,7 +44,9 @@ async function run() {
             grad_year: 2012,
             sport: 'Lacrosse',
             team: 'Eagle Stix/Milton',
-            id_code: 'GC-BETA-03'
+            id_code: 'GC-BETA-03',
+            session_count: 15,
+            lesson_count: 5
         },
         {
             goalie_name: 'Jake Franklin',
@@ -49,7 +55,9 @@ async function run() {
             grad_year: 2009,
             sport: 'Lacrosse',
             team: null,
-            id_code: 'GC-BETA-04'
+            id_code: 'GC-BETA-04',
+            session_count: 5,
+            lesson_count: 3
         }
     ];
 
@@ -80,8 +88,8 @@ async function run() {
             grad_year: u.grad_year,
             team: u.team,
             assigned_unique_id: u.id_code,
-            session_count: 0,
-            lesson_count: 0,
+            session_count: u.session_count || 0,
+            lesson_count: u.lesson_count || 0,
             is_claimed: false,
             raw_data: {
                 sport: u.sport,

@@ -112,9 +112,14 @@ export function PaymentList({ rosterId }: { rosterId?: string }) {
                     )))}
             </div>
 
-            <Link href="/parent/payments" className="w-full mt-4 py-3 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:border-primary transition-all text-sm font-medium flex items-center justify-center">
-                View All Transactions
-            </Link>
+            <div className="mt-4 grid gap-2">
+                <Link href="/parent/renew" className="w-full py-3 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-all text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
+                    <CreditCard size={16} /> Buy Sessions / Packages
+                </Link>
+                <Link href="/parent/payments" className="w-full py-3 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:border-primary transition-all text-sm font-medium flex items-center justify-center">
+                    View All Transactions
+                </Link>
+            </div>
         </div>
     );
 }

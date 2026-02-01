@@ -27,7 +27,7 @@ INSERT INTO roster_uploads (
     2006, 
     NULL, 
     'GC-BETA-01', 
-    0, 0, false, 
+    8, 4, false, 
     '{"sport": "Mens Lacrosse", "beta_group": true}', 
     'paid'
   ),
@@ -38,7 +38,7 @@ INSERT INTO roster_uploads (
     1997, 
     'Ladue Rams', 
     'GC-BETA-02', 
-    0, 0, false, 
+    12, 6, false, 
     '{"sport": "Lacrosse, Hockey", "beta_group": true}', 
     'paid'
   ),
@@ -49,7 +49,7 @@ INSERT INTO roster_uploads (
     2012, 
     'Eagle Stix/Milton', 
     'GC-BETA-03', 
-    0, 0, false, 
+    15, 5, false, 
     '{"sport": "Lacrosse", "parent_email": "jreddingwilson@me.com", "beta_group": true}', 
     'paid'
   ),
@@ -60,7 +60,7 @@ INSERT INTO roster_uploads (
     2009, 
     NULL, 
     'GC-BETA-04', 
-    0, 0, false, 
+    5, 3, false, 
     '{"sport": "Lacrosse", "beta_group": true}', 
     'paid'
   );
