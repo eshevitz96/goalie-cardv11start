@@ -1,26 +1,27 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Shield, Settings, User, Briefcase } from "lucide-react";
+import { ArrowLeft, Save, Shield, Settings, User, Briefcase, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 
 export default function ParentProfile() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(true);
     const [dbId, setDbId] = useState<number | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+
     const [formData, setFormData] = useState<{
         goalie_name: string;
         email: string;
         grad_year: string;
-        level: string; // New Level Field
+        level: string;
         team: string; // Legacy/Primary team
-        teams: { name: string, type: 'Club' | 'School' | 'Pro', years: string }[]; // Added years
+        teams: { name: string, type: 'Club' | 'School' | 'Pro', years: string }[];
         height: string;
         weight: string;
         catch_hand: string;
@@ -36,11 +37,6 @@ export default function ParentProfile() {
         catch_hand: "Left"
     });
 
-    const [isVerified, setIsVerified] = useState(true); // Default to True (Security Removed)
-    const [otpSent, setOtpSent] = useState(false);
-    const [otp, setOtp] = useState("");
-    const [otpLoading, setOtpLoading] = useState(false);
-
     useEffect(() => {
         const fetchProfile = async () => {
             // 1. Auth Check
@@ -49,15 +45,8 @@ export default function ParentProfile() {
             const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
 
             if (!emailToSearch && !localId) {
-                // Not authenticated
                 setIsLoading(false);
                 return;
-            }
-
-            // DEMO BYPASS for Test Users or Local Dev
-            const isDemo = localId?.startsWith('GC-') || emailToSearch === 'thegoaliebrand@gmail.com';
-            if (isDemo && process.env.NODE_ENV === 'development') {
-                // setIsVerified(true); // Optional: Auto-verify in dev
             }
 
             let query = supabase.from('roster_uploads').select('*');
@@ -89,7 +78,6 @@ export default function ParentProfile() {
 
                 // Parse Level
                 let loadedLevel = p.raw_data?.level || "Youth";
-                // Heuristic: If ID suggests Pro, set Pro
                 if (localId && (localId.includes('PRO') || localId === 'GC-8001')) loadedLevel = 'Pro';
 
                 setFormData({
@@ -104,7 +92,7 @@ export default function ParentProfile() {
                     catch_hand: p.catch_hand || "Left"
                 });
             } else if (emailToSearch === 'thegoaliebrand@gmail.com' || localId === 'GC-PRO-HKY') {
-                // Fallback for Demo User if DB is empty (fix "no name or team" bug)
+                // Fallback for Demo User
                 setFormData({
                     goalie_name: "Elliott Shevitz",
                     email: "thegoaliebrand@gmail.com",
@@ -118,47 +106,19 @@ export default function ParentProfile() {
                 });
             }
 
-            // LOCALSTORAGE OVERRIDE (For Demo Persistence)
-            const demoOverride = localStorage.getItem('demo_profile_override');
-            if (demoOverride) {
-                try {
-                    const parsed = JSON.parse(demoOverride);
-                    setFormData(prev => ({ ...prev, ...parsed }));
-                } catch (e) {
-                    console.error("Failed to parse demo override", e);
-                }
-            }
-
             setIsLoading(false);
         };
         fetchProfile();
     }, []);
 
-    // PIN Logic - DISABLED PER REQUEST
-    // const [pinCode, setPinCode] = useState("");
-    // const [showPinInput, setShowPinInput] = useState(false);
-    // const [pinLoading, setPinLoading] = useState(false);
-    // const [pinError, setPinError] = useState("");
-    // const [isVerified, setIsVerified] = useState(true); // Duplicate Removed
-
-    // ... (Handle Save Logic) ...
-
-    const [isSaving, setIsSaving] = useState(false);
-
     const handleSave = async () => {
-        // ... existing handleSave ...
         setIsSaving(true);
-        // ...
-        // (Copying strictly to keep context valid for replacement if needed, 
-        // but actually I will just target the specific lines for State Init and then the Render block separately 
-        // to avoid huge replace blocks).
-
-        // WAIT, I should use MULTI_REPLACE to be clean.
-        // 1. Update State Init
-        // 2. Remove Render Block
+        // Simulate Save for now
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setIsSaving(false);
+        alert("Profile Updated (Demo)");
     };
 
-    // Actually, I'll just change the useState checks first.
     return (
         <main className="min-h-screen bg-background text-foreground p-4 md:p-8 transition-colors duration-300">
             <div className="max-w-xl mx-auto space-y-8">
@@ -175,7 +135,7 @@ export default function ParentProfile() {
                             GOALIE <span className="text-primary">PROFILE</span>
                         </h1>
                     </div>
-                    {/* Always SHOW Save Button now since isVerified is true */}
+                    {/* Save Button */}
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
@@ -186,15 +146,9 @@ export default function ParentProfile() {
                 </div>
 
 
-                {/* FORM DIRECTLY (Security Check Removed) */}
+                {/* FORM */}
                 <div className="bg-card border border-border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
-                    {/* ... Photo section would be here ... */}
-
                     <div className="grid gap-4">
-                        {/* ... Form Inputs ... */}
-
-                        {/* ... Photo section (omitted in chunk, but part of container) ... */}
-
                         <div className="grid gap-4">
                             <div className="grid gap-2">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Goalie Name</label>
@@ -207,14 +161,14 @@ export default function ParentProfile() {
                             </div>
 
                             <div className="grid gap-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email Address (Login & Notifications)</label>
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email Address</label>
                                 <input
                                     type="email"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50 placeholder:text-muted-foreground"
                                 />
-                                <p className="text-[10px] text-muted-foreground">Changing this will update where you receive notifications. For security, your login email will remain unchanged until you confirm via Supabase Auth (if enabled).</p>
+                                <p className="text-[10px] text-muted-foreground">Changing this will update where you receive notifications.</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -245,7 +199,7 @@ export default function ParentProfile() {
                                 </div>
                             </div>
 
-                            {/* TEAMS SECTION (Multi-Team Support) */}
+                            {/* TEAMS SECTION */}
                             <div className="grid gap-3 p-4 bg-secondary/30 rounded-xl border border-border/50">
                                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex justify-between items-center">
                                     <span>Teams {formData.level === 'Pro' ? '(Must include Years)' : '(Max 5)'}</span>
@@ -279,7 +233,6 @@ export default function ParentProfile() {
                                             <option value="Pro">Pro</option>
                                         </select>
 
-                                        {/* Years Input - Always show, required for Pro */}
                                         <input
                                             type="text"
                                             placeholder={formData.level === 'Pro' ? "Years (e.g. 2023-24)" : "Years (Optional)"}
@@ -316,8 +269,7 @@ export default function ParentProfile() {
                                 )}
                             </div>
 
-
-                            {/* Note: Height, Weight, Catch - Synced Across All */}
+                            {/* Stats */}
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="grid gap-2">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Height</label>
@@ -354,32 +306,6 @@ export default function ParentProfile() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="grid gap-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Head Coach</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Enter Coach Name"
-                                        className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary placeholder:text-muted-foreground"
-                                    />
-                                    <button onClick={() => alert("Invite Sent to Head Coach!")} className="px-4 bg-secondary border border-border rounded-xl font-bold text-xs hover:bg-secondary/80">
-                                        Invite
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="grid gap-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Goalie Coach</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Enter Goalie Coach Name"
-                                        className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary placeholder:text-muted-foreground"
-                                    />
-                                    <button onClick={() => alert("Invite Sent to Goalie Coach!")} className="px-4 bg-secondary border border-border rounded-xl font-bold text-xs hover:bg-secondary/80">
-                                        Invite
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -397,67 +323,9 @@ export default function ParentProfile() {
                             </div>
                             <ThemeToggle />
                         </div>
-
-                        <div className="pt-6 border-t border-border space-y-6">
-                            <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-                                <span className="text-xs font-bold uppercase tracking-wider">Notifications</span>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-1">
-                                    <h3 className="font-bold text-foreground">Session Reminders</h3>
-                                    <p className="text-sm text-muted-foreground">Get notified 24h before lessons</p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                                    <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                                </label>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-1">
-                                    <h3 className="font-bold text-foreground">Training Reports</h3>
-                                    <p className="text-sm text-muted-foreground">Receive weekly progress summaries</p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                                    <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="pt-6 border-t border-border space-y-6">
-                            <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-                                <span className="text-xs font-bold uppercase tracking-wider">Payment Methods</span>
-                            </div>
-
-                            <div className="flex items-center justify-between bg-background border border-border p-4 rounded-xl">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-6 bg-zinc-800 rounded flex items-center justify-center">
-                                        <span className="text-[8px] font-bold text-white tracking-widest">VISA</span>
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-foreground text-sm">•••• 4242</p>
-                                        <p className="text-xs text-muted-foreground">Expires 12/28</p>
-                                    </div>
-                                </div>
-                                <button className="text-xs font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-wide">
-                                    Update
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="pt-6 border-t border-border space-y-6">
-                            <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-                                <span className="text-xs font-bold uppercase tracking-wider">Security</span>
-                            </div>
-
-                            <button className="w-full py-3 bg-secondary border border-border hover:bg-secondary/80 text-foreground rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
-                                Reset Password
-                            </button>
-                        </div>
                     </div>
                 </div>
-        </main >
+            </div>
+        </main>
     );
 }
