@@ -100,8 +100,13 @@ export default function OnboardingPage() {
 
             // Simulate delay for effect
             setTimeout(() => {
-                // Determine destination based on Role (defaulting to Parent/Goalie shared dashboard for now)
-                router.push('/parent');
+                // Determine destination based on Role
+                const role = localStorage.getItem('user_role');
+                if (role === 'parent') {
+                    router.push('/parent');
+                } else {
+                    router.push('/goalie');
+                }
             }, 1500);
 
         } catch (e) {
@@ -286,7 +291,7 @@ export default function OnboardingPage() {
                     )}
 
                     {/* Step 3: Success */}
-                    {step === 3 && (
+                    {step === 4 && (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                             className="text-center py-8"

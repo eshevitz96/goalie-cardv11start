@@ -344,7 +344,14 @@ function ActivateContent() {
             console.error("Save Details Error:", err);
         } finally {
             setIsLoading(false);
-            setCurrentStep(5); // Go to Baseline
+            // Redirect to Setup for Physical Profile & Terms
+            if (typeof window !== 'undefined') {
+                if (rosterData?.id) {
+                    localStorage.setItem('setup_roster_id', rosterData.id);
+                    localStorage.setItem('user_role', userType || 'goalie');
+                }
+            }
+            router.push('/setup');
         }
     };
 
@@ -723,135 +730,10 @@ function ActivateContent() {
                             </div>
                         )}
 
-                        {/* Step 5: Baseline Questions */}
-                        {currentStep === 5 && (
-                            <div className="space-y-6">
-                                <div className="text-center mb-6">
-                                    <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">BASELINE <span className="text-primary">CHECK-IN</span></h2>
-                                    <p className="text-muted-foreground text-sm">Let's set a baseline for your training.</p>
-                                </div>
-
-                                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
-                                    {baselineAnswers.map((item, index) => (
-                                        <div key={item.id} className="bg-card border border-border rounded-2xl p-4 space-y-3">
-                                            <label className="text-xs font-bold text-foreground block">{item.question}</label>
-                                            <textarea
-                                                value={item.answer}
-                                                onChange={(e) => {
-                                                    const newAnswers = [...baselineAnswers];
-                                                    newAnswers[index].answer = e.target.value;
-                                                    setBaselineAnswers(newAnswers);
-                                                }}
-                                                className="w-full bg-secondary border border-border rounded-lg p-3 text-sm focus:outline-none focus:border-primary min-h-[80px] resize-none"
-                                                placeholder="Type your answer..."
-                                            />
-                                            <div className="flex gap-2 justify-end">
-                                                {['happy', 'neutral', 'frustrated'].map(mood => (
-                                                    <button
-                                                        key={mood}
-                                                        onClick={() => {
-                                                            const newAnswers = [...baselineAnswers];
-                                                            newAnswers[index].mood = mood;
-                                                            setBaselineAnswers(newAnswers);
-                                                        }}
-                                                        className={clsx(
-                                                            "p-2 rounded-lg transition-all",
-                                                            item.mood === mood ? "bg-primary/20 text-primary scale-110" : "text-muted-foreground hover:bg-secondary"
-                                                        )}
-                                                    >
-                                                        {mood === 'happy' && <Smile size={20} />}
-                                                        {mood === 'neutral' && <Meh size={20} />}
-                                                        {mood === 'frustrated' && <Frown size={20} />}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <button
-                                    onClick={handleBaselineSubmit}
-                                    disabled={isLoading}
-                                    className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
-                                >
-                                    {isLoading ? <Loader2 className="animate-spin" /> : <>Save & Continue <ChevronRight size={18} /></>}
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Step 6: Terms & Payment */}
-                        {currentStep === 6 && (
-                            <div className="space-y-6">
-                                <div className="text-center mb-4">
-                                    <h3 className="text-xl font-bold text-foreground mb-2">Final Step</h3>
-                                    <p className="text-muted-foreground text-sm">Terms of Service & Verification.</p>
-                                </div>
-
-                                {/* Terms Box */}
-
-                                {/* Terms Box */}
-                                <div className="bg-secondary rounded-xl p-4 border border-border text-xs text-muted-foreground h-32 overflow-y-auto leading-relaxed">
-                                    <p className="font-bold text-foreground mb-2">Liability Waiver & Terms</p>
-                                    <p className="mb-2">I hereby authorize the staff of GoalieGuard to act for me according to their best judgment in any emergency requiring medical attention. I hereby waive and release GoalieGuard from any and all liability for any injuries or illnesses incurred while at the GoalieGuard program.</p>
-                                    <p className="mb-2">I have no knowledge of any physical impairment that would be affected by the above named camper's participation in the program.</p>
-                                    <p>I also understand the camp retains the right to use for publicity and advertising purposes, photographs of campers taken at camp.</p>
-
-                                    <p className="font-bold text-foreground mt-4 mb-2">Performance Coaching & Safety Protocols</p>
-                                    <p className="mb-2"><strong>1. Purpose:</strong> GoalieGuard utilizes Large Language Models (LLMs) to provide sports mindset and tactical performance coaching. This advice is educational in nature and limited to the athletic domain.</p>
-                                    <p className="mb-2"><strong>2. Safety & Oversight:</strong> The Performance Engine is NOT a mental health professional or crisis counselor. In the event of a mental health emergency, please contact 911 or a licensed professional. GoalieGuard employs keyword detection systems to flag potential distress signals for human (parent/coach) review.</p>
-                                    <p className="mb-2"><strong>3. Human-in-the-Loop:</strong> Parents and assigned coaches retain full transparency and access to the athlete's journal entries and automated insights at all times.</p>
-                                    <p><strong>4. Data Privacy:</strong> Athlete data is encrypted and used solely to personalize the development journey. We do not sell personally identifiable training data to third parties.</p>
-                                </div>
-
-                                {/* Checkbox */}
-                                <div
-                                    onClick={() => setTermsAccepted(!termsAccepted)}
-                                    className="flex items-start gap-4 p-4 rounded-xl bg-secondary border border-border cursor-pointer hover:border-primary/50 transition-colors"
-                                >
-                                    <div className={clsx("w-6 h-6 rounded-md border flex items-center justify-center transition-all mt-0.5", termsAccepted ? "bg-primary border-primary text-white" : "border-muted-foreground/30 bg-card")}>
-                                        {termsAccepted && <Check size={14} />}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="font-bold text-sm text-foreground">I accept the Terms & Conditions</div>
-                                        <div className="text-xs text-muted-foreground mt-1">By checking this box, you agree to the liability waiver and privacy policy.</div>
-                                    </div>
-                                </div>
-
-
-                                {error && <div className="text-red-500 text-sm text-center animate-pulse">{error}</div>}
-
-                                <button
-                                    onClick={handleFinalActivation}
-                                    className={clsx(
-                                        "w-full py-4 font-bold rounded-xl transition-all flex items-center justify-center gap-2",
-                                        termsAccepted ? "bg-primary hover:bg-rose-600 text-white shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground cursor-not-allowed"
-                                    )}
-                                >
-                                    {isLoading ? <Loader2 className="animate-spin" /> : <>Complete Activation <Check size={18} /></>}
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Step 7: Success & Redirect */}
-                        {currentStep === 7 && (
-                            <div className="text-center py-10 space-y-6">
-                                <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto animate-in zoom-in duration-500">
-                                    <Check size={48} className="text-emerald-500" />
-                                </div>
-                                <div>
-                                    <h2 className="text-3xl font-black text-foreground italic tracking-tight">ACTIVATED</h2>
-                                    <p className="text-muted-foreground mt-2">Redirecting to Dashboard...</p>
-                                </div>
-                                <button onClick={() => router.push('/')} className="px-8 py-3 bg-foreground text-background font-bold rounded-full hover:bg-foreground/90 transition-colors w-full">
-                                    Go to Dashboard
-                                </button>
-                                <p className="text-[10px] text-muted-foreground">Your account is ready.</p>
-                            </div>
-                        )}
                     </motion.div>
                 </AnimatePresence>
-            </div >
-        </main >
+            </div>
+        </main>
     );
 }
 
