@@ -713,52 +713,7 @@ function ActivateContent() {
                                                 placeholder="Current Team"
                                             />
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4 col-span-2">
-                                            <div>
-                                                <label className="text-xs font-bold uppercase text-muted-foreground ml-1 mb-1 block">Height</label>
-                                                <div className="flex gap-2">
-                                                    <div className="relative flex-1">
-                                                        <input
-                                                            type="number"
-                                                            min="3" max="7"
-                                                            value={formData.height.split("'")[0] || ''}
-                                                            onChange={e => {
-                                                                const ft = e.target.value;
-                                                                const inch = formData.height.split("'")[1] || '';
-                                                                setFormData({ ...formData, height: `${ft}'${inch}` });
-                                                            }}
-                                                            placeholder="Ft"
-                                                            className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-4 pr-4 focus:border-primary focus:outline-none"
-                                                        />
-                                                        <span className="absolute right-3 top-3 text-muted-foreground text-xs font-bold">ft</span>
-                                                    </div>
-                                                    <div className="relative flex-1">
-                                                        <input
-                                                            type="number"
-                                                            min="0" max="11"
-                                                            value={formData.height.split("'")[1] || ''}
-                                                            onChange={e => {
-                                                                const ft = formData.height.split("'")[0] || '';
-                                                                const inch = e.target.value;
-                                                                setFormData({ ...formData, height: `${ft}'${inch}` });
-                                                            }}
-                                                            placeholder="In"
-                                                            className="w-full bg-secondary/50 border border-border rounded-xl py-3 pl-4 pr-4 focus:border-primary focus:outline-none"
-                                                        />
-                                                        <span className="absolute right-3 top-3 text-muted-foreground text-xs font-bold">in</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Weight</label>
-                                                <input
-                                                    value={formData.weight}
-                                                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                                                    className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
-                                                    placeholder="lbs"
-                                                />
-                                            </div>
-                                        </div>
+
                                     </div>
                                 </div>
 
@@ -885,12 +840,12 @@ function ActivateContent() {
                                 </div>
                                 <div>
                                     <h2 className="text-3xl font-black text-foreground italic tracking-tight">ACTIVATED</h2>
-                                    <p className="text-muted-foreground mt-2">Redirecting to Player Setup...</p>
+                                    <p className="text-muted-foreground mt-2">Redirecting to Dashboard...</p>
                                 </div>
-                                <button onClick={() => router.push('/setup')} className="px-8 py-3 bg-foreground text-background font-bold rounded-full hover:bg-foreground/90 transition-colors w-full">
-                                    Continue to Setup
+                                <button onClick={() => router.push('/')} className="px-8 py-3 bg-foreground text-background font-bold rounded-full hover:bg-foreground/90 transition-colors w-full">
+                                    Go to Dashboard
                                 </button>
-                                <p className="text-[10px] text-muted-foreground">Please complete your physical profile next.</p>
+                                <p className="text-[10px] text-muted-foreground">Your account is ready.</p>
                             </div>
                         )}
                     </motion.div>

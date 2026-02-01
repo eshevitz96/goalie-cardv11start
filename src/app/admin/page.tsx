@@ -58,7 +58,8 @@ export default function AdminDashboard() {
         guardianPhone: "",
         athleteEmail: "",
         athletePhone: "",
-        height: "",
+        heightFt: "",
+        heightIn: "",
         weight: "",
         catchHand: "",
         team: "",
@@ -571,7 +572,8 @@ export default function AdminDashboard() {
             guardianPhone: (entry as any).guardian_phone || entry.parent_phone || "",
             athleteEmail: (entry as any).athlete_email || entry.raw_data?.goalie_email || "",
             athletePhone: (entry as any).athlete_phone || "",
-            height: entry.height || "",
+            heightFt: entry.height ? entry.height.split("'")[0] : "",
+            heightIn: entry.height ? (entry.height.split("'")[1] || "").replace('"', '') : "",
             weight: entry.weight || "",
             catchHand: entry.catch_hand || "",
 
@@ -590,14 +592,14 @@ export default function AdminDashboard() {
     const closeModal = () => {
         setShowManualAdd(false);
         setEditingId(null);
-        setEditingId(null);
         setManualForm({
             firstName: "", lastName: "", email: "",
             guardianEmail: "", guardianPhone: "", athleteEmail: "", athletePhone: "",
-            height: "", weight: "", catchHand: "",
+            heightFt: "", heightIn: "", weight: "", catchHand: "",
             team: "", gradYear: "2030", parentName: "", phone: "", coachId: "", birthday: "", rawData: {},
             step: 1
         });
+
     };
 
     const handleManualSubmit = async (e: React.FormEvent) => {
@@ -611,13 +613,12 @@ export default function AdminDashboard() {
                 goalie_name: `${manualForm.firstName} ${manualForm.lastName}`,
                 parent_name: manualForm.parentName,
                 parent_phone: manualForm.guardianPhone || manualForm.phone,
-
                 // New Fields
                 guardian_email: manualForm.guardianEmail,
                 guardian_phone: manualForm.guardianPhone,
                 athlete_email: manualForm.athleteEmail,
                 athlete_phone: manualForm.athletePhone,
-                height: manualForm.height,
+                height: manualForm.heightFt && manualForm.heightIn ? `${manualForm.heightFt}'${manualForm.heightIn}"` : "",
                 weight: manualForm.weight,
                 catch_hand: manualForm.catchHand,
 
@@ -1087,12 +1088,26 @@ export default function AdminDashboard() {
                                             </div>
                                             <div>
                                                 <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Height</label>
-                                                <input
-                                                    value={manualForm.height}
-                                                    onChange={e => setManualForm({ ...manualForm, height: e.target.value })}
-                                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
-                                                    placeholder="e.g. 6'0"
-                                                />
+                                                <div className="flex gap-2">
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            value={manualForm.heightFt}
+                                                            onChange={e => setManualForm({ ...manualForm, heightFt: e.target.value })}
+                                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                                            placeholder="6"
+                                                        />
+                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">ft</span>
+                                                    </div>
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            value={manualForm.heightIn}
+                                                            onChange={e => setManualForm({ ...manualForm, heightIn: e.target.value })}
+                                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                                            placeholder="0"
+                                                        />
+                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">in</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
