@@ -1057,54 +1057,56 @@ export default function AdminDashboard() {
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Birthday</label>
-                                                    <div className="relative">
-                                                        <input
-                                                            type="date"
-                                                            value={manualForm.birthday}
-                                                            onChange={e => setManualForm({ ...manualForm, birthday: e.target.value })}
-                                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors pl-10"
-                                                            required
-                                                        />
-                                                        <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Catch Hand</label>
-                                                    <select
-                                                        value={manualForm.catchHand}
-                                                        onChange={e => setManualForm({ ...manualForm, catchHand: e.target.value })}
-                                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
-                                                    >
-                                                        <option value="">-- Select --</option>
-                                                        <option value="Left">Left (Regular)</option>
-                                                        <option value="Right">Right (Full Right)</option>
-                                                    </select>
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Birthday</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="date"
+                                                        value={manualForm.birthday}
+                                                        onChange={e => setManualForm({ ...manualForm, birthday: e.target.value })}
+                                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors pl-10"
+                                                        required
+                                                    />
+                                                    <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                                                 </div>
                                             </div>
+                                        </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Height</label>
-                                                    <input
-                                                        value={manualForm.height}
-                                                        onChange={e => setManualForm({ ...manualForm, height: e.target.value })}
-                                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
-                                                        placeholder="e.g. 6'0"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Weight</label>
-                                                    <input
-                                                        value={manualForm.weight}
-                                                        onChange={e => setManualForm({ ...manualForm, weight: e.target.value })}
-                                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
-                                                        placeholder="e.g. 180 lbs"
-                                                    />
-                                                </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Catch Hand</label>
+                                                <select
+                                                    value={manualForm.catchHand}
+                                                    onChange={e => setManualForm({ ...manualForm, catchHand: e.target.value })}
+                                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                                >
+                                                    <option value="">-- Select --</option>
+                                                    <option value="Left">Left (Regular)</option>
+                                                    <option value="Right">Right (Full Right)</option>
+                                                </select>
                                             </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Height</label>
+                                                <input
+                                                    value={manualForm.height}
+                                                    onChange={e => setManualForm({ ...manualForm, height: e.target.value })}
+                                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                                    placeholder="e.g. 6'0"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Weight</label>
+                                                <input
+                                                    value={manualForm.weight}
+                                                    onChange={e => setManualForm({ ...manualForm, weight: e.target.value })}
+                                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                                    placeholder="e.g. 180 lbs"
+                                                />
+                                            </div>
+                                        </div>
                                     </motion.div>
                                 )}
 
@@ -1246,9 +1248,10 @@ export default function AdminDashboard() {
                             )}
                         </div>
 
-                    </motion.div>
-                </div>
-            )}
-        </div>
+                    </motion.div >
+                </div >
+            )
+            }
+        </div >
     );
 }
