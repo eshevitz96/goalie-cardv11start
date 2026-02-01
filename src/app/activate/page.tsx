@@ -187,38 +187,10 @@ function ActivateContent() {
                 return;
             }
 
-            // 3. New/Pending User Flow -> Trigger OTP (Activation)
-            console.log("New/Pending User - Starting Activation...");
+            // 3. New/Pending User Flow -> SIMPLIFIED (No OTP)
+            console.log("New/Pending User - Skipping OTP (Beta Flow)...");
 
-            // Check if already authenticated at Supabase level
-            const { data: { user } } = await supabase.auth.getUser();
-            const isLoggedIn = user?.email?.toLowerCase() === email.trim().toLowerCase();
-
-            if (isLoggedIn) {
-                console.log("User already authenticated via Supabase - skipping OTP send");
-            } else if (email.includes('example.com') || email.includes('demo@')) {
-                console.log("Demo Email detected - skipping real OTP send");
-                setIsDemo(true);
-            } else {
-                const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback?next=/activate` : undefined;
-                const { error: otpError } = await supabase.auth.signInWithOtp({
-                    email: email.trim(),
-                    options: {
-                        shouldCreateUser: true,
-                        emailRedirectTo: redirectUrl
-                    }
-                });
-                if (otpError) {
-                    if (otpError.message?.includes("rate limit") || otpError.status === 429) {
-                        alert("Demo Mode: OTP Rate Limit. Creating Fake Session.");
-                        setIsDemo(true);
-                    } else {
-                        throw otpError;
-                    }
-                }
-            }
-
-            // Calculate Role for Activation Context
+            // Calculate Default Role (can be changed in UI)
             const birthDate = new Date(birthdayInput);
             const today = new Date();
             let age = today.getFullYear() - birthDate.getFullYear();
@@ -243,13 +215,7 @@ function ActivateContent() {
             });
 
             setIsLoading(false);
-
-            if (isLoggedIn) {
-                setCurrentStep(4); // Skip OTP Verify if already logged in
-            } else {
-                // SKIP OTP - GO DIRECTLY TO REVIEW
-                setCurrentStep(4);
-            }
+            setCurrentStep(4); // Direct to Review
             return;
 
         } catch (err: any) {
@@ -431,42 +397,24 @@ function ActivateContent() {
         }
     };
 
-    // PIN State
-    const [pin, setPin] = useState("");
-    const [confirmPin, setConfirmPin] = useState("");
+    // PIN State REMOVED
 
-    const handleStep4 = async () => {
+
+    // Simplified Activation (No PIN UI)
+    const handleFinalActivation = async () => {
         if (!termsAccepted) {
             setError("You must accept the terms to proceed.");
             return;
         }
         setError(null);
-        // Skip Payment for Beta and go to PIN Creation
-        setCurrentStep(6.5);
-    };
-
-    const handlePinSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError(null);
         setIsLoading(true);
 
-        if (pin.length !== 4 || isNaN(Number(pin))) {
-            setError("PIN must be 4 digits.");
-            setIsLoading(false);
-            return;
-        }
-        if (pin !== confirmPin) {
-            setError("PINs do not match.");
-            setIsLoading(false);
-            return;
-        }
-
         try {
-            // Use Server Action for reliable saving
+            // Use Server Action with DEFAULT PIN '0000'
             const { activateUserCard } = await import('./actions');
 
             if (rosterData && rosterData.id) {
-                const result = await activateUserCard(rosterData.id, pin, rosterData);
+                const result = await activateUserCard(rosterData.id, '0000', rosterData);
                 if (!result.success) {
                     throw new Error(result.error);
                 }
@@ -474,6 +422,13 @@ function ActivateContent() {
 
             // Simulate Delay
             await new Promise(r => setTimeout(r, 1000));
+            // Set session token locally since we skipped real OTP
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('session_token', 'activ-' + Date.now());
+                localStorage.setItem('user_email', email);
+                localStorage.setItem('user_role', userType);
+            }
+
             setIsLoading(false);
             setCurrentStep(7); // Success
 
@@ -668,6 +623,7 @@ function ActivateContent() {
                                     </div>
                                     <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">Record Found</h2>
                                     <p className="text-muted-foreground text-sm">Please review and confirm your details.</p>
+
                                 </div>
 
                                 <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
@@ -690,36 +646,46 @@ function ActivateContent() {
                                             />
                                         </div>
 
-                                        {userType === 'parent' && (
-                                            <>
-                                                <div className="col-span-2">
-                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Parent Name</label>
-                                                    <input
-                                                        value={formData.parentName}
-                                                        onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
-                                                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
-                                                    />
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Guardian Email</label>
-                                                    <input
-                                                        type="email"
-                                                        value={formData.parentEmail}
-                                                        onChange={(e) => setFormData({ ...formData, parentEmail: e.target.value })}
-                                                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
-                                                        placeholder="guardian@example.com"
-                                                    />
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Phone</label>
-                                                    <input
-                                                        value={formData.phone}
-                                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
-                                                    />
-                                                </div>
-                                            </>
+                                        {/* Guardian Email - Activates Parent Portal */}
+                                        <div className="col-span-2 border-t border-border pt-4 mt-2">
+                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                Guardian Email <span className="text-emerald-500 text-[9px] border border-emerald-500/30 px-1 rounded">Activates Parent Portal</span>
+                                            </label>
+                                            <input
+                                                type="email"
+                                                value={formData.parentEmail}
+                                                onChange={(e) => {
+                                                    const newEmail = e.target.value;
+                                                    setFormData({ ...formData, parentEmail: newEmail });
+                                                    // Auto-switch role context based on presence of parent email
+                                                    if (newEmail && newEmail.includes('@')) {
+                                                        setUserType('parent');
+                                                    } else {
+                                                        setUserType('goalie');
+                                                    }
+                                                }}
+                                                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
+                                                placeholder="Enter parent email to enable Parent Portal..."
+                                            />
+                                            <p className="text-[10px] text-muted-foreground mt-1">
+                                                Leave blank if managing your own account.
+                                            </p>
+                                        </div>
+
+                                        {/* Optional Parent Name if Email provided */}
+                                        {formData.parentEmail.length > 3 && (
+                                            <div className="col-span-2 animate-in slide-in-from-top-2 fade-in">
+                                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Parent Name</label>
+                                                <input
+                                                    value={formData.parentName}
+                                                    onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
+                                                    className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none"
+                                                    placeholder="Parent Name"
+                                                />
+                                            </div>
                                         )}
+
+                                        <div className="col-span-2 border-t border-border pt-2 mt-2"></div>
 
                                         <div>
                                             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Grad Year</label>
@@ -900,7 +866,7 @@ function ActivateContent() {
                                 {error && <div className="text-red-500 text-sm text-center animate-pulse">{error}</div>}
 
                                 <button
-                                    onClick={handleStep4}
+                                    onClick={handleFinalActivation}
                                     className={clsx(
                                         "w-full py-4 font-bold rounded-xl transition-all flex items-center justify-center gap-2",
                                         termsAccepted ? "bg-primary hover:bg-rose-600 text-white shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground cursor-not-allowed"
@@ -911,67 +877,20 @@ function ActivateContent() {
                             </div>
                         )}
 
-                        {/* Step 6.5: PIN Creation */}
-                        {currentStep === 6.5 && (
-                            <form onSubmit={handlePinSubmit} className="space-y-6">
-                                <div className="text-center mb-8">
-                                    <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">SECURE <span className="text-primary">ACCESS</span></h2>
-                                    <p className="text-muted-foreground text-sm">Create a 4-digit PIN for future logins.</p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Create PIN</label>
-                                        <input
-                                            type="text"
-                                            maxLength={4}
-                                            required
-                                            value={pin}
-                                            onChange={(e) => setPin(e.target.value)}
-                                            className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-3xl font-mono tracking-[0.5em] text-center"
-                                            placeholder="XXXX"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Confirm PIN</label>
-                                        <input
-                                            type="text"
-                                            maxLength={4}
-                                            required
-                                            value={confirmPin}
-                                            onChange={(e) => setConfirmPin(e.target.value)}
-                                            className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-3xl font-mono tracking-[0.5em] text-center"
-                                            placeholder="XXXX"
-                                        />
-                                    </div>
-                                </div>
-
-                                {error && <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg"><AlertCircle size={14} /> {error}</div>}
-
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
-                                >
-                                    {isLoading ? <Loader2 className="animate-spin" /> : <>Save PIN & Finish <Check size={18} /></>}
-                                </button>
-                            </form>
-                        )}
-
-                        {/* Step 7: Success */}
+                        {/* Step 7: Success & Redirect */}
                         {currentStep === 7 && (
                             <div className="text-center py-10 space-y-6">
                                 <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto animate-in zoom-in duration-500">
                                     <Check size={48} className="text-emerald-500" />
                                 </div>
                                 <div>
-                                    <h2 className="text-3xl font-black text-foreground italic tracking-tight">YOU'RE IN</h2>
-                                    <p className="text-muted-foreground mt-2">Goalie Card Activated Successfully.</p>
+                                    <h2 className="text-3xl font-black text-foreground italic tracking-tight">ACTIVATED</h2>
+                                    <p className="text-muted-foreground mt-2">Redirecting to Player Setup...</p>
                                 </div>
-                                <button onClick={handleFinish} className="px-8 py-3 bg-foreground text-background font-bold rounded-full hover:bg-foreground/90 transition-colors w-full">
-                                    Access Goalie Portal
+                                <button onClick={() => router.push('/setup')} className="px-8 py-3 bg-foreground text-background font-bold rounded-full hover:bg-foreground/90 transition-colors w-full">
+                                    Continue to Setup
                                 </button>
-                                <p className="text-[10px] text-muted-foreground">No account creation required. Your device is now authorized.</p>
+                                <p className="text-[10px] text-muted-foreground">Please complete your physical profile next.</p>
                             </div>
                         )}
                     </motion.div>
