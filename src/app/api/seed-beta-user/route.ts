@@ -2,6 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic'; // Prevent static generation during build because this mutates DB
+
 export async function GET() {
     try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
