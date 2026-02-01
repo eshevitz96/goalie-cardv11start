@@ -214,6 +214,12 @@ export default function Home() {
     let reflectionsMap = new Map<string, string>();
     let reflectionsContentMap = new Map<string, string>(); // New map for text content
 
+
+
+    // 7. Process & Map Data
+    // SCOPE FIX: Define refData outside for access
+    let refData: any[] | null = null;
+
     if (rosterData && rosterData.length > 0) {
       const rosterIds = rosterData.map(r => r.id);
 
@@ -229,11 +235,13 @@ export default function Home() {
         });
       }
 
-      const { data: refData } = await supabase
+      const { data } = await supabase
         .from('reflections')
         .select('roster_id, mood, content, created_at, author_role')
         .in('roster_id', rosterIds)
         .order('created_at', { ascending: false });
+
+      refData = data;
 
       // Since it's ordered by desc, the first entry for each roster_id we encounter is the latest
       if (refData) {
