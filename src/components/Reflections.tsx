@@ -19,9 +19,10 @@ interface ReflectionsProps {
     currentUserRole?: 'goalie' | 'parent' | 'coach';
     isExpanded?: boolean;
     onToggleExpand?: () => void;
+    prefill?: string | null;
 }
 
-export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded = false, onToggleExpand }: ReflectionsProps) {
+export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded = false, onToggleExpand, prefill }: ReflectionsProps) {
     const [reflections, setReflections] = useState<Reflection[]>([]);
     const [isWriting, setIsWriting] = useState(false);
     const [newReflection, setNewReflection] = useState<any>({
@@ -40,10 +41,21 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
         fetchReflections();
     }, [rosterId]);
 
-    // Reset writing state when collapsed
     useEffect(() => {
-        if (!isExpanded) setIsWriting(false);
-    }, [isExpanded]);
+        if (prefill) {
+            setIsWriting(true);
+            setNewReflection((prev: any) => ({
+                ...prev,
+                activity_type: 'practice', // Assume practice context
+                content: `Completed recommended protocol: ${prefill}.`
+            }));
+        }
+    }, [prefill]);
+
+    // Reset writing state only when collapsed manually, NOT when prefill opens it
+    useEffect(() => {
+        if (!isExpanded && !prefill) setIsWriting(false);
+    }, [isExpanded, prefill]);
 
     const fetchReflections = async () => {
         // DEMO BYPASS

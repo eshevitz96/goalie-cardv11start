@@ -17,10 +17,11 @@ interface PerformanceRecommendation {
 }
 
 export function AiCoachRecommendation({
-    lastMood, recentGames, rosterId, overrideText, sport, isLive, onExit, onComplete
+    lastMood, recentGames, rosterId, overrideText, sport, isLive, onExit, onComplete, onLogAction
 }: {
     lastMood?: string, recentGames?: any[], rosterId?: string, overrideText?: string, sport?: string, isLive?: boolean,
-    onExit?: () => void, onComplete?: () => void
+    onExit?: () => void, onComplete?: () => void,
+    onLogAction?: (actionName: string) => void
 }) {
     const [rec, setRec] = useState<PerformanceRecommendation | null>(null);
     const [loading, setLoading] = useState(true);
@@ -172,6 +173,38 @@ export function AiCoachRecommendation({
         );
     }
 
+
+    // D. Action State
+    const [activeMode, setActiveMode] = useState(false);
+    const [timer, setTimer] = useState(60);
+    const [timerActive, setTimerActive] = useState(false);
+
+    useEffect(() => {
+        let interval: any;
+        if (timerActive && timer > 0) {
+            interval = setInterval(() => setTimer(prev => prev - 1), 1000);
+        } else if (timer === 0) {
+            setTimerActive(false);
+        }
+        return () => clearInterval(interval);
+    }, [timerActive, timer]);
+
+    const handleActionClick = () => {
+        if (rec?.drill.type === 'mental') {
+            setActiveMode(true);
+            setTimer(rec.drill.duration.includes('15') ? 900 : 300); // 15m vs 5m default
+            setTimerActive(true);
+        } else if (rec?.drill.type === 'physical') {
+            if (onLogAction) {
+                onLogAction(rec.drill.name);
+            } else {
+                // Fallback if no callback provided
+                const element = document.getElementById('training-journal');
+                if (element) element.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    };
+
     if (loading) {
         return (
             <div className="w-full h-40 rounded-3xl bg-card border border-border p-6 flex flex-col items-center justify-center gap-3 animate-pulse">
@@ -181,91 +214,120 @@ export function AiCoachRecommendation({
         );
     }
 
+    // ACTIVE MODE UI (For Mental Drills)
+    if (activeMode && rec?.drill.type === 'mental') {
+        return (
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full relative overflow-hidden rounded-3xl bg-black border border-emerald-500/30 p-1 shadow-2xl"
+            >
+                <div className="relative bg-black rounded-[24px] p-8 flex flex-col items-center justify-center text-center min-h-[300px]">
+                    <div className="absolute top-4 right-4">
+                        <button onClick={() => setActiveMode(false)} className="text-muted-foreground hover:text-white text-xs font-bold uppercase">Exit</button>
+                    </div>
+
+                    <div className="mb-6">
+                        <Activity className="w-12 h-12 text-emerald-500 animate-pulse mx-auto opacity-50" />
+                    </div>
+
+                    <h2 className="text-6xl font-black text-white font-mono tracking-widest mb-4">
+                        {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
+                    </h2>
+                    <p className="text-emerald-500 font-bold uppercase tracking-widest text-xs animate-pulse">
+                        {timerActive ? "Focus Active" : "Session Complete"}
+                    </p>
+
+                    <p className="mt-8 text-white/50 text-sm max-w-[200px]">
+                        "{rec?.drill.name}"
+                    </p>
+                </div>
+            </motion.div>
+        )
+    }
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full relative overflow-hidden rounded-3xl glass p-1 shadow-2xl"
+            className="w-full relative overflow-hidden rounded-3xl glass p-1 shadow-2xl group"
         >
             {/* Background gradients matching GoalieCard */}
-            <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-foreground/5 blur-3xl pointer-events-none" />
+            <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-foreground/5 blur-3xl pointer-events-none group-hover:bg-primary/10 transition-colors duration-700" />
             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-40 w-40 rounded-full bg-foreground/5 blur-3xl pointer-events-none" />
 
             <div className="relative bg-transparent rounded-[24px] p-8 overflow-hidden">
 
-                {/* Subtle Ambient Glow */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 to-primary/10" />
-
                 {/* Header */}
-                <div className="flex items-center gap-3 mb-6">
-                    <Activity className="w-5 h-5 text-primary" />
-                    <span className="text-xs font-bold text-primary tracking-widest uppercase">Performance Insight</span>
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Zap className="w-4 h-4 text-primary" fill="currentColor" />
+                        </div>
+                        <span className="text-xs font-bold text-primary tracking-widest uppercase">Performance Insight</span>
+                    </div>
+                    {seasonGoal && (
+                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
+                            <span className="text-[9px] font-bold text-primary uppercase tracking-wider flex items-center gap-1">
+                                <Target size={10} /> Goal Aligned
+                            </span>
+                        </div>
+                    )}
                 </div>
 
-                {/* THE STATEMENT (Apple Health Style) */}
-                <div className="mb-10">
-                    <h2 className="text-3xl md:text-4xl font-bold text-foreground leading-tight tracking-tight mb-4">
-                        {rec?.reason}
+                {/* THE STATEMENT */}
+                <div className="mb-8">
+                    <h2 className="text-3xl md:text-4xl font-black text-foreground leading-none tracking-tighter mb-4 italic">
+                        "{rec?.reason}"
                     </h2>
-                    <p className="text-lg text-muted-foreground font-medium">
-                        Focus: <span className="text-foreground">{rec?.focus}</span>
+                    <p className="text-md text-muted-foreground font-medium flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        Focus: <span className="text-foreground font-bold">{rec?.focus}</span>
                     </p>
                 </div>
 
-                {/* Context Badge - SHOW CONNECTION */}
-                {seasonGoal && (
-                    <div className="mb-6 flex items-center gap-2">
-                        <div className="h-px bg-border flex-1" />
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
-                            <Target size={10} /> Aligned with Season Goal
-                        </span>
-                        <div className="h-px bg-border flex-1" />
-                    </div>
-                )}
+                {/* MISSION CARD (Action Module) */}
+                <div className="bg-muted/30 border border-white/5 rounded-2xl p-1 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
 
-                {/* Action Grid (Minimalist) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex flex-col p-5 bg-muted/40 rounded-2xl border border-border/50">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Protocol</span>
-                        <span className="text-lg font-bold text-foreground">{rec?.drill.name}</span>
-                    </div>
-                    <div className="flex flex-col p-5 bg-muted/40 rounded-2xl border border-border/50">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Duration</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-lg font-bold text-foreground">{rec?.drill.duration}</span>
-                            <span className="text-xs text-muted-foreground">Session</span>
+                    <div className="bg-background/80 backdrop-blur-sm rounded-xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center border border-border ${rec?.drill.type === 'mental' ? 'bg-purple-500/10 text-purple-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                                {rec?.drill.type === 'mental' ? <Brain size={24} /> : <Activity size={24} />}
+                            </div>
+                            <div>
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Recommended Protocol</span>
+                                <span className="text-lg font-black text-foreground uppercase tracking-tight">{rec?.drill.name}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 w-full md:w-auto">
+                            <div className="hidden md:block h-8 w-px bg-border" />
+                            <div className="text-right hidden md:block mr-2">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Duration</span>
+                                <span className="font-mono font-bold text-foreground">{rec?.drill.duration}</span>
+                            </div>
+
+                            <button
+                                onClick={handleActionClick}
+                                className="flex-1 md:flex-none h-12 px-6 bg-foreground hover:bg-foreground/90 text-background font-bold rounded-lg transition-all flex items-center justify-center gap-2 uppercase tracking-wide text-xs"
+                            >
+                                {rec?.drill.type === 'mental' ? 'Start Session' : 'Log Workout'}
+                                <ChevronRight size={14} />
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Feedback Section */}
-                <div className="mt-8 pt-6 border-t border-border flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground">Was this helpful?</span>
-
+                {/* Feedback Section (Minimal) */}
+                <div className="mt-6 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     {!feedbackGiven ? (
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => handleFeedback(true)}
-                                className="p-2 rounded-full hover:bg-green-500/10 hover:text-green-500 text-muted-foreground transition-colors"
-                            >
-                                <ThumbsUp className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => handleFeedback(false)}
-                                className="p-2 rounded-full hover:bg-red-500/10 hover:text-red-500 text-muted-foreground transition-colors"
-                            >
-                                <ThumbsDown className="w-4 h-4" />
-                            </button>
+                        <div className="flex gap-1">
+                            <button onClick={() => handleFeedback(true)} className="p-2 hover:text-green-500 transition-colors"><ThumbsUp size={14} /></button>
+                            <button onClick={() => handleFeedback(false)} className="p-2 hover:text-red-500 transition-colors"><ThumbsDown size={14} /></button>
                         </div>
                     ) : (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="flex items-center gap-2 text-green-500"
-                        >
-                            <CheckCircle className="w-4 h-4" />
-                            <span className="text-xs font-bold">Thanks for feedback!</span>
-                        </motion.div>
+                        <span className="text-[10px] font-bold text-green-500 flex items-center gap-1"><CheckCircle size={10} /> Feedback Sent</span>
                     )}
                 </div>
 

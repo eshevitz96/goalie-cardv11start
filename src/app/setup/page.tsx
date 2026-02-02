@@ -123,9 +123,35 @@ export default function OnboardingPage() {
                 }
             }).eq('id', rosterId);
 
+
             if (error) {
                 console.error("Setup Update Error:", error);
-                // Continue if non-critical, but logging is important
+            }
+
+            // 3. CREATE BASELINE REFLECTION (For AI Context)
+            try {
+                const conf = parseInt(formData.baseline_confidence) || 5;
+                let mood = 'neutral';
+                if (conf <= 3) mood = 'frustrated';
+                if (conf >= 8) mood = 'happy';
+
+                // We need the user ID for author_id. We can get it from auth or currentData if linked.
+                // Best effort:
+                const { data: { user } } = await supabase.auth.getUser();
+
+                if (user) {
+                    await supabase.from('reflections').insert({
+                        roster_id: rosterId,
+                        author_id: user.id,
+                        Title: "Baseline Established",
+                        content: `Baseline Established. Season Goal: ${formData.baseline_goal}`,
+                        mood: mood,
+                        author_role: 'goalie'
+                    });
+                }
+            } catch (err) {
+                console.error("Baseline Reflection Error:", err);
+                // Non-blocking
             }
 
             // CRITICAL: Set 'activated_id' for the Dashboard to find the user

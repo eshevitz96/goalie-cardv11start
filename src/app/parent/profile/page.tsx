@@ -112,11 +112,59 @@ export default function ParentProfile() {
     }, []);
 
     const handleSave = async () => {
+        if (!dbId) return alert("No record found to update.");
         setIsSaving(true);
-        // Simulate Save for now
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setIsSaving(false);
-        alert("Profile Updated (Demo)");
+
+        try {
+            // 1. Fetch current raw_data to preserve other keys
+            const { data: currentData, error: fetchError } = await supabase
+                .from('roster_uploads')
+                .select('raw_data')
+                .eq('id', dbId)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            const existingRaw = currentData?.raw_data || {};
+
+            // 2. Prepare Updates
+            const updatedRaw = {
+                ...existingRaw,
+                teams: formData.teams,
+                level: formData.level
+            };
+
+            const updates = {
+                goalie_name: formData.goalie_name,
+                email: formData.email,
+                grad_year: parseInt(formData.grad_year) || null,
+                height: formData.height,
+                weight: formData.weight,
+                catch_hand: formData.catch_hand,
+                // Sync legacy 'team' field with the first team in the list
+                team: formData.teams.length > 0 ? formData.teams[0].name : formData.team,
+                raw_data: updatedRaw
+            };
+
+            // 3. Update Database
+            const { error: updateError } = await supabase
+                .from('roster_uploads')
+                .update(updates)
+                .eq('id', dbId);
+
+            if (updateError) throw updateError;
+
+            alert("Profile Updated Successfully!");
+
+            // Optional: Soft Reload to refresh context if needed, or just let state persist
+            router.refresh();
+
+        } catch (err: any) {
+            console.error("Save Error:", err);
+            alert("Error saving profile: " + err.message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (

@@ -28,6 +28,14 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expandedBlock, setExpandedBlock] = useState<'journal' | 'notes' | null>(null);
   const [showProgress, setShowProgress] = useState(true);
+  const [journalPrefill, setJournalPrefill] = useState<string | null>(null);
+
+  const handleLogAction = (actionName: string) => {
+    setExpandedBlock('journal');
+    setJournalPrefill(actionName);
+    // Reset after a moment so it can be re-triggered if needed, though usually one-off
+    setTimeout(() => setJournalPrefill(null), 1000);
+  };
 
 
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -484,13 +492,20 @@ export default function Home() {
 
         {/* PERFORMANCE DIRECTIVE - PRO FEATURE */}
         <div className="md:col-span-2 mb-6">
-          <AiCoachRecommendation lastMood={activeGoalie.latestMood} rosterId={activeGoalie.id} sport={activeGoalie.sport} />
+          <AiCoachRecommendation
+            lastMood={activeGoalie.latestMood}
+            rosterId={activeGoalie.id}
+            sport={activeGoalie.sport}
+            onLogAction={handleLogAction}
+          />
         </div>
 
-        {/* PRO TRAINING INSIGHTS */}
-        <div className="md:col-span-2 mb-8">
-          <TrainingInsights />
-        </div>
+        {/* PRO TRAINING INSIGHTS - ADMIN/COACH ONLY */}
+        {(userRole === 'admin' || userRole === 'coach') && (
+          <div className="md:col-span-2 mb-8">
+            <TrainingInsights />
+          </div>
+        )}
 
         {/* EXPANDABLE JOURNAL & NOTES BLOCK */}
         <section className="md:col-span-2 mb-8">
@@ -506,6 +521,7 @@ export default function Home() {
                     rosterId={activeGoalie.id}
                     isExpanded={expandedBlock === 'journal'}
                     onToggleExpand={() => setExpandedBlock(prev => prev === 'journal' ? null : 'journal')}
+                    prefill={journalPrefill}
                   />
                 </motion.div>
               )}
@@ -594,21 +610,7 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* Stats Section - Dynamic */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="glass rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-foreground">{activeGoalie.stats.memberSince}</div>
-              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Member Since</div>
-            </div>
-            <div className="glass rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-foreground">{activeGoalie.stats.totalSessions}</div>
-              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Total Sessions</div>
-            </div>
-            <div className="glass rounded-2xl p-4 text-center">
-              <div className="text-2xl font-black text-primary">{activeGoalie.stats.totalLessons}</div>
-              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Total Lessons</div>
-            </div>
-          </div>
+
 
           <motion.div
             key={`events-${activeGoalie.id}`}
