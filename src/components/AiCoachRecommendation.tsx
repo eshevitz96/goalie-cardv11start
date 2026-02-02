@@ -116,6 +116,21 @@ export function AiCoachRecommendation({
         fetchBaselineAndRec();
     }, [lastMood, rosterId, overrideText, sport, isLive]);
 
+    // D. Action State (Moved Up)
+    const [activeMode, setActiveMode] = useState(false);
+    const [timer, setTimer] = useState(60);
+    const [timerActive, setTimerActive] = useState(false);
+
+    useEffect(() => {
+        let interval: any;
+        if (timerActive && timer > 0) {
+            interval = setInterval(() => setTimer(prev => prev - 1), 1000);
+        } else if (timer === 0) {
+            setTimerActive(false);
+        }
+        return () => clearInterval(interval);
+    }, [timerActive, timer]);
+
     // LIVE GAME MODE
     if (isLive) {
         return (
@@ -173,21 +188,6 @@ export function AiCoachRecommendation({
         );
     }
 
-
-    // D. Action State
-    const [activeMode, setActiveMode] = useState(false);
-    const [timer, setTimer] = useState(60);
-    const [timerActive, setTimerActive] = useState(false);
-
-    useEffect(() => {
-        let interval: any;
-        if (timerActive && timer > 0) {
-            interval = setInterval(() => setTimer(prev => prev - 1), 1000);
-        } else if (timer === 0) {
-            setTimerActive(false);
-        }
-        return () => clearInterval(interval);
-    }, [timerActive, timer]);
 
     const handleActionClick = () => {
         if (rec?.drill.type === 'mental') {
