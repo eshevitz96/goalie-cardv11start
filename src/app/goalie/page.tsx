@@ -111,27 +111,9 @@ export default function Home() {
         assigned_coach_ids: ['demo-coach']
       }];
     }
-    // Legacy Demo Mode
-    else if (isDemoMode) {
-      console.log("DEMO MODE: Injecting Fake Data");
-      const demoName = localStorage.getItem('user_name');
-      const demoTeam = localStorage.getItem('user_team');
+    // Legacy Demo Mode Removed
+    // else if (isDemoMode) { ... }
 
-      rosterData = [{
-        id: 99999,
-        goalie_name: demoName || "Elliott Shevitz",
-        grad_year: 2018,
-        team: demoTeam || "Arizona Coyotes",
-        height: "6'2",
-        weight: "205",
-        catch_hand: "Left",
-        assigned_unique_id: "GC-8001",
-        email: "thegoaliebrand@gmail.com",
-        sport: "Hockey",
-        // Ensure recent mood is available for AI
-        latestMood: "Dialed In"
-      } as any];
-    }
 
 
     // 3. Fetch Events (All Future Events)
