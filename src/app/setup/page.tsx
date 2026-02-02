@@ -65,10 +65,10 @@ export default function OnboardingPage() {
         }
 
         try {
-            // 1. Fetch current data to preserve access_pin
+            // 1. Fetch current data to preserve access_pin AND get ID for session
             const { data: currentData, error: fetchError } = await supabase
                 .from('roster_uploads')
-                .select('raw_data')
+                .select('raw_data, assigned_unique_id')
                 .eq('id', rosterId)
                 .single();
 
@@ -99,6 +99,11 @@ export default function OnboardingPage() {
                 // Continue if non-critical, but logging is important
             }
 
+            // CRITICAL: Set 'activated_id' for the Dashboard to find the user
+            if (typeof window !== 'undefined' && currentData?.assigned_unique_id) {
+                localStorage.setItem('activated_id', currentData.assigned_unique_id);
+            }
+
             // Simulate delay for effect
             setTimeout(() => {
                 // Determine destination based on Role
@@ -108,7 +113,7 @@ export default function OnboardingPage() {
                 } else {
                     router.push('/goalie');
                 }
-            }, 1500);
+            }, 1000);
 
         } catch (e) {
             console.error(e);
