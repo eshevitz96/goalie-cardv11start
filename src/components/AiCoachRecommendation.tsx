@@ -25,6 +25,7 @@ export function AiCoachRecommendation({
     const [rec, setRec] = useState<PerformanceRecommendation | null>(null);
     const [loading, setLoading] = useState(true);
     const [baselineMood, setBaselineMood] = useState<string | null>(null);
+    const [seasonGoal, setSeasonGoal] = useState<string | null>(null);
 
     // C. Feedback State
     const [feedbackGiven, setFeedbackGiven] = useState(false);
@@ -62,6 +63,7 @@ export function AiCoachRecommendation({
                             textContext = data.content || "";
 
                             // Contextualize Injury/Skip
+
                             if (data.skip_reason) {
                                 textContext += ` [STATUS: ${data.skip_reason.toUpperCase()}]`;
                             }
@@ -74,6 +76,29 @@ export function AiCoachRecommendation({
                     }
                 } catch (err) {
                     console.error("Error fetching reflection context:", err);
+                }
+            }
+
+            // A2. Fetch Season Baseline (Goal)
+            let currentSeasonGoal = "";
+            if (rosterId) {
+                try {
+                    const { data: rosterData } = await supabase
+                        .from('roster_uploads')
+                        .select('raw_data')
+                        .eq('id', rosterId)
+                        .single();
+
+                    if (rosterData && rosterData.raw_data && rosterData.raw_data.baseline_goal) {
+                        currentSeasonGoal = rosterData.raw_data.baseline_goal;
+                        setSeasonGoal(currentSeasonGoal);
+                        // Append to context to influence the expert engine
+                        // We weight it slightly less by adding it at the end, or we can deal with it in the engine
+                        // For now, simple concatenation allows keyword matching on the goal too.
+                        textContext += ` My season goal is ${currentSeasonGoal}.`;
+                    }
+                } catch (err) {
+                    console.error("Error fetching baseline:", err);
                 }
             }
 
@@ -186,6 +211,17 @@ export function AiCoachRecommendation({
                         Focus: <span className="text-foreground">{rec?.focus}</span>
                     </p>
                 </div>
+
+                {/* Context Badge - SHOW CONNECTION */}
+                {seasonGoal && (
+                    <div className="mb-6 flex items-center gap-2">
+                        <div className="h-px bg-border flex-1" />
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                            <Target size={10} /> Aligned with Season Goal
+                        </span>
+                        <div className="h-px bg-border flex-1" />
+                    </div>
+                )}
 
                 {/* Action Grid (Minimalist) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

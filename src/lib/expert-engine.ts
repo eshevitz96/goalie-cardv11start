@@ -72,6 +72,44 @@ export const EXPERT_RULES: ExpertRule[] = [
         }
     },
 
+    // --- SKILL / GOAL ORIENTED RULES (triggered by Season Goals) ---
+    {
+        id: 'goal_rebounds',
+        keywords: ['rebound', 'second chance', 'traffic', 'puck placement'],
+        moods: ['neutral', 'happy', 'frustrated'], // Applies to all moods
+        priority: 60, // Lower than safety/sport-specific, but higher than generic mood
+        recommendation: {
+            focus: "Rebound Control",
+            reason: "Aligning with your focus on rebounds. Control the chaos.",
+            drill: { name: "Rebound Placement (Box Control)", duration: "15 mins", type: "physical" },
+            videoWait: 5
+        }
+    },
+    {
+        id: 'goal_hands',
+        keywords: ['hands', 'glove', 'blocker', 'tracking', 'catching'],
+        moods: ['neutral', 'happy', 'frustrated'],
+        priority: 60,
+        recommendation: {
+            focus: "Hand-Eye Coordination",
+            reason: "Sharpening your hands as requested. Eyes lead the hands.",
+            drill: { name: "Juggling & Wall Ball tracking", duration: "10 mins", type: "physical" },
+            videoWait: 0
+        }
+    },
+    {
+        id: 'goal_recovery',
+        keywords: ['recover', 'scramble', 'get up', 'mobility', 'athleticism'],
+        moods: ['neutral', 'happy', 'frustrated'],
+        priority: 60,
+        recommendation: {
+            focus: "Recovery & Agility",
+            reason: "Working on your recovery speed. Never quit on a play.",
+            drill: { name: "Up-Downs / Recoveries", duration: "15 mins", type: "physical" },
+            videoWait: 5
+        }
+    },
+
     // --- CONTRADICTION RULES (The "Delusional" Catcher) ---
     {
         id: 'bad_perf_happy_mood',
