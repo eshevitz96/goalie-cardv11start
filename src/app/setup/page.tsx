@@ -38,15 +38,19 @@ export default function OnboardingPage() {
             return;
         }
 
-        if (step === 3 && !formData.accepted_terms) {
-            alert("Please accept the terms to continue.");
+        if (step === 3) {
+            if (!formData.accepted_terms) {
+                alert("Please accept the terms to continue.");
+                return;
+            }
+            // Trigger Completion
+            handleComplete();
+            setStep(4); // Show Success UI immediately
             return;
         }
 
-        if (step < 4) {
+        if (step < 3) {
             setStep(prev => prev + 1);
-        } else {
-            handleComplete();
         }
     };
 
@@ -296,13 +300,13 @@ export default function OnboardingPage() {
                     )}
 
                     {/* Navigation */}
-                    {step < 3 && (
+                    {step <= 3 && (
                         <button
                             onClick={handleNext}
                             disabled={isLoading}
-                            className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 group"
+                            className={`w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 group ${step === 3 && !formData.accepted_terms ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            {step === 2 ? "Continue" : "Continue"}
+                            {step === 3 ? "Complete Setup" : "Continue"}
                             <ArrowRight className={`transition-transform ${step !== 2 ? 'group-hover:translate-x-1' : ''}`} size={20} />
                         </button>
                     )}
