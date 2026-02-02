@@ -182,7 +182,8 @@ function ActivateContent() {
                 }
 
                 // Redirect
-                const dest = '/parent'; // Default dashboard for now
+                const role = localStorage.getItem('user_role');
+                const dest = role === 'parent' ? '/parent' : '/goalie';
                 router.push(dest);
                 return;
             }

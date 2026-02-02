@@ -317,43 +317,7 @@ export default function ParentProfile() {
                                 )}
                             </div>
 
-                            {/* Stats */}
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="grid gap-2">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Height</label>
-                                    <input
-                                        type="text"
-                                        placeholder="6'1"
-                                        value={formData.height}
-                                        onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                                        className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50"
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Weight</label>
-                                    <input
-                                        type="text"
-                                        placeholder="175lbs"
-                                        value={formData.weight}
-                                        onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                                        className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50"
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Catch</label>
-                                    <div className="relative">
-                                        <select
-                                            value={formData.catch_hand}
-                                            onChange={(e) => setFormData({ ...formData, catch_hand: e.target.value })}
-                                            className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50 appearance-none"
-                                        >
-                                            <option>Left</option>
-                                            <option>Right</option>
-                                        </select>
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground text-xs">▼</div>
-                                    </div>
-                                </div>
-                            </div>
+                            {/* Stats Removed by Request */}
                         </div>
                     </div>
 

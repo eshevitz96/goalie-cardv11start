@@ -37,6 +37,7 @@ async function verifyUser(email: string) {
         console.log(`   - Grad Year: ${user.grad_year}`);
         console.log(`   - Height: ${user.height}`);
         console.log(`   - Catch: ${user.catch_hand}`);
+        console.log(`   - Setup Complete: ${user.raw_data?.setup_complete ? 'YES' : 'NO'}`);
         console.log("    (This is exactly what will appear on the Card)");
     }
 
