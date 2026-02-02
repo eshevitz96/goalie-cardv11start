@@ -659,6 +659,31 @@ export default function Home() {
           {/* Stats Section - Dynamic */}
           {/* Stats Section Removed by Request */}
 
+          {/* ZERO STATE NUDGE */}
+          {(!activeGoalie.session || activeGoalie.session <= 0) && (!activeGoalie.lesson || activeGoalie.lesson <= 0) && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-primary/5 border border-primary/20 p-4 rounded-2xl flex items-center justify-between gap-4 mb-6"
+            >
+              <div>
+                <h4 className="text-sm font-bold text-foreground">Out of Sessions?</h4>
+                <p className="text-xs text-muted-foreground">Purchase a package to add lessons to your card.</p>
+              </div>
+              <button
+                onClick={() => {
+                  // Scroll to coach section
+                  const el = document.getElementById('coach-corner-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  else alert("Please verify your assigned coach details.");
+                }}
+                className="bg-primary text-black px-4 py-2 rounded-xl text-xs font-bold hover:opacity-90"
+              >
+                Buy Now
+              </button>
+            </motion.div>
+          )}
+
           <motion.div
             key={`events-${activeGoalie.id}`}
             initial={{ opacity: 0, y: 20 }}
@@ -701,6 +726,7 @@ export default function Home() {
           {/* COACHES CORNER - Visible for All (Renamed from Coach Development) */}
           <motion.div
             key={`coach-info-${activeGoalie.id}`}
+            id="coach-corner-section"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.25 }}
@@ -741,11 +767,27 @@ export default function Home() {
                         Subscription: <span className="text-foreground">{activeGoalie.coachDetails.pricing_config.private.details.sessions_per_month} Sessions/mo</span> <span className="text-muted-foreground">(${activeGoalie.coachDetails.pricing_config.private.details.cost}/mo)</span>
                       </div>
                     )}
+
+                    {/* PURCHASE ACTION */}
+                    <button
+                      onClick={() => {
+                        if (confirm(`Purchase ${activeGoalie.coachDetails.pricing_config.private.type === 'package' ? 'Package' : 'Subscription'} from ${activeGoalie.coach}?`)) {
+                          alert("Redirecting to Payment Gateway... (Simulation: Success!)");
+                          // Here we would actually call an API to create a payment session
+                        }
+                      }}
+                      className="mt-3 w-full bg-foreground text-background py-2 rounded-lg text-xs font-bold hover:opacity-90 transition-opacity"
+                    >
+                      Purchase {activeGoalie.coachDetails.pricing_config.private.type === 'package' ? 'Package' : 'Subscription'}
+                    </button>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">No coach details available.</div>
+              <div className="text-sm text-muted-foreground">
+                No coach details available. <br />
+                <button className="text-primary font-bold hover:underline mt-1" onClick={() => alert("Search for coaches feature coming soon.")}>Find a Coach</button>
+              </div>
             )}
 
             {/* Coach OS Access - Only for Coaches/Admins */}

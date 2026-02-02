@@ -107,8 +107,14 @@ export function EventsList({ events, onRegister, onEventAdded, sport, maxItems }
             </div>
 
             {events.length === 0 ? (
-                <div className="text-center p-8 border border-border border-dashed rounded-2xl text-muted-foreground text-sm">
-                    No upcoming events.
+                <div className="text-center p-8 border border-border border-dashed rounded-2xl text-muted-foreground text-sm flex flex-col items-center gap-2">
+                    <span>No upcoming events.</span>
+                    <button
+                        onClick={() => setShowAddEventModal(true)}
+                        className="text-primary font-bold hover:underline"
+                    >
+                        + Add your first Game or Practice
+                    </button>
                 </div>
             ) : (
                 <div className="grid gap-4">
