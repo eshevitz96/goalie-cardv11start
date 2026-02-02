@@ -300,7 +300,7 @@ export default function TrainingInsights() {
 
             {/* OVERVIEW: Interactive Metric Grid */}
             {activeView === 'overview' && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
                     <MetricCard
                         title="Total Activity"
                         value={stats?.totalActivity}

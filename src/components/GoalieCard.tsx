@@ -182,7 +182,7 @@ export function GoalieCard({ name, session, lesson, team, height, weight, catchH
 
                 {/* Bottom ID and Season */}
                 <div className="absolute bottom-3 right-5 text-[10px] font-mono text-muted-foreground/40 font-semibold tracking-widest text-right pointer-events-none">
-                    <div>Ref: {id?.slice(0, 8).toUpperCase()}</div>
+
                     <div>SEASON {(() => {
                         const date = new Date();
                         const year = date.getFullYear();
