@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Check, ChevronRight, User, Ruler, Weight, Shield, AlertCircle } from "lucide-react";
@@ -25,12 +25,41 @@ export default function OnboardingPage() {
     // Load initial data (if any) from DB
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Simulate checking user ID and loading known data
-    useState(() => {
-        // In real app, we fetch from supabase based on auth
-        // For now, we assume user is authenticated and we might have partial data
-        setIsLoaded(true);
-    });
+    // Initial Data Fetch
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            // 1. Try to get ID passed from Activation
+            const rosterId = localStorage.getItem('setup_roster_id');
+            if (!rosterId) {
+                setIsLoaded(true);
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('roster_uploads')
+                .select('*')
+                .eq('id', rosterId)
+                .single();
+
+            if (data && !error) {
+                // Populate form with existing data
+                setFormData(prev => ({
+                    ...prev,
+                    goalie_name: data.goalie_name || prev.goalie_name,
+                    height: data.height || prev.height,
+                    weight: data.weight || prev.weight,
+                    catch_hand: data.catch_hand || prev.catch_hand,
+                    // raw_data fields
+                    baseline_goal: data.raw_data?.baseline_goal || prev.baseline_goal,
+                    baseline_confidence: data.raw_data?.baseline_confidence || prev.baseline_confidence,
+                    accepted_terms: data.raw_data?.accepted_terms_date ? true : false
+                }));
+            }
+            setIsLoaded(true);
+        };
+
+        fetchInitialData();
+    }, []);
 
     const handleNext = () => {
         if (step === 2 && !formData.baseline_goal.trim()) {

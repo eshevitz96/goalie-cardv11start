@@ -41,14 +41,7 @@ export default function EntryPortal() {
                             Goalie Card
                         </motion.h1>
 
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.3, duration: 0.5 }}
-                            className="text-white text-xs font-bold uppercase tracking-[0.2em]"
-                        >
-                            Studio Pending
-                        </motion.div>
+
                     </motion.div>
                 )}
             </AnimatePresence>
