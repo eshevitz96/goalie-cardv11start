@@ -277,8 +277,8 @@ export function AiCoachRecommendation({
 
                 {/* THE STATEMENT */}
                 <div className="mb-8">
-                    <h2 className="text-3xl md:text-4xl font-black text-foreground leading-none mb-4">
-                        "{rec?.reason}"
+                    <h2 className="text-2xl md:text-4xl font-bold text-foreground leading-tight tracking-tight mb-4">
+                        {rec?.reason}
                     </h2>
                     <p className="text-md text-muted-foreground font-medium flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary" />

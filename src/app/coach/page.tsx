@@ -172,7 +172,8 @@ export default function CoachDashboard() {
                             </div>
                         </div>
 
-                        <div className="glass rounded-3xl overflow-hidden">
+                        {/* Desktop Table View */}
+                        <div className="glass rounded-3xl overflow-hidden hidden md:block">
                             <table className="w-full text-left">
                                 <thead className="bg-muted/50 border-b border-border text-xs uppercase text-muted-foreground font-semibold tracking-wider">
                                     <tr>
@@ -216,7 +217,6 @@ export default function CoachDashboard() {
                                                     <button className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors">
                                                         <MoreVertical size={16} />
                                                     </button>
-                                                    {/* Hover Dropdown */}
                                                     <div className="absolute right-0 top-1/2 -translate-y-1/2 mr-8 w-40 glass rounded-xl shadow-xl p-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                                                         <button className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                                                             <Mail size={14} /> Message Parent
@@ -231,6 +231,54 @@ export default function CoachDashboard() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Mobile Card View */}
+                        <div className="md:hidden space-y-4">
+                            {filteredRoster.map((goalie) => (
+                                <div key={goalie.id} className="glass p-5 rounded-2xl border border-border/50">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <div className="font-bold text-lg text-foreground mb-1">{goalie.name}</div>
+                                            <div className="text-xs text-muted-foreground">Last seen: {goalie.lastSeen}</div>
+                                        </div>
+                                        {goalie.status === 'renew_needed' ? (
+                                            <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">
+                                                Renew
+                                            </span>
+                                        ) : (
+                                            <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20 uppercase tracking-wide">
+                                                Active
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="mb-4">
+                                        <div className="flex justify-between text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                                            <span>Progress</span>
+                                            <span className="text-foreground">S{goalie.session} / L{goalie.lesson}</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-primary"
+                                                style={{ width: `${(goalie.lesson / 4) * 100}%` }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border/50">
+                                        <button className="w-full py-2.5 rounded-xl border border-border hover:bg-muted text-xs font-bold text-muted-foreground transition-colors">
+                                            Message
+                                        </button>
+                                        <Link
+                                            href={`/coach/log-session/${goalie.id}`}
+                                            className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                                        >
+                                            <FileEdit size={14} /> Log Data
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </section>
                 </div >

@@ -517,7 +517,7 @@ function ActivateContent() {
                                             <button
                                                 type="button"
                                                 onClick={handleCreateNew}
-                                                className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl transition-all border border-white/10"
+                                                className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-3 rounded-xl transition-all border border-white/10"
                                             >
                                                 Create New Card
                                             </button>

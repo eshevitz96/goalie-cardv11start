@@ -21,6 +21,9 @@ export async function updateCoachProfile(formData: FormData) {
     };
 
     const updateData: any = {
+        id: user.id,
+        email: user.email,
+        role: 'coach', // Ensure they are marked as a coach
         title,
         bio,
         settings,
@@ -33,10 +36,11 @@ export async function updateCoachProfile(formData: FormData) {
         updateData.goalie_name = fullName; // Sync both for consistency
     }
 
+    // Use upsert instead of update to handle missing profile rows
     const { error } = await supabase
         .from("profiles")
-        .update(updateData)
-        .eq("id", user.id);
+        .upsert(updateData)
+        .select();
 
     if (error) {
         console.error("Profile Update Error Details:", error);

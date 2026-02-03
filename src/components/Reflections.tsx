@@ -349,7 +349,11 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                                         placeholder="How did you feel today? What did you improve?..."
                                         value={newReflection.content}
                                         onChange={(e) => setNewReflection({ ...newReflection, content: e.target.value })}
+                                        maxLength={300}
                                     />
+                                    <div className={`text-[10px] text-right mt-1 font-bold ${newReflection.content.length >= 280 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                                        {newReflection.content.length} / 300
+                                    </div>
                                 </>
                             )}
                         </div>

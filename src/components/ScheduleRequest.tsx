@@ -16,7 +16,7 @@ interface ScheduleRequestProps {
 
 export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = [], sport, onCoachUpdate }: ScheduleRequestProps) {
     const [isSelectingCoach, setIsSelectingCoach] = useState(false);
-    const [coaches, setCoaches] = useState<{ id: string, goalie_name: string }[]>([]);
+    const [coaches, setCoaches] = useState<{ id: string, goalie_name: string, full_name?: string }[]>([]);
     const [loadingCoaches, setLoadingCoaches] = useState(false);
     const [note, setNote] = useState("");
     const [submitting, setSubmitting] = useState(false);
@@ -26,7 +26,7 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
         if (isSelectingCoach && coaches.length === 0) {
             setLoadingCoaches(true);
             const query = supabase.from('profiles')
-                .select('id, goalie_name')
+                .select('id, goalie_name, full_name')
                 .eq('role', 'coach');
 
             query.then(({ data, error }) => {
@@ -186,7 +186,7 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-border bg-muted group-hover:border-foreground/50'}`}>
                                                             {isSelected && <Check size={10} className="text-primary-foreground" />}
                                                         </div>
-                                                        <div className="flex-1 truncate">{coach.goalie_name}</div>
+                                                        <div className="flex-1 truncate">{coach.goalie_name || coach.full_name || "Unknown Coach"}</div>
                                                     </button>
                                                 );
                                             })
