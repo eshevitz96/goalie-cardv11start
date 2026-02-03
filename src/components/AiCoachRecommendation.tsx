@@ -90,13 +90,21 @@ export function AiCoachRecommendation({
                         .eq('id', rosterId)
                         .single();
 
-                    if (rosterData && rosterData.raw_data && rosterData.raw_data.baseline_goal) {
-                        currentSeasonGoal = rosterData.raw_data.baseline_goal;
-                        setSeasonGoal(currentSeasonGoal);
-                        // Append to context to influence the expert engine
-                        // We weight it slightly less by adding it at the end, or we can deal with it in the engine
-                        // For now, simple concatenation allows keyword matching on the goal too.
-                        textContext += ` My season goal is ${currentSeasonGoal}.`;
+                    if (rosterData && rosterData.raw_data) {
+                        if (rosterData.raw_data.baseline_goal) {
+                            currentSeasonGoal = rosterData.raw_data.baseline_goal;
+                            setSeasonGoal(currentSeasonGoal);
+                            textContext += ` My season goal is ${currentSeasonGoal}.`;
+                        }
+                        if (rosterData.raw_data.baseline_confidence) {
+                            const conf = rosterData.raw_data.baseline_confidence;
+                            textContext += ` My confidence level is ${conf}/10.`;
+                            // If no recent mood, use confidence as proxy
+                            if (activeMood === 'neutral') {
+                                if (parseInt(conf) <= 4) activeMood = 'anxious';
+                                if (parseInt(conf) >= 8) activeMood = 'happy';
+                            }
+                        }
                     }
                 } catch (err) {
                     console.error("Error fetching baseline:", err);

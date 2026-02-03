@@ -297,12 +297,21 @@ export default function OnboardingPage() {
 
                                 <div>
                                     <label className="text-xs font-bold uppercase text-muted-foreground ml-1 mb-1 block">2. Biggest Goal This Season?</label>
-                                    <textarea
-                                        value={formData.baseline_goal}
-                                        onChange={e => setFormData({ ...formData, baseline_goal: e.target.value })}
-                                        placeholder="e.g. Improve rebound control..."
-                                        className="w-full bg-secondary/50 border border-border rounded-xl p-3 text-sm focus:border-primary focus:outline-none h-24 resize-none"
-                                    />
+                                    <div className="relative">
+                                        <textarea
+                                            value={formData.baseline_goal}
+                                            onChange={e => {
+                                                if (e.target.value.length <= 150) {
+                                                    setFormData({ ...formData, baseline_goal: e.target.value });
+                                                }
+                                            }}
+                                            placeholder="e.g. Improve rebound control..."
+                                            className="w-full bg-secondary/50 border border-border rounded-xl p-3 text-sm focus:border-primary focus:outline-none h-24 resize-none pr-2"
+                                        />
+                                        <div className={`absolute bottom-2 right-3 text-[10px] font-bold ${formData.baseline_goal.length > 140 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                                            {formData.baseline_goal.length}/150
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
