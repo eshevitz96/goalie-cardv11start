@@ -264,6 +264,9 @@ function AddEventModal({ isOpen, onClose, onAdded, defaultSport }: { isOpen: boo
         if (!manualEvent.name || !manualEvent.date) return alert("Please fill in required fields.");
         setIsSubmitting(true);
 
+        // Get User for Ownership
+        const { data: { user } } = await supabase.auth.getUser();
+
         // Insert into Supabase
         const { error } = await supabase.from('events').insert({
             name: `${manualEvent.type}: ${manualEvent.name}`,
@@ -271,7 +274,8 @@ function AddEventModal({ isOpen, onClose, onAdded, defaultSport }: { isOpen: boo
             location: manualEvent.location || 'TBA',
             sport: defaultSport || 'Hockey',
             price: 0, // Personal schedule events are free/tracking only
-            image: "from-zinc-500 to-zinc-700" // Default team color
+            image: "from-zinc-500 to-zinc-700", // Default team color
+            created_by: user?.id
         });
 
         if (error) {
