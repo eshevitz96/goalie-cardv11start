@@ -1,322 +1,46 @@
 "use client";
 
-import { GoalieCard } from "@/components/GoalieCard";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, Bell, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { useGoalieData } from "@/hooks/useGoalieData";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/context/ToastContext";
+import { supabase } from "@/utils/supabase/client";
+import { isPastSeniorSeason } from "@/utils/role-logic";
+
+import { GoalieCard } from "@/components/GoalieCard";
 import { ScheduleRequest } from "@/components/ScheduleRequest";
 import { PostGameReport } from "@/components/PostGameReport";
-import { AiCoachRecommendation } from "@/components/AiCoachRecommendation";
 import { Reflections } from "@/components/Reflections";
+import { AiCoachRecommendation } from "@/components/AiCoachRecommendation";
 import { BetaFeedback } from "@/components/BetaFeedback";
 import { WhatsNewGuide } from "@/components/WhatsNewGuide";
 import { EventsList } from "@/components/EventsList";
 import TrainingInsights from "@/components/TrainingInsights";
-import { motion, AnimatePresence } from "framer-motion";
-import { Bell, ChevronLeft, ChevronRight, User, Settings, CreditCard, LogOut, Plus, Loader2, Medal, Briefcase } from "lucide-react";
-import Link from "next/link";
-import { useState, useEffect } from "react";
-import { supabase } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
 import { GoalsWidget } from "@/components/GoalsWidget";
-import { isPastSeniorSeason } from "@/utils/role-logic";
+import { Button } from "@/components/ui/Button";
+
+// New Components
+import { GoalieHeader } from "@/components/goalie/GoalieHeader";
+import { CoachesCorner } from "@/components/goalie/CoachesCorner";
+import { HighlightsSection } from "@/components/goalie/HighlightsSection";
 
 export default function Home() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [goalies, setGoalies] = useState<any[]>([]);
-  // Debug State
-  const [debugInfo, setDebugInfo] = useState<{ email: string | null, localId: string | null }>({ email: null, localId: null });
+  const toast = useToast();
+  const { userId, userRole, loading: authLoading } = useAuth();
+  const { goalies, isLoading, fetchMyGoalies } = useGoalieData();
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expandedBlock, setExpandedBlock] = useState<'journal' | 'notes' | null>(null);
   const [showProgress, setShowProgress] = useState(true);
   const [journalPrefill, setJournalPrefill] = useState<string | null>(null);
 
-  const handleLogAction = (actionName: string) => {
-    setExpandedBlock('journal');
-    setJournalPrefill(actionName);
-    // Reset after a moment so it can be re-triggered if needed, though usually one-off
-    setTimeout(() => setJournalPrefill(null), 1000);
-  };
-
-
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // Initial Load Logic
-  const fetchMyGoalies = async (showLoading = true) => {
-    if (showLoading) setIsLoading(true);
-
-    // 1. Auth & Local ID Check
-    const { data: { user } } = await supabase.auth.getUser();
-    let emailToSearch = user?.email;
-    const localId = typeof window !== 'undefined' ? localStorage.getItem('activated_id') : null;
-
-    setDebugInfo({ email: emailToSearch || null, localId: localId });
-
-    if (user) {
-      setUserId(user.id);
-      // Fetch Profile Role (just to be safe/consistent)
-      const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      if (p) setUserRole(p.role);
-    }
-
-    if (!emailToSearch && !localId) {
-      // If no user and no local ID, can't find anything
-      setGoalies([]);
-      setIsLoading(false);
-      return;
-    }
-
-    // 2. Query Roster (Find the Goalie's Card)
-    let query = supabase.from('roster_uploads').select('*');
-
-    // PRIORITY: Authenticated User ID matches 'claimed' record
-    if (user?.email) {
-      // We prefer checking by email if available as it is the stable identifier
-      query = query.ilike('email', user.email);
-    } else if (localId) {
-      // Fallback to local ID
-      query = query.eq('assigned_unique_id', localId);
-    } else {
-      // Should have been caught above, but safety
-      setGoalies([]);
-      setIsLoading(false);
-      return;
-    }
-
-    let { data: rosterData, error: rosterError } = await query;
-    if (rosterError) console.error("Roster Fetch Error:", rosterError);
-
-    // DEMO INJECTION & BRIDGE PERMISSION
-    const isDemoMode = typeof window !== 'undefined' && localStorage.getItem('demo_mode') === 'true';
-
-    // Bridge for Luke Grasso (Live Activation Test)
-    if ((!rosterData || rosterData.length === 0) && (localId === 'GC-8588' || user?.email === 'thegoaliebrand@gmail.com')) {
-      rosterData = [{
-        id: 'e5b8471e-72eb-4b2b-8680-ee922a43e850',
-        goalie_name: 'Luke Grasso',
-        team: 'Yale Bulldogs',
-        grad_year: 2029,
-        height: '6-0',
-        weight: '190',
-        catch_hand: 'Left',
-        sport: 'Lacrosse',
-        assigned_unique_id: 'GC-8588',
-        email: 'lukegrasso09@gmail.com',
-        parent_name: 'Parent Grasso',
-        session_count: 20,
-        lesson_count: 1,
-        games_count: 5,
-        practice_count: 10,
-        assigned_coach_id: 'demo-coach',
-        assigned_coach_ids: ['demo-coach']
-      }];
-    }
-    // Legacy Demo Mode Removed
-    // else if (isDemoMode) { ... }
-
-
-
-    // 3. Fetch Events (All Future Events)
-    const { data: allEvents } = await supabase.from('events').select('*').gte('date', new Date().toISOString()).order('date', { ascending: true });
-
-    // 4. Fetch User Registrations
-    let registeredIds = new Set();
-    if (user) {
-      const { data: regs } = await supabase.from('registrations').select('event_id').eq('goalie_id', user.id);
-      registeredIds = new Set(regs?.map(r => r.event_id) || []);
-    }
-
-    // 5. Fetch Session History
-    let sessionsMap = new Map<string, any[]>();
-    if (rosterData && rosterData.length > 0) {
-      const rosterIds = rosterData.map(r => r.id);
-      const { data: sessionsData } = await supabase
-        .from('sessions')
-        .select('*')
-        .in('roster_id', rosterIds)
-        .order('date', { ascending: false });
-
-      if (sessionsData) {
-        sessionsData.forEach(s => {
-          const list = sessionsMap.get(s.roster_id) || [];
-          list.push(s);
-          sessionsMap.set(s.roster_id, list);
-        });
-      }
-    }
-
-    // 6. Fetch Coaches
-    const { data: coachesData } = await supabase.from('profiles').select('id, goalie_name, training_types, pricing_config, development_philosophy').eq('role', 'coach');
-    const coachMap = new Map(coachesData?.map(c => [c.id, c]) || []);
-
-    // 7.1 Fetch Latest Reflections
-    let reflectionsMap = new Map<string, string>();
-    if (rosterData && rosterData.length > 0) {
-      const rosterIds = rosterData.map(r => r.id);
-      const { data: refData } = await supabase
-        .from('reflections')
-        .select('roster_id, mood, created_at, author_role')
-        .in('roster_id', rosterIds)
-        .order('created_at', { ascending: false });
-
-      // Since it's ordered by desc, the first entry for each roster_id we encounter is the latest
-      if (refData) {
-        refData.forEach(r => {
-          // Input Purity: Only use the GOALIE'S internal state.
-          const isAthleteVoice = r.author_role === 'goalie' || r.author_role === null || r.author_role === undefined;
-
-          if (isAthleteVoice && !reflectionsMap.has(r.roster_id)) {
-            reflectionsMap.set(r.roster_id, r.mood);
-          }
-        });
-      }
-    }
-
-    // 7. Process & Map Data
-    if (rosterData && rosterData.length > 0) {
-      const realGoalies = rosterData.map(g => {
-        // Filter Events for this Goalie's Sport
-        const goalieSports = g.sport ? g.sport.split(',').map((s: string) => s.trim()) : [];
-        const goalieEvents = allEvents
-          ?.filter(e => {
-            if (!e.sport) return true; // Event open to all
-            if (goalieSports.length === 0) return true; // Goalie has no sport defined (show all?) or default to showing? default showing.
-            return goalieSports.includes(e.sport);
-          })
-          .map(e => ({
-            id: e.id,
-            name: e.name,
-            date: new Date(e.date).toLocaleDateString(),
-            location: e.location || 'TBA',
-            status: registeredIds.has(e.id) ? "upcoming" : "open",
-            image: e.image || "from-gray-500 to-gray-600",
-            price: e.price,
-            sport: e.sport
-          })) || [];
-
-        // Resolve Coach
-        let assignedCoachName = "Assigned Coach";
-        let assignedCoachIds: string[] = [];
-        let primaryCoachDetails = null;
-
-        if (g.assigned_coach_ids && g.assigned_coach_ids.length > 0) {
-          assignedCoachIds = g.assigned_coach_ids;
-          const coaches = assignedCoachIds.map(id => coachMap.get(id));
-          const names = coaches.map(c => c?.goalie_name || "Unknown");
-          if (names.length === 1) assignedCoachName = names[0];
-          else assignedCoachName = `${names.length} Coaches`;
-          primaryCoachDetails = coaches[0] || null;
-        } else if (g.assigned_coach_id) {
-          // Fallback for legacy
-          const coach = coachMap.get(g.assigned_coach_id);
-          assignedCoachName = coach?.goalie_name || "Unknown Coach";
-          primaryCoachDetails = coach || null;
-        }
-
-        // Map Sessions for Feedback
-        const gSessions = sessionsMap.get(g.id) || [];
-        const feedbackItems = gSessions.map(s => ({
-          id: s.id,
-          date: new Date(s.date).toLocaleDateString(),
-          coach: assignedCoachName, // Simplified
-          title: `Session ${s.session_number} • Lesson ${s.lesson_number}`,
-          content: s.notes || "No notes for this session.",
-          rating: 5,
-          hasVideo: false
-        }));
-
-        return {
-          id: g.id,
-          name: g.goalie_name,
-          team: g.team,
-          gradYear: g.grad_year,
-          height: g.height,
-          weight: g.weight,
-          catchHand: g.catch_hand,
-          sport: g.sport || 'Hockey',
-          coach: assignedCoachName,
-          coachIds: assignedCoachIds,
-          coachDetails: primaryCoachDetails,
-          coachId: g.assigned_coach_id,
-          session: g.session_count || 0,
-          lesson: g.lesson_count || 0,
-          stats: {
-            gaa: "0.00",
-            sv: ".000",
-            memberSince: gSessions.length > 0 ? new Date(gSessions[gSessions.length - 1].date).getFullYear() : new Date().getFullYear(),
-            totalSessions: g.session_count || 0,
-            totalLessons: g.lesson_count || 0
-          },
-          events: goalieEvents,
-          feedback: feedbackItems,
-          latestMood: reflectionsMap.get(g.id) || 'neutral'
-        };
-      });
-      setGoalies(realGoalies);
-    } else {
-      setGoalies([]);
-    }
-    setIsLoading(false);
-  };
-
-  const handleCreateCard = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase.from('roster_uploads').insert({
-      email: user.email,
-      goalie_name: 'New Goalie', // They can update this later
-      is_claimed: true,
-      assigned_unique_id: user.id.slice(0, 8), // Temp ID
-      sport: 'Hockey'
-    });
-
-    if (error) alert("Error creating card: " + error.message);
-    else {
-      alert("Card Created!");
-      fetchMyGoalies();
-    }
-  };
-
-  useEffect(() => {
-    fetchMyGoalies(true);
-  }, []);
-
-  // ... (Keep handleLogout, handleRegister, etc)
-
-  // ... (Keep notification effect)
-
-  // Re-bind for context
-  const handleLogout = async () => {
-    if (!confirm("Are you sure you want to sign out?")) return;
-    await supabase.auth.signOut();
-    localStorage.removeItem('activated_id'); // Clear local session too
-    router.push('/login');
-  };
-
-  const handleRegister = async (eventId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      alert("Please sign in to register.");
-      return;
-    }
-
-    if (!confirm("Confirm registration?")) return;
-
-    const { error } = await supabase.from('registrations').insert({
-      goalie_id: user.id, // User ID (Profile)
-      event_id: eventId,
-      status: 'registered'
-    });
-
-    if (error) {
-      alert("Registration failed: " + error.message);
-    } else {
-      alert("Successfully registered!");
-      fetchMyGoalies(false);
-    }
-  };
-
+  // Notification Handling
   const [notification, setNotification] = useState<{ id: string, title: string, message: string, type?: string } | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
 
@@ -340,24 +64,52 @@ export default function Home() {
   const activeGoalie = goalies[currentIndex];
 
   // Pro Logic for Default Toggle
-  const currentYear = new Date().getFullYear();
   const isPro = activeGoalie && activeGoalie.gradYear && (isPastSeniorSeason(activeGoalie.gradYear) || activeGoalie.team?.toLowerCase().includes('blue') || activeGoalie.team?.toLowerCase().includes('pro'));
 
   useEffect(() => {
     if (activeGoalie) {
-      // Default: Hide for Pro, Show for Youth
       setShowProgress(!isPro);
     }
   }, [activeGoalie?.id, isPro]);
 
-  // LOOP PREVENTION: Removed auto-redirect
-  // useEffect(() => {
-  //   if (!isLoading && goalies.length === 0) {
-  //     router.push('/activate');
-  //   }
-  // }, [isLoading, goalies, router]);
+  const handleLogAction = (actionName: string) => {
+    setExpandedBlock('journal');
+    setJournalPrefill(actionName);
+    setTimeout(() => setJournalPrefill(null), 1000);
+  };
 
-  if (isLoading) {
+  const handleLogout = async () => {
+    if (!confirm("Are you sure you want to sign out?")) return;
+    await supabase.auth.signOut();
+    localStorage.removeItem('activated_id');
+    router.push('/login');
+  };
+
+  const handleRegister = async (eventId: string) => {
+    const activeRosterId = activeGoalie?.id;
+    if (!activeRosterId) {
+      toast.error("No active card selected.");
+      return;
+    }
+
+    if (!confirm("Confirm registration?")) return;
+
+    try {
+      const { registerForEvent } = await import("@/app/actions");
+      const result = await registerForEvent(activeRosterId, eventId);
+
+      if (!result.success) {
+        toast.error("Registration Failed: " + result.error);
+      } else {
+        toast.success("Successfully registered!");
+        fetchMyGoalies(false);
+      }
+    } catch (err: any) {
+      toast.error("Error: " + err.message);
+    }
+  };
+
+  if (isLoading || authLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center text-foreground"><Loader2 className="animate-spin text-primary" size={32} /></div>;
   }
 
@@ -373,7 +125,6 @@ export default function Home() {
     );
   }
 
-
   if (!activeGoalie) return <div className="min-h-screen bg-background text-foreground p-8">No Goalies Found. <Link href="/activate" className="text-primary underline">Activate a Card</Link></div>;
 
   return (
@@ -387,109 +138,47 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             className="md:col-span-2 mb-6 bg-gradient-to-r from-red-500/10 to-transparent border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3 backdrop-blur-sm"
           >
-            <div className="p-2 bg-red-500/20 rounded-full text-red-500">
-              <Bell size={16} />
-            </div>
+            <div className="p-2 bg-red-500/20 rounded-full text-red-500"><Bell size={16} /></div>
             <div className="flex-1">
               <h4 className="font-bold text-sm text-foreground">{notification.title}</h4>
               <p className="text-xs text-muted-foreground">{notification.message}</p>
             </div>
-            <button onClick={() => setNotification(null)} className="text-muted-foreground hover:text-foreground">
-              <span className="sr-only">Dismiss</span>
-              &times;
-            </button>
+            <Button variant="ghost" size="sm" onClick={() => setNotification(null)} className="text-muted-foreground hover:text-foreground p-1">
+              <span className="sr-only">Dismiss</span>&times;
+            </Button>
           </motion.div>
         )}
 
-        <header className="flex justify-between items-center mb-8 md:col-span-2">
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1">Goalie Portal</span>
-            <h1 className="text-2xl md:text-3xl font-black text-foreground italic tracking-tighter">
-              GOALIE <span className="text-primary">CARD</span>
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="relative group z-30">
-              <button className="h-10 w-10 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted hover:border-primary transition-all">
-                <User size={18} className="text-muted-foreground group-hover:text-foreground" />
-              </button>
+        <GoalieHeader
+          activeGoalieName={activeGoalie.name}
+          onLogout={handleLogout}
+          notifications={notifications}
+        />
 
-              <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-2xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right translate-y-2 group-hover:translate-y-0 text-left">
-                <div className="px-3 py-2 border-b border-border mb-1">
-                  <div className="text-sm font-bold text-foreground">Goalie Account</div>
-                  <div className="text-xs text-muted-foreground">{activeGoalie ? activeGoalie.name : 'Goalie Parent'}</div>
-                </div>
-
-                <Link href="/parent/profile" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
-                  <Settings size={16} /> Account Settings
-                </Link>
-                <Link href="/activate" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
-                  <Plus size={16} /> Activate New Card
-                </Link>
-
-                <div className="h-px bg-border my-1" />
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2"
-                >
-                  <LogOut size={16} /> Sign Out
-                </button>
-              </div>
-            </div>
-            {/* Notification Bell */}
-            <div className="relative group z-50">
-              <button className="h-10 w-10 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted hover:border-primary transition-all">
-                <Bell size={18} className={`text-muted-foreground group-hover:text-foreground ${notifications.length > 0 ? 'text-primary' : ''}`} />
-                {notifications.length > 0 && (
-                  <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-background" />
-                )}
-              </button>
-
-              <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-2xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right translate-y-2 group-hover:translate-y-0 max-h-96 overflow-y-auto">
-                <div className="px-3 py-2 border-b border-border mb-1 flex justify-between items-center">
-                  <div className="text-sm font-bold text-foreground">Notifications</div>
-                  <span className="text-[10px] text-muted-foreground">{notifications.length} New</span>
-                </div>
-                {notifications.length === 0 ? (
-                  <div className="p-4 text-center text-xs text-muted-foreground">No new notifications</div>
-                ) : (
-                  notifications.map((n: any, i) => (
-                    <div key={i} className="px-3 py-3 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer border-b border-border/50 last:border-0">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${n.type === 'lesson' ? 'bg-blue-500/10 text-blue-500' :
-                          n.type === 'event' ? 'bg-purple-500/10 text-purple-500' :
-                            'bg-green-500/10 text-green-500'
-                          }`}>{n.type || 'Update'}</span>
-                        <span className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <h4 className="text-sm font-bold text-foreground leading-tight mb-1">{n.title}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* PERFORMANCE DIRECTIVE - PRO FEATURE */}
+        {/* Performance Directive */}
         <div className="md:col-span-2 mb-6">
           <AiCoachRecommendation
             lastMood={activeGoalie.latestMood}
             rosterId={activeGoalie.id}
             sport={activeGoalie.sport}
             onLogAction={handleLogAction}
+            goalieName={activeGoalie.name}
+            isGameday={activeGoalie.events?.some((e: any) => {
+              const eventDate = new Date(e.rawDate || e.date);
+              const today = new Date();
+              return eventDate.toDateString() === today.toDateString();
+            })}
           />
         </div>
 
-        {/* PRO TRAINING INSIGHTS - ADMIN/COACH ONLY */}
+        {/* Pro Insights (Admin/Coach Only) */}
         {(userRole === 'admin' || userRole === 'coach') && (
           <div className="md:col-span-2 mb-8">
             <TrainingInsights />
           </div>
         )}
 
-        {/* EXPANDABLE JOURNAL & NOTES BLOCK */}
+        {/* Expandable Journal & Notes */}
         <section className="md:col-span-2 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <AnimatePresence mode="popLayout">
@@ -528,7 +217,7 @@ export default function Home() {
         {/* Left Column: Card & Status */}
         <section className="flex flex-col gap-6 mb-8 md:mb-0">
           <motion.div
-            key={activeGoalie.id} // Re-animate on change
+            key={activeGoalie.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
@@ -549,33 +238,39 @@ export default function Home() {
 
               {/* Display Controls */}
               <div className="flex justify-center mt-4 mb-2">
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setShowProgress(!showProgress)}
-                  className="flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors bg-secondary/30 px-3 py-1.5 rounded-full"
+                  className="gap-2 bg-secondary/30 rounded-full"
                 >
                   {showProgress ? <span className="text-primary">●</span> : <span className="text-muted-foreground">○</span>}
                   {showProgress ? "Hide Activity Counts" : "Show Activity Counts"}
-                </button>
+                </Button>
               </div>
 
-              {/* Switcher Controls */}
+              {/* Switcher */}
               {goalies.length > 1 && (
                 <>
                   <div className="absolute top-1/2 -left-4 -translate-y-1/2 md:-left-12">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setCurrentIndex(prev => prev === 0 ? goalies.length - 1 : prev - 1)}
-                      className="p-1.5 bg-card/80 rounded-full text-muted-foreground hover:text-foreground hover:bg-card backdrop-blur-sm border border-border shadow-xl transition-all"
+                      className="p-1.5 bg-card/80 rounded-full backdrop-blur-sm border border-border shadow-xl hover:bg-card transform hover:scale-110 transition-all"
                     >
                       <ChevronLeft size={16} />
-                    </button>
+                    </Button>
                   </div>
                   <div className="absolute top-1/2 -right-4 -translate-y-1/2 md:-right-12">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setCurrentIndex(prev => prev === goalies.length - 1 ? 0 : prev + 1)}
-                      className="p-1.5 bg-card/80 rounded-full text-muted-foreground hover:text-foreground hover:bg-card backdrop-blur-sm border border-border shadow-xl transition-all"
+                      className="p-1.5 bg-card/80 rounded-full backdrop-blur-sm border border-border shadow-xl hover:bg-card transform hover:scale-110 transition-all"
                     >
                       <ChevronRight size={16} />
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="flex justify-center gap-2 mt-4">
@@ -592,8 +287,7 @@ export default function Home() {
             </div>
           </motion.div>
 
-
-
+          {/* Events */}
           <motion.div
             key={`events-${activeGoalie.id}`}
             initial={{ opacity: 0, y: 20 }}
@@ -601,7 +295,7 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.1 }}
           >
             {activeGoalie.events.length > 0 ? (
-              <EventsList events={activeGoalie.events} onRegister={handleRegister} />
+              <EventsList events={activeGoalie.events} onRegister={handleRegister} hidePayments={true} />
             ) : (
               <div className="bg-card border border-border rounded-3xl p-6 text-center text-muted-foreground text-sm">
                 No upcoming events.
@@ -610,85 +304,16 @@ export default function Home() {
           </motion.div>
         </section>
 
-        {/* Right Column: Actions & History */}
+        {/* Right Column */}
         <section className="flex flex-col gap-6">
+          <GoalsWidget rosterId={activeGoalie.id} goalieId={userId || undefined} />
 
-          {/* Logic to Reorder for Pro/Adult (Grad Year Checks) using dynamic relationship */}
-          {(() => {
-            const isPro = activeGoalie.gradYear && (isPastSeniorSeason(activeGoalie.gradYear) || activeGoalie.team?.toLowerCase().includes('blue') || activeGoalie.team?.toLowerCase().includes('pro'));
-
-            const CompCoachInfo = (
-              <motion.div
-                key={`coach-info-${activeGoalie.id}`}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.25 }}
-                className="glass rounded-3xl p-6 relative overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                  <Medal size={64} className="text-foreground" />
-                </div>
-                <h3 className="font-bold text-lg text-foreground flex items-center gap-2 mb-4 relative z-10">
-                  <span className="text-foreground">★</span> Coaches Corner
-                </h3>
-
-                {activeGoalie.coachDetails ? (
-                  <div className="space-y-4 relative z-10">
-                    <div>
-                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Assigned Coach</div>
-                      <div className="font-bold text-foreground text-lg">{activeGoalie.coach}</div>
-                    </div>
-
-                    {activeGoalie.coachDetails.philosophy && (
-                      <div>
-                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Philosophy</div>
-                        <p className="text-sm text-muted-foreground italic leading-relaxed">
-                          "{activeGoalie.coachDetails.philosophy}"
-                        </p>
-                      </div>
-                    )}
-
-                    {activeGoalie.coachDetails.pricing_config?.private && (
-                      <div className="bg-background/50 rounded-xl p-3 border border-border/50">
-                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Private Engagement</div>
-                        {activeGoalie.coachDetails.pricing_config.private.type === 'package' ? (
-                          <div className="text-sm font-medium">
-                            <span className="text-foreground">{activeGoalie.coachDetails.pricing_config.private.details.lessons_per_session} Lessons</span> = 1 Session <span className="text-muted-foreground">(${activeGoalie.coachDetails.pricing_config.private.details.cost})</span>
-                          </div>
-                        ) : (
-                          <div className="text-sm font-medium">
-                            Subscription: <span className="text-foreground">{activeGoalie.coachDetails.pricing_config.private.details.sessions_per_month} Sessions/mo</span> <span className="text-muted-foreground">(${activeGoalie.coachDetails.pricing_config.private.details.cost}/mo)</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">No coach details available.</div>
-                )}
-
-                <div className="mt-4 pt-4 border-t border-border/50">
-                  <button
-                    onClick={() => {
-                      if (confirm("Request Access to Coach OS Card? Administrators will review your request.")) {
-                        alert("Request Sent! Pending Admin Confirmation.");
-                      }
-                    }}
-                    className="w-full flex items-center justify-center gap-2 text-xs font-bold bg-primary/10 text-primary hover:bg-primary hover:text-white py-3 rounded-xl transition-all"
-                  >
-                    <Medal size={14} /> Add Coach OS Card
-                  </button>
-                </div>
-              </motion.div>
-            );
-
-            const CompRequest = (
-              <motion.div
-                key={`req-${activeGoalie.id}`}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
+          {/* Logic Reorder based on Pro status */}
+          {isPro ? (
+            <>
+              <HighlightsSection rosterId={activeGoalie.id} />
+              <div className="opacity-80 scale-95 origin-top">
+                <CoachesCorner activeGoalie={activeGoalie} />
                 <ScheduleRequest
                   rosterId={activeGoalie.id}
                   goalieName={activeGoalie.name}
@@ -697,64 +322,22 @@ export default function Home() {
                   sport={activeGoalie.sport}
                   onCoachUpdate={() => fetchMyGoalies(false)}
                 />
-              </motion.div>
-            );
-
-            const CompHighlights = (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.35 }}
-                className="glass rounded-3xl p-6 mb-6"
-              >
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-                    <span className="text-primary">★</span> Highlights
-                  </h3>
-                  <button
-                    onClick={() => {
-                      const url = prompt("Enter Video URL (YouTube/Insta):");
-                      if (url) {
-                        supabase.from('highlights').insert({
-                          roster_id: activeGoalie.id,
-                          url: url,
-                          description: "Goalie Upload"
-                        }).then(({ error }) => {
-                          if (error) alert("Error: " + error.message);
-                          else alert("Highlight Added!");
-                        });
-                      }
-                    }}
-                    className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-lg font-bold hover:bg-primary hover:text-primary-foreground transition-colors"
-                  >
-                    + Add Video
-                  </button>
-                </div>
-                <div className="text-center text-muted-foreground text-xs py-4">
-                  Share game clips for coach review.
-                </div>
-              </motion.div>
-            );
-
-            return isPro ? (
-              <>
-                <GoalsWidget rosterId={activeGoalie.id} goalieId={userId || undefined} />
-                {CompHighlights}
-                <div className="opacity-80 scale-95 origin-top">
-                  {CompCoachInfo}
-                  {CompRequest}
-                </div>
-              </>
-            ) : (
-              <>
-                <GoalsWidget rosterId={activeGoalie.id} goalieId={userId || undefined} />
-                {CompCoachInfo}
-                {CompRequest}
-                {CompHighlights}
-              </>
-            );
-          })()}
-
+              </div>
+            </>
+          ) : (
+            <>
+              <CoachesCorner activeGoalie={activeGoalie} />
+              <ScheduleRequest
+                rosterId={activeGoalie.id}
+                goalieName={activeGoalie.name}
+                coachName={activeGoalie.coach}
+                coachIds={activeGoalie.coachIds}
+                sport={activeGoalie.sport}
+                onCoachUpdate={() => fetchMyGoalies(false)}
+              />
+              <HighlightsSection rosterId={activeGoalie.id} />
+            </>
+          )}
         </section>
 
       </div>

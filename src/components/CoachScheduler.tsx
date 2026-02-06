@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { Calendar, Clock, Plus, Trash2, Bell } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/context/ToastContext";
+import { Button } from "@/components/ui/Button";
 
 export function CoachScheduler() {
+    const toast = useToast();
     const [slots, setSlots] = useState<any[]>([]);
     const [date, setDate] = useState("");
     const [time, setTime] = useState("");
@@ -31,13 +34,17 @@ export function CoachScheduler() {
     };
 
     const handleAddSlot = async () => {
-        if (!date || !time) return alert("Please pick date and time");
+        if (!date || !time) {
+            toast.warning("Please pick date and time");
+            return;
+        }
         setLoading(true);
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
             setLoading(false);
-            return alert("Not logged in");
+            toast.error("Not logged in");
+            return;
         }
 
         const startDateTime = new Date(`${date}T${time}`);
@@ -51,9 +58,9 @@ export function CoachScheduler() {
 
         if (error) {
             if (error.code === '23503') {
-                alert("Account Error: You are not registered as a Coach in our system. Please contact support.");
+                toast.error("Account Error: You are not registered as a Coach in our system. Please contact support.");
             } else {
-                alert(error.message);
+                toast.error(error.message);
             }
         } else {
             fetchSlots();
@@ -77,9 +84,9 @@ export function CoachScheduler() {
         });
 
         if (error) {
-            alert("Error sending blast: " + error.message);
+            toast.error("Error sending blast: " + error.message);
         } else {
-            alert("Parents notified successfully!");
+            toast.success("Parents notified successfully!");
         }
         setNotifying(false);
     };
@@ -94,14 +101,16 @@ export function CoachScheduler() {
                     </h3>
                     <p className="text-muted-foreground text-xs mt-1">Set your training hours for the week</p>
                 </div>
-                <button
+                <Button
                     onClick={handleBlastNotification}
                     disabled={notifying}
-                    className="flex items-center gap-2 bg-muted hover:bg-foreground hover:text-background text-foreground text-xs font-bold px-3 py-2 rounded-lg transition-colors border border-border"
+                    className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors border border-border"
+                    variant="outline"
+                    size="sm"
                 >
                     <Bell size={14} className={notifying ? "animate-swing" : ""} />
                     {notifying ? "Sending..." : "Notify Parents"}
-                </button>
+                </Button>
             </div>
 
             {/* Add Slot Form */}
@@ -118,13 +127,13 @@ export function CoachScheduler() {
                     onChange={e => setTime(e.target.value)}
                     className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
                 />
-                <button
+                <Button
                     onClick={handleAddSlot}
                     disabled={loading}
-                    className="bg-primary hover:opacity-90 text-primary-foreground px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 text-sm font-bold transition-colors disabled:opacity-50"
                 >
                     <Plus size={16} /> Add
-                </button>
+                </Button>
             </div>
 
             {/* Slots List */}
@@ -152,12 +161,14 @@ export function CoachScheduler() {
                                     </div>
                                 </div>
                             </div>
-                            <button
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => handleDelete(slot.id)}
-                                className="text-muted-foreground hover:text-destructive transition-colors p-2"
+                                className="text-muted-foreground hover:text-destructive transition-colors p-2 h-auto w-auto"
                             >
                                 <Trash2 size={14} />
-                            </button>
+                            </Button>
                         </motion.div>
                     ))
                 )}

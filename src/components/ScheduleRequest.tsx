@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, ChevronRight, Check, X, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
+import { useToast } from "@/context/ToastContext";
+import { Button } from "@/components/ui/Button";
 
 interface ScheduleRequestProps {
     rosterId: string;
@@ -15,6 +17,7 @@ interface ScheduleRequestProps {
 }
 
 export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = [], sport, onCoachUpdate }: ScheduleRequestProps) {
+    const toast = useToast();
     const [isSelectingCoach, setIsSelectingCoach] = useState(false);
     const [coaches, setCoaches] = useState<{ id: string, goalie_name: string, full_name?: string }[]>([]);
     const [loadingCoaches, setLoadingCoaches] = useState(false);
@@ -51,7 +54,7 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
             .eq('id', rosterId);
 
         if (error) {
-            alert("Error updating coaches: " + error.message);
+            toast.error("Error updating coaches: " + error.message);
         } else {
             // Keep selection open for multiple picks
             onCoachUpdate();
@@ -102,13 +105,16 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedSlotId) return alert("Please select an available time slot.");
+        if (!selectedSlotId) {
+            toast.warning("Please select an available time slot.");
+            return;
+        }
 
         setSubmitting(true);
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
-            alert("Please sign in to request a session.");
+            toast.error("Please sign in to request a session.");
             setSubmitting(false);
             return;
         }
@@ -127,9 +133,9 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
         });
 
         if (error) {
-            alert("Request Failed: " + error.message);
+            toast.error("Request Failed: " + error.message);
         } else {
-            alert("Session Requested Successfully!");
+            toast.success("Session Requested Successfully!");
             setNote("");
             setSelectedSlotId("");
         }
@@ -149,13 +155,15 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
                     <h3 className="text-xl font-bold text-foreground">Request Session</h3>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium relative">
                         <span>With:</span>
-                        <button
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setIsSelectingCoach(!isSelectingCoach)}
-                            className="bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded-md transition-colors flex items-center gap-1 font-bold"
+                            className="bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded-md transition-colors flex items-center gap-1 font-bold h-auto"
                         >
                             {coachName || "Select Coach"}
                             <ChevronRight size={12} className="rotate-90" />
-                        </button>
+                        </Button>
 
                         <AnimatePresence>
                             {isSelectingCoach && (
@@ -167,7 +175,7 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
                                 >
                                     <div className="flex justify-between items-center px-2 py-2 border-b border-border mb-1">
                                         <span className="text-xs font-bold text-foreground">Select Coach</span>
-                                        <button onClick={() => setIsSelectingCoach(false)} className="text-muted-foreground hover:text-white"><X size={14} /></button>
+                                        <Button variant="ghost" size="icon" onClick={() => setIsSelectingCoach(false)} className="text-muted-foreground hover:text-white h-auto w-auto p-1"><X size={14} /></Button>
                                     </div>
                                     <div className="max-h-48 overflow-y-auto space-y-1">
                                         {loadingCoaches ? (
@@ -178,16 +186,17 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
                                             coaches.map(coach => {
                                                 const isSelected = coachIds.includes(coach.id);
                                                 return (
-                                                    <button
+                                                    <Button
                                                         key={coach.id}
+                                                        variant="ghost"
                                                         onClick={() => handleToggleCoach(coach.id, coachIds)}
-                                                        className="w-full text-left px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2 group"
+                                                        className="w-full justify-start px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2 group h-auto font-normal"
                                                     >
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-border bg-muted group-hover:border-foreground/50'}`}>
                                                             {isSelected && <Check size={10} className="text-primary-foreground" />}
                                                         </div>
                                                         <div className="flex-1 truncate">{coach.goalie_name || coach.full_name || "Unknown Coach"}</div>
-                                                    </button>
+                                                    </Button>
                                                 );
                                             })
                                         )}
@@ -240,15 +249,13 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
                     />
                 </div>
 
-                <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                <Button
                     disabled={submitting}
-                    className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group disabled:opacity-50 hover:opacity-90 transition-all"
+                    className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group disabled:opacity-50 hover:opacity-90 transition-all h-auto"
                 >
                     {submitting ? "Sending..." : "Submit Request"}
                     {!submitting && <ChevronRight className="group-hover:translate-x-1 transition-transform" />}
-                </motion.button>
+                </Button>
             </form>
         </div>
     );

@@ -1,9 +1,13 @@
 "use client";
 
+import { submitReflection, getReflections } from "@/app/actions";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Plus, Save, Smile, Frown, Meh, Maximize2, Minimize2, ChevronRight, X } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { useToast } from "@/context/ToastContext";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 interface Reflection {
     id: string;
@@ -23,6 +27,7 @@ interface ReflectionsProps {
 }
 
 export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded = false, onToggleExpand, prefill }: ReflectionsProps) {
+    const toast = useToast();
     const [reflections, setReflections] = useState<Reflection[]>([]);
     const [isWriting, setIsWriting] = useState(false);
     const [newReflection, setNewReflection] = useState<any>({
@@ -35,6 +40,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
         injury_expected_return: null
     });
     const [loading, setLoading] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!rosterId) return;
@@ -74,11 +80,13 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             return;
         }
 
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('reflections')
             .select('*')
             .eq('roster_id', rosterId)
             .order('created_at', { ascending: false });
+
+        console.log("[CLIENT] fetchReflections result:", data?.length, "entries. Error:", error);
         if (data) setReflections(data);
     };
 
@@ -106,10 +114,12 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
     const handleSave = async () => {
         // Validation
         if (newReflection.activity_type === 'none' && !newReflection.skip_reason) {
-            return alert("Please select a reason for your off day.");
+            toast.warning("Please select a reason for your off day.");
+            return;
         }
         if (newReflection.activity_type !== 'none' && !newReflection.content) {
-            return alert("Please write a short reflection.");
+            toast.warning("Please write a short reflection.");
+            return;
         }
 
         setLoading(true);
@@ -144,31 +154,40 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             return;
         }
 
-        const { error } = await supabase.from('reflections').insert({
-            goalie_id: currentUserRole === 'goalie' ? (await supabase.auth.getUser()).data.user?.id : null,
-            roster_id: rosterId,
-            title: newEntry.title,
-            content: newEntry.content,
-            mood: newEntry.mood,
-            author_role: currentUserRole,
-            author_id: (await supabase.auth.getUser()).data.user?.id,
-            activity_type: newReflection.activity_type,
-            skip_reason: newReflection.skip_reason,
-            injury_expected_return: newReflection.injury_expected_return || null,
-            injury_details: newReflection.injury_details || null
-        });
+        // Use Server Action for reliable saving (Soft Session Support)
+        try {
+            // Prepare payload (Server Action handles the ID/Role logic)
+            const payload = {
+                title: newEntry.title,
+                content: newEntry.content,
+                mood: newEntry.mood,
+                author_role: currentUserRole,
+                activity_type: newReflection.activity_type,
+                skip_reason: newReflection.skip_reason,
+                injury_expected_return: newReflection.injury_expected_return || null,
+                injury_details: newReflection.injury_details || null
+            };
 
-        // Background Safety Check
-        checkRedFlags(newReflection.content);
+            const result = await submitReflection(rosterId, payload);
 
-        if (error) {
-            alert("Error saving: " + error.message);
-        } else {
-            setIsWriting(false);
-            setNewReflection({ title: "", content: "", mood: "neutral", activity_type: null, skip_reason: null });
-            fetchReflections();
+            // Background Safety Check (Client Side)
+            checkRedFlags(newReflection.content);
+
+            if (!result.success) {
+                // alert("Error saving: " + result.error); // Replaced with setSaveError
+                console.error("Save Failed:", result.error);
+                setSaveError("Save Failed: " + result.error);
+            } else {
+                setIsWriting(false);
+                setNewReflection({ title: "", content: "", mood: "neutral", activity_type: null, skip_reason: null });
+                fetchReflections(); // Re-fetch to update UI
+            }
+        } catch (err: any) {
+            console.error("Save Error:", err);
+            toast.error("Failed to save entry. System Error: " + err.message);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const getMoodIcon = (mood: string) => {
@@ -249,30 +268,32 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* Writing Mode Controls */}
                     {!isWriting ? (
-                        <button
+                        <Button
                             onClick={() => setIsWriting(true)}
-                            className="bg-primary hover:bg-primary/90 text-black px-4 py-2 rounded-xl transition-colors shadow-lg shadow-primary/20 text-xs font-bold flex items-center gap-2"
+                            className="bg-primary hover:bg-primary/90 text-black px-4 py-2 rounded-xl transition-colors shadow-lg shadow-primary/20 text-xs font-bold flex items-center gap-2 h-auto"
                         >
                             <Plus size={16} /> New Entry
-                        </button>
+                        </Button>
                     ) : (
-                        <button
-                            onClick={() => setIsWriting(false)}
-                            className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors"
-                            title="Cancel Entry"
-                        >
-                            <X size={16} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">New Entry</span>
+                        </div>
                     )}
+
+                    {/* Widget Close Button (Always visible unless writing? No, always visible is fine if distinctions are clear) */}
+                    {/* The user issue was two X's next to each other. One was "Cancel Write", one was "Close Journal". */}
+                    {/* We removed the "Cancel Write" X above. Now we just have the Close Journal X. */}
                     {onToggleExpand && (
-                        <button
+                        <Button
+                            variant="secondary"
                             onClick={onToggleExpand}
-                            className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors"
+                            className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors h-auto w-auto"
                             title="Close Journal"
                         >
                             <X size={16} />
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>
@@ -288,18 +309,24 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                         <div className="mb-4">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Did you get on the ice/field today?</label>
                             <div className="flex gap-2 mb-4">
-                                <button
-                                    onClick={() => setNewReflection({ ...newReflection, activity_type: 'practice' })}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all ${newReflection.activity_type && newReflection.activity_type !== 'none' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:border-foreground/50'}`}
+                                <Button
+                                    onClick={() => {
+                                        console.log("Setting activity: practice");
+                                        setNewReflection((prev: any) => ({ ...prev, activity_type: 'practice' }));
+                                    }}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all h-auto ${newReflection.activity_type && newReflection.activity_type !== 'none' ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' : 'bg-transparent border-border hover:border-foreground/50 text-foreground'}`}
                                 >
                                     Yes, Trained/Played
-                                </button>
-                                <button
-                                    onClick={() => setNewReflection({ ...newReflection, activity_type: 'none' })}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all ${newReflection.activity_type === 'none' ? 'bg-muted text-foreground border-border' : 'border-border hover:border-foreground/50'}`}
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        console.log("Setting activity: none");
+                                        setNewReflection((prev: any) => ({ ...prev, activity_type: 'none' }));
+                                    }}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all h-auto ${newReflection.activity_type === 'none' ? 'bg-muted text-foreground border-border hover:bg-muted/80' : 'bg-transparent border-border hover:border-foreground/50 text-foreground'}`}
                                 >
                                     No, Off Day
-                                </button>
+                                </Button>
                             </div>
 
                             {newReflection.activity_type === 'none' && (
@@ -337,10 +364,10 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
 
                             {newReflection.activity_type !== 'none' && (
                                 <>
-                                    <input
+                                    <Input
                                         type="text"
                                         placeholder="Title (e.g. Post-Game Thoughts)"
-                                        className="w-full bg-transparent border-b border-border p-2 mb-2 text-foreground font-bold focus:outline-none focus:border-primary placeholder:font-normal"
+                                        className="mb-2 font-bold placeholder:font-normal"
                                         value={newReflection.title}
                                         onChange={(e) => setNewReflection({ ...newReflection, title: e.target.value })}
                                     />
@@ -358,26 +385,35 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                             )}
                         </div>
 
-                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-border">
-                            <div className="flex gap-2">
-                                {newReflection.activity_type !== 'none' && ['happy', 'neutral', 'frustrated'].map(m => (
-                                    <button
-                                        key={m}
-                                        onClick={() => setNewReflection({ ...newReflection, mood: m })}
-                                        className={`p-1.5 rounded-lg transition-all ${newReflection.mood === m ? 'bg-muted shadow' : 'opacity-50 hover:opacity-100'}`}
+                        <div className="flex flex-col mt-2 pt-2 border-t border-border">
+                            {saveError && (
+                                <p className="text-red-500 text-xs font-bold mb-2">
+                                    {saveError}
+                                </p>
+                            )}
+                            <div className="flex justify-between items-center">
+                                <div className="flex gap-2">
+                                    {newReflection.activity_type !== 'none' && ['happy', 'neutral', 'frustrated'].map(m => (
+                                        <Button
+                                            key={m}
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setNewReflection({ ...newReflection, mood: m })}
+                                            className={`p-1.5 rounded-lg transition-all h-auto w-auto ${newReflection.mood === m ? 'bg-muted shadow' : 'opacity-50 hover:opacity-100 hover:bg-transparent'}`}
+                                        >
+                                            {getMoodIcon(m)}
+                                        </Button>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        onClick={handleSave}
+                                        disabled={loading || !newReflection.activity_type || (newReflection.activity_type === 'none' && !newReflection.skip_reason)}
+                                        className="bg-foreground text-background px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50 h-auto"
                                     >
-                                        {getMoodIcon(m)}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={handleSave}
-                                    disabled={loading || !newReflection.activity_type || (newReflection.activity_type === 'none' && !newReflection.skip_reason)}
-                                    className="bg-foreground text-background px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50"
-                                >
-                                    {loading ? "Saving..." : <><Save size={14} /> Save Entry</>}
-                                </button>
+                                        {loading ? "Saving..." : <><Save size={14} /> Save Entry</>}
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </motion.div>

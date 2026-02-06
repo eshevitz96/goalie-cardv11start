@@ -27,41 +27,14 @@ import Link from "next/link";
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useCoachData } from "@/hooks/useCoachData";
+import { Button } from "@/components/ui/Button";
 import { CoachScheduler } from "@/components/CoachScheduler";
 
 export default function CoachDashboard() {
-    const [roster, setRoster] = useState<any[]>([]);
-    const [highlights, setHighlights] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | 'assigned'>('all');
-
-    useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            // 1. Fetch Roster
-            const { data: rosterData } = await supabase.from('roster_uploads').select('*');
-            if (rosterData) {
-                setRoster(rosterData.map(g => ({
-                    id: g.id,
-                    name: g.goalie_name,
-                    session: g.session_count || 1,
-                    lesson: g.lesson_count || 0,
-                    status: g.is_claimed ? 'active' : 'pending',
-                    lastSeen: 'N/A',
-                    assigned_coach_id: g.assigned_coach_id
-                })));
-            }
-
-            // 2. Fetch Highlights
-            const { data: highData } = await supabase.from('highlights').select('*, roster_uploads(goalie_name)').order('created_at', { ascending: false });
-            if (highData) {
-                setHighlights(highData);
-            }
-
-            setIsLoading(false);
-        };
-        fetchData();
-    }, []);
+    const { userId, userEmail, loading: authLoading } = useAuth();
+    const { roster, highlights, isLoading, filter, setFilter, filteredRoster } = useCoachData();
 
     const [issuedIds, setIssuedIds] = useState<Record<number, string>>({});
 
@@ -75,7 +48,7 @@ export default function CoachDashboard() {
         window.location.href = "/login";
     };
 
-    const filteredRoster = filter === 'all' ? roster : roster.filter(r => r.assigned_coach_id); // Simple filter for now
+
 
     return (
         <main className="min-h-screen bg-background text-foreground p-4 md:p-8">
@@ -88,23 +61,24 @@ export default function CoachDashboard() {
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="relative group z-50">
-                        <button className="h-10 w-10 rounded-full bg-card flex items-center justify-center border border-border hover:bg-muted transition-colors">
+                        <Button variant="ghost" className="h-10 w-10 rounded-full bg-card border border-border hover:bg-muted p-0">
                             <span className="font-bold">CM</span>
-                        </button>
+                        </Button>
                         <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right backdrop-blur-md">
                             <Link href="/coach/profile" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                                 <Users size={16} /> Coach Profile
                             </Link>
-                            <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
+                            <Button variant="ghost" className="w-full justify-start px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted h-auto font-normal">
                                 <Download size={16} /> Export CSV
-                            </button>
+                            </Button>
                             <div className="h-px bg-zinc-800 my-1" />
-                            <button
+                            <Button
+                                variant="ghost"
                                 onClick={handleLogout}
-                                className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                className="w-full justify-start px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-500/10 hover:text-red-500 transition-colors h-auto font-normal"
                             >
-                                Sign Out
-                            </button>
+                                <span className="flex items-center gap-2">Sign Out</span>
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -157,18 +131,22 @@ export default function CoachDashboard() {
                                 Active Roster
                             </h3>
                             <div className="flex bg-muted rounded-lg p-1 border border-border">
-                                <button
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => setFilter('all')}
-                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'all' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                                    className={clsx("px-3 py-1 rounded-md", filter === 'all' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
                                 >
                                     All
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => setFilter('assigned')}
-                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'assigned' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                                    className={clsx("px-3 py-1 rounded-md", filter === 'assigned' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
                                 >
                                     My Goalies
-                                </button>
+                                </Button>
                             </div>
                         </div>
 
@@ -214,13 +192,13 @@ export default function CoachDashboard() {
                                             </td>
                                             <td className="p-4 text-right">
                                                 <div className="relative group">
-                                                    <button className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+                                                    <Button variant="ghost" size="sm" className="p-2 hover:bg-muted rounded-lg">
                                                         <MoreVertical size={16} />
-                                                    </button>
+                                                    </Button>
                                                     <div className="absolute right-0 top-1/2 -translate-y-1/2 mr-8 w-40 glass rounded-xl shadow-xl p-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                                                        <button className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
+                                                        <Button variant="ghost" size="sm" className="w-full justify-start">
                                                             <Mail size={14} /> Message Parent
-                                                        </button>
+                                                        </Button>
                                                         <Link href={`/coach/log-session/${goalie.id}`} className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-primary hover:text-primary-foreground hover:bg-primary transition-colors flex items-center gap-2">
                                                             <FileEdit size={14} /> Log Data
                                                         </Link>
@@ -267,9 +245,9 @@ export default function CoachDashboard() {
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border/50">
-                                        <button className="w-full py-2.5 rounded-xl border border-border hover:bg-muted text-xs font-bold text-muted-foreground transition-colors">
+                                        <Button variant="outline" size="sm" className="w-full">
                                             Message
-                                        </button>
+                                        </Button>
                                         <Link
                                             href={`/coach/log-session/${goalie.id}`}
                                             className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 transition-colors"
@@ -340,12 +318,14 @@ export default function CoachDashboard() {
                                             ID: {issuedIds[req.id]}
                                         </div>
                                     ) : (
-                                        <button
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
                                             onClick={() => setIssuedIds({ ...issuedIds, [req.id]: "GC-1984" })}
-                                            className="w-full py-2 bg-muted hover:bg-foreground hover:text-background rounded-lg text-xs font-bold text-muted-foreground transition-all flex items-center justify-center gap-2"
+                                            className="w-full bg-muted hover:bg-foreground hover:text-background"
                                         >
                                             <Plus size={14} /> Issue Activation ID
-                                        </button>
+                                        </Button>
                                     )}
                                 </div>
                             ))}
@@ -359,15 +339,19 @@ export default function CoachDashboard() {
                         </h3>
 
                         <div className="space-y-3">
-                            <button className="w-full text-left p-4 bg-muted/50 border border-border hover:border-foreground/50 rounded-xl transition-all group">
-                                <div className="font-bold text-sm text-foreground group-hover:text-primary">Blast: Session Openings</div>
-                                <div className="text-xs text-muted-foreground mt-1">Notify all Active parents of new slots</div>
-                            </button>
+                            <Button variant="ghost" size="sm" className="w-full justify-start p-4 bg-muted/50 border border-border hover:border-foreground/50 rounded-xl group">
+                                <div className="text-left">
+                                    <div className="font-bold text-sm text-foreground group-hover:text-primary">Blast: Session Openings</div>
+                                    <div className="text-xs text-muted-foreground mt-1">Notify all Active parents of new slots</div>
+                                </div>
+                            </Button>
 
-                            <button className="w-full text-left p-4 bg-muted/50 border border-border hover:border-primary/50 rounded-xl transition-all group">
-                                <div className="font-bold text-sm text-foreground group-hover:text-primary">Payment Reminders</div>
-                                <div className="text-xs text-muted-foreground mt-1">Auto-ping 2 parents (Renew Due)</div>
-                            </button>
+                            <Button variant="ghost" size="sm" className="w-full justify-start p-4 bg-muted/50 border border-border hover:border-primary/50 rounded-xl transition-all group h-auto">
+                                <div className="text-left w-full">
+                                    <div className="font-bold text-sm text-foreground group-hover:text-primary">Payment Reminders</div>
+                                    <div className="text-xs text-muted-foreground mt-1">Auto-ping 2 parents (Renew Due)</div>
+                                </div>
+                            </Button>
                         </div>
                     </div>
                 </div >

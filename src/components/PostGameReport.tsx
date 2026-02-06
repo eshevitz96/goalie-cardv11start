@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { MessageSquareQuote, Star, Video, Maximize2, X } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
 export interface FeedbackItem {
     id: string | number;
@@ -90,21 +91,23 @@ export function PostGameReport({ report = [], isExpanded = false, onToggleExpand
                 <div className="flex items-center gap-2">
                     {/* Only show internal toggle if NOT controlled by parent expansion mode, roughly */}
                     {!onToggleExpand && validReports.length > 1 && (
-                        <button
+                        <Button
+                            variant="ghost"
                             onClick={() => setShowAll(!showAll)}
-                            className="text-xs font-bold text-primary hover:text-primary/80 transition-colors"
+                            className="text-xs font-bold text-primary hover:text-primary/80 transition-colors h-auto p-0 hover:bg-transparent"
                         >
                             {showAll ? "Show Less" : "View All History"}
-                        </button>
+                        </Button>
                     )}
                     {onToggleExpand && (
-                        <button
+                        <Button
+                            variant="secondary"
                             onClick={onToggleExpand}
-                            className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors"
+                            className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors h-auto w-auto"
                             title="Close Notes"
                         >
                             <X size={16} />
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>
@@ -154,10 +157,13 @@ export function PostGameReport({ report = [], isExpanded = false, onToggleExpand
                                     </p>
 
                                     {item.hasVideo && (
-                                        <button className="w-full py-2 bg-muted/50 hover:bg-muted rounded-lg text-xs font-semibold text-primary flex items-center justify-center gap-2 transition-colors border border-dashed border-border hover:border-primary/50">
+                                        <Button
+                                            variant="ghost"
+                                            className="w-full py-2 bg-muted/50 hover:bg-muted rounded-lg text-xs font-semibold text-primary flex items-center justify-center gap-2 transition-colors border border-dashed border-border hover:border-primary/50 h-auto"
+                                        >
                                             <Video size={14} />
                                             Watch Session Highlights
-                                        </button>
+                                        </Button>
                                     )}
                                 </motion.a>
                             </Link>

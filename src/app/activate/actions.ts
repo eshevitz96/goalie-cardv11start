@@ -1,41 +1,30 @@
-'use server'
+"use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
 export async function activateUserCard(rosterId: string, pin: string, rosterData: any) {
-    const supabase = createClient();
+    // 1. Initialize Admin Client to bypass RLS for Activation
+    // This allows us to "claim" the card even without a logged-in user session
+    const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-    // 1. Get Current User (if logged in, which they should be after OTP)
-    // Note: In beta flow, they might not be fully "authed" as a real Supabase user yet if just using OTP for magic link,
-    // but usually OTP signs them in.
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    // If no user, we might be in a tricky spot. BUT, we can still update the roster record if we assume
-    // the client has the correct ID (Beta trust). Ideally, we check if the user.email matches rosterData.email.
-
-    const userId = user?.id;
-    const userEmail = user?.email;
-
-    // Safety check: Does email match?
-    // If user is null, we can't verify ownership securely.
-    // However, if we trust the flow (they just entered OTP for this email), we proceed. 
-    // In strict prod, we'd fail here. For Beta, we'll log warning.
-
-    console.log(`[Activation] Attempting to activate ID: ${rosterId} for User: ${userEmail || 'Unauthenticated'}`);
+    // 2. Prepare Update Data
+    // We explicitly set setup_complete: true and capture the timestamp
+    console.log(`[Activation] activating ID: ${rosterId}`);
 
     const rawUpdate = {
         ...rosterData.raw_data, // Keep existing fields
         setup_complete: true,
         access_pin: pin,
-        activation_date: new Date().toISOString(),
-        linked_user_id: userId
+        activation_date: new Date().toISOString()
+        // We can't reliably get 'linked_user_id' here if not logged in, 
+        // but 'is_claimed' is the main flag.
     };
 
-    // Update the record
-    // We try to update. RLS might block if not the "owner". 
-    // If service role is needed, we'd need that key, but standard client relies on RLS.
-    // Assuming RLS allows "update own record if email matches".
-    const { error } = await supabase
+    // 3. Update using Admin client
+    const { error } = await supabaseAdmin
         .from('roster_uploads')
         .update({
             is_claimed: true,

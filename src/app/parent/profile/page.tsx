@@ -8,9 +8,12 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/context/ToastContext";
+import { Button } from "@/components/ui/Button";
 
 export default function ParentProfile() {
     const router = useRouter();
+    const toast = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [dbId, setDbId] = useState<number | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -112,7 +115,10 @@ export default function ParentProfile() {
     }, []);
 
     const handleSave = async () => {
-        if (!dbId) return alert("No record found to update.");
+        if (!dbId) {
+            toast.warning("No record found to update.");
+            return;
+        }
         setIsSaving(true);
 
         try {
@@ -154,14 +160,14 @@ export default function ParentProfile() {
 
             if (updateError) throw updateError;
 
-            alert("Profile Updated Successfully!");
+            toast.success("Profile Updated Successfully!");
 
             // Optional: Soft Reload to refresh context if needed, or just let state persist
             router.refresh();
 
         } catch (err: any) {
             console.error("Save Error:", err);
-            alert("Error saving profile: " + err.message);
+            toast.error("Error saving profile: " + err.message);
         } finally {
             setIsSaving(false);
         }
@@ -184,13 +190,13 @@ export default function ParentProfile() {
                         </h1>
                     </div>
                     {/* Save Button */}
-                    <button
+                    <Button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="p-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                        className="p-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 h-10 w-10"
                     >
                         {isSaving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
-                    </button>
+                    </Button>
                 </div>
 
 
@@ -294,26 +300,30 @@ export default function ParentProfile() {
                                         />
 
                                         {formData.teams.length > 1 && (
-                                            <button
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
                                                 onClick={() => {
                                                     const newTeams = formData.teams.filter((_, i) => i !== idx);
                                                     setFormData({ ...formData, teams: newTeams });
                                                 }}
-                                                className="p-2 text-muted-foreground hover:text-red-500 transition-colors"
+                                                className="p-2 text-muted-foreground hover:text-red-500 transition-colors h-auto"
                                             >
                                                 ✕
-                                            </button>
+                                            </Button>
                                         )}
                                     </div>
                                 ))}
 
                                 {formData.teams.length < 5 && (
-                                    <button
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
                                         onClick={() => setFormData({ ...formData, teams: [...formData.teams, { name: "", type: "Club", years: "" }] })}
-                                        className="text-xs font-bold text-primary flex items-center gap-1 hover:underline mt-1"
+                                        className="text-xs font-bold text-primary flex items-center gap-1 hover:underline mt-1 h-auto p-0 hover:bg-transparent"
                                     >
                                         + Add Another Team
-                                    </button>
+                                    </Button>
                                 )}
                             </div>
 

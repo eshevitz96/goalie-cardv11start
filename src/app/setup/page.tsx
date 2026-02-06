@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Check, ChevronRight, User, Ruler, Weight, Shield, AlertCircle } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { useToast } from "@/context/ToastContext";
+import { Button } from "@/components/ui/Button";
 
 export default function OnboardingPage() {
     const router = useRouter();
+    const toast = useToast();
     const [step, setStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -63,13 +66,13 @@ export default function OnboardingPage() {
 
     const handleNext = () => {
         if (step === 2 && !formData.baseline_goal.trim()) {
-            alert("Please share a goal for the season.");
+            toast.warning("Please share a goal for the season.");
             return;
         }
 
         if (step === 3) {
             if (!formData.accepted_terms) {
-                alert("Please accept the terms to continue.");
+                toast.warning("Please accept the terms to continue.");
                 return;
             }
             // Trigger Completion
@@ -88,7 +91,7 @@ export default function OnboardingPage() {
         const rosterId = localStorage.getItem('setup_roster_id');
 
         if (!rosterId) {
-            alert("Session Lost. Please restart activation.");
+            toast.error("Session Lost. Please restart activation.");
             router.push('/activate');
             return;
         }
@@ -172,7 +175,7 @@ export default function OnboardingPage() {
 
         } catch (e) {
             console.error(e);
-            alert("Error saving profile. Please try again.");
+            toast.error("Error saving profile. Please try again.");
             setIsLoading(false);
         }
     };
@@ -259,13 +262,15 @@ export default function OnboardingPage() {
                                     <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Catch Hand</label>
                                     <div className="flex bg-secondary/50 p-1 rounded-xl">
                                         {['Left', 'Right'].map(hand => (
-                                            <button
+                                            <Button
                                                 key={hand}
+                                                variant="ghost"
+                                                size="sm"
                                                 onClick={() => setFormData({ ...formData, catch_hand: hand })}
-                                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${formData.catch_hand === hand ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}
+                                                className={`flex-1 py-2 rounded-lg ${formData.catch_hand === hand ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}
                                             >
                                                 {hand}
-                                            </button>
+                                            </Button>
                                         ))}
                                     </div>
                                 </div>
@@ -370,14 +375,16 @@ export default function OnboardingPage() {
 
                     {/* Navigation */}
                     {step <= 3 && (
-                        <button
+                        <Button
+                            variant="primary"
+                            size="lg"
                             onClick={handleNext}
-                            disabled={isLoading}
-                            className={`w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 group ${step === 3 && !formData.accepted_terms ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={isLoading || (step === 3 && !formData.accepted_terms)}
+                            className={`w-full group ${step === 3 && !formData.accepted_terms ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             {step === 3 ? "Complete Setup" : "Continue"}
                             <ArrowRight className={`transition-transform ${step !== 2 ? 'group-hover:translate-x-1' : ''}`} size={20} />
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>

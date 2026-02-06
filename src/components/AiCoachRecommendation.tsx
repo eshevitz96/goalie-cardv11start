@@ -5,6 +5,7 @@ import { Brain, Play, CheckCircle, AlertTriangle, Lightbulb, Clock, ThumbsUp, Th
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { determineRecommendation, ExpertRule } from "@/lib/expert-engine";
+import { Button } from "@/components/ui/Button";
 
 interface PerformanceRecommendation {
     focus: string;
@@ -17,11 +18,13 @@ interface PerformanceRecommendation {
 }
 
 export function AiCoachRecommendation({
-    lastMood, recentGames, rosterId, overrideText, sport, isLive, onExit, onComplete, onLogAction
+    lastMood, recentGames, rosterId, overrideText, sport, isLive, onExit, onComplete, onLogAction, goalieName, isGameday
 }: {
     lastMood?: string, recentGames?: any[], rosterId?: string, overrideText?: string, sport?: string, isLive?: boolean,
     onExit?: () => void, onComplete?: () => void,
-    onLogAction?: (actionName: string) => void
+    onLogAction?: (actionName: string) => void,
+    goalieName?: string,
+    isGameday?: boolean
 }) {
     const [rec, setRec] = useState<PerformanceRecommendation | null>(null);
     const [loading, setLoading] = useState(true);
@@ -81,7 +84,6 @@ export function AiCoachRecommendation({
             }
 
             // A2. Fetch Season Baseline (Goal)
-            let currentSeasonGoal = "";
             if (rosterId) {
                 try {
                     const { data: rosterData } = await supabase
@@ -92,7 +94,7 @@ export function AiCoachRecommendation({
 
                     if (rosterData && rosterData.raw_data) {
                         if (rosterData.raw_data.baseline_goal) {
-                            currentSeasonGoal = rosterData.raw_data.baseline_goal;
+                            const currentSeasonGoal = rosterData.raw_data.baseline_goal;
                             setSeasonGoal(currentSeasonGoal);
                             textContext += ` My season goal is ${currentSeasonGoal}.`;
                         }
@@ -111,13 +113,34 @@ export function AiCoachRecommendation({
                 }
             }
 
+            // A3. Fetch Latest Coach Feedback (Session Notes)
+            let latestCoachNote = "";
+            if (rosterId) {
+                try {
+                    const { data: sessionData } = await supabase
+                        .from('sessions')
+                        .select('notes')
+                        .eq('roster_id', rosterId)
+                        .order('date', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (sessionData && sessionData.notes) {
+                        latestCoachNote = sessionData.notes;
+                        // Append context for debug/logging if needed, but we pass explicitly
+                    }
+                } catch (err) {
+                    console.error("Error fetching coach notes:", err);
+                }
+            }
+
             // B. Run the Local Expert Engine
             // SIMULATED LATENCY (The "Thinking" Pause)
             setTimeout(() => {
-                const recommendation = determineRecommendation(textContext, activeMood, sport);
+                const recommendation = determineRecommendation(textContext, activeMood, sport, isGameday, latestCoachNote);
                 setRec(recommendation);
                 setLoading(false);
-            }, 600);
+            }, 1200);
         };
 
         fetchBaselineAndRec();
@@ -183,12 +206,12 @@ export function AiCoachRecommendation({
                     </div>
 
                     <div className="mt-8 flex gap-3">
-                        <button onClick={onExit} className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:text-white hover:bg-white/10 transition-colors">
+                        <Button variant="ghost" onClick={onExit} className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:text-white hover:bg-white/10 transition-colors h-auto">
                             Exit Live Mode
-                        </button>
-                        <button onClick={onComplete} className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-white/90 transition-colors flex items-center gap-2">
+                        </Button>
+                        <Button onClick={onComplete} className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-white/90 transition-colors flex items-center gap-2 h-auto">
                             End Game & Journal <ChevronRight size={14} />
-                        </button>
+                        </Button>
                     </div>
 
                 </div>
@@ -232,7 +255,7 @@ export function AiCoachRecommendation({
             >
                 <div className="relative bg-black rounded-[24px] p-8 flex flex-col items-center justify-center text-center min-h-[300px]">
                     <div className="absolute top-4 right-4">
-                        <button onClick={() => setActiveMode(false)} className="text-muted-foreground hover:text-white text-xs font-bold uppercase">Exit</button>
+                        <Button variant="ghost" onClick={() => setActiveMode(false)} className="text-muted-foreground hover:text-white text-xs font-bold uppercase p-0 h-auto hover:bg-transparent">Exit</Button>
                     </div>
 
                     <div className="mb-6">
@@ -258,87 +281,63 @@ export function AiCoachRecommendation({
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full relative overflow-hidden rounded-3xl glass p-1 shadow-2xl group"
+            className="w-full mb-8"
         >
-            {/* Background gradients matching GoalieCard */}
-            <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-foreground/5 blur-3xl pointer-events-none group-hover:bg-primary/10 transition-colors duration-700" />
-            <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-40 w-40 rounded-full bg-foreground/5 blur-3xl pointer-events-none" />
+            <div className="flex flex-col gap-1 mb-6">
+                <h1 className="text-5xl md:text-6xl font-black text-foreground tracking-tighter leading-none">
+                    Hey, {goalieName ? goalieName.split(' ')[0] : 'Goalie'}.
+                </h1>
+                <p className="text-xl md:text-2xl font-medium text-muted-foreground tracking-tight">
+                    {rec?.reason}
+                </p>
+            </div>
 
-            <div className="relative bg-transparent rounded-[24px] p-8 overflow-hidden">
+            {/* Action Block - Minimal & Bold */}
+            <div className="group relative overflow-hidden rounded-3xl bg-card border border-border p-1 transition-all hover:shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Zap className="w-4 h-4 text-primary" fill="currentColor" />
+                <div className="relative bg-background/50 rounded-[20px] p-6 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
+
+                    {/* Icon & Focus */}
+                    <div className="flex items-center gap-5 w-full md:w-auto">
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${rec?.drill.type === 'mental' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
+                            {rec?.drill.type === 'mental' ? <Brain size={32} strokeWidth={1.5} /> : <Zap size={32} strokeWidth={1.5} />}
                         </div>
-                        <span className="text-xs font-bold text-primary tracking-widest uppercase">Performance Insight</span>
-                    </div>
-                    {seasonGoal && (
-                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
-                            <span className="text-[9px] font-bold text-primary uppercase tracking-wider flex items-center gap-1">
-                                <Target size={10} /> Goal Aligned
+                        <div>
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1">
+                                Today's Directive
                             </span>
-                        </div>
-                    )}
-                </div>
-
-                {/* THE STATEMENT */}
-                <div className="mb-8">
-                    <h2 className="text-2xl md:text-4xl font-bold text-foreground leading-tight tracking-tight mb-4">
-                        {rec?.reason}
-                    </h2>
-                    <p className="text-md text-muted-foreground font-medium flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        Focus: <span className="text-foreground font-bold">{rec?.focus}</span>
-                    </p>
-                </div>
-
-                {/* MISSION CARD (Action Module) */}
-                <div className="bg-muted/30 border border-white/5 rounded-2xl p-1 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-
-                    <div className="bg-background/80 backdrop-blur-sm rounded-xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center border border-border ${rec?.drill.type === 'mental' ? 'bg-purple-500/10 text-purple-500' : 'bg-orange-500/10 text-orange-500'}`}>
-                                {rec?.drill.type === 'mental' ? <Brain size={24} /> : <Activity size={24} />}
-                            </div>
-                            <div>
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Recommended Protocol</span>
-                                <span className="text-lg font-black text-foreground uppercase tracking-tight">{rec?.drill.name}</span>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-4 w-full md:w-auto">
-                            <div className="hidden md:block h-8 w-px bg-border" />
-                            <div className="text-right hidden md:block mr-2">
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Duration</span>
-                                <span className="font-mono font-bold text-foreground">{rec?.drill.duration}</span>
-                            </div>
-
-                            <button
-                                onClick={handleActionClick}
-                                className="flex-1 md:flex-none h-12 px-6 bg-foreground hover:bg-foreground/90 text-background font-bold rounded-lg transition-all flex items-center justify-center gap-2 uppercase tracking-wide text-xs"
-                            >
-                                {rec?.drill.type === 'mental' ? 'Start Session' : 'Log Workout'}
-                                <ChevronRight size={14} />
-                            </button>
+                            <h3 className="text-2xl font-black text-foreground uppercase tracking-tight leading-none">
+                                {rec?.focus}
+                            </h3>
+                            <p className="text-sm text-foreground/70 font-medium mt-1">
+                                {rec?.drill.name} • {rec?.drill.duration}
+                            </p>
                         </div>
                     </div>
-                </div>
 
-                {/* Feedback Section (Minimal) */}
-                <div className="mt-6 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    {!feedbackGiven ? (
-                        <div className="flex gap-1">
-                            <button onClick={() => handleFeedback(true)} className="p-2 hover:text-green-500 transition-colors"><ThumbsUp size={14} /></button>
-                            <button onClick={() => handleFeedback(false)} className="p-2 hover:text-red-500 transition-colors"><ThumbsDown size={14} /></button>
-                        </div>
-                    ) : (
-                        <span className="text-[10px] font-bold text-green-500 flex items-center gap-1"><CheckCircle size={10} /> Feedback Sent</span>
-                    )}
+                    {/* Action Button */}
+                    <Button
+                        onClick={handleActionClick}
+                        className="w-full md:w-auto px-8 py-4 bg-foreground text-background font-bold rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 h-auto"
+                    >
+                        {rec?.drill.type === 'mental' ? 'Start Focus' : 'Log Activity'} <ChevronRight size={18} />
+                    </Button>
                 </div>
+            </div>
 
+            {/* Subtle Feedback */}
+            <div className="mt-4 flex justify-between items-center px-2">
+                {seasonGoal && (
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1 opacity-60">
+                        <Target size={10} /> Season Goal: {seasonGoal}
+                    </span>
+                )}
+
+                <div className={`flex gap-2 transition-opacity duration-300 ${feedbackGiven ? 'opacity-50 pointer-events-none' : 'opacity-0 group-hover:opacity-60 hover:opacity-100'}`}>
+                    <Button variant="ghost" size="icon" onClick={() => handleFeedback(true)} className="p-2 hover:bg-muted rounded-full transition-colors h-auto w-auto"><ThumbsUp size={14} /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleFeedback(false)} className="p-2 hover:bg-muted rounded-full transition-colors h-auto w-auto"><ThumbsDown size={14} /></Button>
+                </div>
             </div>
         </motion.div>
     );

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Smile, Meh, Frown, Send, X, MessageSquare, Loader2 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { useToast } from "@/context/ToastContext";
+import { Button } from "@/components/ui/Button";
 
 interface BetaFeedbackProps {
     rosterId?: string;
@@ -12,6 +14,7 @@ interface BetaFeedbackProps {
 }
 
 export function BetaFeedback({ rosterId, userId, userRole }: BetaFeedbackProps) {
+    const toast = useToast();
     const [isOpen, setIsOpen] = useState(false);
     const [mood, setMood] = useState<'happy' | 'neutral' | 'sad' | null>(null);
     const [comment, setComment] = useState("");
@@ -50,7 +53,7 @@ export function BetaFeedback({ rosterId, userId, userRole }: BetaFeedbackProps) 
 
         } catch (err: any) {
             console.error("Feedback Error:", err);
-            alert("Failed to submit feedback. Please try again.");
+            toast.error("Failed to submit feedback. Please try again.");
         } finally {
             setIsSubmitting(false);
         }
@@ -70,12 +73,14 @@ export function BetaFeedback({ rosterId, userId, userRole }: BetaFeedbackProps) 
                             <h3 className="font-bold text-foreground flex items-center gap-2">
                                 <span className="text-xl">🚀</span> Beta Feedback
                             </h3>
-                            <button
+                            <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => setIsOpen(false)}
-                                className="text-muted-foreground hover:text-foreground transition-colors"
+                                className="text-muted-foreground hover:text-foreground transition-colors p-0 h-auto w-auto hover:bg-transparent"
                             >
                                 <X size={18} />
-                            </button>
+                            </Button>
                         </div>
 
                         {submitted ? (
@@ -91,24 +96,27 @@ export function BetaFeedback({ rosterId, userId, userRole }: BetaFeedbackProps) 
                                 <div>
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 block text-center">How is your experience?</label>
                                     <div className="flex justify-center gap-4">
-                                        <button
+                                        <Button
+                                            variant="ghost"
                                             onClick={() => setMood('happy')}
-                                            className={`p-3 rounded-xl transition-all ${mood === 'happy' ? 'bg-green-500 text-white scale-110 shadow-lg shadow-green-500/20' : 'bg-secondary text-muted-foreground hover:bg-green-500/10 hover:text-green-500'}`}
+                                            className={`p-3 rounded-xl transition-all h-auto w-auto ${mood === 'happy' ? 'bg-green-500 text-white scale-110 shadow-lg shadow-green-500/20 hover:bg-green-600' : 'bg-secondary text-muted-foreground hover:bg-green-500/10 hover:text-green-500'}`}
                                         >
                                             <Smile size={28} />
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
                                             onClick={() => setMood('neutral')}
-                                            className={`p-3 rounded-xl transition-all ${mood === 'neutral' ? 'bg-yellow-500 text-white scale-110 shadow-lg shadow-yellow-500/20' : 'bg-secondary text-muted-foreground hover:bg-yellow-500/10 hover:text-yellow-500'}`}
+                                            className={`p-3 rounded-xl transition-all h-auto w-auto ${mood === 'neutral' ? 'bg-yellow-500 text-white scale-110 shadow-lg shadow-yellow-500/20 hover:bg-yellow-600' : 'bg-secondary text-muted-foreground hover:bg-yellow-500/10 hover:text-yellow-500'}`}
                                         >
                                             <Meh size={28} />
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
                                             onClick={() => setMood('sad')}
-                                            className={`p-3 rounded-xl transition-all ${mood === 'sad' ? 'bg-red-500 text-white scale-110 shadow-lg shadow-red-500/20' : 'bg-secondary text-muted-foreground hover:bg-red-500/10 hover:text-red-500'}`}
+                                            className={`p-3 rounded-xl transition-all h-auto w-auto ${mood === 'sad' ? 'bg-red-500 text-white scale-110 shadow-lg shadow-red-500/20 hover:bg-red-600' : 'bg-secondary text-muted-foreground hover:bg-red-500/10 hover:text-red-500'}`}
                                         >
                                             <Frown size={28} />
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
 
@@ -122,13 +130,13 @@ export function BetaFeedback({ rosterId, userId, userRole }: BetaFeedbackProps) 
                                     />
                                 </div>
 
-                                <button
+                                <Button
                                     onClick={handleSubmit}
                                     disabled={!mood || isSubmitting}
-                                    className="w-full bg-foreground text-background font-bold py-3 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    className="w-full bg-foreground text-background font-bold py-3 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 h-auto"
                                 >
                                     {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <>Submit Feedback <Send size={16} /></>}
-                                </button>
+                                </Button>
                             </div>
                         )}
                     </motion.div>

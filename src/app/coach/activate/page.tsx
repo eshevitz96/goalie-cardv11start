@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase/client";
+import { Button } from "@/components/ui/Button";
 
 const STEPS = [
     { id: 1, title: "Email", icon: User },
@@ -199,9 +200,9 @@ function CoachActivateContent() {
 
                                 {error && <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg"><AlertCircle size={14} /> {error}</div>}
 
-                                <button type="submit" className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2">
+                                <Button type="submit" className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 h-auto">
                                     Continue <ChevronRight size={18} />
-                                </button>
+                                </Button>
                             </form>
                         )}
 
@@ -263,10 +264,10 @@ function CoachActivateContent() {
                                 {error && <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg"><AlertCircle size={14} /> {error}</div>}
 
                                 <div className="flex gap-3">
-                                    <button type="button" onClick={() => setCurrentStep(1)} className="flex-1 py-4 text-muted-foreground hover:text-foreground">Back</button>
-                                    <button type="submit" className="flex-[2] bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2">
+                                    <Button type="button" variant="ghost" onClick={() => setCurrentStep(1)} className="flex-1 py-4 text-muted-foreground hover:text-foreground h-auto">Back</Button>
+                                    <Button type="submit" className="flex-[2] bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 h-auto">
                                         Next Step <ChevronRight size={18} />
-                                    </button>
+                                    </Button>
                                 </div>
                             </form>
                         )}
@@ -311,20 +312,22 @@ function CoachActivateContent() {
 
                                             {/* Model Selector */}
                                             <div className="grid grid-cols-2 gap-2 bg-secondary p-1 rounded-xl">
-                                                <button
+                                                <Button
                                                     type="button"
+                                                    variant="ghost"
                                                     onClick={() => setEngagementModel({ ...engagementModel, privateType: 'package' })}
-                                                    className={clsx("py-2 text-xs font-bold rounded-lg transition-all", engagementModel.privateType === 'package' ? "bg-background shadow text-foreground" : "text-muted-foreground")}
+                                                    className={clsx("py-2 text-xs font-bold rounded-lg transition-all h-auto", engagementModel.privateType === 'package' ? "bg-background shadow text-foreground" : "text-muted-foreground")}
                                                 >
                                                     Package Based
-                                                </button>
-                                                <button
+                                                </Button>
+                                                <Button
                                                     type="button"
+                                                    variant="ghost"
                                                     onClick={() => setEngagementModel({ ...engagementModel, privateType: 'subscription' })}
-                                                    className={clsx("py-2 text-xs font-bold rounded-lg transition-all", engagementModel.privateType === 'subscription' ? "bg-background shadow text-foreground" : "text-muted-foreground")}
+                                                    className={clsx("py-2 text-xs font-bold rounded-lg transition-all h-auto", engagementModel.privateType === 'subscription' ? "bg-background shadow text-foreground" : "text-muted-foreground")}
                                                 >
                                                     Subscription
-                                                </button>
+                                                </Button>
                                             </div>
 
                                             {/* Inputs based on Model */}
@@ -384,10 +387,10 @@ function CoachActivateContent() {
                                 {error && <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg"><AlertCircle size={14} /> {error}</div>}
 
                                 <div className="flex gap-3 pt-2">
-                                    <button type="button" onClick={() => setCurrentStep(2)} className="flex-1 py-4 text-muted-foreground hover:text-foreground">Back</button>
-                                    <button type="submit" className="flex-[2] bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2">
+                                    <Button type="button" variant="ghost" onClick={() => setCurrentStep(2)} className="flex-1 py-4 text-muted-foreground hover:text-foreground h-auto">Back</Button>
+                                    <Button type="submit" className="flex-[2] bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 h-auto">
                                         Summary <ChevronRight size={18} />
-                                    </button>
+                                    </Button>
                                 </div>
                             </form>
                         )}
@@ -447,15 +450,15 @@ function CoachActivateContent() {
 
                                 {error && <div className="text-red-500 text-sm text-center animate-pulse">{error}</div>}
 
-                                <button
+                                <Button
                                     onClick={handleActivation}
                                     className={clsx(
-                                        "w-full py-4 font-bold rounded-xl transition-all flex items-center justify-center gap-2",
+                                        "w-full py-4 font-bold rounded-xl transition-all flex items-center justify-center gap-2 h-auto",
                                         termsAccepted ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20" : "bg-muted text-muted-foreground cursor-not-allowed"
                                     )}
                                 >
                                     {isLoading ? <Loader2 className="animate-spin" /> : <>Activate Coach Profile <Check size={18} /></>}
-                                </button>
+                                </Button>
                             </div>
                         )}
 
@@ -469,9 +472,9 @@ function CoachActivateContent() {
                                     <h2 className="text-3xl font-black text-foreground italic tracking-tight">WELCOME COACH</h2>
                                     <p className="text-muted-foreground mt-2">Your profile is live. Parents can now find you.</p>
                                 </div>
-                                <button onClick={() => router.push('/coach')} className="px-8 py-3 bg-foreground text-background font-bold rounded-full hover:bg-foreground/90 transition-colors w-full">
+                                <Button onClick={() => router.push('/coach')} className="px-8 py-3 bg-foreground text-background font-bold rounded-full hover:bg-foreground/90 transition-colors w-full h-auto">
                                     Enter Coach Dashboard
-                                </button>
+                                </Button>
                             </div>
                         )}
                     </motion.div>

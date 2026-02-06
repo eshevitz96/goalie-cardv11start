@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Check, CreditCard, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { Button } from "@/components/ui/Button";
 
 const PACKAGES = [
     { id: 1, name: "Single Session", price: 150, saves: 0 },
@@ -21,7 +22,7 @@ export default function RenewSession() {
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <Link
-                        href="/"
+                        href="/parent"
                         className="p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-colors"
                     >
                         <ArrowLeft size={20} />
@@ -38,8 +39,8 @@ export default function RenewSession() {
                             key={pack.id}
                             onClick={() => setSelectedPack(pack.id)}
                             className={`relative p-6 border rounded-3xl cursor-pointer transition-all ${selectedPack === pack.id
-                                    ? "bg-zinc-900 border-primary shadow-lg shadow-primary/10"
-                                    : "bg-black border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700"
+                                ? "bg-zinc-900 border-primary shadow-lg shadow-primary/10"
+                                : "bg-black border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700"
                                 }`}
                         >
                             {pack.recommended && (
@@ -92,13 +93,13 @@ export default function RenewSession() {
                         </span>
                     </label>
 
-                    <button
+                    <Button
                         disabled={!waiverAccepted}
-                        className="w-full py-4 bg-white text-black rounded-xl font-bold shadow-lg hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-white text-black rounded-xl font-bold shadow-lg hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 h-auto"
                     >
                         <CreditCard size={18} />
                         Pay ${PACKAGES.find(p => p.id === selectedPack)?.price}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </main>

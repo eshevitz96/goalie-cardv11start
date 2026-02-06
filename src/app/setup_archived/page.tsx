@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Check, ChevronRight, User, Ruler, Weight, Shield, AlertCircle } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { useToast } from "@/context/ToastContext";
 
 export default function OnboardingPage() {
     const router = useRouter();
+    const toast = useToast();
     const [step, setStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -35,15 +37,15 @@ export default function OnboardingPage() {
 
     const handleNext = () => {
         if (step === 1 && (!formData.height || !formData.weight)) {
-            alert("Please complete your physical profile.");
+            toast.warning("Please complete your physical profile.");
             return;
         }
         if (step === 2 && !formData.accepted_terms) {
-            alert("Please accept the terms to continue.");
+            toast.warning("Please accept the terms to continue.");
             return;
         }
         if (step === 3 && !formData.baseline_goal.trim()) {
-            alert("Please share a goal for the season.");
+            toast.warning("Please share a goal for the season.");
             return;
         }
 
@@ -59,7 +61,7 @@ export default function OnboardingPage() {
         const rosterId = localStorage.getItem('setup_roster_id');
 
         if (!rosterId) {
-            alert("Session Lost. Please restart activation.");
+            toast.error("Session Lost. Please restart activation.");
             router.push('/activate');
             return;
         }
@@ -109,7 +111,7 @@ export default function OnboardingPage() {
 
         } catch (e) {
             console.error(e);
-            alert("Error saving profile. Please try again.");
+            toast.error("Error saving profile. Please try again.");
             setIsLoading(false);
         }
     };

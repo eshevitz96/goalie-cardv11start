@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Cloud, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { useState, useEffect, useTransition } from "react";
 import { supabase } from "@/utils/supabase/client";
@@ -165,14 +166,14 @@ export default function CoachProfile() {
                         <Link href="/coach" className="flex-1 py-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-bold text-zinc-400 hover:text-white transition-all text-center">
                             Cancel
                         </Link>
-                        <button
+                        <Button
                             onClick={handleSave}
                             disabled={isPending}
-                            className="flex-1 py-4 bg-gradient-to-r from-primary to-rose-600 rounded-xl font-bold text-white shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+                            className="flex-1 py-4 bg-gradient-to-r from-primary to-rose-600 rounded-xl font-bold text-white shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 h-auto"
                         >
                             {isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                             {isPending ? "Saving..." : "Save Changes"}
-                        </button>
+                        </Button>
                     </div>
 
                 </div>

@@ -14,6 +14,8 @@ export const metadata: Metadata = {
 
 import { AppProvider } from "@/context/AppContext";
 import { ThemeProvider } from "@/context/ThemeProvider";
+import { ToastProvider } from "@/context/ToastContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function RootLayout({
   children,
@@ -31,9 +33,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AppProvider>
-            {children}
-          </AppProvider>
+          <ToastProvider>
+            <ErrorBoundary>
+              <AppProvider>
+                {children}
+              </AppProvider>
+            </ErrorBoundary>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -2,14 +2,17 @@
 
 import { motion } from "framer-motion";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
+import { useToast } from "@/context/ToastContext";
 
 export default function LogSession() {
     const params = useParams(); // params.id is the Goalie (Roster) ID or Profile ID? Usually we link to Roster ID for coaches.
     const router = useRouter();
+    const toast = useToast();
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -116,11 +119,11 @@ export default function LogSession() {
 
             if (updateError) throw updateError;
 
-            alert("Session Logged Successfully!");
+            toast.success("Session Logged Successfully!");
             router.push('/coach');
 
         } catch (err: any) {
-            alert("Error logging session: " + err.message);
+            toast.error("Error logging session: " + err.message);
         } finally {
             setSubmitting(false);
         }
@@ -247,12 +250,12 @@ export default function LogSession() {
                         />
                     </div>
 
-                    <button
+                    <Button
                         disabled={submitting}
-                        className="w-full py-4 bg-primary rounded-xl font-bold text-white shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-50"
+                        className="w-full py-4 bg-primary rounded-xl font-bold text-white shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-50 h-auto"
                     >
                         {submitting ? <Loader2 className="animate-spin" /> : <><Check size={20} /> Save Entry</>}
-                    </button>
+                    </Button>
 
                 </form>
             </div>

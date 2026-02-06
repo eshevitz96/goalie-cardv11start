@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 export default function TransactionHistory() {
     const [transactions, setTransactions] = useState<any[]>([]);
@@ -70,9 +71,13 @@ export default function TransactionHistory() {
                                 <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Total Spend (YTD)</div>
                                 <div className="text-3xl font-black text-white">{formatCurrency(totalSpend)}</div>
                             </div>
-                            <button className="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs font-bold text-primary flex items-center gap-1 hover:underline h-auto p-0 hover:bg-transparent"
+                            >
                                 <Download size={14} /> Download All
-                            </button>
+                            </Button>
                         </div>
                     </div>
 
