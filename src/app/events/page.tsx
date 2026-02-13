@@ -12,58 +12,70 @@ import { supabase } from "@/utils/supabase/client";
 export default function EventsPage() {
     const [events, setEvents] = useState<any[]>([]);
     const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+    const [goalieId, setGoalieId] = useState<string | undefined>();
     const [loading, setLoading] = useState(true);
-
     const [backLink, setBackLink] = useState("/parent");
 
-    useEffect(() => {
-        const fetchEvents = async () => {
-            // 0. Determine Back Link based on Role
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-                if (profile?.role === 'goalie') setBackLink("/goalie");
-                else if (profile?.role === 'coach') setBackLink("/coach");
-                else if (profile?.role === 'admin') setBackLink("/admin");
-                // Default is parent
+    const fetchEvents = async () => {
+        setLoading(true);
+        // 0. Determine Back Link and Fetch Goalie Info
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+            if (profile?.role === 'goalie') {
+                setBackLink("/goalie");
+                // For goalies, they are their own roster spot
+                const { data: roster } = await supabase.from('roster_uploads').select('id').eq('linked_user_id', user.id).single();
+                if (roster) setGoalieId(roster.id);
             }
+            else if (profile?.role === 'coach') setBackLink("/coach");
+            else if (profile?.role === 'admin') setBackLink("/admin");
+            else {
+                // Parent: possibly multiple children, but for events page we might need to know which goalie we're looking at.
+                // For now, let's fetch the first linked goalie for this parent.
+                const { data: roster } = await supabase.from('roster_uploads').select('id').eq('linked_user_id', user.id).limit(1).single();
+                if (roster) setGoalieId(roster.id);
+            }
+        }
 
-            // For Demo: Use PRO_SCHEDULE + DB Events
-            // 1. Fetch DB Events
-            const { data: dbEvents } = await supabase.from('events').select('*').order('date', { ascending: true });
+        // For Demo: Use PRO_SCHEDULE + DB Events
+        // 1. Fetch DB Events
+        const { data: dbEvents } = await supabase.from('events').select('*').order('date', { ascending: true });
 
-            // 2. Map PRO_SCHEDULE
-            const proEvents = PRO_SCHEDULE.map(e => ({
-                id: e.id,
-                name: e.name,
-                date: new Date(e.date).toLocaleDateString(),
-                location: e.location,
-                status: "upcoming" as const,
-                image: e.type === 'Game' ? "from-purple-900 to-black" : (e.type === 'Practice' ? "from-gray-700 to-gray-900" : "from-gray-800 to-black"),
-                price: 0,
-                sport: 'Hockey',
-                rawDate: new Date(e.date)
-            }));
+        // 2. Map PRO_SCHEDULE
+        const proEvents = PRO_SCHEDULE.map(e => ({
+            id: e.id,
+            name: e.name,
+            date: new Date(e.date).toLocaleDateString(),
+            location: e.location,
+            status: "upcoming" as const,
+            image: e.type === 'Game' ? "from-purple-900 to-black" : (e.type === 'Practice' ? "from-gray-700 to-gray-900" : "from-gray-800 to-black"),
+            price: 0,
+            sport: 'Hockey',
+            rawDate: new Date(e.date)
+        }));
 
-            // 3. Map DB Events
-            const mappedDbEvents = dbEvents?.map(e => ({
-                id: e.id,
-                name: e.name,
-                date: new Date(e.date).toLocaleDateString(),
-                location: e.location || 'TBA',
-                status: "upcoming" as const, // Simplification
-                image: e.image || "from-gray-500 to-gray-600",
-                price: e.price,
-                sport: e.sport,
-                rawDate: new Date(e.date)
-            })) || [];
+        // 3. Map DB Events
+        const mappedDbEvents = dbEvents?.map(e => ({
+            id: e.id,
+            name: e.name,
+            date: new Date(e.date).toLocaleDateString(),
+            location: e.location || 'TBA',
+            status: "upcoming" as const, // Simplification
+            image: e.image || "from-gray-500 to-gray-600",
+            price: e.price,
+            sport: e.sport,
+            rawDate: new Date(e.date)
+        })) || [];
 
-            // Merge and Sort
-            const allEvents = [...proEvents, ...mappedDbEvents].sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
+        // Merge and Sort
+        const allEvents = [...proEvents, ...mappedDbEvents].sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
 
-            setEvents(allEvents);
-            setLoading(false);
-        };
+        setEvents(allEvents);
+        setLoading(false);
+    };
+
+    useEffect(() => {
         fetchEvents();
     }, []);
 
@@ -99,7 +111,7 @@ export default function EventsPage() {
                 {loading ? (
                     <div className="text-center text-muted-foreground py-10">Loading schedule...</div>
                 ) : (events.length > 0 ? (
-                    <EventsList events={filteredEvents} />
+                    <EventsList events={filteredEvents} goalieId={goalieId} onEventAdded={fetchEvents} />
                 ) : (
                     <div className="text-center text-muted-foreground py-10">No events found.</div>
                 ))}

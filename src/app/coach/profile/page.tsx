@@ -19,6 +19,7 @@ export default function CoachProfile() {
     const [fullName, setFullName] = useState("");
     const [title, setTitle] = useState("");
     const [bio, setBio] = useState("");
+    const [philosophy, setPhilosophy] = useState("");
     const [syncEnabled, setSyncEnabled] = useState(false);
 
     useEffect(() => {
@@ -36,6 +37,7 @@ export default function CoachProfile() {
                 setFullName(data.full_name || data.goalie_name || user.email?.split('@')[0] || "");
                 setTitle(data.title || "");
                 setBio(data.bio || "");
+                setPhilosophy(data.philosophy || "");
                 setSyncEnabled(data.settings?.calendar_sync || false);
             }
             setIsLoading(false);
@@ -50,6 +52,7 @@ export default function CoachProfile() {
             formData.append("fullName", fullName);
             formData.append("title", title);
             formData.append("bio", bio);
+            formData.append("philosophy", philosophy);
             if (syncEnabled) formData.append("calendarSync", "on");
 
             const result = await updateCoachProfile(formData);
@@ -129,6 +132,18 @@ export default function CoachProfile() {
                             value={bio}
                             onChange={(e) => setBio(e.target.value)}
                             placeholder="Tell us about your experience..."
+                            className="bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors hover:border-zinc-700 resize-none"
+                        />
+                    </div>
+
+                    {/* Philosophy */}
+                    <div className="grid gap-2">
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Coaching Philosophy</label>
+                        <textarea
+                            rows={4}
+                            value={philosophy}
+                            onChange={(e) => setPhilosophy(e.target.value)}
+                            placeholder="Your approach to the game..."
                             className="bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors hover:border-zinc-700 resize-none"
                         />
                     </div>

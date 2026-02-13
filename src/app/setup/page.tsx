@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Check, ChevronRight, User, Ruler, Weight, Shield, AlertCircle } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, User, Ruler, Weight, AlertCircle } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 
 export default function OnboardingPage() {

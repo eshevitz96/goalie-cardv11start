@@ -14,6 +14,7 @@ export async function updateCoachProfile(formData: FormData) {
     const fullName = formData.get("fullName") as string;
     const title = formData.get("title") as string;
     const bio = formData.get("bio") as string;
+    const philosophy = formData.get("philosophy") as string;
     const calendarSync = formData.get("calendarSync") === "on"; // Checkbox/Switch handling
 
     const settings = {
@@ -23,6 +24,7 @@ export async function updateCoachProfile(formData: FormData) {
     const updateData: any = {
         title,
         bio,
+        philosophy,
         settings,
         updated_at: new Date().toISOString()
     };

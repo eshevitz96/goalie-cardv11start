@@ -23,69 +23,67 @@
 }
 
 :root {
-  /* Light Mode - Nike B&W / Apple Glass */
+  /* Light Mode - Clean, Airy, Premium */
   --background: #f5f5f7;
-  /* Apple light gray */
-  --foreground: #000000;
-  /* Pure Black */
+  /* Apple Light Grey */
+  --foreground: #1d1d1f;
+  /* Soft Black */
 
-  --card: rgba(255, 255, 255, 0.7);
-  --card-foreground: #000000;
+  --card: rgba(255, 255, 255, 0.65);
+  --card-foreground: #1d1d1f;
 
-  --popover: rgba(255, 255, 255, 0.8);
-  --popover-foreground: #000000;
+  --popover: rgba(255, 255, 255, 0.85);
+  --popover-foreground: #1d1d1f;
 
   --primary: #000000;
-  /* Black branding */
   --primary-foreground: #ffffff;
 
   --secondary: #ffffff;
-  --secondary-foreground: #000000;
+  --secondary-foreground: #1d1d1f;
 
-  --muted: #e5e5e5;
-  --muted-foreground: #737373;
+  --muted: #f5f5f7;
+  --muted-foreground: #86868b;
 
-  --accent: #f5f5f7;
-  --accent-foreground: #000000;
+  --accent: #007aff;
+  /* Apple Blue for subtle accents */
+  --accent-foreground: #ffffff;
 
-  --destructive: #ef4444;
+  --destructive: #ff3b30;
   --destructive-foreground: #ffffff;
 
-  --border: rgba(0, 0, 0, 0.1);
-  --input: rgba(0, 0, 0, 0.1);
+  --border: rgba(0, 0, 0, 0.08);
+  --input: rgba(0, 0, 0, 0.08);
   --ring: #000000;
 }
 
 .dark {
-  /* Dark Mode - Apple Dark Glass / Nike Dark */
+  /* Dark Mode - Deep, Rich, OLED Friendly */
   --background: #000000;
-  /* Pure Black */
-  --foreground: #ffffff;
+  --foreground: #f5f5f7;
 
   --card: rgba(28, 28, 30, 0.6);
-  /* Translucent dark gray */
   --card-foreground: #ffffff;
 
-  --popover: rgba(28, 28, 30, 0.8);
+  --popover: rgba(28, 28, 30, 0.75);
   --popover-foreground: #ffffff;
 
   --primary: #ffffff;
-  /* White branding */
   --primary-foreground: #000000;
 
   --secondary: #1c1c1e;
   --secondary-foreground: #ffffff;
 
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
+  --muted: #1c1c1e;
+  --muted-foreground: #86868b;
 
-  --accent: #1c1c1e;
+  --accent: #0a84ff;
+  /* Apple Dark Mode Blue */
   --accent-foreground: #ffffff;
 
   --destructive: #ff453a;
   --destructive-foreground: #ffffff;
 
-  --border: rgba(255, 255, 255, 0.15);
+  --border: rgba(255, 255, 255, 0.12);
   --input: rgba(255, 255, 255, 0.15);
   --ring: #ffffff;
 }
@@ -95,6 +93,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   antialiased: true;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Glass Effect Utilities */
@@ -105,19 +104,26 @@ body {
 
   .glass {
     background-color: var(--card);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid var(--border);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .glass-hover {
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  .glass-hover:hover {
+    background-color: color-mix(in srgb, var(--card), var(--foreground) 5%);
+    border-color: color-mix(in srgb, var(--border), var(--foreground) 10%);
   }
 }
 
-/* Global Glass override for standard card usage if possible, 
-   or we just rely on users updating their components. 
-   Given 'overhaul', forcing it on common patterns helps. */
+/* Base Card Style Override */
 .bg-card {
   background-color: var(--card);
-  /* Ensure it uses the var */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--border);
 }

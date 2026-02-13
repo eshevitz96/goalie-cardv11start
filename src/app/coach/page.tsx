@@ -13,7 +13,6 @@ import {
     Download,
     Mail,
     FileEdit,
-    Shield,
     Plus,
     Ticket,
     MapPin,
@@ -22,6 +21,7 @@ import {
     ArrowRight,
     PlayCircle
 } from "lucide-react";
+import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import { clsx } from "clsx";
 import Link from "next/link";
 
@@ -273,7 +273,7 @@ export default function CoachDashboard() {
                     {/* Pending Activations */}
                     <div className="glass rounded-3xl p-6">
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <Shield size={18} className="text-primary" />
+                            <GoalieGuardLogo size={18} className="text-primary" />
                             Pending Activations
                             <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full">{PENDING_ACTIVATIONS.length}</span>
                         </h3>

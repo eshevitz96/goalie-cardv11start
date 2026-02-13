@@ -20,7 +20,7 @@ export async function GET() {
             }
         });
 
-        console.log("Resetting password for Elliott...");
+        // console.log("Resetting password for Elliott...");
 
         // 1. Get User by Email
         const { data: { users } } = await supabase.auth.admin.listUsers();

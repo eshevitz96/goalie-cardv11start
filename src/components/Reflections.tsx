@@ -98,7 +98,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                     type: 'alert'
                 });
             } else if (rosterId.startsWith('demo-')) {
-                console.log("Demo Safety Alert Triggered for:", found);
+                // console.log("Demo Safety Alert Triggered for:", found);
             }
         }
     };
@@ -322,12 +322,12 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                                             <p className="text-xs text-red-400 mb-2">Recovery is part of the journey. When do you think you'll be back?</p>
                                             <input
                                                 type="date"
-                                                className="w-full bg-black/20 border border-red-500/30 rounded p-1 text-sm text-foreground mb-2"
+                                                className="w-full bg-secondary border border-red-500/30 rounded p-1 text-sm text-foreground mb-2"
                                                 onChange={e => setNewReflection({ ...newReflection, injury_expected_return: e.target.value })}
                                             />
                                             <textarea
                                                 placeholder="Injury details (e.g. tweaked groin, concussion protocol)..."
-                                                className="w-full bg-black/20 border border-red-500/30 rounded p-2 text-xs text-foreground h-16 resize-none focus:outline-none"
+                                                className="w-full bg-secondary border border-red-500/30 rounded p-2 text-xs text-foreground h-16 resize-none focus:outline-none"
                                                 onChange={e => setNewReflection({ ...newReflection, injury_details: e.target.value })}
                                             />
                                         </div>

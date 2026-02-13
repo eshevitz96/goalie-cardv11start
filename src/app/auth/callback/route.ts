@@ -2,30 +2,41 @@ import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-    // The `/auth/callback` route is required for the server-side auth flow to work properly.
-    // The Next.js `createClient` function (from `@supabase/ssr` or similar) handles the code exchange.
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get("code");
-    // if "next" is in param, use it as the redirect URL
-    const next = searchParams.get("next") ?? "/";
+    // Default to /dashboard for goalies
+    const next = searchParams.get("next") ?? "/dashboard";
+
+    console.log(`[Auth Callback] Origin: ${origin}, Next: ${next}, Has Code: ${!!code}`);
 
     if (code) {
         const supabase = createClient();
+        console.log(`[Auth Callback] Exchanging code for session...`);
         const { error } = await supabase.auth.exchangeCodeForSession(code);
+
         if (!error) {
-            const forwardedHost = request.headers.get("x-forwarded-host"); // original origin before load balancer
+            const forwardedHost = request.headers.get("x-forwarded-host");
             const isLocalEnv = process.env.NODE_ENV === "development";
+
+            let redirectUrl: string;
             if (isLocalEnv) {
-                // we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-                return NextResponse.redirect(`${origin}${next}`);
+                redirectUrl = `${origin}${next}`;
             } else if (forwardedHost) {
-                return NextResponse.redirect(`https://${forwardedHost}${next}`);
+                redirectUrl = `https://${forwardedHost}${next}`;
             } else {
-                return NextResponse.redirect(`${origin}${next}`);
+                redirectUrl = `${origin}${next}`;
             }
+
+            console.log(`[Auth Callback] Success! Redirecting to: ${redirectUrl}`);
+            return NextResponse.redirect(redirectUrl);
         }
+
+        console.error(`[Auth Callback] Exchange error:`, error.message);
+    } else {
+        console.warn(`[Auth Callback] No auth code found in request params.`);
     }
 
-    // return the user to an error page with instructions
+    // fallback to error page
+    console.log(`[Auth Callback] Failure. Redirecting to auth-code-error page.`);
     return NextResponse.redirect(`${origin}/auth/auth-code-error`);
 }

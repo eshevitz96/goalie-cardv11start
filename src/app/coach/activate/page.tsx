@@ -126,10 +126,7 @@ function CoachActivateContent() {
                     data: {
                         role: 'coach',
                         full_name: identity.fullName,
-                        phone: identity.phone,
-                        training_types: trainingTypes,
-                        pricing_config: pricingConfig,
-                        development_philosophy: engagementModel.philosophy
+                        phone: identity.phone
                     }
                 }
             });

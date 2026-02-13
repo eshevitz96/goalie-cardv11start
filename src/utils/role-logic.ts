@@ -1,5 +1,7 @@
 
-export const SCHOOL_YEAR_END_MONTH = 6; // July 1st (0-indexed month 6 is July)
+import { SCHOOL_YEAR_END_MONTH, LEGAL_AGE } from "@/constants/app-constants";
+
+// export const SCHOOL_YEAR_END_MONTH = 6; // Moved to constants
 
 /**
  * Determines if the goalie has passed their Senior High School season.
@@ -13,7 +15,7 @@ export function isPastSeniorSeason(gradYear: number | string): boolean {
 
     const now = new Date();
     // Transition happens July 1st of Grad Year
-    const transitionDate = new Date(yearInt, 6, 1);
+    const transitionDate = new Date(yearInt, SCHOOL_YEAR_END_MONTH, 1);
 
     return now > transitionDate;
 }
@@ -56,5 +58,5 @@ export function determineUserRole(birthDateInput: string | Date, gradYear?: numb
         age--;
     }
 
-    return age >= 18 ? 'goalie' : 'parent';
+    return age >= LEGAL_AGE ? 'goalie' : 'parent';
 }

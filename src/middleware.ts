@@ -8,53 +8,25 @@ export async function middleware(request: NextRequest) {
         },
     })
 
-    // TEMPORARY: DISABLED MIDDLEWARE REFRESH TO DEBUG VERCEL LOOP
-    // We are trusting the Client Side Login to handle auth for now.
-    // Once the Loop is identified (likely Env Var on Edge), we will restore this.
-
     try {
-        /*
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             {
                 cookies: {
-                    get(name: string) {
-                        return request.cookies.get(name)?.value
+                    getAll() {
+                        return request.cookies.getAll()
                     },
-                    set(name: string, value: string, options: CookieOptions) {
-                        request.cookies.set({
-                            name,
-                            value,
-                            ...options,
-                        })
+                    setAll(cookiesToSet) {
+                        cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
                         response = NextResponse.next({
                             request: {
                                 headers: request.headers,
                             },
                         })
-                        response.cookies.set({
-                            name,
-                            value,
-                            ...options,
-                        })
-                    },
-                    remove(name: string, options: CookieOptions) {
-                        request.cookies.set({
-                            name,
-                            value: '',
-                            ...options,
-                        })
-                        response = NextResponse.next({
-                            request: {
-                                headers: request.headers,
-                            },
-                        })
-                        response.cookies.set({
-                            name,
-                            value: '',
-                            ...options,
-                        })
+                        cookiesToSet.forEach(({ name, value, options }) =>
+                            response.cookies.set(name, value, options)
+                        )
                     },
                 },
             }
@@ -63,12 +35,17 @@ export async function middleware(request: NextRequest) {
         const { data: { user } } = await supabase.auth.getUser()
 
         // Protected Routes
-        if (request.nextUrl.pathname.startsWith('/coach') || request.nextUrl.pathname.startsWith('/admin')) {
+        if (request.nextUrl.pathname.startsWith('/coach') ||
+            request.nextUrl.pathname.startsWith('/admin') ||
+            request.nextUrl.pathname.startsWith('/parent') ||
+            request.nextUrl.pathname.startsWith('/dashboard') ||
+            request.nextUrl.pathname.startsWith('/goalie')) {
+
             if (!user) {
                 return NextResponse.redirect(new URL('/login', request.url))
             }
         }
-        */
+
     } catch (e) {
         console.error("Middleware Error:", e);
     }

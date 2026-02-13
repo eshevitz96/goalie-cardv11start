@@ -1,7 +1,8 @@
 "use client";
 
 import { AiCoachRecommendation } from "@/components/AiCoachRecommendation";
-import { AlertCircle, User, Shield, AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertCircle, User, AlertTriangle, ArrowRight } from "lucide-react";
+import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import Link from 'next/link';
 
 export default function StressTestPage() {
@@ -62,7 +63,7 @@ export default function StressTestPage() {
                         {/* Input Column */}
                         <div className="lg:col-span-4 space-y-4">
                             <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-widest text-xs">
-                                <Shield size={14} />
+                                <GoalieGuardLogo size={14} />
                                 {scenario.title}
                             </div>
 
