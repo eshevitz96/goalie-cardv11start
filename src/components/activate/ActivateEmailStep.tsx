@@ -31,11 +31,16 @@ export function ActivateEmailStep({ email, setEmail, onNext, onError }: Activate
             // 1. Check Status via Server Action
             const status = await checkUserStatus(email);
 
+            if (status.rosterStatus === 'error') {
+                setLocalError(status.error || "Connection error. Please try again.");
+                return;
+            }
+
             // 2. Pass result to parent controller
             onNext(status);
         } catch (err: any) {
             console.error("Email Step Error:", err);
-            setLocalError("Connection error. Please try again.");
+            setLocalError(err.message || "Connection error. Please try again.");
             onError(err.message);
         } finally {
             setIsLoading(false);

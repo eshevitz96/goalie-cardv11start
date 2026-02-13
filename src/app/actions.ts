@@ -154,27 +154,47 @@ export async function getReflections(rosterId: string) {
 export async function checkUserStatus(email: string) {
     if (!email) return { exists: false, rosterStatus: 'not_found' };
 
+    // Debug: Check if env vars are present on the server
+    const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const hasKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!hasUrl || !hasKey) {
+        console.error("[ACTION] checkUserStatus: Missing Supabase Env Vars", { hasUrl, hasKey });
+        return {
+            exists: false,
+            rosterStatus: 'error',
+            error: `Configuration Error: ${!hasUrl ? 'URL ' : ''}${!hasKey ? 'Key ' : ''}Missing`
+        };
+    }
+
     try {
         const emailLower = email.toLowerCase().trim();
 
         // 1. Check if Auth User / Profile exists
-        // We check 'profiles' table which should mirror auth users
-        const { data: profile } = await supabaseAdmin
+        const { data: profile, error: profileError } = await supabaseAdmin
             .from('profiles')
             .select('id, role')
             .eq('email', emailLower)
             .single();
 
+        if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is 'no rows returned'
+            throw new Error(`Profile Check Failed: ${profileError.message}`);
+        }
+
         if (profile) {
             return { exists: true, role: profile.role, rosterStatus: 'linked' };
         }
 
-        // 2. If no profile, check Roster Uploads (for activation)
-        const { data: roster } = await supabaseAdmin
+        // 2. If no profile, check Roster Uploads
+        const { data: roster, error: rosterError } = await supabaseAdmin
             .from('roster_uploads')
             .select('id, is_claimed')
             .ilike('email', emailLower)
             .maybeSingle();
+
+        if (rosterError) {
+            throw new Error(`Roster Check Failed: ${rosterError.message}`);
+        }
 
         if (roster) {
             return {
@@ -186,9 +206,13 @@ export async function checkUserStatus(email: string) {
 
         return { exists: false, rosterStatus: 'not_found' };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Check User Status Error:", error);
-        return { exists: false, rosterStatus: 'error' };
+        return {
+            exists: false,
+            rosterStatus: 'error',
+            error: error.message || "Unknown Action Error"
+        };
     }
 }
 
