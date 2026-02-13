@@ -3,19 +3,23 @@
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerSupabase } from "@/utils/supabase/server";
 
-// Initialize Admin Client to bypass RLS for Soft Sessions
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Helper to get admin client with safety checks
+function getSupabaseAdmin() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!url || !key) {
+        throw new Error(`Supabase Admin Configuration Missing: ${!url ? 'URL ' : ''}${!key ? 'KEY ' : ''}`);
+    }
+
+    return createClient(url, key);
+}
 
 export async function submitReflection(rosterId: string, entryData: any) {
     if (!rosterId) return { success: false, error: "Missing Roster ID" };
 
     try {
-        // console.log(`[ACTION] submitReflection called for roster: ${rosterId}`);
-        // console.log(`[ACTION] Using KEY starts with: ${process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 10)}`);
-
+        const supabaseAdmin = getSupabaseAdmin();
         // 1. Validate Roster ID Existence (Security Check)
         const { data: roster, error: rosterError } = await supabaseAdmin
             .from('roster_uploads')
@@ -98,6 +102,7 @@ export async function registerForEvent(rosterId: string, eventId: string) {
         // If not, we might need to store 'roster_id' in registrations (if schema supports).
 
         // Fetch roster to check linkage
+        const supabaseAdmin = getSupabaseAdmin();
         const { data: roster } = await supabaseAdmin
             .from('roster_uploads')
             .select('id, linked_user_id')
@@ -135,6 +140,7 @@ export async function getReflections(rosterId: string) {
     if (!rosterId) return { success: false, error: "Missing Roster ID" };
 
     try {
+        const supabaseAdmin = getSupabaseAdmin();
         const { data, error } = await supabaseAdmin
             .from('reflections')
             .select('*')
@@ -168,6 +174,7 @@ export async function checkUserStatus(email: string) {
     }
 
     try {
+        const supabaseAdmin = getSupabaseAdmin();
         const emailLower = email.toLowerCase().trim();
 
         // 1. Check if Auth User / Profile exists
@@ -230,6 +237,7 @@ export async function deleteAccount() {
 
         const userId = user.id;
 
+        const supabaseAdmin = getSupabaseAdmin();
         // 1. Unlink Roster Spot (Make it claimable again)
         // We find the roster linked to this user
         const { data: roster } = await supabaseAdmin
@@ -274,6 +282,7 @@ export async function requestRole(requestedRole: string) {
 
         if (!user) return { success: false, error: "Not authenticated" };
 
+        const supabaseAdmin = getSupabaseAdmin();
         const { error } = await supabaseAdmin
             .from('profiles')
             .update({ role: requestedRole })
