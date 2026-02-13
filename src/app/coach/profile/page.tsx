@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Cloud, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Cloud, Loader2, Shield } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useTransition } from "react";
 import { supabase } from "@/utils/supabase/client";
@@ -165,6 +165,25 @@ export default function CoachProfile() {
                             >
                                 <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${syncEnabled ? 'right-1' : 'left-1'}`} />
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Security Settings */}
+                    <div className="border-t border-zinc-800 pt-8">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <Shield className="text-emerald-500" size={20} />
+                            Security
+                        </h3>
+                        <div className="flex items-center justify-between p-4 bg-zinc-950/50 border border-zinc-800 rounded-xl">
+                            <div>
+                                <div className="font-bold text-sm text-zinc-200">Password</div>
+                                <div className="text-xs text-zinc-500">Update your account credentials</div>
+                            </div>
+                            <Link href="/update-password">
+                                <button className="px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-sm hover:bg-zinc-700 transition-colors">
+                                    Change
+                                </button>
+                            </Link>
                         </div>
                     </div>
 

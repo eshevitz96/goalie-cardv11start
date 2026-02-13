@@ -336,6 +336,26 @@ export default function ParentProfile() {
                             <ThemeToggle />
                         </div>
                     </div>
+
+                    {/* Security Settings */}
+                    <div className="bg-card border border-border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm mt-6">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <Shield size={18} />
+                            <span className="text-xs font-bold uppercase tracking-wider">Security</span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                                <h3 className="font-bold text-foreground">Password</h3>
+                                <p className="text-sm text-muted-foreground">Update your account credentials</p>
+                            </div>
+                            <Link href="/update-password">
+                                <button className="px-4 py-2 bg-secondary border border-border rounded-xl font-bold text-sm hover:bg-secondary/80 transition-colors">
+                                    Change
+                                </button>
+                            </Link>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>

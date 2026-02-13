@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, User, ChevronRight, HelpCircle, Edit2, Save, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, User, ChevronRight, HelpCircle, Edit2, Save, Loader2, Settings, Shield } from "lucide-react";
 import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -140,6 +140,30 @@ export function ProfileDashboard({
                             <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
                         </div>
                         <ThemeToggle />
+                    </div>
+                </motion.div>
+
+                {/* Security */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="bg-card border border-border rounded-3xl overflow-hidden backdrop-blur-md p-6"
+                >
+                    <div className="flex items-center gap-2 mb-4 text-muted-foreground">
+                        <Shield size={18} />
+                        <span className="text-xs font-bold uppercase tracking-wider">Security</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                            <h3 className="font-bold text-foreground">Password</h3>
+                            <p className="text-sm text-muted-foreground">Update your account credentials</p>
+                        </div>
+                        <Link href="/update-password">
+                            <Button variant="outline" size="sm" className="font-bold">
+                                Change
+                            </Button>
+                        </Link>
                     </div>
                 </motion.div>
 

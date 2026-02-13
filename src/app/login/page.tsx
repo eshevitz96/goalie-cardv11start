@@ -79,6 +79,25 @@ export default function LoginPage() {
         }
     };
 
+    const handleForgotPassword = async () => {
+        if (!email) {
+            setError("Please enter your email address first.");
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
+            });
+            if (resetError) throw resetError;
+            setError("check_email:Password reset link sent to your email.");
+        } catch (err: any) {
+            setError(err.message || "Failed to send reset email.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
             {/* Background Effects */}
@@ -102,8 +121,8 @@ export default function LoginPage() {
                     className="space-y-6"
                 >
                     {error && (
-                        <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
-                            <AlertCircle size={14} /> {error}
+                        <div className={`${error.startsWith('check_email:') ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 'text-red-500 bg-red-500/10 border-red-500/20'} text-sm flex items-center gap-2 p-3 rounded-lg border`}>
+                            <AlertCircle size={14} /> {error.startsWith('check_email:') ? error.replace('check_email:', '') : error}
                         </div>
                     )}
 
@@ -126,7 +145,16 @@ export default function LoginPage() {
 
                         {/* Password Field */}
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Password</label>
+                            <div className="flex justify-between items-center px-1">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Password</label>
+                                <button
+                                    type="button"
+                                    onClick={handleForgotPassword}
+                                    className="text-[10px] font-black uppercase tracking-tighter text-primary hover:text-primary/80 transition-colors"
+                                >
+                                    Forgot Password?
+                                </button>
+                            </div>
                             <div className="relative">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                                 <input
@@ -155,6 +183,18 @@ export default function LoginPage() {
                                 </>
                             )}
                         </button>
+
+                        <div className="pt-4 border-t border-border/50 flex flex-col items-center gap-4">
+                            <p className="text-xs text-muted-foreground font-medium">New to Goalie Card?</p>
+                            <button
+                                type="button"
+                                onClick={() => router.push('/activate')}
+                                className="w-full bg-secondary hover:bg-secondary/80 text-foreground font-bold py-3 rounded-xl border border-border transition-all flex items-center justify-center gap-2"
+                            >
+                                Activate Your Card
+                                <ArrowRight size={16} className="text-primary" />
+                            </button>
+                        </div>
                     </form>
                 </motion.div>
             </div>
