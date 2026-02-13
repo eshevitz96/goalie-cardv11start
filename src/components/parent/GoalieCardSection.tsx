@@ -1,3 +1,5 @@
+"use client";
+
 import { motion } from "framer-motion";
 import { GoalieCard } from "@/components/GoalieCard";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";

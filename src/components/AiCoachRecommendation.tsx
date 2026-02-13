@@ -1,3 +1,5 @@
+"use client";
+
 import { motion } from "framer-motion";
 import { Brain, Play, CheckCircle, AlertTriangle, Lightbulb, Clock, ThumbsUp, ThumbsDown, Sparkles, Zap, ChevronRight, Activity, Target, X, Check } from "lucide-react";
 import { useState, useEffect } from "react";
