@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 // KEY VARIANT C
-const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiZXhwIjoyMDg1NTM1NTcwLCJpYXQiOjE3NzAxNzU1NzB9.qRcx2cs13Z2Ua9yXBHnEnN9mH2xZ775CRGVwEw9aSiw';
+const key = 'process.env.SUPABASE_SERVICE_ROLE_KEY';
 
 console.log("URL:", url);
 console.log("Using Key:", key.substring(0, 20) + "...");
