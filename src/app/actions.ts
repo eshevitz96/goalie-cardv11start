@@ -40,10 +40,13 @@ export async function submitReflection(rosterId: string, entryData: any) {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                     resolvedAuthorId = user.id;
-                    // Backfill the Roster Link
+                    // Backfill the Roster Link using ADMIN privileges
                     await supabaseAdmin
                         .from('roster_uploads')
-                        .update({ linked_user_id: user.id })
+                        .update({
+                            linked_user_id: user.id,
+                            is_claimed: true
+                        })
                         .eq('id', rosterId);
                     // console.log(`[ACTION] Auto-linked Roster ${rosterId} to User ${user.id}`);
                 }
@@ -54,10 +57,15 @@ export async function submitReflection(rosterId: string, entryData: any) {
 
         // 2. Prepare Insert Data
         // If linked_user_id exists (or resolved), use it as author_id
+        // CRITICAL CHECK: If we still don't have a user ID, we cannot insert.
+        if (!resolvedAuthorId) {
+            return { success: false, error: "Session Sync Error: Please refresh the page or sign out/in to re-link your account." };
+        }
+
         const insertPayload = {
             roster_id: rosterId,
-            goalie_id: resolvedAuthorId || null, // Ensure goalie_id is set for FK constraint
-            author_id: resolvedAuthorId || null,
+            goalie_id: resolvedAuthorId, // Guaranteed to be string now
+            author_id: resolvedAuthorId,
             author_role: entryData.author_role || 'goalie',
             title: entryData.title,
             content: entryData.content,
