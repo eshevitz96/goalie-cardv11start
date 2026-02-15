@@ -13,13 +13,14 @@ import { ActivateCreateStep } from "@/components/activate/ActivateCreateStep";
 import { ActivateReviewStep } from "@/components/activate/ActivateReviewStep";
 import { ActivateBaselineStep } from "@/components/activate/ActivateBaselineStep";
 import { ActivateTermsStep } from "@/components/activate/ActivateTermsStep";
+import { ActivatePasswordStep } from "@/components/activate/ActivatePasswordStep";
 
 function ActivateController() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
     // State
-    const [step, setStep] = useState<'email' | 'lookup_result' | 'identity' | 'create' | 'review' | 'baseline' | 'terms' | 'success'>('email');
+    const [step, setStep] = useState<'email' | 'lookup_result' | 'identity' | 'create' | 'review' | 'baseline' | 'terms' | 'password' | 'success'>('email');
     const [email, setEmail] = useState(searchParams.get('email') || "");
     const [rosterData, setRosterData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +38,7 @@ function ActivateController() {
         { id: 3, question: "What is your biggest frustration currently?", answer: "", mood: "neutral" },
     ]);
 
+    const [password, setPassword] = useState("");
     const [termsAccepted, setTermsAccepted] = useState(false);
 
     // --- Handlers ---
@@ -110,52 +112,37 @@ function ActivateController() {
     };
 
     const handleBaselineSubmit = async () => {
-        // We'll save these at the end or now? 
-        // Logic in original was save to 'reflections' but user might not exist yet if no auth.
-        // Actually original flow assumed we are setting up... wait.
-        // The original flow had 'activateUserCard' creating the user? No, 'activateUserCard' just toggled a flag and invited?
-        // Let's defer saving robustly until we have an Auth ID in the final step or use the new 'actions.ts'.
-        // For now, move to Terms.
         setStep('terms');
     };
 
-    const handleFinalActivation = async () => {
+    const handleTermsNext = () => {
         if (!termsAccepted) return;
+        setStep('password');
+    }
+
+    const handleFinalActivation = async () => {
+        if (!password) return;
         setIsLoading(true);
         setError(null);
 
         try {
-            // 1. Activate Card (Server Action)
-            const { activateUserCard } = await import('./actions');
-            const result = await activateUserCard(rosterData.id, '0000', { ...rosterData, ...formData }, baselineAnswers);
+            // 1. Activate ALL-IN-ONE (Server Action)
+            const { completeActivationWithPassword } = await import('./actions');
+
+            const result = await completeActivationWithPassword(
+                email,
+                password,
+                rosterData.id,
+                rosterData,
+                formData, // Includes updated name/phone etc
+                baselineAnswers
+            );
 
             if (!result.success) throw new Error(result.error);
 
-            // 2. Provision Supabase Auth user + profile + link roster
-            const { provisionSelfServiceUser } = await import('./actions');
-            const provision = await provisionSelfServiceUser(
-                email,
-                rosterData.id,
-                formData.goalieName || rosterData?.goalie_name
-            );
-
-            if (!provision.success) {
-                console.warn('Provisioning warning:', provision.error);
-                // Non-blocking: roster is saved, user can still be provisioned later
-            }
-
-            // 3. Send magic link so the goalie can log in
-            const { error: otpError } = await supabase.auth.signInWithOtp({
-                email,
-                options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
-            });
-
-            if (otpError) {
-                console.warn('OTP send warning:', otpError.message);
-            }
-
-            // 4. Show success screen
-            setStep('success');
+            // 2. Redirect to Dashboard
+            // We use window.location to ensure full refresh and middleware check
+            window.location.href = '/dashboard';
 
         } catch (err: any) {
             setError(err.message);
@@ -237,9 +224,19 @@ function ActivateController() {
                     <ActivateTermsStep
                         termsAccepted={termsAccepted}
                         setTermsAccepted={setTermsAccepted}
-                        onSubmit={handleFinalActivation}
+                        onSubmit={handleTermsNext}
                         error={error}
+                        isLoading={false}
+                    />
+                )}
+
+                {step === 'password' && (
+                    <ActivatePasswordStep
+                        password={password}
+                        setPassword={setPassword}
+                        onSubmit={handleFinalActivation}
                         isLoading={isLoading}
+                        error={error}
                     />
                 )}
 
@@ -250,20 +247,11 @@ function ActivateController() {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
                         </div>
-                        <h2 className="text-2xl font-black text-foreground mb-3">Check Your Email</h2>
-                        <p className="text-muted-foreground text-sm mb-2">
-                            We sent a magic link to
+                        <h2 className="text-2xl font-black text-foreground mb-3">All Set!</h2>
+                        <p className="text-muted-foreground text-sm mb-6">
+                            You are now being redirected to your dashboard...
                         </p>
-                        <p className="text-foreground font-bold text-lg mb-6">{email}</p>
-                        <p className="text-muted-foreground text-sm mb-8">
-                            Click the link in your email to sign in and view your Goalie Card.
-                        </p>
-                        <button
-                            onClick={() => router.push('/login')}
-                            className="text-sm text-primary hover:underline"
-                        >
-                            Or sign in manually →
-                        </button>
+                        <Loader2 className="animate-spin text-primary mx-auto" size={24} />
                     </div>
                 )}
             </div>

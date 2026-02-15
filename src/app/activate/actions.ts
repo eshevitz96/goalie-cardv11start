@@ -148,3 +148,135 @@ export async function provisionSelfServiceUser(email: string, rosterId: string, 
         return { success: false, error: err.message };
     }
 }
+
+/**
+ * Completes activation by creating/updating the user with a password
+ * and signing them in immediately.
+ */
+export async function completeActivationWithPassword(
+    email: string,
+    password: string,
+    rosterId: string,
+    rosterData: any,
+    formData: any,
+    baselineAnswers?: any[]
+) {
+    if (!email || !password || !rosterId) {
+        return { success: false, error: 'Missing required fields' };
+    }
+
+    const emailLower = email.toLowerCase().trim();
+    const supabase = createServerSupabase();
+
+    try {
+        // 1. Activate the Card Data (Roster & Reflections)
+        // We do this first to ensure data is ready.
+        // We'll pass a placeholder PIN or the one from formData if we want to keep it.
+        // For password flow, PIN might be redundant but let's keep it '0000' or derived.
+        // Actually, let's just use the activateUserCard logic here or call it.
+        // But activateUserCard needs a userId which we might not have yet.
+        // Let's create the ALL-IN-ONE flow here.
+
+        // A. Create/Update Auth User with Password
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUser = users?.find(u => u.email?.toLowerCase() === emailLower);
+
+        let authUserId: string;
+
+        if (existingUser) {
+            // Update existing user with new password
+            const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+                existingUser.id,
+                { password: password, email_confirm: true }
+            );
+
+            if (updateError) throw new Error(`Failed to set password: ${updateError.message}`);
+            authUserId = existingUser.id;
+        } else {
+            // Create new user with password
+            const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                email: emailLower,
+                password: password,
+                email_confirm: true,
+                user_metadata: {
+                    activation_date: new Date().toISOString()
+                }
+            });
+
+            if (createError) throw new Error(`Failed to create account: ${createError.message}`);
+            authUserId = newUser.user.id;
+        }
+
+        // B. Update Roster & Link
+        const rawUpdate = {
+            ...rosterData.raw_data,
+            setup_complete: true,
+            linked_user_id: authUserId,
+            activation_date: new Date().toISOString()
+            // We can drop access_pin if we rely on auth, or keep it as backup.
+        };
+
+        const { error: rosterError } = await supabaseAdmin
+            .from('roster_uploads')
+            .update({
+                is_claimed: true,
+                raw_data: rawUpdate,
+                linked_user_id: authUserId,
+                goalie_name: formData.goalieName, // Ensure these are sync'd
+                parent_name: formData.parentName,
+                parent_phone: formData.phone,
+                grad_year: parseInt(formData.gradYear) || 0,
+                team: formData.team
+            })
+            .eq('id', rosterId);
+
+        if (rosterError) throw new Error(`Roster update failed: ${rosterError.message}`);
+
+        // C. Create Profile
+        await supabaseAdmin.from('profiles').upsert({
+            id: authUserId,
+            email: emailLower,
+            role: 'goalie',
+            goalie_name: formData.goalieName,
+            first_name: formData.parentName?.split(' ')[0], // Or goalie name split?
+            // Actually usually profile.first_name is for the PERSON logging in.
+            // If it's a parent managing, it's parent name.
+            // Let's use Goalie Name for the profile for now as that's who "This User" IS contextually.
+            // Wait, rosterData.goalie_name is the player.
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+
+        // D. Save Baseline (if provided) using Admin to bypass RLS if context implies
+        // (Since user isn't logged in yet, normal insert would fail RLS)
+        if (baselineAnswers && baselineAnswers.length > 0) {
+            const content = baselineAnswers.map(a => `Q: ${a.question}\nA: ${a.answer} (Mood: ${a.mood})`).join('\n\n');
+            await supabaseAdmin.from('reflections').insert({
+                roster_id: rosterId,
+                author_id: authUserId,
+                author_role: 'goalie',
+                activity_type: 'baseline',
+                title: 'Initial Baseline Assessment',
+                content: content,
+                mood: baselineAnswers[0]?.mood || 'neutral',
+                created_at: new Date().toISOString()
+            });
+        }
+
+        // E. Sign In (Sets Cookies)
+        // Now that the user exists and has a password, we sign them in!
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: emailLower,
+            password: password
+        });
+
+        if (signInError) {
+            throw new Error(`Activation successful, but auto-login failed: ${signInError.message}`);
+        }
+
+        return { success: true };
+
+    } catch (error: any) {
+        console.error("Complete Activation Error:", error);
+        return { success: false, error: error.message };
+    }
+}

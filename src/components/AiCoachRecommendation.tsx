@@ -10,14 +10,15 @@ import { useBaseline } from "@/hooks/useBaseline";
 import { useAiContext } from "@/hooks/useAiContext";
 import { LiveModeView } from "./goalie/LiveModeView";
 import { ActiveDrillTimer } from "./goalie/ActiveDrillTimer";
-import { DrillDetailModal } from "./goalie/DrillDetailModal";
+
 
 interface PerformanceRecommendation {
     focus: string;
     reason: string;
     drill: {
         name: string; duration: string;
-        type: 'physical' | 'mental' | 'video'
+        type: 'physical' | 'mental' | 'video';
+        steps?: string[];
     };
     videoWait: number; // minutes
 }
@@ -68,7 +69,7 @@ export function AiCoachRecommendation({
     // D. Action State (Moved Up)
     const [activeMode, setActiveMode] = useState(false);
 
-    const [showDrillModal, setShowDrillModal] = useState(false);
+    const [showProtocol, setShowProtocol] = useState(false);
 
     // LIVE GAME MODE
     if (isLive) {
@@ -81,7 +82,7 @@ export function AiCoachRecommendation({
             setActiveMode(true);
         } else {
             // Show details modal for physical/video drills
-            setShowDrillModal(true);
+            setShowProtocol(!showProtocol);
         }
     };
 
@@ -93,7 +94,7 @@ export function AiCoachRecommendation({
             const element = document.getElementById('training-journal');
             if (element) element.scrollIntoView({ behavior: 'smooth' });
         }
-        setShowDrillModal(false);
+        setShowProtocol(false);
     }
 
     if (loading) {
@@ -132,10 +133,10 @@ export function AiCoachRecommendation({
             </div>
 
             {/* Action Block - Minimal & Bold */}
-            <div className="group relative overflow-hidden rounded-3xl bg-card border border-border p-1 transition-all hover:shadow-2xl">
+            <div className="group relative overflow-hidden rounded-3xl bg-card border border-border transition-all hover:shadow-2xl">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                <div className="relative bg-background/50 rounded-[20px] p-6 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
+                <div className="relative bg-background/50 p-6 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
 
                     {/* Icon & Focus */}
                     <div className="flex items-center gap-5 w-full md:w-auto">
@@ -160,19 +161,47 @@ export function AiCoachRecommendation({
                         onClick={handleActionClick}
                         className="w-full md:w-auto px-8 py-4 bg-foreground text-background font-bold rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 h-auto"
                     >
-                        {rec?.drill.type === 'mental' ? 'Start Focus' : 'View Protocol'} <ChevronRight size={18} />
+                        {rec?.drill.type === 'mental' ? 'Start Focus' : (showProtocol ? 'Hide Protocol' : 'View Protocol')}
+                        <ChevronRight size={18} className={`transition-transform duration-300 ${showProtocol ? 'rotate-90' : ''}`} />
                     </Button>
                 </div>
-            </div>
 
-            {/* Modal for Physical Drills */}
-            {showDrillModal && rec && (
-                <DrillDetailModal
-                    rec={rec}
-                    onClose={() => setShowDrillModal(false)}
-                    onComplete={handleLogAndClose}
-                />
-            )}
+                {/* Inline Protocol Expansion */}
+                <motion.div
+                    initial={false}
+                    animate={{ height: showProtocol ? 'auto' : 0, opacity: showProtocol ? 1 : 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden bg-muted/30 border-t border-border/50"
+                >
+                    <div className="p-6 pt-2">
+                        <div className="bg-card rounded-xl p-6 border border-border/50 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                    <Activity size={16} /> Protocol Steps
+                                </h4>
+                                <Button size="sm" onClick={handleLogAndClose} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                                    <Check size={16} className="mr-2" /> Mark Complete
+                                </Button>
+                            </div>
+
+                            <ul className="space-y-3">
+                                {rec?.drill.steps?.map((step: string, i: number) => (
+                                    <li key={i} className="flex gap-3 text-base text-foreground bg-background p-3 rounded-lg border border-border/40">
+                                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center mt-0.5">
+                                            {i + 1}
+                                        </span>
+                                        <span className="leading-relaxed">{step}</span>
+                                    </li>
+                                )) || (
+                                        <li className="text-sm text-muted-foreground italic p-4 text-center">
+                                            Follow coach instructions for this drill.
+                                        </li>
+                                    )}
+                            </ul>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
 
             {/* Subtle Feedback */}
             <div className="mt-4 flex justify-between items-center px-2">
