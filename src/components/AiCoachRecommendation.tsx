@@ -132,49 +132,58 @@ export function AiCoachRecommendation({
                 </p>
             </div>
 
-            {/* Action Block - Minimal & Bold */}
-            <div className="group relative overflow-hidden rounded-3xl bg-card border border-border transition-all hover:shadow-2xl">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            {/* Action Block - Minimal & Bold - Wrapped for Absolute Positioning Context */}
+            <div className="relative z-10">
+                <div className="group relative overflow-hidden rounded-3xl bg-card border border-border transition-all hover:shadow-2xl z-20">
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                <div className="relative bg-background/50 p-6 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
+                    <div className="relative bg-background/50 p-6 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
 
-                    {/* Icon & Focus */}
-                    <div className="flex items-center gap-5 w-full md:w-auto">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${rec?.drill.type === 'mental' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
-                            {rec?.drill.type === 'mental' ? <Brain size={32} strokeWidth={1.5} /> : <Zap size={32} strokeWidth={1.5} />}
+                        {/* Icon & Focus */}
+                        <div className="flex items-center gap-5 w-full md:w-auto">
+                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${rec?.drill.type === 'mental' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
+                                {rec?.drill.type === 'mental' ? <Brain size={32} strokeWidth={1.5} /> : <Zap size={32} strokeWidth={1.5} />}
+                            </div>
+                            <div>
+                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1">
+                                    Today's Directive
+                                </span>
+                                <h3 className="text-2xl font-black text-foreground uppercase tracking-tight leading-none">
+                                    {rec?.focus}
+                                </h3>
+                                <p className="text-sm text-foreground/70 font-medium mt-1">
+                                    {rec?.drill.name} • {rec?.drill.duration}
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1">
-                                Today's Directive
-                            </span>
-                            <h3 className="text-2xl font-black text-foreground uppercase tracking-tight leading-none">
-                                {rec?.focus}
-                            </h3>
-                            <p className="text-sm text-foreground/70 font-medium mt-1">
-                                {rec?.drill.name} • {rec?.drill.duration}
-                            </p>
-                        </div>
+
+                        {/* Action Button */}
+                        <Button
+                            onClick={handleActionClick}
+                            className="w-full md:w-auto px-8 py-4 bg-foreground text-background font-bold rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 h-auto"
+                        >
+                            {rec?.drill.type === 'mental' ? 'Start Focus' : (showProtocol ? 'Hide Protocol' : 'View Protocol')}
+                            <ChevronRight size={18} className={`transition-transform duration-300 ${showProtocol ? 'rotate-90' : ''}`} />
+                        </Button>
                     </div>
-
-                    {/* Action Button */}
-                    <Button
-                        onClick={handleActionClick}
-                        className="w-full md:w-auto px-8 py-4 bg-foreground text-background font-bold rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 h-auto"
-                    >
-                        {rec?.drill.type === 'mental' ? 'Start Focus' : (showProtocol ? 'Hide Protocol' : 'View Protocol')}
-                        <ChevronRight size={18} className={`transition-transform duration-300 ${showProtocol ? 'rotate-90' : ''}`} />
-                    </Button>
                 </div>
 
-                {/* Inline Protocol Expansion */}
+                {/* Absolute Positioning Wrapper for Protocol Expansion */}
                 <motion.div
                     initial={false}
-                    animate={{ height: showProtocol ? 'auto' : 0, opacity: showProtocol ? 1 : 0 }}
+                    animate={{
+                        opacity: showProtocol ? 1 : 0,
+                        y: showProtocol ? 0 : -10,
+                        pointerEvents: showProtocol ? 'auto' : 'none'
+                    }}
                     transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="overflow-hidden bg-muted/30 border-t border-border/50"
+                    className="absolute top-full left-0 right-0 z-10 pt-2"
                 >
-                    <div className="p-6 pt-2">
-                        <div className="bg-card rounded-xl p-6 border border-border/50 shadow-sm">
+                    <div className="bg-card rounded-xl p-6 border border-border/50 shadow-2xl relative overflow-hidden">
+                        {/* Background flare for depth */}
+                        <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/5 rounded-full blur-3xl" />
+
+                        <div className="relative">
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                                     <Activity size={16} /> Protocol Steps

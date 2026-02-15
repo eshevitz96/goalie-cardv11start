@@ -233,18 +233,20 @@ export async function completeActivationWithPassword(
         if (rosterError) throw new Error(`Roster update failed: ${rosterError.message}`);
 
         // C. Create Profile
-        await supabaseAdmin.from('profiles').upsert({
+        const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
             id: authUserId,
             email: emailLower,
             role: 'goalie',
             goalie_name: formData.goalieName,
-            first_name: formData.parentName?.split(' ')[0], // Or goalie name split?
-            // Actually usually profile.first_name is for the PERSON logging in.
-            // If it's a parent managing, it's parent name.
-            // Let's use Goalie Name for the profile for now as that's who "This User" IS contextually.
-            // Wait, rosterData.goalie_name is the player.
+            // Only using fields we know exist on profiles table to avoid schema errors
+            // first_name: formData.parentName?.split(' ')[0], 
             updated_at: new Date().toISOString(),
         }, { onConflict: 'id' });
+
+        if (profileError) {
+            console.error("Critical: Profile Creation Failed", profileError);
+            throw new Error(`Failed to create user profile: ${profileError.message}`);
+        }
 
         // D. Save Baseline (if provided) using Admin to bypass RLS if context implies
         // (Since user isn't logged in yet, normal insert would fail RLS)
