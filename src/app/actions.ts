@@ -56,6 +56,7 @@ export async function submitReflection(rosterId: string, entryData: any) {
         // If linked_user_id exists (or resolved), use it as author_id
         const insertPayload = {
             roster_id: rosterId,
+            goalie_id: resolvedAuthorId || null, // Ensure goalie_id is set for FK constraint
             author_id: resolvedAuthorId || null,
             author_role: entryData.author_role || 'goalie',
             title: entryData.title,

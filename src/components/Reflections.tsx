@@ -144,14 +144,13 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             return;
         }
 
-        const { error } = await supabase.from('reflections').insert({
-            goalie_id: currentUserRole === 'goalie' ? (await supabase.auth.getUser()).data.user?.id : null,
-            roster_id: rosterId,
+        // Server Action Submission
+        const { submitReflection } = await import('@/app/actions');
+        const result = await submitReflection(rosterId, {
+            author_role: currentUserRole,
             title: newEntry.title,
             content: newEntry.content,
             mood: newEntry.mood,
-            author_role: currentUserRole,
-            author_id: (await supabase.auth.getUser()).data.user?.id,
             activity_type: newReflection.activity_type,
             skip_reason: newReflection.skip_reason,
             injury_expected_return: newReflection.injury_expected_return || null,
@@ -161,8 +160,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
         // Background Safety Check
         checkRedFlags(newReflection.content);
 
-        if (error) {
-            alert("Error saving: " + error.message);
+        if (!result.success) {
+            alert("Error saving: " + result.error);
         } else {
             setIsWriting(false);
             setNewReflection({ title: "", content: "", mood: "neutral", activity_type: null, skip_reason: null });
