@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { twMerge } from "tailwind-merge";
 
 interface GoalieCarouselProps {
     goalies: any[];
@@ -13,15 +14,16 @@ interface GoalieCarouselProps {
     isPro: boolean;
     showProgress: boolean;
     setShowProgress: (show: boolean) => void;
+    className?: string;
 }
 
 export function GoalieCarousel({
-    goalies, currentIndex, setCurrentIndex, activeGoalie, isPro, showProgress, setShowProgress
+    goalies, currentIndex, setCurrentIndex, activeGoalie, isPro, showProgress, setShowProgress, className
 }: GoalieCarouselProps) {
     if (!activeGoalie) return null;
 
     return (
-        <div className="relative group">
+        <div className={twMerge("relative group flex flex-col h-full", className)}>
             <GoalieCard
                 name={activeGoalie.name}
                 session={activeGoalie.session}
@@ -35,7 +37,7 @@ export function GoalieCarousel({
                 showProgress={showProgress}
                 isPro={isPro}
                 seasonProgress={undefined}
-                className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-[500px]"
+                className="w-full flex-1 md:aspect-auto"
             />
 
             {/* Display Controls */}

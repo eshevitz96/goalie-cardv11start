@@ -1,0 +1,51 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//GoalieCard//Roadmap//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:phase1@goaliecard.com
+DTSTAMP:20260218T190000Z
+DTSTART;VALUE=DATE:20260218
+DTEND;VALUE=DATE:20260316
+SUMMARY:GoalieCard Phase 1: Beta & Stabilization
+DESCRIPTION:Focus: Testing, Bug Fixes.\n\n- Execute BETA_TEST_QUESTIONS.md\n- Collect Feedback\n- Critical Fixes
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:phase2@goaliecard.com
+DTSTAMP:20260218T190000Z
+DTSTART;VALUE=DATE:20260316
+DTEND;VALUE=DATE:20260416
+SUMMARY:GoalieCard Phase 2: Data Migration Core
+DESCRIPTION:Focus: Move legacy data to Supabase.\n\n- Data Mapping\n- Migration Scripts\n- Validation
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:phase3@goaliecard.com
+DTSTAMP:20260218T190000Z
+DTSTART;VALUE=DATE:20260416
+DTEND;VALUE=DATE:20260516
+SUMMARY:GoalieCard Phase 3: Feature Polish & Stores
+DESCRIPTION:Focus: App Store Setup & UI/UX.\n\n- Create App Store Listings\n- Prepare Screenshots\n- Admin Dashboard Polish
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:phase4@goaliecard.com
+DTSTAMP:20260218T190000Z
+DTSTART;VALUE=DATE:20260516
+DTEND;VALUE=DATE:20260601
+SUMMARY:GoalieCard Phase 4: Store Submission & Freeze
+DESCRIPTION:Focus: STORE SUBMISSION.\n\n- Submit to Apple/Google (Needs ~1 week)\n- Code Freeze\n- Final Regression
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:launch@goaliecard.com
+DTSTAMP:20260218T190000Z
+DTSTART;VALUE=DATE:20260601
+DTEND;VALUE=DATE:20260602
+SUMMARY:🚀 GoalieCard V1.1 LAUNCH DAY
+DESCRIPTION:Public Access & Legacy System Shutdown.\n\n- DNS Switch\n- App Store Release\n- Celebration
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR

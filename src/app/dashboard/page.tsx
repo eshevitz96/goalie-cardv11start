@@ -277,13 +277,14 @@ export default function Dashboard() {
                     </div>
 
                     {/* Sidebar: Profile, Stats, Quick Actions */}
-                    <div className="md:col-span-4 flex flex-col gap-6">
+                    <div className="md:col-span-4 flex flex-col gap-6 h-full">
 
                         {/* Goalie Card Identity */}
                         <motion.div
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.1 }}
+                            className="flex-1 h-full"
                         >
                             {goalies.length > 1 ? (
                                 <GoalieCarousel
@@ -294,6 +295,7 @@ export default function Dashboard() {
                                     isPro={isPro}
                                     showProgress={showProgress}
                                     setShowProgress={setShowProgress}
+                                    className="h-full"
                                 />
                             ) : (
                                 <GoalieCard
@@ -304,6 +306,7 @@ export default function Dashboard() {
                                     gradYear={activeGoalie.gradYear}
                                     id={activeGoalie.id}
                                     isPro={isPro}
+                                    className="h-full"
                                 />
                             )}
                         </motion.div>

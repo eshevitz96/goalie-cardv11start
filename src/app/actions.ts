@@ -189,22 +189,26 @@ export async function checkUserStatus(email: string) {
         // 1. Check if Auth User / Profile exists
         const { data: profile, error: profileError } = await supabaseAdmin
             .from('profiles')
-            .select('id, role')
+            .select('*') // Get full profile
             .eq('email', emailLower)
-            .single();
+            .maybeSingle(); // Use maybeSingle to avoid error for no rows
 
-        if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is 'no rows returned'
-            throw new Error(`Profile Check Failed: ${profileError.message}`);
+        if (profileError) {
+            console.error("Profile Check Failed:", profileError);
+            // Verify if it's just 'not found' or actual error. 
+            // maybeSingle handles 'not found' gracefully by returning null data.
+            // If error persists here, it's a real DB error.
+            throw new Error("DB Error checking profile");
         }
 
         if (profile) {
-            return { exists: true, role: profile.role, rosterStatus: 'linked' };
+            return { exists: true, role: profile.role, rosterStatus: 'linked', profile };
         }
 
         // 2. If no profile, check Roster Uploads
         const { data: roster, error: rosterError } = await supabaseAdmin
             .from('roster_uploads')
-            .select('id, is_claimed')
+            .select('id, is_claimed, goalie_name')
             .ilike('email', emailLower)
             .maybeSingle();
 
@@ -216,7 +220,8 @@ export async function checkUserStatus(email: string) {
             return {
                 exists: false,
                 rosterStatus: 'found',
-                isClaimed: roster.is_claimed
+                isClaimed: roster.is_claimed,
+                goalieName: roster.goalie_name
             };
         }
 

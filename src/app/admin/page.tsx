@@ -11,12 +11,17 @@ import { ManualEntryModal } from '@/components/admin/ManualEntryModal';
 import TrainingInsights from '@/components/TrainingInsights';
 import { RosterItem } from '@/types';
 
+import { FeedbackTable } from '@/components/admin/FeedbackTable';
+import { BetaSurveyTable } from '@/components/admin/BetaSurveyTable';
+
 export default function AdminDashboard() {
     // Logic extracted to hook
     const {
         dbData,
         coaches,
         sessions,
+        feedback,
+        isLoading,
         currentUser,
         fetchRoster,
         recalculateCounts,
@@ -25,7 +30,7 @@ export default function AdminDashboard() {
     } = useAdminData();
 
     // UI State
-    const [activeTab, setActiveTab] = useState<'roster' | 'insights' | 'sessions'>('roster');
+    const [activeTab, setActiveTab] = useState<'roster' | 'insights' | 'sessions' | 'feedback' | 'survey'>('roster');
     const [showManualAdd, setShowManualAdd] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingItem, setEditingItem] = useState<RosterItem | null>(null);
@@ -57,6 +62,16 @@ export default function AdminDashboard() {
                     <SessionsTable
                         sessions={sessions}
                         setSessions={setSessions}
+                    />
+                ) : activeTab === 'feedback' ? (
+                    <FeedbackTable
+                        feedback={feedback}
+                        isLoading={isLoading}
+                    />
+                ) : activeTab === 'survey' ? (
+                    <BetaSurveyTable
+                        feedback={feedback}
+                        isLoading={isLoading}
                     />
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

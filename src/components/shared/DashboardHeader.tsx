@@ -28,9 +28,12 @@ export function DashboardHeader({
         <header className="flex justify-between items-center mb-8 md:col-span-2">
             <div className="flex flex-col">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1">Athlete Portal</span>
-                <h1 className="text-2xl md:text-3xl font-black text-foreground italic tracking-tighter">
-                    GOALIE <span className="text-primary">CARD</span>
-                </h1>
+                <div className="flex items-center gap-2">
+                    <GoalieGuardLogo className="text-primary" size={28} />
+                    <h1 className="text-2xl md:text-3xl font-black text-foreground italic tracking-tighter">
+                        GOALIE <span className="text-primary">CARD</span>
+                    </h1>
+                </div>
             </div>
             <div className="flex items-center gap-4">
                 {/* Notification Bell */}

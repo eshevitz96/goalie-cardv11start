@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 
 export default function EntryPortal() {
     const router = useRouter();
@@ -32,6 +33,9 @@ export default function EntryPortal() {
                         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }} // Apple-esque ease-out
                         className="flex flex-col items-center justify-center space-y-6"
                     >
+                        <div className="flex justify-center mb-6">
+                            <GoalieGuardLogo size={80} className="text-white" />
+                        </div>
                         <motion.h1
                             className="text-5xl md:text-7xl font-black text-white italic tracking-tighter text-center px-4 uppercase"
                             initial={{ scale: 0.9, opacity: 0 }}

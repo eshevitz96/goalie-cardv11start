@@ -58,7 +58,7 @@ export function useGoalieData() {
                 email: 'lukegrasso09@gmail.com',
                 parent_name: 'Parent Grasso',
                 session_count: 20,
-                lesson_count: 1,
+                lesson_count: 78, // Adjusted per user request: Lesson 3 of Session 20 => 78 completed
                 games_count: 5,
                 practice_count: 10,
                 assigned_coach_id: DEMO_COACH_ID,

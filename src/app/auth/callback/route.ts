@@ -4,8 +4,13 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get("code");
-    // Default to /dashboard for goalies
-    const next = searchParams.get("next") ?? "/dashboard";
+    const type = searchParams.get("type");
+
+    // Default to /dashboard, but if recovery flow, go to update-password
+    let next = searchParams.get("next") ?? "/dashboard";
+    if (type === "recovery" && next === "/dashboard") {
+        next = "/update-password";
+    }
 
     console.log(`[Auth Callback] Origin: ${origin}, Next: ${next}, Has Code: ${!!code}`);
 

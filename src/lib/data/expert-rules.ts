@@ -99,7 +99,7 @@ export const EXPERT_RULES: ExpertRule[] = [
         id: 'lax_bounce_shots',
         keywords: ['bounce', 'low shot', 'five hole', 'between legs'],
         moods: ['neutral', 'frustrated'],
-        sports: ['Lacrosse'],
+        // sports: ['Lacrosse'], // REMOVED
         priority: 85,
         recommendation: {
             focus: "Low Save Mechanics",
@@ -123,7 +123,7 @@ export const EXPERT_RULES: ExpertRule[] = [
         id: 'hky_five_hole',
         keywords: ['five hole', 'between legs', 'squeaked through', 'under pads'],
         moods: ['neutral', 'frustrated'],
-        sports: ['Hockey'],
+        // sports: ['Hockey'], // REMOVED
         priority: 85,
         recommendation: {
             focus: "Butterfly Seal",

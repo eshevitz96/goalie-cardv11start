@@ -3,17 +3,23 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { Loader2, Mail, ArrowRight, AlertCircle, Lock } from "lucide-react";
+import { Loader2, Mail, ArrowRight, AlertCircle, Lock, CheckCircle2 } from "lucide-react";
 import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { checkUserStatus } from "@/app/actions";
 
 export default function LoginPage() {
     const router = useRouter();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+
+    // UI State
+    const [step, setStep] = useState<'email' | 'password'>('email');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Data State
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [userStatus, setUserStatus] = useState<any>(null);
 
     // Initial Session Check
     useEffect(() => {
@@ -33,66 +39,91 @@ export default function LoginPage() {
         checkSession();
     }, [router]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleEmailSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email) {
+            setError("Please enter your email address.");
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            // Check status
+            const status = await checkUserStatus(email);
+            // console.log("User Status:", status);
+
+            if (status.exists) {
+                // User exists -> Show Password
+                setUserStatus(status);
+                setStep('password');
+            } else if (status.rosterStatus === 'found') {
+                // Roster found but no user -> Redirect to Activate
+                router.push(`/activate?email=${encodeURIComponent(email)}`);
+                return;
+            } else {
+                // Unknown User -> For now, maybe just show password (they might try to login and fail)
+                // OR we could redirect to a "Not Found" state. 
+                // Let's conform to standard security practices: don't reveal too much, 
+                // BUT for this specific UX request, we want to guide them.
+                // If specific request is "Welcome Page -> Password OR New Account", 
+                // let's show password field but maybe with a hint?
+                // Actually, if they don't exist, they can't login. 
+                // Let's redirect to Activate to let them try to find themselves or Contact Support.
+                router.push(`/activate?email=${encodeURIComponent(email)}`);
+            }
+
+        } catch (err: any) {
+            setError("Unable to verify email. Please try again.");
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleLoginSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError(null);
 
         try {
-            // 1. Basic Validation
-            if (!email || !password) {
-                throw new Error("Please enter both email and password.");
-            }
-
-            // 2. Perform Login
             const { data, error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password
             });
 
-            if (authError) {
-                // If login fails, check if the user even exists or needs activation
-                const status = await checkUserStatus(email);
-                if (!status.exists && status.rosterStatus === 'found') {
-                    // Redirect to activation if they are on the roster but not yet a user
-                    router.push(`/activate?email=${encodeURIComponent(email)}`);
-                    return;
-                }
-                throw authError;
-            }
+            if (authError) throw authError;
 
-            // 3. Check Role and Redirect
+            // Redirect based on role
             if (data.user) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', data.user.id)
-                    .single();
-
-                if (profile?.role === 'admin') router.push('/admin');
+                const role = userStatus?.profile?.role || 'goalie'; // Fallback if status lost
+                if (role === 'admin') router.push('/admin');
                 else router.push('/dashboard');
             }
+
         } catch (err: any) {
-            setError(err.message || "Login failed");
+            setError("Invalid password. Please try again.");
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleForgotPassword = async () => {
-        if (!email) {
-            setError("Please enter your email address first.");
-            return;
-        }
+        if (!email) return;
         setIsLoading(true);
+        setError(null);
+
         try {
-            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/update-password')}&type=recovery`,
             });
-            if (resetError) throw resetError;
-            setError("check_email:Password reset link sent to your email.");
+
+            if (error) throw error;
+            alert("Password reset email sent! Check your inbox.");
+            setStep('email'); // Go back to start
         } catch (err: any) {
-            setError(err.message || "Failed to send reset email.");
+            setError(err.message);
         } finally {
             setIsLoading(false);
         }
@@ -105,98 +136,133 @@ export default function LoginPage() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
             <div className="w-full max-w-md relative z-10">
-                <div className="text-center mb-8">
+                <div className="text-center mb-10">
                     <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/20">
                         <GoalieGuardLogo size={36} className="text-primary" />
                     </div>
-                    <h1 className="text-3xl font-black italic tracking-tighter text-foreground mb-2">
+                    <h1 className="text-4xl font-black italic tracking-tighter text-foreground mb-2">
                         GOALIE <span className="text-primary">CARD</span>
                     </h1>
-                    <p className="text-muted-foreground text-sm">Sign in with your email and password.</p>
+                    <p className="text-muted-foreground font-medium">The standard for goalie development.</p>
                 </div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-6"
-                >
-                    {error && (
-                        <div className={`${error.startsWith('check_email:') ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 'text-red-500 bg-red-500/10 border-red-500/20'} text-sm flex items-center gap-2 p-3 rounded-lg border`}>
-                            <AlertCircle size={14} /> {error.startsWith('check_email:') ? error.replace('check_email:', '') : error}
-                        </div>
-                    )}
+                <AnimatePresence mode="wait">
+                    {step === 'email' ? (
+                        <motion.div
+                            key="email-step"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            className="space-y-6"
+                        >
+                            <form onSubmit={handleEmailSubmit} className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Welcome</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                                        <input
+                                            type="email"
+                                            required
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50 text-lg"
+                                            placeholder="Enter your email..."
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Email Field */}
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Email Address</label>
-                            <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                                <input
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
-                                    placeholder="goalie@example.com"
-                                />
-                            </div>
-                        </div>
+                                {error && (
+                                    <div className="text-red-500 bg-red-500/10 border border-red-500/20 text-sm flex items-center gap-2 p-3 rounded-lg">
+                                        <AlertCircle size={14} /> {error}
+                                    </div>
+                                )}
 
-                        {/* Password Field */}
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center px-1">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Password</label>
                                 <button
-                                    type="button"
-                                    onClick={handleForgotPassword}
-                                    className="text-[10px] font-black uppercase tracking-tighter text-primary hover:text-primary/80 transition-colors"
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/5"
                                 >
-                                    Forgot Password?
+                                    {isLoading ? <Loader2 className="animate-spin" /> : (
+                                        <>
+                                            Continue <ArrowRight size={18} />
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="password-step"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="space-y-6"
+                        >
+                            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl border border-border/50 mb-6">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                                    {email[0].toUpperCase()}
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="font-bold truncate text-sm">{userStatus?.profile?.goalie_name || 'Welcome Back'}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{email}</p>
+                                </div>
+                                <button
+                                    onClick={() => { setStep('email'); setPassword(''); }}
+                                    className="text-xs text-primary font-bold hover:underline"
+                                >
+                                    Change
                                 </button>
                             </div>
-                            <div className="relative">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                                <input
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
-                                    placeholder="••••••••"
-                                />
-                            </div>
-                        </div>
 
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 mt-4"
-                        >
-                            {isLoading ? (
-                                <Loader2 className="animate-spin" />
-                            ) : (
-                                <>
-                                    Sign In
-                                    <ArrowRight size={18} />
-                                </>
-                            )}
-                        </button>
+                            <form onSubmit={handleLoginSubmit} className="space-y-4">
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center px-1">
+                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Password</label>
+                                        <button
+                                            type="button"
+                                            onClick={handleForgotPassword}
+                                            disabled={isLoading}
+                                            className="text-[10px] font-black uppercase tracking-tighter text-primary hover:text-primary/80 disabled:opacity-50"
+                                        >
+                                            Forgot?
+                                        </button>
+                                    </div>
+                                    <div className="relative">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                                        <input
+                                            type="password"
+                                            required
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50 text-lg"
+                                            placeholder="••••••••"
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
 
-                        <div className="pt-4 border-t border-border/50 flex flex-col items-center gap-4">
-                            <p className="text-xs text-muted-foreground font-medium">New to Goalie Card?</p>
-                            <button
-                                type="button"
-                                onClick={() => router.push('/activate')}
-                                className="w-full bg-secondary hover:bg-secondary/80 text-foreground font-bold py-3 rounded-xl border border-border transition-all flex items-center justify-center gap-2"
-                            >
-                                Activate Your Card
-                                <ArrowRight size={16} className="text-primary" />
-                            </button>
-                        </div>
-                    </form>
-                </motion.div>
+                                {error && (
+                                    <div className="text-red-500 bg-red-500/10 border border-red-500/20 text-sm flex items-center gap-2 p-3 rounded-lg">
+                                        <AlertCircle size={14} /> {error}
+                                    </div>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/5"
+                                >
+                                    {isLoading ? <Loader2 className="animate-spin" /> : (
+                                        <>
+                                            Sign In <ArrowRight size={18} />
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </main>
     );

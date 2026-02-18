@@ -9,14 +9,34 @@ export function useAdminData() {
     const [isLoading, setIsLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<any>(null);
 
+    const [feedback, setFeedback] = useState<any[]>([]);
+
     useEffect(() => {
         fetchAll();
     }, []);
 
     const fetchAll = async () => {
         setIsLoading(true);
-        await Promise.all([fetchRoster(), fetchCoaches(), fetchSessions()]);
+        await Promise.all([fetchRoster(), fetchCoaches(), fetchSessions(), fetchFeedback()]);
         setIsLoading(false);
+    };
+
+    const fetchFeedback = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('reflections')
+                .select(`
+                    *,
+                    roster:roster_uploads (goalie_name, email)
+                `)
+                .eq('title', 'BETA FEEDBACK')
+                .order('created_at', { ascending: false });
+
+            if (data) setFeedback(data);
+            if (error) console.error("Feedback Fetch Error:", error);
+        } catch (e) {
+            console.error("Feedback Exception:", e);
+        }
     };
 
     const fetchCoaches = async () => {
@@ -147,10 +167,12 @@ export function useAdminData() {
         dbData,
         coaches,
         sessions,
+        feedback,
         isLoading,
         currentUser,
         fetchRoster,
         fetchSessions,
+        fetchFeedback,
         recalculateCounts,
         handleDelete,
         setSessions // exposed for optimistic updates
