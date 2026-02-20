@@ -24,12 +24,27 @@ export function DashboardHeader({
     onLogout,
     notifications = []
 }: DashboardHeaderProps) {
+    const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+    const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+
+    // Close menus when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (notificationsOpen || userMenuOpen) {
+                // simple check for demonstration; in robust apps, use a ref
+                setNotificationsOpen(false);
+                setUserMenuOpen(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [notificationsOpen, userMenuOpen]);
+
     return (
-        <header className="flex justify-between items-center mb-8 md:col-span-2">
+        <header className="flex justify-between items-center mb-8 md:col-span-2 relative">
             <div className="flex flex-col">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1">Athlete Portal</span>
                 <div className="flex items-center gap-2">
-                    <GoalieGuardLogo className="text-primary" size={28} />
                     <h1 className="text-2xl md:text-3xl font-black text-foreground italic tracking-tighter">
                         GOALIE <span className="text-primary">CARD</span>
                     </h1>
@@ -37,15 +52,23 @@ export function DashboardHeader({
             </div>
             <div className="flex items-center gap-4">
                 {/* Notification Bell */}
-                <div className="relative group z-50">
-                    <Button variant="ghost" size="sm" className="h-10 w-10 rounded-full border border-border hover:border-primary p-0 relative">
-                        <Bell size={18} className={`text-muted-foreground group-hover:text-foreground ${notifications.length > 0 ? 'text-primary' : ''}`} />
+                <div className="relative z-50">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 w-10 rounded-full border border-border hover:border-primary p-0 relative"
+                        onClick={(e) => { e.stopPropagation(); setNotificationsOpen(!notificationsOpen); setUserMenuOpen(false); }}
+                    >
+                        <Bell size={18} className={`text-muted-foreground ${notificationsOpen ? 'text-foreground' : ''} ${notifications.length > 0 ? 'text-primary' : ''}`} />
                         {notifications.length > 0 && (
                             <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-background" />
                         )}
                     </Button>
 
-                    <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-2xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right translate-y-2 group-hover:translate-y-0 max-h-96 overflow-y-auto">
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        className={`absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-2xl p-2 transition-all transform origin-top-right ${notificationsOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'} max-h-96 overflow-y-auto`}
+                    >
                         <div className="px-3 py-2 border-b border-border mb-1 flex justify-between items-center">
                             <div className="text-sm font-bold text-foreground">Notifications</div>
                             <span className="text-[10px] text-muted-foreground">{notifications.length} New</span>
@@ -71,12 +94,20 @@ export function DashboardHeader({
                 </div>
 
                 {/* User Menu */}
-                <div className="relative group z-50">
-                    <Button variant="ghost" size="sm" className="h-10 w-10 rounded-full border border-border hover:border-primary p-0">
-                        <User size={18} className="text-muted-foreground group-hover:text-foreground" />
+                <div className="relative z-50">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 w-10 rounded-full border border-border hover:border-primary p-0"
+                        onClick={(e) => { e.stopPropagation(); setUserMenuOpen(!userMenuOpen); setNotificationsOpen(false); }}
+                    >
+                        <User size={18} className={`text-muted-foreground ${userMenuOpen ? 'text-foreground' : ''}`} />
                     </Button>
 
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-2xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right translate-y-2 group-hover:translate-y-0 text-left">
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        className={`absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-2xl p-2 transition-all transform origin-top-right text-left ${userMenuOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`}
+                    >
                         <div className="px-3 py-2 border-b border-border mb-1">
                             <div className="text-sm font-bold text-foreground">My Account</div>
                             <div className="text-xs text-muted-foreground">{activeGoalieName}</div>

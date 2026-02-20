@@ -137,9 +137,6 @@ export default function LoginPage() {
 
             <div className="w-full max-w-md relative z-10">
                 <div className="text-center mb-10">
-                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/20">
-                        <GoalieGuardLogo size={36} className="text-primary" />
-                    </div>
                     <h1 className="text-4xl font-black italic tracking-tighter text-foreground mb-2">
                         GOALIE <span className="text-primary">CARD</span>
                     </h1>

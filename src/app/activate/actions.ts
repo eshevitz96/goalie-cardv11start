@@ -132,7 +132,6 @@ export async function provisionSelfServiceUser(email: string, rosterId: string, 
             email: emailLower,
             role: 'goalie',
             goalie_name: goalieName || null,
-            updated_at: new Date().toISOString(),
         }, { onConflict: 'id' });
 
         // 4. Link roster to auth user
@@ -240,7 +239,6 @@ export async function completeActivationWithPassword(
             goalie_name: formData.goalieName,
             // Only using fields we know exist on profiles table to avoid schema errors
             // first_name: formData.parentName?.split(' ')[0], 
-            updated_at: new Date().toISOString(),
         }, { onConflict: 'id' });
 
         if (profileError) {

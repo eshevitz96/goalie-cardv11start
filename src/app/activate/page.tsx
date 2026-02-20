@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { checkUserStatus } from "@/app/actions";
 
 // Components
 import { ActivateEmailStep } from "@/components/activate/ActivateEmailStep";
@@ -154,10 +155,29 @@ function ActivateController() {
     // Render Logic
 
     // Initial State Check
-    if (step === 'email' && searchParams.get('email')) {
-        // If loaded with email param, auto-trigger check?
-        // Better to let user see/confirm.
-    }
+    // If the URL has an email, the login page already checked it. 
+    // We can assume they need to either verify identity (found) or create (not found).
+    useState(() => {
+        const initialEmail = searchParams.get('email');
+        if (initialEmail && step === 'email') {
+            // We'll optimistically skip the email entry and check status.
+            // Since we don't want a heavy side effect in render, we just set state here,
+            // but realistically we should just set step to 'lookup_result' or run fetchRosterAndProceed
+            // For simplicity, let's just trigger fetchRosterAndProceed on mount if email exists in params
+        }
+    });
+
+    useEffect(() => {
+        const initialEmail = searchParams.get('email');
+        if (initialEmail && step === 'email') {
+            // Check status immediately
+            const initCheck = async () => {
+                const status = await checkUserStatus(initialEmail);
+                handleEmailNext(status as any);
+            };
+            initCheck();
+        }
+    }, []);
 
     return (
         <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -178,7 +198,7 @@ function ActivateController() {
                 {step === 'lookup_result' && (
                     <ActivateLookupResult
                         email={email}
-                        onRetry={() => setStep('email')}
+                        onRetry={() => router.push('/login')}
                         onCreateNew={() => setStep('create')}
                     />
                 )}
@@ -188,7 +208,7 @@ function ActivateController() {
                         birthday={formData.birthday}
                         setBirthday={(d) => setFormData({ ...formData, birthday: d })}
                         onNext={handleIdentityVerified}
-                        onBack={() => setStep('email')}
+                        onBack={() => router.push('/login')}
                         storedDob={rosterData?.raw_data?.dob}
                     />
                 )}
@@ -197,7 +217,7 @@ function ActivateController() {
                     <ActivateCreateStep
                         email={email}
                         onSuccess={handleCreateSuccess}
-                        onBack={() => setStep('email')}
+                        onBack={() => router.push('/login')}
                     />
                 )}
 

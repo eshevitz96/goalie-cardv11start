@@ -251,7 +251,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                     {!isWriting ? (
                         <button
                             onClick={() => setIsWriting(true)}
-                            className="bg-primary hover:bg-primary/90 text-black px-4 py-2 rounded-xl transition-colors shadow-lg shadow-primary/20 text-xs font-bold flex items-center gap-2"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-xl transition-colors shadow-lg shadow-primary/20 text-xs font-bold flex items-center gap-2"
                         >
                             <Plus size={16} /> New Entry
                         </button>

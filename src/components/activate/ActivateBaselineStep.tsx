@@ -40,25 +40,30 @@ export function ActivateBaselineStep({ answers, setAnswers, onSubmit, isLoading 
                             className="w-full bg-secondary border border-border rounded-lg p-3 text-sm focus:border-blue-500 outline-none h-20 resize-none"
                             placeholder="Type your answer here..."
                         />
-
-                        <div className="flex gap-2">
-                            {['neutral', 'good', 'bad'].map((m) => (
-                                <button
-                                    key={m}
-                                    onClick={() => handleAnswerChange(item.id, 'mood', m)}
-                                    className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-1
-                                        ${item.mood === m
-                                            ? 'bg-blue-500 text-white border-blue-500'
-                                            : 'bg-background border-border text-muted-foreground hover:bg-secondary'
-                                        }`}
-                                >
-                                    {m === 'good' && <Smile size={14} />}
-                                    {m === 'neutral' && <Meh size={14} />}
-                                    {m === 'bad' && <Frown size={14} />}
-                                    {m.charAt(0).toUpperCase() + m.slice(1)}
-                                </button>
-                            ))}
+                        <div className="flex justify-around mt-2 bg-background/50 p-2 rounded-lg border border-border/50">
+                            <button
+                                onClick={() => handleAnswerChange(item.id, 'mood', 'good')}
+                                className={`p-2 rounded-full transition-all ${item.mood === 'good' ? 'bg-emerald-500/20 text-emerald-500 scale-110 shadow-sm' : 'text-muted-foreground hover:bg-secondary'}`}
+                                title="Good"
+                            >
+                                <Smile size={24} />
+                            </button>
+                            <button
+                                onClick={() => handleAnswerChange(item.id, 'mood', 'neutral')}
+                                className={`p-2 rounded-full transition-all ${item.mood === 'neutral' ? 'bg-yellow-500/20 text-yellow-500 scale-110 shadow-sm' : 'text-muted-foreground hover:bg-secondary'}`}
+                                title="Neutral"
+                            >
+                                <Meh size={24} />
+                            </button>
+                            <button
+                                onClick={() => handleAnswerChange(item.id, 'mood', 'bad')}
+                                className={`p-2 rounded-full transition-all ${item.mood === 'bad' ? 'bg-rose-500/20 text-rose-500 scale-110 shadow-sm' : 'text-muted-foreground hover:bg-secondary'}`}
+                                title="Bad"
+                            >
+                                <Frown size={24} />
+                            </button>
                         </div>
+
                     </div>
                 ))}
             </div>
