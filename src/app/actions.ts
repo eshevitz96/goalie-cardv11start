@@ -98,6 +98,39 @@ export async function submitReflection(rosterId: string, entryData: any) {
     }
 }
 
+export async function updateReflection(reflectionId: string, rosterId: string, entryData: any) {
+    if (!reflectionId || !rosterId) return { success: false, error: "Missing IDs" };
+
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+
+        const updatePayload: any = {};
+        if (entryData.title !== undefined) updatePayload.title = entryData.title;
+        if (entryData.content !== undefined) updatePayload.content = entryData.content;
+        if (entryData.mood !== undefined) updatePayload.mood = entryData.mood;
+        if (entryData.activity_type !== undefined) updatePayload.activity_type = entryData.activity_type;
+        if (entryData.skip_reason !== undefined) updatePayload.skip_reason = entryData.skip_reason;
+        if (entryData.injury_expected_return !== undefined) updatePayload.injury_expected_return = entryData.injury_expected_return;
+        if (entryData.injury_details !== undefined) updatePayload.injury_details = entryData.injury_details;
+
+        const { error } = await supabaseAdmin
+            .from('reflections')
+            .update(updatePayload)
+            .eq('id', reflectionId)
+            .eq('roster_id', rosterId);
+
+        if (error) {
+            console.error("Reflection Update Error:", error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true };
+    } catch (err: any) {
+        console.error("Update Reflection Error:", err);
+        return { success: false, error: "Exception: " + err.message };
+    }
+}
+
 export async function registerForEvent(rosterId: string, eventId: string) {
     if (!rosterId || !eventId) return { success: false, error: "Missing ID" };
 
