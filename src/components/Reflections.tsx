@@ -35,6 +35,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
         injury_expected_return: null
     });
     const [loading, setLoading] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!rosterId) return;
@@ -127,9 +128,17 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
 
         // DEMO BYPASS
         if (rosterId && rosterId.startsWith('demo-')) {
-            const updated = [newEntry, ...reflections];
-            setReflections(updated);
-            localStorage.setItem('demo_reflections', JSON.stringify(updated));
+            if (editingId) {
+                // Update existing
+                const updatedList = reflections.map(r => r.id === editingId ? { ...r, ...newEntry } : r);
+                setReflections(updatedList);
+                localStorage.setItem('demo_reflections', JSON.stringify(updatedList));
+            } else {
+                // Insert new
+                const updated = [newEntry, ...reflections];
+                setReflections(updated);
+                localStorage.setItem('demo_reflections', JSON.stringify(updated));
+            }
             localStorage.setItem('demo_latest_mood', newEntry.mood); // Signal to parent
             localStorage.setItem('demo_latest_content', newEntry.content); // Signal text context to AI
 
@@ -139,23 +148,38 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             await new Promise(r => setTimeout(r, 600)); // Fake network delay
             checkRedFlags(newReflection.content);
             setIsWriting(false);
+            setEditingId(null);
             setNewReflection({ title: "", content: "", mood: "neutral", activity_type: null, skip_reason: null });
             setLoading(false);
             return;
         }
 
         // Server Action Submission
-        const { submitReflection } = await import('@/app/actions');
-        const result = await submitReflection(rosterId, {
-            author_role: currentUserRole,
-            title: newEntry.title,
-            content: newEntry.content,
-            mood: newEntry.mood,
-            activity_type: newReflection.activity_type,
-            skip_reason: newReflection.skip_reason,
-            injury_expected_return: newReflection.injury_expected_return || null,
-            injury_details: newReflection.injury_details || null
-        });
+        let result;
+        if (editingId) {
+            const { updateReflection } = await import('@/app/actions');
+            result = await updateReflection(editingId, rosterId, {
+                title: newEntry.title,
+                content: newEntry.content,
+                mood: newEntry.mood,
+                activity_type: newReflection.activity_type,
+                skip_reason: newReflection.skip_reason,
+                injury_expected_return: newReflection.injury_expected_return || null,
+                injury_details: newReflection.injury_details || null
+            });
+        } else {
+            const { submitReflection } = await import('@/app/actions');
+            result = await submitReflection(rosterId, {
+                author_role: currentUserRole,
+                title: newEntry.title,
+                content: newEntry.content,
+                mood: newEntry.mood,
+                activity_type: newReflection.activity_type,
+                skip_reason: newReflection.skip_reason,
+                injury_expected_return: newReflection.injury_expected_return || null,
+                injury_details: newReflection.injury_details || null
+            });
+        }
 
         // Background Safety Check
         checkRedFlags(newReflection.content);
@@ -164,6 +188,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             alert("Error saving: " + result.error);
         } else {
             setIsWriting(false);
+            setEditingId(null);
             setNewReflection({ title: "", content: "", mood: "neutral", activity_type: null, skip_reason: null });
             fetchReflections();
         }
@@ -257,7 +282,11 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                         </button>
                     ) : (
                         <button
-                            onClick={() => setIsWriting(false)}
+                            onClick={() => {
+                                setIsWriting(false);
+                                setEditingId(null);
+                                setNewReflection({ title: "", content: "", mood: "neutral", activity_type: null, skip_reason: null });
+                            }}
                             className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors"
                             title="Cancel Entry"
                         >
@@ -285,19 +314,19 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                         className="mb-6 bg-muted/30 rounded-2xl p-4 border border-border overflow-hidden"
                     >
                         <div className="mb-4">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Did you get on the ice/field today?</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Did you train today?</label>
                             <div className="flex gap-2 mb-4">
                                 <button
                                     onClick={() => setNewReflection({ ...newReflection, activity_type: 'practice' })}
                                     className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all ${newReflection.activity_type && newReflection.activity_type !== 'none' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:border-foreground/50'}`}
                                 >
-                                    Yes, Trained/Played
+                                    Yes
                                 </button>
                                 <button
                                     onClick={() => setNewReflection({ ...newReflection, activity_type: 'none' })}
                                     className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all ${newReflection.activity_type === 'none' ? 'bg-muted text-foreground border-border' : 'border-border hover:border-foreground/50'}`}
                                 >
-                                    No, Off Day
+                                    No
                                 </button>
                             </div>
 
@@ -336,18 +365,12 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
 
                             {newReflection.activity_type !== 'none' && (
                                 <>
-                                    <input
-                                        type="text"
-                                        placeholder="Title (e.g. Post-Game Thoughts)"
-                                        className="w-full bg-transparent border-b border-border p-2 mb-2 text-foreground font-bold focus:outline-none focus:border-primary placeholder:font-normal"
-                                        value={newReflection.title}
-                                        onChange={(e) => setNewReflection({ ...newReflection, title: e.target.value })}
-                                    />
                                     <textarea
-                                        className="w-full bg-transparent p-2 text-sm text-foreground focus:outline-none resize-none min-h-[100px]"
+                                        className="w-full bg-transparent p-2 text-sm text-foreground focus:outline-none resize-none min-h-[100px] border border-border rounded-xl mt-2"
                                         placeholder="How did you feel today? What did you improve?..."
                                         value={newReflection.content}
                                         onChange={(e) => setNewReflection({ ...newReflection, content: e.target.value })}
+                                        autoFocus
                                     />
                                 </>
                             )}
@@ -355,15 +378,26 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
 
                         <div className="flex justify-between items-center mt-2 pt-2 border-t border-border">
                             <div className="flex gap-2">
-                                {newReflection.activity_type !== 'none' && ['happy', 'neutral', 'frustrated'].map(m => (
-                                    <button
-                                        key={m}
-                                        onClick={() => setNewReflection({ ...newReflection, mood: m })}
-                                        className={`p-1.5 rounded-lg transition-all ${newReflection.mood === m ? 'bg-muted shadow' : 'opacity-50 hover:opacity-100'}`}
-                                    >
-                                        {getMoodIcon(m)}
-                                    </button>
-                                ))}
+                                {newReflection.activity_type !== 'none' && ['happy', 'neutral', 'frustrated'].map(m => {
+                                    const isSelected = newReflection.mood === m;
+                                    let borderRing = "";
+                                    if (isSelected) {
+                                        if (m === 'happy') borderRing = "ring-2 ring-emerald-500 ring-offset-2 ring-offset-background/50 scale-110";
+                                        else if (m === 'neutral') borderRing = "ring-2 ring-yellow-500 ring-offset-2 ring-offset-background/50 scale-110";
+                                        else if (m === 'frustrated') borderRing = "ring-2 ring-red-500 ring-offset-2 ring-offset-background/50 scale-110";
+                                    }
+
+                                    return (
+                                        <button
+                                            key={m}
+                                            onClick={() => setNewReflection({ ...newReflection, mood: m })}
+                                            className={`p-1.5 rounded-full transition-all duration-200 ${isSelected ? `bg-muted shadow-lg ${borderRing}` : 'opacity-40 hover:opacity-100 hover:scale-105'}`}
+                                            title={`Mark as ${m}`}
+                                        >
+                                            {getMoodIcon(m)}
+                                        </button>
+                                    );
+                                })}
                             </div>
                             <div className="flex gap-2">
                                 <button
@@ -396,9 +430,25 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx * 0.05 }} // Faster delay
                             className="bg-card/50 hover:bg-muted/50 border border-border/50 rounded-xl p-4 transition-colors cursor-pointer group"
+                            onClick={() => {
+                                setIsWriting(true);
+                                setEditingId(ref.id);
+                                setNewReflection({
+                                    title: ref.title || "",
+                                    content: ref.content || "",
+                                    mood: ref.mood || "neutral",
+                                    activity_type: ref.title === 'Off Day' || !ref.content || ref.content.startsWith('Reason:') ? 'none' : 'practice',
+                                    skip_reason: ref.title === 'Off Day' ? (ref.content?.replace('Reason: ', '') || 'other') : null,
+                                });
+                                // Scroll to top smoothly
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
                         >
                             <div className="flex justify-between items-start mb-1">
-                                <h4 className="font-bold text-sm text-foreground">{ref.title}</h4>
+                                <h4 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                                    {ref.title}
+                                    <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">Edit</span>
+                                </h4>
                                 <div className="text-[10px] text-muted-foreground flex items-center gap-2">
                                     {new Date(ref.created_at).toLocaleDateString()}
                                     {getMoodIcon(ref.mood)}

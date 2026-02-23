@@ -16,11 +16,11 @@ export const metadata: Metadata = {
   keywords: ["goalie", "athlete tracking", "training journal", "sports technology", "performance insights", "goalie card"],
   authors: [{ name: "GoalieGuard" }],
   creator: "GoalieGuard",
-  metadataBase: new URL("https://goalie-card.vercel.app"),
+  metadataBase: new URL("https://goalie-cardv11start.vercel.app"),
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://goalie-card.vercel.app",
+    url: "https://goalie-cardv11start.vercel.app",
     siteName: "Goalie Card",
     title: "Goalie Card | Elite Athlete Tracking",
     description: "Next-gen athlete session tracking, performance insights, and training journals.",
