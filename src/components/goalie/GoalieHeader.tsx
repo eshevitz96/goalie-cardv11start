@@ -1,8 +1,10 @@
-import React from 'react';
-import { User, Settings, Plus, LogOut, Bell } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Settings, Plus, LogOut, Bell, Search } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { GlobalSearch } from '@/components/shared/GlobalSearch';
+import { useAuth } from '@/hooks/useAuth';
 
 interface GoalieHeaderProps {
     activeGoalieName: string;
@@ -11,15 +13,34 @@ interface GoalieHeaderProps {
 }
 
 export function GoalieHeader({ activeGoalieName, onLogout, notifications }: GoalieHeaderProps) {
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const { userId } = useAuth();
+
     return (
-        <header className="flex justify-between items-center mb-8 md:col-span-2">
+        <header className="flex justify-between items-center mb-8 md:col-span-2 relative">
+            <GlobalSearch
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                userId={userId || undefined}
+            />
+
             <div className="flex flex-col">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1">Goalie Portal</span>
                 <h1 className="text-2xl md:text-3xl font-black text-foreground italic tracking-tighter">
                     GOALIE <span className="text-primary">CARD</span>
                 </h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 md:gap-4">
+                {/* Search Trigger */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsSearchOpen(true)}
+                    className="h-10 w-10 rounded-full border border-border hover:border-primary hover:bg-muted p-0 transition-colors"
+                >
+                    <Search size={18} className="text-muted-foreground hover:text-foreground" />
+                </Button>
+
                 {/* User Menu */}
                 <div className="relative group z-30">
                     <Button variant="ghost" size="sm" className="h-10 w-10 rounded-full border border-border hover:border-primary p-0">
