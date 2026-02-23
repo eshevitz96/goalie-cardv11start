@@ -38,22 +38,16 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
 
     const handleToggleCoach = async (coachId: string, currentIds: string[]) => {
         const isSelected = currentIds.includes(coachId);
-        let newIds;
-        if (isSelected) {
-            newIds = currentIds.filter(id => id !== coachId);
-        } else {
-            newIds = [...currentIds, coachId];
-        }
+        const newIds = isSelected
+            ? currentIds.filter(id => id !== coachId)
+            : [...currentIds, coachId];
 
-        const { error } = await supabase
-            .from('roster_uploads')
-            .update({ assigned_coach_ids: newIds })
-            .eq('id', rosterId);
+        const { updateAssignedCoaches } = await import('@/app/actions');
+        const result = await updateAssignedCoaches(rosterId, newIds);
 
-        if (error) {
-            alert("Error updating coaches: " + error.message);
+        if (!result.success) {
+            alert("Error updating coach: " + result.error);
         } else {
-            // Keep selection open for multiple picks
             onCoachUpdate();
         }
     };

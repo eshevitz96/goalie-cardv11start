@@ -361,3 +361,25 @@ export async function denyRoleRequest(requestId: string, role?: string) {
     // START STUB
     return { success: true, error: null };
 }
+
+export async function updateAssignedCoaches(rosterId: string, coachIds: string[]) {
+    if (!rosterId) return { success: false, error: "Missing Roster ID" };
+
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        const { error } = await supabaseAdmin
+            .from('roster_uploads')
+            .update({ assigned_coach_ids: coachIds })
+            .eq('id', rosterId);
+
+        if (error) {
+            console.error("Update Assigned Coaches Error:", error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true };
+    } catch (err: any) {
+        console.error("updateAssignedCoaches Exception:", err);
+        return { success: false, error: "Exception: " + err.message };
+    }
+}
