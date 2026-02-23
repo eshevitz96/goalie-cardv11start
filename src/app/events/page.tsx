@@ -42,6 +42,13 @@ export default function EventsPage() {
         // 1. Fetch DB Events
         const { data: dbEvents } = await supabase.from('events').select('*').order('date', { ascending: true });
 
+        // 1.5 Fetch Registrations for user
+        let registeredIds = new Set();
+        if (user) {
+            const { data: regs } = await supabase.from('registrations').select('event_id').eq('goalie_id', user.id);
+            registeredIds = new Set(regs?.map(r => r.event_id) || []);
+        }
+
         // 2. Map PRO_SCHEDULE
         const proEvents = PRO_SCHEDULE.map(e => ({
             id: e.id,
@@ -55,18 +62,24 @@ export default function EventsPage() {
             rawDate: new Date(e.date)
         }));
 
-        // 3. Map DB Events
-        const mappedDbEvents = dbEvents?.map(e => ({
-            id: e.id,
-            name: e.name,
-            date: new Date(e.date).toLocaleDateString(),
-            location: e.location || 'TBA',
-            status: "upcoming" as const, // Simplification
-            image: e.image || "from-gray-500 to-gray-600",
-            price: e.price,
-            sport: e.sport,
-            rawDate: new Date(e.date)
-        })) || [];
+        // 3. Map DB Events (Filtered to registered or owned)
+        const mappedDbEvents = dbEvents
+            ?.filter(e => {
+                const isRegistered = registeredIds.has(e.id);
+                const isCreator = user && e.created_by === user.id;
+                return isRegistered || isCreator;
+            })
+            .map(e => ({
+                id: e.id,
+                name: e.name,
+                date: new Date(e.date).toLocaleDateString(),
+                location: e.location || 'TBA',
+                status: "upcoming" as const, // Simplify to upcoming if visible
+                image: e.image || "from-gray-500 to-gray-600",
+                price: e.price,
+                sport: e.sport,
+                rawDate: new Date(e.date)
+            })) || [];
 
         // Merge and Sort
         const allEvents = [...proEvents, ...mappedDbEvents].sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());

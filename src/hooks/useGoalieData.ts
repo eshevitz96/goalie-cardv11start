@@ -126,16 +126,24 @@ export function useGoalieData() {
                 const goalieSports = g.sport ? g.sport.split(',').map((s: string) => s.trim()) : [];
                 const goalieEvents = allEvents
                     ?.filter(e => {
-                        if (!e.sport) return true;
-                        if (goalieSports.length === 0) return true;
-                        return goalieSports.includes(e.sport);
+                        // 1. Sport Match
+                        if (e.sport && goalieSports.length > 0 && !goalieSports.includes(e.sport)) {
+                            return false;
+                        }
+
+                        // 2. Registration/Creator Match
+                        // Show if registered OR if the user created it (owned)
+                        const isRegistered = registeredIds.has(e.id);
+                        const isCreator = userId && e.created_by === userId;
+
+                        return isRegistered || isCreator;
                     })
                     .map(e => ({
                         id: e.id,
                         name: e.name,
                         date: new Date(e.date).toLocaleDateString(),
                         location: e.location || 'TBA',
-                        status: registeredIds.has(e.id) ? "upcoming" : "open",
+                        status: "upcoming", // If they see it, it's upcoming for them
                         image: e.image || "from-gray-500 to-gray-600",
                         price: e.price,
                         sport: e.sport,

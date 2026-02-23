@@ -26,6 +26,9 @@ type EventData = {
     lessonNumber?: number;
     sport?: string;
     image?: string;
+    createdBy?: string;
+    isRegistered?: boolean;
+    currentUser?: string;
 };
 
 export default function EventDetailsPage() {
@@ -94,6 +97,21 @@ export default function EventDetailsPage() {
                 if (error) throw error;
                 if (!event) throw new Error("Event not found");
 
+                // Fetch current user and registration status
+                const { data: { user } } = await supabase.auth.getUser();
+                let isRegistered = false;
+
+                if (user) {
+                    const { data: reg } = await supabase
+                        .from('registrations')
+                        .select('id')
+                        .eq('event_id', id)
+                        .eq('goalie_id', user.id)
+                        .maybeSingle();
+
+                    isRegistered = !!reg;
+                }
+
                 setData({
                     id: event.id,
                     title: event.name,
@@ -103,7 +121,10 @@ export default function EventDetailsPage() {
                     price: event.price,
                     image: event.image,
                     sport: event.sport,
-                    status: 'upcoming' // Logic to check registration?
+                    status: 'upcoming',
+                    createdBy: event.created_by,
+                    isRegistered: isRegistered,
+                    currentUser: user?.id
                 });
             }
         } catch (err: any) {
@@ -240,7 +261,7 @@ export default function EventDetailsPage() {
                         transition={{ delay: 0.2 }}
                         className="space-y-4"
                     >
-                        {!isSession && (
+                        {!isSession && !data.isRegistered && data.createdBy !== data.currentUser && (
                             <div className="bg-card border border-border rounded-3xl p-6 shadow-xl">
                                 <div className="text-center mb-6">
                                     <div className="text-sm text-muted-foreground mb-1">Registration</div>
