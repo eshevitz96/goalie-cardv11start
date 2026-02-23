@@ -12,7 +12,7 @@ export default function LoginPage() {
     const router = useRouter();
 
     // UI State
-    const [step, setStep] = useState<'email' | 'password'>('email');
+    const [step, setStep] = useState<'email' | 'password' | 'reset-sent'>('email');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -120,8 +120,7 @@ export default function LoginPage() {
             });
 
             if (error) throw error;
-            alert("Password reset email sent! Check your inbox.");
-            setStep('email'); // Go back to start
+            setStep('reset-sent');
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -144,7 +143,7 @@ export default function LoginPage() {
                 </div>
 
                 <AnimatePresence mode="wait">
-                    {step === 'email' ? (
+                    {step === 'email' && (
                         <motion.div
                             key="email-step"
                             initial={{ opacity: 0, x: -20 }}
@@ -188,7 +187,8 @@ export default function LoginPage() {
                                 </button>
                             </form>
                         </motion.div>
-                    ) : (
+                    )}
+                    {step === 'password' && (
                         <motion.div
                             key="password-step"
                             initial={{ opacity: 0, x: 20 }}
@@ -257,6 +257,29 @@ export default function LoginPage() {
                                     )}
                                 </button>
                             </form>
+                        </motion.div>
+                    )}
+                    {step === 'reset-sent' && (
+                        <motion.div
+                            key="reset-step"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-card border border-border rounded-2xl p-8 text-center shadow-2xl flex flex-col items-center"
+                        >
+                            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
+                                <CheckCircle2 size={40} className="text-primary" />
+                            </div>
+                            <h2 className="text-2xl font-black text-foreground mb-3">Check Your Inbox</h2>
+                            <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
+                                We've sent a secure password reset link to <br /><span className="font-bold text-foreground">{email}</span>. Click the link to securely choose a new password.
+                            </p>
+                            <button
+                                onClick={() => { setStep('email'); setPassword(''); }}
+                                className="w-full bg-secondary hover:bg-muted text-foreground font-bold py-4 rounded-xl transition-all border border-border"
+                            >
+                                Back to Login
+                            </button>
                         </motion.div>
                     )}
                 </AnimatePresence>
