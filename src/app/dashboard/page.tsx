@@ -263,7 +263,11 @@ export default function Dashboard() {
                                     sport={activeGoalie.sport}
                                     isLive={isLive}
                                     onExit={() => setIsLiveOverride(false)}
-                                    onComplete={() => { setIsLiveOverride(false); setShowPostGame(true); }}
+                                    onComplete={(focus) => {
+                                        setIsLiveOverride(false);
+                                        setShowPostGame(true);
+                                        setLogPrefill(focus || "Daily Protocol");
+                                    }}
                                     onLogAction={handleLogActivity}
                                     goalieName={activeGoalie.name}
                                     isGameday={activeGoalie.events?.some((e: any) => {

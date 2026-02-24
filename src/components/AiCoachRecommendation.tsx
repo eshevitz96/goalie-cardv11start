@@ -14,7 +14,7 @@ export function AiCoachRecommendation({
     lastMood, recentGames, rosterId, overrideText, sport, isLive, onExit, onComplete, onLogAction, onRecommendationReady, goalieName, isGameday, nextEvent
 }: {
     lastMood?: string, recentGames?: any[], rosterId?: string, overrideText?: string, sport?: string, isLive?: boolean,
-    onExit?: () => void, onComplete?: () => void,
+    onExit?: () => void, onComplete?: (planFocus?: string) => void,
     onLogAction?: (actionName: string) => void,
     onRecommendationReady?: (rec: any) => void, // Kept to not break existing signature
     goalieName?: string,
@@ -50,7 +50,8 @@ export function AiCoachRecommendation({
 
     // UI state
     const [expandedArea, setExpandedArea] = useState<'warmup' | 'main' | 'mental' | null>(null);
-    const [activeMentalDrill, setActiveMentalDrill] = useState<DrillDef | null>(null);
+    const [sessionActive, setSessionActive] = useState(false);
+    const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0); // 0: warmup, 1: main, 2: mental
 
     // LIVE GAME MODE
     if (isLive) {
@@ -58,15 +59,30 @@ export function AiCoachRecommendation({
     }
 
     const handleLogAndComplete = () => {
-        if (onLogAction && plan) {
+        if (!plan) return;
+        if (onLogAction) {
             onLogAction(`Completed Plan: ${plan.focus}`);
         }
         if (onComplete) {
-            onComplete(); // Triggers the transition to the reflection journal in dashboard
+            onComplete(plan.focus);
         } else {
             // Fallback scroll
             const element = document.getElementById('training-journal');
             if (element) element.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
+    const handleStartSession = (startIndex: number = 0) => {
+        setCurrentPhaseIndex(startIndex);
+        setSessionActive(true);
+    };
+
+    const handleNextPhase = () => {
+        if (currentPhaseIndex < 2) {
+            setCurrentPhaseIndex(currentPhaseIndex + 1);
+        } else {
+            setSessionActive(false);
+            handleLogAndComplete();
         }
     };
 
@@ -79,23 +95,25 @@ export function AiCoachRecommendation({
         );
     }
 
-    // ACTIVE MODE UI (For Mental Drills)
-    if (activeMentalDrill) {
+    // ACTIVE MODE UI (Sequential Timer)
+    if (sessionActive && plan) {
+        const phases: DrillDef[] = [plan.warmup, plan.main, plan.mental];
+        const activeDrill = phases[currentPhaseIndex];
+
         return (
             <ActiveDrillTimer
-                drillName={activeMentalDrill.name}
-                duration={activeMentalDrill.duration}
-                onExit={() => {
-                    setActiveMentalDrill(null);
-                    setExpandedArea(null);
-                }}
+                drillName={activeDrill.name}
+                duration={activeDrill.duration}
+                onExit={() => setSessionActive(false)}
+                onNext={handleNextPhase}
+                isLastPhase={currentPhaseIndex === 2}
             />
         );
     }
 
     if (!plan) return null;
 
-    const renderDrillCard = (id: 'warmup' | 'main' | 'mental', title: string, drill: DrillDef, icon: any, colorClass: string) => {
+    const renderDrillCard = (id: 'warmup' | 'main' | 'mental', index: number, title: string, drill: DrillDef, icon: any, colorClass: string) => {
         const isExpanded = expandedArea === id;
 
         return (
@@ -159,17 +177,15 @@ export function AiCoachRecommendation({
                                             )}
                                     </ul>
 
-                                    {drill.type === 'mental' && (
-                                        <Button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setActiveMentalDrill(drill);
-                                            }}
-                                            className="w-full bg-purple-500 text-white hover:bg-purple-600 font-bold flex items-center justify-center gap-2"
-                                        >
-                                            <Brain size={16} /> Start Focus Timer
-                                        </Button>
-                                    )}
+                                    <Button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleStartSession(index);
+                                        }}
+                                        className="w-full bg-foreground text-background hover:scale-[1.01] font-bold flex items-center justify-center gap-2 h-auto"
+                                    >
+                                        <Zap size={16} /> Start Phase Timer
+                                    </Button>
                                 </div>
                             </div>
                         </motion.div>
@@ -192,17 +208,31 @@ export function AiCoachRecommendation({
                 <p className="text-lg font-medium text-muted-foreground tracking-tight">
                     {plan.reason}
                 </p>
-                {seasonGoal && (
-                    <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary w-fit">
-                        <Target size={12} /> Goal: {seasonGoal}
-                    </div>
-                )}
+                <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                        onClick={() => handleStartSession(0)}
+                        className="bg-primary text-black font-black px-6 py-2 rounded-xl hover:scale-105 transition-all text-sm flex items-center gap-2 h-auto"
+                    >
+                        <Zap size={16} /> Start Full Session
+                    </Button>
+                    {isGameday && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-xs font-bold text-orange-500 w-fit animate-pulse">
+                            <Flame size={12} /> Game Day
+                        </div>
+                    )}
+                    {seasonGoal && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary w-fit">
+                            <Target size={12} /> Goal: {seasonGoal}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="space-y-4">
                 {/* 1. WARMUP */}
                 {renderDrillCard(
                     'warmup',
+                    0,
                     'Phase 1: Activation',
                     plan.warmup,
                     <Flame size={24} strokeWidth={1.5} />,
@@ -212,6 +242,7 @@ export function AiCoachRecommendation({
                 {/* 2. MAIN FOCUS */}
                 {renderDrillCard(
                     'main',
+                    1,
                     `Phase 2: Main Focus - ${plan.focus}`,
                     plan.main,
                     <Zap size={24} strokeWidth={1.5} />,
@@ -221,6 +252,7 @@ export function AiCoachRecommendation({
                 {/* 3. MENTAL RESET */}
                 {renderDrillCard(
                     'mental',
+                    2,
                     'Phase 3: Cooldown & Reflect',
                     plan.mental,
                     <Brain size={24} strokeWidth={1.5} />,

@@ -158,11 +158,11 @@ export function determineRecommendation(text: string, mood: string, sport: strin
     // 0.5 COACH FEEDBACK (Overrides standard rules if fresh)
     if (coachNotes && coachNotes.length > 5) {
         return {
-            focus: "Coach's Orders",
-            reason: `Your coach wants you to focus on: "${coachNotes.length > 60 ? coachNotes.substring(0, 60) + '...' : coachNotes}"`,
+            focus: "Coach's Directive",
+            reason: `Your coach has assigned a specific protocol: "${coachNotes.length > 60 ? coachNotes.substring(0, 60) + '...' : coachNotes}"`,
             warmup,
             main: {
-                name: "Coach Assigned Specifics",
+                name: "Coach's Protocol",
                 duration: "As Assigned",
                 type: "physical",
                 steps: [
