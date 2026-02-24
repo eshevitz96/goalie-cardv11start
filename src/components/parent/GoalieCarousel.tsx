@@ -38,6 +38,7 @@ export function GoalieCarousel({
                 isPro={isPro}
                 seasonProgress={undefined}
                 credits={activeGoalie.credits}
+                pendingPayment={activeGoalie.pendingPayment}
                 className="w-full flex-1 md:aspect-auto"
             />
 

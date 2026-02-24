@@ -27,6 +27,7 @@ export interface GoalieCardProps {
     seasonProgress?: number;
     showProgress?: boolean;
     credits?: number;
+    pendingPayment?: any;
 }
 
 export function GoalieCard({
@@ -43,7 +44,8 @@ export function GoalieCard({
     isPro,
     seasonProgress,
     showProgress,
-    credits
+    credits,
+    pendingPayment
 }: GoalieCardProps) {
     const maxLessons = 4; // Standard package size
     // Calculate Training Progress (Lessons)
@@ -52,10 +54,44 @@ export function GoalieCard({
     const [showQR, setShowQR] = useState(false);
     const [showWalletPreview, setShowWalletPreview] = useState(false);
     const [showRequestModal, setShowRequestModal] = useState(false);
+    const [isCheckingOut, setIsCheckingOut] = useState(false);
 
     // Use logic hook
     const { seasonProgress: calculatedSeasonProgress, seasonLabel } = useSeasonTimeline();
     const finalSeasonProgress = seasonProgress ?? calculatedSeasonProgress;
+
+    const handleUpgradeCheckout = async () => {
+        if (!pendingPayment || !id) return;
+        setIsCheckingOut(true);
+        try {
+            const response = await fetch('/api/stripe/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    priceId: 'price_1T4QvMGj0SdRYIlhJeSpz3YW', // The Pro Tier $300/mo Price ID
+                    userId: pendingPayment.goalie_id,
+                    returnUrl: `${window.location.origin}/dashboard`,
+                    mode: 'subscription',
+                    metadata: {
+                        type: 'pro_upgrade',
+                        rosterId: id,
+                        coachId: pendingPayment.coach_id,
+                        requestId: pendingPayment.id
+                    }
+                })
+            });
+            const data = await response.json();
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                throw new Error("No URL returned from Stripe");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to initiate checkout. Please try again.");
+            setIsCheckingOut(false);
+        }
+    };
 
     return (
         <>
@@ -192,14 +228,30 @@ export function GoalieCard({
                                 </div>
                             )}
 
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => setShowRequestModal(true)}
-                                className="w-full mt-4 py-3 bg-primary/10 border border-primary/20 hover:bg-primary text-primary hover:text-primary-foreground rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm z-20 pointer-events-auto"
-                            >
-                                Request Pro Coach
-                            </motion.button>
+                            {pendingPayment?.status === 'approved_pending_payment' ? (
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={handleUpgradeCheckout}
+                                    disabled={isCheckingOut}
+                                    className="w-full mt-4 py-3 bg-emerald-500 border border-emerald-400 text-emerald-950 hover:bg-emerald-400 rounded-xl font-black transition-colors flex items-center justify-center gap-2 text-sm z-20 pointer-events-auto shadow-lg shadow-emerald-500/20 shadow-emerald-500/20 disabled:opacity-50"
+                                >
+                                    {isCheckingOut ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-emerald-950 border-t-transparent rounded-full animate-spin" /> Loading Checkout...</span> : "Complete Pro Upgrade ($300/mo)"}
+                                </motion.button>
+                            ) : pendingPayment?.status === 'pending' ? (
+                                <div className="w-full mt-4 py-3 bg-muted border border-border text-muted-foreground rounded-xl font-bold flex items-center justify-center gap-2 text-sm z-20">
+                                    <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Coach Request Pending</span>
+                                </div>
+                            ) : (
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setShowRequestModal(true)}
+                                    className="w-full mt-4 py-3 bg-primary/10 border border-primary/20 hover:bg-primary text-primary hover:text-primary-foreground rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm z-20 pointer-events-auto"
+                                >
+                                    Request Pro Coach
+                                </motion.button>
+                            )}
                         </div>
                     )}
                 </div>

@@ -51,36 +51,24 @@ export function PendingRequests() {
         setProcessingId(requestId);
 
         try {
+            const newStatus = decision === 'approved' ? 'approved_pending_payment' : 'denied';
+
             // 1. Update the request status
             const { error: reqError } = await supabase
                 .from('coach_requests')
-                .update({ status: decision })
+                .update({ status: newStatus })
                 .eq('id', requestId);
 
             if (reqError) throw reqError;
 
-            // 2. If approved, update the goalie's roster assigning this coach
-            if (decision === 'approved') {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    const { error: rosError } = await supabase
-                        .from('roster_uploads')
-                        .update({ assigned_coach_id: user.id })
-                        .eq('id', rosterId);
+            // 2. Note: We DO NOT update the roster_uploads here if approved.
+            // The Stripe Webhook will handle the actual roster assignment
+            // once the checkout is completed.
 
-                    if (rosError) throw rosError;
-                }
-            }
-
-            toast.success(`Request ${decision}!`);
+            toast.success(decision === 'approved' ? 'Goalie Approved! They will be notified to checkout.' : 'Request Declined.');
 
             // Remove from local state
             setRequests(prev => prev.filter(r => r.id !== requestId));
-
-            // Inform them to reload metrics
-            if (decision === 'approved') {
-                setTimeout(() => window.location.reload(), 1500);
-            }
 
         } catch (error: any) {
             console.error("Decision error:", error);

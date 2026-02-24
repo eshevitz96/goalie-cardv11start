@@ -306,6 +306,7 @@ export default function Dashboard() {
                                     gradYear={activeGoalie.gradYear}
                                     id={activeGoalie.id}
                                     isPro={isPro}
+                                    pendingPayment={activeGoalie.pendingPayment}
                                     className="h-full"
                                 />
                             )}

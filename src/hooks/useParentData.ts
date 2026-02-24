@@ -126,15 +126,25 @@ export function useParentData() {
 
             // Fetch Related Data in Parallel
             const rosterIds = rosterData?.map(r => r.id) || [];
-            const [allEvents, registeredIdsData, sessionsData, coachesData, refData] = await Promise.all([
+            const [allEvents, registeredIdsData, sessionsData, coachesData, refData, requestsDataRaw] = await Promise.all([
                 eventsService.fetchUpcoming(),
                 auth.user ? eventsService.fetchRegistrations(auth.user.id) : Promise.resolve([]),
                 rosterIds.length > 0 ? sessionsService.fetchByRosterIds(rosterIds) : Promise.resolve([]),
                 coachesService.fetchAllProfiles(),
-                rosterIds.length > 0 ? reflectionsService.fetchByRosterIds(rosterIds) : Promise.resolve([])
+                rosterIds.length > 0 ? reflectionsService.fetchByRosterIds(rosterIds) : Promise.resolve([]),
+                rosterIds.length > 0 ? supabase.from('coach_requests').select('*').in('roster_id', rosterIds) : Promise.resolve({ data: [] })
             ]);
 
             const registeredIds = new Set(registeredIdsData?.map(r => r.event_id) || []);
+            const requestsData = requestsDataRaw?.data || [];
+
+            // Map pending requests for Stripe Checkout
+            let pendingPaymentMap = new Map<string, any>();
+            requestsData.forEach((req: any) => {
+                if (req.status === 'approved_pending_payment') {
+                    pendingPaymentMap.set(req.roster_id, req);
+                }
+            });
 
             // Map Sessions
             let sessionsMap = new Map<string, any[]>();
@@ -265,6 +275,7 @@ export function useParentData() {
                         session: Number(g.session_count) || 0,
                         lesson: Number(g.lesson_count) || 0,
                         credits: creditsMap.get(g.id) || 0,
+                        pendingPayment: pendingPaymentMap.get(g.id) || null,
                         stats: {
                             gaa: "0.00",
                             sv: ".000",

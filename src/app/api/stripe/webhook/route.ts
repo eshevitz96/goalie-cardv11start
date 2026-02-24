@@ -63,6 +63,34 @@ export async function POST(req: Request) {
                     // Log but don't fail webhook if payment already recorded
                 }
             }
+        } else if (session.metadata.type === 'pro_upgrade') {
+            const rosterId = session.metadata.rosterId;
+            const coachId = session.metadata.coachId;
+            const requestId = session.metadata.requestId;
+
+            if (rosterId && coachId) {
+                // 1. Assign Coach to Roster
+                const { error: rosterError } = await supabase
+                    .from('roster_uploads')
+                    .update({ assigned_coach_id: coachId })
+                    .eq('id', rosterId);
+
+                if (rosterError) {
+                    console.error("Pro Upgrade roster sync error:", rosterError);
+                }
+
+                // 2. Mark Request as Completed
+                if (requestId) {
+                    const { error: reqError } = await supabase
+                        .from('coach_requests')
+                        .update({ status: 'completed' })
+                        .eq('id', requestId);
+
+                    if (reqError) {
+                        console.error("Pro Upgrade request status error:", reqError);
+                    }
+                }
+            }
         } else {
             // Default: Activation Flow
             // SYNC: Update Roster Uploads so Admin Dashboard sees it
