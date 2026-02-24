@@ -42,7 +42,6 @@ export default function Dashboard() {
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isLiveOverride, setIsLiveOverride] = useState<boolean | null>(null);
-    const [showPostGame, setShowPostGame] = useState(false);
     const [showProgress, setShowProgress] = useState(true);
     const [notifications, setNotifications] = useState<any[]>([]);
     const [alertNotification, setAlertNotification] = useState<{ id: string, title: string, message: string, type?: string } | null>(null);
@@ -241,43 +240,26 @@ export default function Dashboard() {
 
                     {/* Primary Focus: AI Coach / Post Game */}
                     <div className="md:col-span-8 flex flex-col gap-6">
-                        {showPostGame ? (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.98 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="bg-card glass rounded-3xl p-6 relative min-h-[400px]"
-                            >
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="font-bold text-2xl text-foreground tracking-tight">Post-Game Journal</h3>
-                                    <Button variant="ghost" size="sm" onClick={() => setShowPostGame(false)} className="text-muted-foreground hover:text-foreground">
-                                        Cancel
-                                    </Button>
-                                </div>
-                                <Reflections rosterId={activeGoalie.id} currentUserRole={isPro ? 'goalie' : 'parent'} />
-                            </motion.div>
-                        ) : (
-                            <div className="h-full">
-                                <AiCoachRecommendation
-                                    lastMood={activeGoalie.latestMood}
-                                    rosterId={activeGoalie.id}
-                                    sport={activeGoalie.sport}
-                                    isLive={isLive}
-                                    onExit={() => setIsLiveOverride(false)}
-                                    onComplete={(focus) => {
-                                        setIsLiveOverride(false);
-                                        setShowPostGame(true);
-                                        setLogPrefill(focus || "Daily Protocol");
-                                    }}
-                                    onLogAction={handleLogActivity}
-                                    goalieName={activeGoalie.name}
-                                    isGameday={activeGoalie.events?.some((e: any) => {
-                                        const eventDate = new Date(e.rawDate || e.date);
-                                        const today = new Date();
-                                        return eventDate.toDateString() === today.toDateString();
-                                    })}
-                                />
-                            </div>
-                        )}
+                        <div className="h-full">
+                            <AiCoachRecommendation
+                                lastMood={activeGoalie.latestMood}
+                                rosterId={activeGoalie.id}
+                                sport={activeGoalie.sport}
+                                isLive={isLive}
+                                onExit={() => setIsLiveOverride(false)}
+                                onComplete={(focus) => {
+                                    setIsLiveOverride(false);
+                                    handleLogActivity(focus || "Daily Protocol");
+                                }}
+                                onLogAction={handleLogActivity}
+                                goalieName={activeGoalie.name}
+                                isGameday={activeGoalie.events?.some((e: any) => {
+                                    const eventDate = new Date(e.rawDate || e.date);
+                                    const today = new Date();
+                                    return eventDate.toDateString() === today.toDateString();
+                                })}
+                            />
+                        </div>
                     </div>
 
                     {/* Sidebar: Profile, Stats, Quick Actions */}

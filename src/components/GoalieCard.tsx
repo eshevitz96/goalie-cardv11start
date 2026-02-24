@@ -167,8 +167,8 @@ export function GoalieCard({
                     {showProgress && (
                         <div className="space-y-4">
 
-                            {/* 1. TRAINING PROGRESS (Youth/Default) */}
-                            {!isPro && (
+                            {/* 1. TRAINING PROGRESS */}
+                            {(true) && (
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-end">
                                         <div>

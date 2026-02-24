@@ -48,7 +48,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             setNewReflection((prev: any) => ({
                 ...prev,
                 activity_type: 'practice', // Assume practice context
-                content: `Completed recommended protocol: ${prefill}.`
+                content: `Completed protocol for ${new Date().toLocaleDateString()}: ${prefill}.`
             }));
         }
     }, [prefill]);
