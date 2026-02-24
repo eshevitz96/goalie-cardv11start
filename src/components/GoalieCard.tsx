@@ -10,6 +10,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
 import { QRCodeModal } from "@/components/goalie/card/QRCodeModal";
 import { WalletPreviewModal } from "@/components/goalie/card/WalletPreviewModal";
+import { CoachRequestModal } from "@/components/goalie/card/CoachRequestModal";
 
 export interface GoalieCardProps {
     name: string;
@@ -50,6 +51,7 @@ export function GoalieCard({
 
     const [showQR, setShowQR] = useState(false);
     const [showWalletPreview, setShowWalletPreview] = useState(false);
+    const [showRequestModal, setShowRequestModal] = useState(false);
 
     // Use logic hook
     const { seasonProgress: calculatedSeasonProgress, seasonLabel } = useSeasonTimeline();
@@ -168,9 +170,9 @@ export function GoalieCard({
                         </div>
                     )}
 
-                    {/* Renewal Logic (Only for Youth) */}
+                    {/* Base Tier Up-Sell / Progress Logic */}
                     {!isPro && showProgress && (
-                        <>
+                        <div className="space-y-4">
                             {lesson >= maxLessons ? (
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.95 }}
@@ -189,7 +191,16 @@ export function GoalieCard({
                                     <span>{maxLessons - lesson} lessons to go</span>
                                 </div>
                             )}
-                        </>
+
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setShowRequestModal(true)}
+                                className="w-full mt-4 py-3 bg-primary/10 border border-primary/20 hover:bg-primary text-primary hover:text-primary-foreground rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm z-20 pointer-events-auto"
+                            >
+                                Request Pro Coach
+                            </motion.button>
+                        </div>
                     )}
                 </div>
 
@@ -221,6 +232,16 @@ export function GoalieCard({
                 onClose={() => setShowWalletPreview(false)}
                 data={{ name, team, session, id }}
             />
+
+            {/* Coach Request Modal (Only for Base Tier) */}
+            {!isPro && (
+                <CoachRequestModal
+                    isOpen={showRequestModal}
+                    onClose={() => setShowRequestModal(false)}
+                    rosterId={id || ''}
+                    goalieName={name}
+                />
+            )}
         </>
     );
 }
