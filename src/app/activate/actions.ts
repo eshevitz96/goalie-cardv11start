@@ -280,3 +280,48 @@ export async function completeActivationWithPassword(
         return { success: false, error: error.message };
     }
 }
+
+/**
+ * Creates an initial unlinked roster record for a new self-service user.
+ * Bypasses RLS by using supabaseAdmin so anonymous users can start activation.
+ */
+export async function createInitialProfile(email: string) {
+    if (!email) {
+        return { success: false, error: 'Email is required' };
+    }
+
+    const emailLower = email.toLowerCase().trim();
+
+    try {
+        // Double check existence to prevent dupes
+        const { data: existing } = await supabaseAdmin
+            .from('roster_uploads')
+            .select('id')
+            .ilike('email', emailLower)
+            .maybeSingle();
+
+        if (existing) {
+            return { success: false, error: "An account with this email already exists. Please try logging in." };
+        }
+
+        const rId = 'GC-' + Math.floor(1000 + Math.random() * 9000);
+
+        const { data, error } = await supabaseAdmin.from('roster_uploads').insert({
+            email: emailLower,
+            goalie_name: "New Athlete",
+            assigned_unique_id: rId,
+            is_claimed: true,
+            sport: 'Hockey'
+        }).select().single();
+
+        if (error) {
+            return { success: false, error: error.message };
+        }
+
+        return { success: true, data };
+    } catch (err: any) {
+        console.error('[CreateInitialProfile] Error:', err);
+        return { success: false, error: err.message };
+    }
+}
+

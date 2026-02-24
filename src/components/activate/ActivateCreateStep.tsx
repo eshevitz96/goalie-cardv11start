@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, UserPlus, ArrowRight, AlertCircle, ArrowLeft } from "lucide-react";
-import { supabase } from "@/utils/supabase/client";
+import { createInitialProfile } from "@/app/activate/actions";
 
 interface ActivateCreateStepProps {
     email: string;
@@ -19,33 +19,14 @@ export function ActivateCreateStep({ email, onSuccess, onBack }: ActivateCreateS
         setError(null);
 
         try {
-            // Generate a random ID (Simulation)
-            const rId = 'GC-' + Math.floor(1000 + Math.random() * 9000);
+            const result = await createInitialProfile(email);
 
-            // Double check existence to prevent dupes (Client-side safety)
-            const { data: existing } = await supabase
-                .from('roster_uploads')
-                .select('id')
-                .ilike('email', email)
-                .maybeSingle();
-
-            if (existing) {
-                throw new Error("An account with this email already exists. Please try logging in.");
+            if (!result.success) {
+                throw new Error(result.error);
             }
 
-            // Create new record
-            const { data, error } = await supabase.from('roster_uploads').insert({
-                email: email.trim(),
-                goalie_name: "New Athlete",
-                assigned_unique_id: rId,
-                is_claimed: true,
-                sport: 'Hockey'
-            }).select().single();
-
-            if (error) throw error;
-
             // Success
-            onSuccess(data);
+            onSuccess(result.data);
 
         } catch (err: any) {
             console.error(err);
