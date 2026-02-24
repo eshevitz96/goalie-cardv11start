@@ -28,6 +28,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { CoachScheduler } from "@/components/CoachScheduler";
+import { PendingRequests } from "@/components/coach/PendingRequests";
 
 export default function CoachDashboard() {
     const [roster, setRoster] = useState<any[]>([]);
@@ -308,9 +309,12 @@ export default function CoachDashboard() {
                 </div >
 
                 {/* Right Column: Quick Actions */}
-                < div className="space-y-6" >
+                <div className="space-y-6">
+                    {/* Pending Upgrade Requests */}
+                    <PendingRequests />
+
                     {/* Schedule Manager */}
-                    < CoachScheduler />
+                    <CoachScheduler />
 
                     {/* Pending Reviews */}
                     {
