@@ -46,8 +46,16 @@ export default function CoachDashboard() {
             const coachId = user?.id;
 
             // 1. Fetch Roster
-            const { data: rosterData } = await supabase.from('roster_uploads').select('*');
-            if (rosterData) {
+            const { data: rawRosterData } = await supabase.from('roster_uploads').select('*');
+            let rosterData: any[] = [];
+
+            if (rawRosterData) {
+                // Filter down to ONLY goalies assigned to or requested by this coach
+                rosterData = rawRosterData.filter(g =>
+                    g.assigned_coach_id === coachId ||
+                    (g.assigned_coach_ids && g.assigned_coach_ids.includes(coachId))
+                );
+
                 // Fetch Credits
                 let creditsMap = new Map<string, number>();
                 const rIds = rosterData.map(r => r.id);
@@ -72,12 +80,13 @@ export default function CoachDashboard() {
                     credits: creditsMap.get(g.id) || 0,
                     status: g.is_claimed ? 'active' : 'pending',
                     lastSeen: 'N/A',
-                    assigned_coach_id: g.assigned_coach_id
+                    assigned_coach_id: g.assigned_coach_id,
+                    user_id: g.linked_user_id
                 })));
 
                 if (coachId) {
                     const activations = rosterData
-                        .filter(g => !g.is_claimed && g.assigned_coach_id === coachId)
+                        .filter(g => !g.is_claimed)
                         .map(g => ({
                             id: g.id,
                             goalie: g.goalie_name,
@@ -96,8 +105,8 @@ export default function CoachDashboard() {
             // 3. Fetch Pending Reviews (Recent schedule requests or sessions)
             if (coachId && rosterData) {
                 const myGoalieUserIds = rosterData
-                    .filter(g => g.assigned_coach_id === coachId && g.is_claimed && g.user_id)
-                    .map(g => g.user_id);
+                    .filter(g => (g.assigned_coach_id === coachId || (g.assigned_coach_ids && g.assigned_coach_ids.includes(coachId))) && g.is_claimed && g.linked_user_id)
+                    .map(g => g.linked_user_id);
 
                 if (myGoalieUserIds.length > 0) {
                     const { data: reqData } = await supabase
@@ -135,7 +144,7 @@ export default function CoachDashboard() {
         window.location.href = "/login";
     };
 
-    const filteredRoster = filter === 'all' ? roster : roster.filter(r => r.assigned_coach_id); // Simple filter for now
+    const filteredRoster = filter === 'all' ? roster : roster.filter(r => r.status === 'active' || r.status === 'renew_needed');
 
     return (
         <main className="min-h-screen bg-background text-foreground p-4 md:p-8">
@@ -224,10 +233,10 @@ export default function CoachDashboard() {
                                     All
                                 </button>
                                 <button
-                                    onClick={() => setFilter('assigned')}
-                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'assigned' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                                    onClick={() => setFilter('active' as any)}
+                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'active' as any ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
                                 >
-                                    My Goalies
+                                    Active Goalies
                                 </button>
                             </div>
                         </div>
@@ -396,34 +405,11 @@ export default function CoachDashboard() {
                                 <div className="font-bold text-sm text-foreground group-hover:text-primary">Blast: Session Openings</div>
                                 <div className="text-xs text-muted-foreground mt-1">Notify all Active parents of new slots</div>
                             </button>
-
-                            <button
-                                onClick={async () => {
-                                    if (!confirm("Send payment reminders to goalies needing renewal?")) return;
-                                    const renewGoalies = filteredRoster.filter((g: any) => g.status === 'renew_needed' && g.user_id);
-                                    if (renewGoalies.length === 0) return alert("No goalies currently need renewal.");
-
-                                    const payload = renewGoalies.map((g: any) => ({
-                                        user_id: g.user_id,
-                                        title: 'Payment Reminder',
-                                        message: 'Your Goalie Card subscription requires renewal to continue booking sessions.',
-                                        type: 'alert'
-                                    }));
-
-                                    const { error } = await supabase.from('notifications').insert(payload);
-                                    if (error) alert("Failed to send reminder: " + error.message);
-                                    else alert(`Sent to ${payload.length} goalies!`);
-                                }}
-                                className="w-full text-left p-4 bg-muted/50 border border-border hover:border-primary/50 rounded-xl transition-all group"
-                            >
-                                <div className="font-bold text-sm text-foreground group-hover:text-primary">Payment Reminders</div>
-                                <div className="text-xs text-muted-foreground mt-1">Auto-ping {filteredRoster.filter((g: any) => g.status === 'renew_needed').length} parents (Renew Due)</div>
-                            </button>
                         </div>
                     </div>
-                </div >
+                </div>
 
-            </div >
-        </main >
+            </div>
+        </main>
     );
 }
