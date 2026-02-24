@@ -5,7 +5,6 @@ import { CheckCircle, QrCode } from "lucide-react";
 import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
@@ -178,16 +177,11 @@ export function GoalieCard({
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: 0.5 }}
                                 >
-                                    <Link
-                                        href="/parent/renew"
-                                        className="w-full mt-2 py-3 bg-primary rounded-xl font-black text-primary-foreground shadow-lg shadow-primary/20 flex items-center justify-center gap-2 uppercase tracking-wide text-sm relative overflow-hidden group hover:opacity-90 active:scale-[0.98] transition-all"
-                                    >
-                                        <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                                        <span className="relative z-10 flex items-center gap-2">
-                                            Renew Session
-                                            <CheckCircle size={16} className="text-primary-foreground/80" />
+                                    <div className="w-full mt-2 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl font-black text-amber-500 flex items-center justify-center gap-2 uppercase tracking-wide text-sm">
+                                        <span className="flex items-center gap-2">
+                                            <span>⚠️</span> Session Complete
                                         </span>
-                                    </Link>
+                                    </div>
                                 </motion.div>
                             ) : (
                                 <div className="flex justify-between text-xs text-muted-foreground font-medium px-1">
