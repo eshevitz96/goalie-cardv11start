@@ -96,6 +96,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+@layer base {
+
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="time"],
+  input[type="week"],
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="password"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    min-height: 2.5rem;
+  }
+}
+
 /* Glass Effect Utilities */
 @layer utilities {
   .text-balance {

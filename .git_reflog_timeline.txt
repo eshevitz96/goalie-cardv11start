@@ -1,0 +1,124 @@
+2026-02-23 20:51:19 | Update Stripe webhook for credits, generalize protocols, B2B pricing, and add remaining hybrid lesson credits to UI
+2026-02-23 20:04:32 | Update public/logo.png for Vercel project icon
+2026-02-23 19:37:30 | Fix RLS issue preventing new profile creation
+2026-02-23 15:05:18 | fix: update password reset flow to use dedicated reset-sent ui state
+2026-02-23 13:55:50 | feat: add global search modal with notifications
+2026-02-23 13:42:43 | feat: hide registration block on goalie created events
+2026-02-22 21:37:00 | Journal UX improvements + fix coach assignment RLS error
+2026-02-22 21:13:49 | fix(seo): correct Vercel URL to goalie-cardv11start.vercel.app
+2026-02-21 20:01:27 | fix(icons): properly center shield in all icon SVGs
+2026-02-21 19:53:43 | fix(icons): use exact GoalieGuardLogo shield path with transform scaling for pixel-perfect match
+2026-02-21 19:47:11 | fix(icons): use correct white filled shield on dark bg matching in-app Pro Profile icon
+2026-02-21 19:42:04 | fix(icons): use correct brand icon (red-outlined shield on dark bg) with more breathing room
+2026-02-21 19:33:28 | feat(seo): comprehensive icon and SEO update - smaller shield icon, OG image, full metadata, manifest
+2026-02-20 02:09:01 | chore(mobile): update iOS/Android splash screens to match desktop text branding
+2026-02-20 01:59:08 | UI Refinements: Unified Login Flow, Simplified Dashboard Header, and Baseline UX fixes
+2026-02-18 15:08:01 | feat: Beta Survey & Admin View + Docs
+2026-02-15 13:38:45 | fix(journal): robust auto-linking for roster and reflections
+2026-02-15 13:37:25 | Refactor AiCoachRecommendation for absolute positioning and cleanup
+2026-02-15 13:15:22 | fix(journal): use server action for saving reflections to resolve goalie_id
+2026-02-15 13:07:11 | chore(admin): add eshevitz96 to allowlist
+2026-02-15 13:00:48 | feat(activation): add password creation step to wizard
+2026-02-13 13:13:59 | fix(actions): refactor supabaseAdmin for production resiliency
+2026-02-13 13:12:27 | debug: add better error reporting for connection issues
+2026-02-13 12:13:25 | fix: restore corrupted components and add password change functionality
+2026-02-13 09:02:45 | Cleanup: Remove accidental backup files
+2026-02-13 09:02:38 | Security: Scrub hardcoded Supabase secrets and replace with env var references
+2026-02-12 23:06:04 | Fix: Production crash (missing use client) and clean up accidental files
+2026-02-12 22:58:34 | Fix: Event registration, portal modal, and Grad Year label update
+2026-02-12 22:57:26 | Fix: Event registration, portal modal, and Grad Year label update
+2026-02-12 22:56:52 | Fix: Event registration, portal modal, and Grad Year label update
+2026-02-02 12:12:04 | Verified Login Flow & Simplified Profile (Removed Height/Weight/Catch)
+2026-02-06 11:32:28 | Production build fixes and UI refactoring
+2026-02-06 11:31:59 | Production build fixes and UI refactoring
+2026-02-02 21:21:04 | Enhance AI context with baseline confidence and add goal char limit
+2026-02-02 21:09:44 | Fix event creation RLS and allow personal schedule items
+2026-02-02 20:51:53 | Fix security critical RLS issues, activation loop, and optimize db performance
+2026-02-02 12:12:04 | Verified Login Flow & Simplified Profile (Removed Height/Weight/Catch)
+2026-02-01 20:24:19 | UI Updates: Added purchase nudge, improved empty states, and cleared events DB
+2026-02-01 20:18:32 | Fix Card Data & UI: Removed demo mode override, reverted font, confirmed event logic
+2026-02-01 20:09:43 | Fix build error: Resolved conditional hook in AiCoachRecommendation
+2026-02-01 20:05:50 | Enhanced AI Recommendations: Connected baseline data, interactive action modules, and real profile sync
+2026-02-01 19:40:47 | fix: remove ID from goalie card, increase analytics spacing
+2026-02-01 19:32:48 | fix: remove studio pending, fix setup data population, rename dashboard overview
+2026-02-01 19:18:14 | Fix dashboard access by saving activated_id in setup completion
+2026-02-01 19:12:44 | Fix missing Complete Setup button on onboarding step 3
+2026-02-01 19:04:50 | Connect Baseline to Analysis and expand Expert Engine rules
+2026-02-01 18:54:12 | Update Welcome Screen Aesthetic & Fix Setup Flow UI
+2026-02-01 18:46:52 | Fix Activation Loop: Chain Activate to Setup, Role-based Redirect
+2026-02-01 18:38:00 | Fix Admin Save, Split Height Input, Simplify Activation Flow
+2026-02-01 18:28:21 | UI/UX: Replace Loading with Welcome Screen
+2026-02-01 18:20:06 | Fix syntax error in Admin Page JSX (unclosed div)
+2026-02-01 18:15:09 | Enhance Admin Manual Add: Include Height, Weight, Catch Hand, and Birthday
+2026-02-01 17:54:04 | Simplify activation flow: Remove OTP/PIN, add Guardian Email logic, redirect to Setup
+2026-02-01 17:02:33 | feat: add email fields to activation review and fix otp block
+2026-02-01 16:30:15 | fix: resolve useEffect build error and update height UI to split fields
+2026-02-01 16:23:20 | fix: resolve build errors (eslint config and static seed generation)
+2026-02-01 16:20:00 | fix: remove invalid email from admin allowlist
+2026-02-01 16:18:11 | fix: enforce numeric types to prevent crash and implement admin email allowlist
+2026-02-01 15:34:59 | fix: final syntax correction for production build
+2026-02-01 15:24:43 | fix: build error in parent dashboard (scope issue)
+2026-02-01 15:16:34 | feat: unified auth flow, restored parent transactions, admin polish
+2026-01-30 14:07:48 | feat: beta launch readiness - birdie wilson audit & ui polish
+2026-01-29 15:53:14 | Fix Coach Profile Save Button: Add schema, actions, and UI logic
+2026-01-29 11:27:28 | Fix syntax errors in profile page
+2026-01-29 11:16:50 | Allow pin fallback defaults and improve verification robustness
+2026-01-29 11:09:25 | Restore Coach OS button in Coaches Corner
+2026-01-29 11:08:43 | Fix parent profile sync issue and add delete to events log
+2026-01-29 10:53:58 | Update login page aesthetics to match activate profile
+2026-01-29 10:49:45 | Fix redirect loops and add blank slate creation
+2026-01-29 10:33:26 | Fix login flow to correctly redirect to setup and preserve setup data
+2026-01-29 02:25:41 | Update Login page to support System Dark/Light Mode
+2026-01-29 02:22:31 | Implement PIN-based Login Flow and Frictionless Activation
+2026-01-29 01:29:15 | Fix Setup Flow: Add missing Frustration input and fix layout nesting
+2026-01-29 01:19:28 | Update Setup Flow: Swap Terms/Baseline, Add Frustration Question
+2026-01-28 22:27:17 | v1.1 RC: Security wall, Beta Feedback, Activation Guide, and Logic Updates
+2026-01-16 21:49:40 | Fix build error: wrap ActivatePage in Suspense for useSearchParams
+2026-01-16 21:07:21 | Bump version to v11.0.7 and trigger deploy
+2026-01-16 20:58:55 | Fix Supabase build crash in webhook
+2026-01-16 20:54:42 | Fix Stripe build crash
+2026-01-16 20:53:52 | Add debugging UI to Parent Dashboard
+2026-01-16 20:50:15 | Fix dashboard query logic for local activation
+2026-01-16 20:41:23 | Redirect to Activate if no profile found
+2026-01-16 20:32:12 | Update Activate flow, Stripe Webhook, Admin Coach Assign, and Parent Dashboard
+2026-01-15 14:05:04 | Fix Admin CSV upload (sanitize/upsert), add Stripe backend scaffold, and update Parent Dashboard.
+2026-01-14 14:51:17 | refactor: update coach dashboard to use real data and fix broken jsx
+2026-01-14 14:41:21 | fix: logic for parent dashboard data and logout
+2026-01-14 14:28:09 | feat: add edit functionality to admin panel
+2026-01-14 14:24:21 | fix: robust csv splitting algorithm
+2026-01-14 14:17:32 | feat: add manual goalie entry for admin
+2026-01-14 14:09:34 | feat: auto-detect csv delimiter
+2026-01-14 14:06:08 | fix: ignore csv instruction rows and validate data
+2026-01-14 14:02:57 | fix: explicit csv column indices for name parsing
+2026-01-14 13:55:13 | feat: robust csv logic for name and team mapping
+2026-01-14 13:41:36 | fix: ignore instruction rows in csv upload
+2026-01-14 13:21:51 | feat: implement payment tracking columns and admin view
+2026-01-14 13:13:55 | feat: complete activation logic save id and update claim status
+2026-01-14 13:11:21 | feat: connect parent dashboard to real data
+2026-01-14 13:08:25 | feat: add light/dark mode support, update login UI, remove homepage logo, and refine parent profile preferences
+2026-01-14 13:00:45 | feat: add terms and conditions to activation flow
+2026-01-14 12:50:03 | feat: smart csv parser and roster management
+2026-01-14 12:39:53 | fix: adjust admin csv parser indices
+2026-01-13 23:37:25 | fix: disable middleware auth check temporarily to unblock admin access
+2026-01-13 23:26:12 | feat: implement parent activation flow linked to Supabase
+2026-01-13 23:15:02 | feat: restructure app with new landing portal and parent route
+2026-01-13 23:06:31 | chore: add visible env var status to login page
+2026-01-13 22:55:57 | fix: restore login and middleware with safeguards
+2026-01-13 22:49:33 | debug: remove middleware entirely to isolate failure
+2026-01-13 22:45:38 | debug: minimal sanity check login page
+2026-01-13 22:35:38 | fix: safeguard middleware against missing env vars
+2026-01-13 22:26:00 | chore: revert static force to debug live env
+2026-01-13 22:18:25 | fix: force static generation for login page
+2026-01-13 22:02:58 | chore: add debug logging to login page
+2026-01-13 21:37:26 | feat: add authentication layer (login, middleware, supabase-ssr)
+2026-01-13 21:23:57 | fix: escape special chars in JSX to fix build error
+2026-01-13 20:31:15 | chore: add supabase client and update dependencies
+2026-01-13 20:31:15 | chore: add supabase client and update dependencies
+2026-01-13 20:28:05 | feat: enable live csv import to supabase
+2026-01-13 20:24:41 | fix: CSV parsing to prefer column 15 for email
+2026-01-13 20:20:37 | fix(supabase): add drop statements to reset schema
+2026-01-13 20:14:40 | feat: support custom csv import format
+2026-01-13 20:07:44 | feat: update pending reviews format and app icon
+2026-01-13 20:01:04 | feat: Add app icon and Supabase documentation
+2026-01-13 15:25:19 | feat: CoachOS Dashboard, Admin Portal, and Parent Portal UI enhancements
+2026-01-10 23:47:28 | Initial commit from Create Next App

@@ -19,13 +19,39 @@ export function AuthInfoStep({ formData, setFormData, onSubmit, isLoading }: Aut
             className="space-y-4"
         >
             <div className="text-center mb-4">
-                <h2 className="text-xl font-bold text-white">Final Details</h2>
-                <p className="text-zinc-400 text-xs">Verify your roster info</p>
+                <h2 className="text-xl font-bold text-foreground">Final Details</h2>
+                <p className="text-muted-foreground text-xs">Verify your roster info</p>
             </div>
 
-            <input value={formData.goalieName} onChange={e => setFormData({ ...formData, goalieName: e.target.value })} placeholder="Goalie Name" className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-lg text-white placeholder-zinc-500" />
-            <input value={formData.parentName} onChange={e => setFormData({ ...formData, parentName: e.target.value })} placeholder="Parent Name" className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-lg text-white placeholder-zinc-500" />
-            <input value={formData.team} onChange={e => setFormData({ ...formData, team: e.target.value })} placeholder="Current Team" className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-lg text-white placeholder-zinc-500" />
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Goalie Name</label>
+                    <input
+                        value={formData.goalieName}
+                        onChange={e => setFormData({ ...formData, goalieName: e.target.value })}
+                        placeholder="Goalie Name"
+                        className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-sm"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Parent Name</label>
+                    <input
+                        value={formData.parentName}
+                        onChange={e => setFormData({ ...formData, parentName: e.target.value })}
+                        placeholder="Parent Name"
+                        className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-sm"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Current Team</label>
+                    <input
+                        value={formData.team}
+                        onChange={e => setFormData({ ...formData, team: e.target.value })}
+                        placeholder="Current Team"
+                        className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-sm"
+                    />
+                </div>
+            </div>
 
             <Button
                 onClick={onSubmit}

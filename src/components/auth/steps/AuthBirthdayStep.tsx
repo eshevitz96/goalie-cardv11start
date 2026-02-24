@@ -30,15 +30,17 @@ export function AuthBirthdayStep({ onSubmit }: AuthBirthdayStepProps) {
                 <p className="text-zinc-400 text-xs">Different ages have different portals.</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-1 shadow-2xl">
-                <label className="block text-[9px] font-extrabold text-zinc-400 uppercase tracking-widest px-4 pt-3 pb-0">Date of Birth</label>
-                <input
-                    type="date"
-                    required
-                    value={dob}
-                    onChange={e => setDob(e.target.value)}
-                    className="w-full bg-white text-black text-lg p-4 rounded-xl focus:outline-none placeholder:text-zinc-300 font-bold text-center"
-                />
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Date of Birth</label>
+                <div className="relative">
+                    <input
+                        type="date"
+                        required
+                        value={dob}
+                        onChange={e => setDob(e.target.value)}
+                        className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-lg"
+                    />
+                </div>
             </div>
 
             <Button

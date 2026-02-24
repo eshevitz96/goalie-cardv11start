@@ -21,7 +21,7 @@ export default function RenewSession() {
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <Link
-                        href="/"
+                        href="/dashboard"
                         className="p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-colors"
                     >
                         <ArrowLeft size={20} />
@@ -38,8 +38,8 @@ export default function RenewSession() {
                             key={pack.id}
                             onClick={() => setSelectedPack(pack.id)}
                             className={`relative p-6 border rounded-3xl cursor-pointer transition-all ${selectedPack === pack.id
-                                    ? "bg-zinc-900 border-primary shadow-lg shadow-primary/10"
-                                    : "bg-black border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700"
+                                ? "bg-zinc-900 border-primary shadow-lg shadow-primary/10"
+                                : "bg-black border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700"
                                 }`}
                         >
                             {pack.recommended && (

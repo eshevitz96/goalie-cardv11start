@@ -35,17 +35,20 @@ export function AuthOtpStep({ email, onVerifyOtp, onBack, isLoading, error }: Au
                 <p className="text-white font-bold">{email}</p>
             </div>
 
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-2 focus-within:border-white transition-colors shadow-2xl">
-                <input
-                    type="text"
-                    required
-                    autoFocus
-                    maxLength={6}
-                    value={otp}
-                    onChange={e => setOtp(e.target.value)}
-                    placeholder="000000"
-                    className="w-full bg-transparent border-none text-white text-3xl font-mono tracking-[0.5em] text-center p-4 focus:ring-0 placeholder:text-zinc-800"
-                />
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Verification Code</label>
+                <div className="relative">
+                    <input
+                        type="text"
+                        required
+                        autoFocus
+                        maxLength={6}
+                        value={otp}
+                        onChange={e => setOtp(e.target.value)}
+                        placeholder="000000"
+                        className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground text-3xl font-mono tracking-[0.5em] text-center focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/30"
+                    />
+                </div>
             </div>
 
             {error && <div className="text-red-500 text-sm text-center">{error}</div>}

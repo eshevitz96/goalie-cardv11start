@@ -28,17 +28,19 @@ export function AuthEmailStep({ onSendOtp, isLoading, error }: AuthEmailStepProp
             onSubmit={handleSubmit}
             className="space-y-4"
         >
-            <div className="bg-white rounded-2xl p-1 shadow-2xl overflow-hidden">
-                <label className="block text-[9px] font-extrabold text-zinc-400 uppercase tracking-widest px-4 pt-3 pb-0">Email Address</label>
-                <input
-                    type="email"
-                    required
-                    autoFocus
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="Type your email here..."
-                    className="w-full bg-white text-black text-lg px-4 pb-3 pt-1 rounded-xl focus:outline-none placeholder:text-zinc-300 font-bold"
-                />
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Email Address</label>
+                <div className="relative">
+                    <input
+                        type="email"
+                        required
+                        autoFocus
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="Type your email here..."
+                        className="w-full bg-secondary border border-border rounded-xl px-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-lg"
+                    />
+                </div>
             </div>
 
             {error && <div className="text-red-500 text-xs text-center font-bold bg-red-500/10 p-2 rounded-lg border border-red-500/20">{error}</div>}

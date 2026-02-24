@@ -49,16 +49,19 @@ export function ActivateIdentityStep({ birthday, setBirthday, onNext, onBack, st
                 <p className="text-muted-foreground text-sm">Enter your birthday to confirm it's you.</p>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 text-center">Date of Birth</label>
-                <input
-                    type="date"
-                    autoFocus
-                    required
-                    value={birthday}
-                    onChange={(e) => setBirthday(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-lg p-4 text-center text-xl font-bold text-foreground focus:outline-none focus:border-primary transition-colors"
-                />
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Date of Birth</label>
+                <div className="relative">
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                    <input
+                        type="date"
+                        autoFocus
+                        required
+                        value={birthday}
+                        onChange={(e) => setBirthday(e.target.value)}
+                        className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors text-lg"
+                    />
+                </div>
             </div>
 
             {error && (
