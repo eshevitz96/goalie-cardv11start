@@ -116,6 +116,16 @@ export default function LogSession() {
 
             if (updateError) throw updateError;
 
+            // 3. Notify Goalie
+            if (goalieProfileId) {
+                await supabase.from('notifications').insert({
+                    user_id: goalieProfileId,
+                    title: 'New Session Logged',
+                    message: `Coach logged a new session: S${formData.sessionNumber} L${formData.lessonNumber}`,
+                    type: 'alert'
+                });
+            }
+
             alert("Session Logged Successfully!");
             router.push('/coach');
 

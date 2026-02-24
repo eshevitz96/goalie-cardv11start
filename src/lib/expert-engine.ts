@@ -109,12 +109,12 @@ export function determineRecommendation(text: string, mood: string, sport: strin
         focus: "Fundamentals",
         reason: "Let's get back to basics.",
         drill: {
-            name: "Crease Movement",
+            name: "Goal Area Movement",
             duration: "15 mins",
             type: "physical",
             steps: [
-                "10 T-Pushes left to right.",
-                "10 Butterfly slides left to right.",
+                "10 Lateral pushes left to right.",
+                "10 Drop slides left to right.",
                 "10 Shuffles forward and backward.",
                 "Focus on quiet upper body."
             ]

@@ -46,20 +46,40 @@ export async function POST(req: Request) {
             return new NextResponse("Database Error", { status: 500 });
         }
 
-        // SYNC: Update Roster Uploads so Admin Dashboard sees it
-        // We assume session.metadata.userId is the Roster ID (passed from ActivatePage)
-        const { error: rosterError } = await supabase
-            .from('roster_uploads')
-            .update({
-                is_claimed: true,
-                payment_status: 'paid',
-                amount_paid: (session.amount_total || 0) / 100 // Convert cents to dollars
-            })
-            .eq('id', session.metadata.userId);
+        if (session.metadata.type === 'credit_purchase') {
+            const creditAmount = parseInt(session.metadata.creditAmount || "0");
 
-        if (rosterError) {
-            console.error("Roster sync error:", rosterError);
-            // Don't fail the webhook for this, but log it
+            if (creditAmount > 0) {
+                const { error: creditError } = await supabase.from('credit_transactions').insert({
+                    roster_id: session.metadata.userId,
+                    amount: creditAmount,
+                    transaction_type: 'purchase',
+                    description: `Stripe Purchase: ${creditAmount} credits`,
+                    stripe_payment_id: session.payment_intent as string
+                });
+
+                if (creditError) {
+                    console.error("Credit dispensing error:", creditError);
+                    // Log but don't fail webhook if payment already recorded
+                }
+            }
+        } else {
+            // Default: Activation Flow
+            // SYNC: Update Roster Uploads so Admin Dashboard sees it
+            // We assume session.metadata.userId is the Roster ID (passed from ActivatePage)
+            const { error: rosterError } = await supabase
+                .from('roster_uploads')
+                .update({
+                    is_claimed: true,
+                    payment_status: 'paid',
+                    amount_paid: (session.amount_total || 0) / 100 // Convert cents to dollars
+                })
+                .eq('id', session.metadata.userId);
+
+            if (rosterError) {
+                console.error("Roster sync error:", rosterError);
+                // Don't fail the webhook for this, but log it
+            }
         }
     }
 

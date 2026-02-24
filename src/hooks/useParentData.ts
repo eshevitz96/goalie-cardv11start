@@ -173,6 +173,23 @@ export function useParentData() {
                 });
             }
 
+            // Fetch Credits
+            let creditsMap = new Map<string, number>();
+            if (rosterData && rosterData.length > 0) {
+                const rIds = rosterData.map((r: any) => r.id);
+                const { data: creditsData } = await supabase
+                    .from('credit_transactions')
+                    .select('roster_id, amount')
+                    .in('roster_id', rIds);
+
+                if (creditsData) {
+                    creditsData.forEach((c: any) => {
+                        const current = creditsMap.get(c.roster_id) || 0;
+                        creditsMap.set(c.roster_id, current + c.amount);
+                    });
+                }
+            }
+
             // JOIN EVERYTHING
             if (rosterData && rosterData.length > 0) {
                 const realGoalies = rosterData.map(g => {
@@ -247,6 +264,7 @@ export function useParentData() {
                         coachId: g.assigned_coach_id,
                         session: Number(g.session_count) || 0,
                         lesson: Number(g.lesson_count) || 0,
+                        credits: creditsMap.get(g.id) || 0,
                         stats: {
                             gaa: "0.00",
                             sv: ".000",

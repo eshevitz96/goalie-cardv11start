@@ -30,23 +30,40 @@ export function BuyCreditsModal({ isOpen, onClose, rosterId, onSuccess }: BuyCre
         if (selectedPkg === null || !rosterId) return;
 
         setProcessing(true);
-        // Simulate Stripe Checkout API Call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
         const pkg = PACKAGES[selectedPkg];
 
-        // TODO: In real app, this would be a webhook or callback after payment
-        // Calling server action to add credits
-        const result = await addCredits(rosterId, pkg.credits, "simulated_stripe_id");
+        try {
+            const costInCents = Math.round(pkg.cost * 1.089 * 100); // Including tax
 
-        if (result.success) {
-            toast.success(`Purchased ${pkg.credits} Credits!`);
-            onSuccess(result.balance);
-            onClose();
-        } else {
-            toast.error("Purchase Failed: " + result.error);
+            const response = await fetch('/api/stripe/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    priceData: {
+                        unit_amount: costInCents,
+                        product_name: `Goalie Card - ${pkg.label}`
+                    },
+                    userId: rosterId,
+                    returnUrl: window.location.origin + '/dashboard',
+                    metadata: {
+                        type: 'credit_purchase',
+                        creditAmount: pkg.credits
+                    }
+                })
+            });
+
+            if (!response.ok) throw new Error("Network response was not ok");
+            const data = await response.json();
+
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                throw new Error("No checkout URL returned");
+            }
+        } catch (error: any) {
+            toast.error("Checkout Failed: " + error.message);
+            setProcessing(false);
         }
-        setProcessing(false);
     };
 
     return (

@@ -31,14 +31,14 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
         ],
         points: ["Peripheral vision", "Hand speed", "Focus"]
     },
-    "Crease Movement": {
+    "Goal Area Movement": {
         steps: [
-            "Start at the top of the crease.",
-            "T-push to the post.",
+            "Start at the top of the goal area.",
+            "Push laterally to the post.",
             "Shuffle back to top.",
             "Repeat for both sides."
         ],
-        points: ["Sharp stops", "Head up", "Stick on ice"]
+        points: ["Sharp stops", "Head up", "Stick down"]
     },
     "Low Save Mechanics": { // Mapped from "Wall Ball - Low Hops"? No, need to match name exact or use fuzzy.
         // The expert engine uses "Wall Ball - Low Hops"
@@ -55,11 +55,11 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
     "Butterfly Slides & Stick Seal": {
         steps: [
             "Start on posts.",
-            "Push to top of crease in butterfly.",
-            "Rotate and slide to opposite post.",
+            "Push to top of goal area in drop stance/butterfly.",
+            "Rotate and slide/move to opposite post.",
             "Ensure stick leads the movement."
         ],
-        points: ["Seal the ice", "Stick covers five-hole", "Upright torso"]
+        points: ["Seal the ground/ice", "Stick covers five-hole/gap", "Upright torso"]
     },
     "Rebound Placement (Box Control)": {
         steps: [
@@ -71,7 +71,7 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
     },
     "Up-Downs / Recoveries": {
         steps: [
-            "Start in butterfly.",
+            "Start in drop stance/butterfly.",
             "On whistle/command, get up to stance.",
             "Drop back down.",
             "Repeat for 30 seconds."

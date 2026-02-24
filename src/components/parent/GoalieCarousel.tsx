@@ -37,6 +37,7 @@ export function GoalieCarousel({
                 showProgress={showProgress}
                 isPro={isPro}
                 seasonProgress={undefined}
+                credits={activeGoalie.credits}
                 className="w-full flex-1 md:aspect-auto"
             />
 

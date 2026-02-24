@@ -119,6 +119,23 @@ export function useGoalieData() {
             }
         }
 
+        // 8. Fetch Credits
+        let creditsMap = new Map<string, number>();
+        if (rosterData && rosterData.length > 0) {
+            const rosterIds = rosterData.map(r => r.id);
+            const { data: creditsData } = await supabase
+                .from('credit_transactions')
+                .select('roster_id, amount')
+                .in('roster_id', rosterIds);
+
+            if (creditsData) {
+                creditsData.forEach(c => {
+                    const current = creditsMap.get(c.roster_id) || 0;
+                    creditsMap.set(c.roster_id, current + c.amount);
+                });
+            }
+        }
+
         // 7. Process & Map Data
         if (rosterData && rosterData.length > 0) {
             const realGoalies = rosterData.map(g => {
@@ -194,6 +211,7 @@ export function useGoalieData() {
                     coachId: g.assigned_coach_id,
                     session: g.session_count || 0,
                     lesson: g.lesson_count || 0,
+                    credits: creditsMap.get(g.id) || 0,
                     stats: {
                         gaa: "0.00",
                         sv: ".000",

@@ -209,14 +209,16 @@ export default function ParentProfile() {
                             </div>
 
                             <div className="grid gap-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email Address</label>
-                                <input
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    className="bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors hover:border-muted-foreground/50 placeholder:text-muted-foreground"
-                                />
-                                <p className="text-[10px] text-muted-foreground">Changing this will update where you receive notifications.</p>
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email Address (Linked to Login)</label>
+                                <div className="relative opacity-75">
+                                    <input
+                                        type="email"
+                                        value={formData.email}
+                                        readOnly
+                                        className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-muted-foreground focus:outline-none cursor-not-allowed"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mt-1">To change your email, please contact support.</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

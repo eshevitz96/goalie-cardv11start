@@ -6,28 +6,45 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { priceId, email, userId, returnUrl, mode } = body;
+        const { priceId, priceData, email, userId, returnUrl, mode, metadata = {} } = body;
 
-        if (!priceId || !userId) {
+        if (!userId || (!priceId && !priceData)) {
             return new NextResponse("Missing required fields", { status: 400 });
         }
 
-        const session = await stripe.checkout.sessions.create({
+        const lineItems = priceId
+            ? [{ price: priceId, quantity: 1 }]
+            : [{
+                price_data: {
+                    currency: "usd",
+                    product_data: {
+                        name: priceData.product_name,
+                    },
+                    unit_amount: priceData.unit_amount,
+                },
+                quantity: 1,
+            }];
+
+        // Stripe requires all metadata values to be strings
+        const safeMetadata: Record<string, string> = { userId };
+        for (const [key, value] of Object.entries(metadata)) {
+            safeMetadata[key] = String(value);
+        }
+
+        const sessionConfig: any = {
             mode: mode || "payment",
             payment_method_types: ["card"],
-            line_items: [
-                {
-                    price: priceId,
-                    quantity: 1,
-                },
-            ],
-            customer_email: email,
-            metadata: {
-                userId,
-            },
+            line_items: lineItems,
+            metadata: safeMetadata,
             success_url: `${returnUrl}?success=true`,
             cancel_url: `${returnUrl}?canceled=true`,
-        });
+        };
+
+        if (email) {
+            sessionConfig.customer_email = email;
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
 
         return NextResponse.json({ url: session.url });
     } catch (error) {

@@ -23,9 +23,10 @@ export interface GoalieCardProps {
     gradYear?: string | number;
     className?: string;
     id?: string;
-    isPro?: boolean; // Explicit control
-    seasonProgress?: number; // 0-100, schedule based
-    showProgress?: boolean; // Display progress bars
+    isPro?: boolean;
+    seasonProgress?: number;
+    showProgress?: boolean;
+    credits?: number;
 }
 
 export function GoalieCard({
@@ -41,7 +42,8 @@ export function GoalieCard({
     id,
     isPro,
     seasonProgress,
-    showProgress
+    showProgress,
+    credits
 }: GoalieCardProps) {
     const maxLessons = 4; // Standard package size
     // Calculate Training Progress (Lessons)
@@ -198,8 +200,15 @@ export function GoalieCard({
                 </div>
 
                 {/* Bottom ID and Season */}
-                <div className="absolute bottom-3 right-5 text-[10px] font-mono text-muted-foreground/40 font-semibold tracking-widest text-right pointer-events-none">
-                    <div>SEASON {seasonLabel}</div>
+                <div className="absolute bottom-3 right-5 flex flex-col items-end gap-1.5 pointer-events-none">
+                    {credits !== undefined && (
+                        <div className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-md border border-primary/20">
+                            {credits} Hybrid Lesson{credits !== 1 && 's'} Remaining
+                        </div>
+                    )}
+                    <div className="text-[10px] font-mono text-muted-foreground/40 font-semibold tracking-widest text-right">
+                        SEASON {seasonLabel}
+                    </div>
                 </div>
             </motion.div>
 

@@ -173,6 +173,7 @@ export function GoalieDashboard({
                                 weight={activeGoalie.weight}
                                 catchHand={activeGoalie.catchHand}
                                 showProgress={showProgress}
+                                credits={activeGoalie.credits}
                                 className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-[500px]"
                             />
 

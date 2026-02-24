@@ -129,15 +129,15 @@ export const EXPERT_RULES: ExpertRule[] = [
             focus: "Butterfly Seal",
             reason: "Pucks going through the legs means stick discipline or knee seal issues.",
             drill: {
-                name: "Butterfly Slides & Stick Seal",
+                name: "Low Shot Drops & Seal",
                 duration: "20 mins",
                 type: "physical",
                 steps: [
-                    "Start in stance.",
-                    "Drive knee down into butterfly, focusing on sealing the 5-hole instantly.",
-                    "Keep stick blade flat on the ice, covering the gap.",
-                    "Recover to stance.",
-                    "Repeat 10 times, then add a slide."
+                    "Start in athletic stance.",
+                    "Drive knees down, focusing on sealing the gap instantly.",
+                    "Keep hands active and ready, covering the lower half.",
+                    "Recover back to stance quickly.",
+                    "Repeat 10 times, then add a lateral slide."
                 ]
             },
             videoWait: 10
@@ -294,13 +294,13 @@ export const EXPERT_RULES: ExpertRule[] = [
             focus: "High-Intensity Flow",
             reason: "Momentum is high. Push the pace.",
             drill: {
-                name: "Post-to-Post Recoveries",
+                name: "Lateral Power Movements",
                 duration: "15 mins",
                 type: "physical",
                 steps: [
-                    "Start on one post.",
-                    "T-Push to the top of the crease.",
-                    "T-Push back to the opposite post.",
+                    "Start on one side of a 6-foot gap or crease.",
+                    "Push laterally to the center.",
+                    "Push laterally to the opposite side.",
                     "Repeat continuously for 45 seconds.",
                     "Rest for 45 seconds. Do 3 sets."
                 ]

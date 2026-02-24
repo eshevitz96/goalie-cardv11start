@@ -35,21 +35,56 @@ export default function CoachDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'assigned'>('all');
 
+    const [pendingReviews, setPendingReviews] = useState<any[]>([]);
+    const [pendingActivations, setPendingActivations] = useState<any[]>([]);
+
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
+
+            const { data: { user } } = await supabase.auth.getUser();
+            const coachId = user?.id;
+
             // 1. Fetch Roster
             const { data: rosterData } = await supabase.from('roster_uploads').select('*');
             if (rosterData) {
+                // Fetch Credits
+                let creditsMap = new Map<string, number>();
+                const rIds = rosterData.map(r => r.id);
+                if (rIds.length > 0) {
+                    const { data: creditsData } = await supabase
+                        .from('credit_transactions')
+                        .select('roster_id, amount')
+                        .in('roster_id', rIds);
+                    if (creditsData) {
+                        creditsData.forEach(c => {
+                            const current = creditsMap.get(c.roster_id) || 0;
+                            creditsMap.set(c.roster_id, current + c.amount);
+                        });
+                    }
+                }
+
                 setRoster(rosterData.map(g => ({
                     id: g.id,
                     name: g.goalie_name,
                     session: g.session_count || 1,
                     lesson: g.lesson_count || 0,
+                    credits: creditsMap.get(g.id) || 0,
                     status: g.is_claimed ? 'active' : 'pending',
                     lastSeen: 'N/A',
                     assigned_coach_id: g.assigned_coach_id
                 })));
+
+                if (coachId) {
+                    const activations = rosterData
+                        .filter(g => !g.is_claimed && g.assigned_coach_id === coachId)
+                        .map(g => ({
+                            id: g.id,
+                            goalie: g.goalie_name,
+                            parent: g.parent_name || g.email || 'Awaiting Claim'
+                        }));
+                    setPendingActivations(activations);
+                }
             }
 
             // 2. Fetch Highlights
@@ -58,17 +93,42 @@ export default function CoachDashboard() {
                 setHighlights(highData);
             }
 
+            // 3. Fetch Pending Reviews (Recent schedule requests or sessions)
+            if (coachId && rosterData) {
+                const myGoalieUserIds = rosterData
+                    .filter(g => g.assigned_coach_id === coachId && g.is_claimed && g.user_id)
+                    .map(g => g.user_id);
+
+                if (myGoalieUserIds.length > 0) {
+                    const { data: reqData } = await supabase
+                        .from('schedule_requests')
+                        .select('*, profiles:goalie_id(goalie_name)')
+                        .in('goalie_id', myGoalieUserIds)
+                        .order('requested_date', { ascending: false })
+                        .limit(5);
+
+                    if (reqData) {
+                        setPendingReviews(reqData.map(r => {
+                            const rosterMatch = rosterData.find(g => g.user_id === r.goalie_id);
+                            return {
+                                id: r.id,
+                                rosterId: rosterMatch?.id, // need roster id to log session
+                                name: r.profiles?.goalie_name || 'Goalie',
+                                session: rosterMatch?.session_count || 1,
+                                lesson: rosterMatch?.lesson_count || 0,
+                                date: new Date(r.requested_date).toLocaleDateString()
+                            };
+                        }));
+                    }
+                }
+            }
+
             setIsLoading(false);
         };
         fetchData();
     }, []);
 
     const [issuedIds, setIssuedIds] = useState<Record<number, string>>({});
-
-    // Mock Data
-    const INCOMING_REQUESTS: any[] = [];
-    const PENDING_REVIEWS: any[] = [];
-    const PENDING_ACTIVATIONS: any[] = [];
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -191,8 +251,11 @@ export default function CoachDashboard() {
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
-                                                    <span className="font-mono font-bold text-muted-foreground">S{goalie.session} L{goalie.lesson}</span>
-                                                    <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                                    <div>
+                                                        <span className="font-mono font-bold text-muted-foreground whitespace-nowrap">S{goalie.session} L{goalie.lesson}</span>
+                                                        <div className="text-[10px] font-bold text-primary uppercase leading-tight mt-0.5">{goalie.credits} Lesson{goalie.credits !== 1 ? 's' : ''}</div>
+                                                    </div>
+                                                    <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden shrink-0 mt-1">
                                                         <div
                                                             className="h-full bg-primary"
                                                             style={{ width: `${(goalie.lesson / 4) * 100}%` }}
@@ -242,24 +305,24 @@ export default function CoachDashboard() {
 
                     {/* Pending Reviews */}
                     {
-                        PENDING_REVIEWS.length > 0 && (
+                        pendingReviews.length > 0 && (
                             <div className="glass rounded-3xl p-6 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 -mt-6 -mr-6 h-24 w-24 rounded-full bg-primary/20 blur-2xl" />
                                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2 relative z-10">
                                     <FileEdit size={18} className="text-primary" />
                                     Pending Reviews
-                                    <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full">{PENDING_REVIEWS.length}</span>
+                                    <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full">{pendingReviews.length}</span>
                                 </h3>
 
                                 <div className="space-y-3 relative z-10">
-                                    {PENDING_REVIEWS.map((goalie) => (
+                                    {pendingReviews.map((goalie: any) => (
                                         <div key={goalie.id} className="p-3 bg-muted/40 border border-border rounded-xl flex items-center justify-between group hover:border-primary/50 transition-colors">
                                             <div>
                                                 <div className="font-bold text-foreground text-sm">{goalie.name}</div>
                                                 <div className="text-xs text-muted-foreground font-mono">S{goalie.session} L{goalie.lesson} • Complete</div>
                                             </div>
                                             <Link
-                                                href={`/coach/log-session/${goalie.id}`}
+                                                href={`/coach/log-session/${goalie.rosterId}`}
                                                 className="px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground rounded-lg text-xs font-bold transition-all flex items-center gap-2"
                                             >
                                                 Review <ArrowRight size={12} />
@@ -275,10 +338,10 @@ export default function CoachDashboard() {
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <GoalieGuardLogo size={18} className="text-primary" />
                             Pending Activations
-                            <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full">{PENDING_ACTIVATIONS.length}</span>
+                            <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full">{pendingActivations.length}</span>
                         </h3>
                         <div className="space-y-3">
-                            {PENDING_ACTIVATIONS.map((req) => (
+                            {pendingActivations.map((req: any) => (
                                 <div key={req.id} className="p-4 bg-muted/50 border border-border rounded-xl group hover:border-border transition-colors">
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
@@ -311,14 +374,50 @@ export default function CoachDashboard() {
                         </h3>
 
                         <div className="space-y-3">
-                            <button className="w-full text-left p-4 bg-muted/50 border border-border hover:border-foreground/50 rounded-xl transition-all group">
+                            <button
+                                onClick={async () => {
+                                    if (!confirm("Send broadcast to all active goalies?")) return;
+                                    const activeGoalies = filteredRoster.filter((g: any) => g.status === 'active' && g.user_id);
+                                    if (activeGoalies.length === 0) return alert("No active goalies to notify.");
+
+                                    const payload = activeGoalies.map((g: any) => ({
+                                        user_id: g.user_id,
+                                        title: 'New Session Openings',
+                                        message: 'Coach has opened new availability slots. Check the schedule to book!',
+                                        type: 'alert'
+                                    }));
+
+                                    const { error } = await supabase.from('notifications').insert(payload);
+                                    if (error) alert("Failed to send blast: " + error.message);
+                                    else alert(`Sent to ${payload.length} goalies!`);
+                                }}
+                                className="w-full text-left p-4 bg-muted/50 border border-border hover:border-foreground/50 rounded-xl transition-all group"
+                            >
                                 <div className="font-bold text-sm text-foreground group-hover:text-primary">Blast: Session Openings</div>
                                 <div className="text-xs text-muted-foreground mt-1">Notify all Active parents of new slots</div>
                             </button>
 
-                            <button className="w-full text-left p-4 bg-muted/50 border border-border hover:border-primary/50 rounded-xl transition-all group">
+                            <button
+                                onClick={async () => {
+                                    if (!confirm("Send payment reminders to goalies needing renewal?")) return;
+                                    const renewGoalies = filteredRoster.filter((g: any) => g.status === 'renew_needed' && g.user_id);
+                                    if (renewGoalies.length === 0) return alert("No goalies currently need renewal.");
+
+                                    const payload = renewGoalies.map((g: any) => ({
+                                        user_id: g.user_id,
+                                        title: 'Payment Reminder',
+                                        message: 'Your Goalie Card subscription requires renewal to continue booking sessions.',
+                                        type: 'alert'
+                                    }));
+
+                                    const { error } = await supabase.from('notifications').insert(payload);
+                                    if (error) alert("Failed to send reminder: " + error.message);
+                                    else alert(`Sent to ${payload.length} goalies!`);
+                                }}
+                                className="w-full text-left p-4 bg-muted/50 border border-border hover:border-primary/50 rounded-xl transition-all group"
+                            >
                                 <div className="font-bold text-sm text-foreground group-hover:text-primary">Payment Reminders</div>
-                                <div className="text-xs text-muted-foreground mt-1">Auto-ping 2 parents (Renew Due)</div>
+                                <div className="text-xs text-muted-foreground mt-1">Auto-ping {filteredRoster.filter((g: any) => g.status === 'renew_needed').length} parents (Renew Due)</div>
                             </button>
                         </div>
                     </div>
