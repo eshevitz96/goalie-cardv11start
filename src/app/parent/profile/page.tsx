@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Save, Shield, Settings, User, Briefcase, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PaymentList } from "@/components/PaymentList";
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
@@ -323,8 +324,13 @@ export default function ParentProfile() {
                         </div>
                     </div>
 
+                    {/* Billing / Payments Settings */}
+                    <div className="bg-card border border-border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm mt-6">
+                        <PaymentList rosterId={dbId?.toString()} />
+                    </div>
+
                     {/* Account Settings */}
-                    <div className="bg-card border border-border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
+                    <div className="bg-card border border-border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm mt-6">
                         <div className="flex items-center gap-2 mb-2 text-muted-foreground">
                             <Settings size={18} />
                             <span className="text-xs font-bold uppercase tracking-wider">Preferences</span>

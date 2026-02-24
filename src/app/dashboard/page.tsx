@@ -426,17 +426,6 @@ export default function Dashboard() {
                             />
                         </motion.div>
 
-                        {/* Payment History (Owner Only) */}
-                        {isOwner && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.7 }}
-                                className="bg-card glass rounded-3xl p-6"
-                            >
-                                <PaymentList rosterId={activeGoalie.id} />
-                            </motion.div>
-                        )}
                     </div>
 
                 </div>
