@@ -52,7 +52,7 @@ export default function TransactionHistory() {
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <Link
-                        href="/parent"
+                        href="/dashboard"
                         className="p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-colors"
                     >
                         <ArrowLeft size={20} />
