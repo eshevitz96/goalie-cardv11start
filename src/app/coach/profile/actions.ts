@@ -25,8 +25,7 @@ export async function updateCoachProfile(formData: FormData) {
         title,
         bio,
         philosophy,
-        settings,
-        updated_at: new Date().toISOString()
+        settings
     };
 
     // Only update full_name if provided (some flows might use goalie_name)
