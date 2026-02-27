@@ -55,15 +55,7 @@ export function GoalieCard({
     const safeLesson = lesson ?? 0;
     const safeName = name ?? "";
 
-    if (pureIcon) {
-        return (
-            <div className={twMerge("flex items-center justify-center bg-muted rounded-2xl text-foreground border border-border shrink-0 shadow-inner", className)}>
-                <GoalieGuardLogo size={className?.includes('w-12') ? 24 : 36} />
-            </div>
-        );
-    }
     const maxLessons = 4; // Standard package size
-    // Calculate Training Progress (Lessons)
     const trainingProgress = (safeLesson / maxLessons) * 100;
 
     const [showQR, setShowQR] = useState(false);
@@ -74,6 +66,14 @@ export function GoalieCard({
     // Use logic hook
     const { seasonProgress: calculatedSeasonProgress, seasonLabel } = useSeasonTimeline(sport);
     const finalSeasonProgress = seasonProgress ?? calculatedSeasonProgress;
+
+    if (pureIcon) {
+        return (
+            <div className={twMerge("flex items-center justify-center bg-muted rounded-2xl text-foreground border border-border shrink-0 shadow-inner", className)}>
+                <GoalieGuardLogo size={className?.includes('w-12') ? 24 : 36} />
+            </div>
+        );
+    }
 
     const handleUpgradeCheckout = async () => {
         if (!pendingPayment || !id) return;
@@ -177,7 +177,7 @@ export function GoalieCard({
                     {showProgress && (
                         <div className="space-y-4">
                             {/* Training Progress (Only for active lessons) */}
-                            {((credits !== undefined && credits > 0) || (lesson > 0)) && (
+                            {((credits !== undefined && credits > 0) || (safeLesson > 0)) && (
                                 <div className="space-y-1.5">
                                     <div className="flex justify-between items-end px-1">
                                         <div>
