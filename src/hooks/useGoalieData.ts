@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from "@/context/ToastContext";
+import { rosterService } from '@/services/roster';
+import { eventsService } from '@/services/events';
+import { sessionsService } from '@/services/sessions';
+import { coachesService } from '@/services/coaches';
+import { reflectionsService } from '@/services/reflections';
+import { transformRosterToGoalie } from '@/utils/goalie-transform';
 import { DEMO_IDS, DEMO_COACH_ID, DEMO_ADMIN_EMAIL } from "@/utils/demo-utils";
 
 export function useGoalieData() {
@@ -12,235 +17,124 @@ export function useGoalieData() {
     const fetchMyGoalies = async (showLoading = true) => {
         if (showLoading) setIsLoading(true);
 
-        // 1. Auth Check - Wait for auth to be ready if it's still loading initially
-        if (authLoading && !userEmail && !localId) {
-            // Let internal auth hook finish
-            return;
-        }
+        if (authLoading && !userEmail && !localId) return;
 
         const emailToSearch = userEmail;
-
         if (!emailToSearch && !localId) {
             setGoalies([]);
             setIsLoading(false);
             return;
         }
 
-        // 2. Query Roster
-        let query = supabase.from('roster_uploads').select('*');
+        try {
+            // 1. Fetch Roster
+            let rosterData = await rosterService.fetchByEmailOrId(emailToSearch, localId);
 
-        if (emailToSearch) {
-            query = query.ilike('email', emailToSearch);
-        } else if (localId) {
-            query = query.eq('assigned_unique_id', localId);
-        } else {
-            setGoalies([]);
-            setIsLoading(false);
-            return;
-        }
-
-        let { data: rosterData, error: rosterError } = await query;
-        if (rosterError) console.error("Roster Fetch Error:", rosterError);
-
-        // DEMO & LOCAL OVERRIDE LOGIC
-        // Bridge for Luke Grasso (Live Activation Test)
-        if ((!rosterData || rosterData.length === 0) && (localId === DEMO_IDS.LUKE_UNIQUE_ID || emailToSearch === DEMO_ADMIN_EMAIL)) {
-            rosterData = [{
-                id: DEMO_IDS.LUKE_GRASSO,
-                goalie_name: 'Luke Grasso',
-                team: 'Yale Bulldogs',
-                grad_year: 2029,
-                height: '6-0',
-                weight: '190',
-                catch_hand: 'Left',
-                sport: 'Lacrosse',
-                assigned_unique_id: DEMO_IDS.LUKE_UNIQUE_ID,
-                email: 'lukegrasso09@gmail.com',
-                parent_name: 'Parent Grasso',
-                session_count: 20,
-                lesson_count: 78, // Adjusted per user request: Lesson 3 of Session 20 => 78 completed
-                games_count: 5,
-                practice_count: 10,
-                assigned_coach_id: DEMO_COACH_ID,
-                assigned_coach_ids: [DEMO_COACH_ID]
-            }];
-        }
-
-        // 3. Fetch Events
-        const { data: allEvents } = await supabase.from('events').select('*').gte('date', new Date().toISOString()).order('date', { ascending: true });
-
-        // 4. Fetch Registrations
-        let registeredIds = new Set();
-        if (userId) {
-            const { data: regs } = await supabase.from('registrations').select('event_id').eq('goalie_id', userId);
-            registeredIds = new Set(regs?.map(r => r.event_id) || []);
-        }
-
-        // 5. Fetch Session History
-        let sessionsMap = new Map<string, any[]>();
-        if (rosterData && rosterData.length > 0) {
-            const rosterIds = rosterData.map(r => r.id);
-            const { data: sessionsData } = await supabase
-                .from('sessions')
-                .select('*')
-                .in('roster_id', rosterIds)
-                .order('date', { ascending: false });
-
-            if (sessionsData) {
-                sessionsData.forEach(s => {
-                    const list = sessionsMap.get(s.roster_id) || [];
-                    list.push(s);
-                    sessionsMap.set(s.roster_id, list);
-                });
+            // DEMO FALLBACK
+            if ((!rosterData || rosterData.length === 0) && (localId === DEMO_IDS.LUKE_UNIQUE_ID || emailToSearch === DEMO_ADMIN_EMAIL)) {
+                rosterData = [{
+                    id: DEMO_IDS.LUKE_GRASSO,
+                    goalie_name: 'Luke Grasso',
+                    team: 'Yale Bulldogs',
+                    grad_year: 2029,
+                    height: '6-0',
+                    weight: '190',
+                    catch_hand: 'Left',
+                    sport: 'Lacrosse',
+                    assigned_unique_id: DEMO_IDS.LUKE_UNIQUE_ID,
+                    email: 'lukegrasso09@gmail.com',
+                    parent_name: 'Parent Grasso',
+                    session_count: 20,
+                    lesson_count: 78,
+                    games_count: 5,
+                    practice_count: 10,
+                    assigned_coach_id: DEMO_COACH_ID,
+                    assigned_coach_ids: [DEMO_COACH_ID]
+                }];
             }
-        }
 
-        // 6. Fetch Coaches
-        const { data: coachesData } = await supabase.from('profiles').select('id, goalie_name, bio, philosophy, pricing_config').eq('role', 'coach');
-        const coachMap = new Map(coachesData?.map(c => [c.id, c]) || []);
+            const rosterIds = rosterData?.map(r => r.id) || [];
 
-        // 7.1 Fetch Latest Reflections
-        let reflectionsMap = new Map<string, string>();
-        if (rosterData && rosterData.length > 0) {
-            const rosterIds = rosterData.map(r => r.id);
-            const { data: refData } = await supabase
-                .from('reflections')
-                .select('roster_id, mood, created_at, author_role')
-                .in('roster_id', rosterIds)
-                .order('created_at', { ascending: false });
+            // 2. Parallel Fetch All Related Data
+            const [
+                allEvents,
+                registrations,
+                sessionsData,
+                coachesData,
+                refData,
+                userProfileData,
+                creditsData
+            ] = await Promise.all([
+                eventsService.fetchUpcoming(),
+                userId ? eventsService.fetchRegistrations(userId) : Promise.resolve([]),
+                rosterIds.length > 0 ? sessionsService.fetchByRosterIds(rosterIds) : Promise.resolve([]),
+                coachesService.fetchAllProfiles(),
+                rosterIds.length > 0 ? reflectionsService.fetchByRosterIds(rosterIds) : Promise.resolve([]),
+                userId ? supabase.from('profiles').select('*').eq('id', userId).single() : Promise.resolve({ data: null }),
+                rosterIds.length > 0 ? supabase.from('credit_transactions').select('roster_id, amount').in('roster_id', rosterIds) : Promise.resolve({ data: [] })
+            ]);
 
-            if (refData) {
-                refData.forEach(r => {
-                    const isAthleteVoice = r.author_role === 'goalie' || r.author_role === null || r.author_role === undefined;
-                    if (isAthleteVoice && !reflectionsMap.has(r.roster_id)) {
-                        reflectionsMap.set(r.roster_id, r.mood);
-                    }
-                });
-            }
-        }
+            const registeredIds = new Set(registrations?.map(r => r.event_id) || []);
+            const userProfile = userProfileData.data;
+            const coachMap = new Map(coachesData?.map((c: any) => [c.id, c]) || []);
 
-        // 8. Fetch Credits
-        let creditsMap = new Map<string, number>();
-        if (rosterData && rosterData.length > 0) {
-            const rosterIds = rosterData.map(r => r.id);
-            const { data: creditsData } = await supabase
-                .from('credit_transactions')
-                .select('roster_id, amount')
-                .in('roster_id', rosterIds);
-
-            if (creditsData) {
-                creditsData.forEach(c => {
-                    const current = creditsMap.get(c.roster_id) || 0;
-                    creditsMap.set(c.roster_id, current + c.amount);
-                });
-            }
-        }
-
-        // 7. Process & Map Data
-        if (rosterData && rosterData.length > 0) {
-            const realGoalies = rosterData.map(g => {
-                // Filter Events
-                const goalieSports = g.sport ? g.sport.split(',').map((s: string) => s.trim()) : [];
-                const goalieEvents = allEvents
-                    ?.filter(e => {
-                        // 1. Sport Match
-                        if (e.sport && goalieSports.length > 0 && !goalieSports.includes(e.sport)) {
-                            return false;
-                        }
-
-                        // 2. Registration/Creator Match
-                        // Show if registered OR if the user created it (owned)
-                        const isRegistered = registeredIds.has(e.id);
-                        const isCreator = userId && e.created_by === userId;
-
-                        return isRegistered || isCreator;
-                    })
-                    .map(e => ({
-                        id: e.id,
-                        name: e.name,
-                        date: new Date(e.date).toLocaleDateString(),
-                        location: e.location || 'TBA',
-                        status: "upcoming", // If they see it, it's upcoming for them
-                        image: e.image || "from-gray-500 to-gray-600",
-                        price: e.price,
-                        sport: e.sport,
-                        rawDate: e.date
-                    })) || [];
-
-                // Resolve Coach
-                let assignedCoachName = "Assigned Coach";
-                let assignedCoachIds: string[] = [];
-                let primaryCoachDetails = null;
-
-                if (g.assigned_coach_ids && g.assigned_coach_ids.length > 0) {
-                    assignedCoachIds = g.assigned_coach_ids;
-                    const coaches = assignedCoachIds.map(id => coachMap.get(id));
-                    const names = coaches.map(c => c?.goalie_name || "Unknown");
-                    assignedCoachName = names.length === 1 ? names[0] : `${names.length} Coaches`;
-                    primaryCoachDetails = coaches[0] || null;
-                } else if (g.assigned_coach_id) {
-                    const coach: any = coachMap.get(g.assigned_coach_id);
-                    assignedCoachName = coach?.goalie_name || "Unknown Coach";
-                    primaryCoachDetails = coach || null;
-                }
-
-                // Map Sessions
-                const gSessions = sessionsMap.get(g.id) || [];
-                const feedbackItems = gSessions.map(s => ({
-                    id: s.id,
-                    date: new Date(s.date).toLocaleDateString(),
-                    coach: assignedCoachName,
-                    title: `Session ${s.session_number} • Lesson ${s.lesson_number}`,
-                    content: s.notes || "No notes for this session.",
-                    rating: 5,
-                    hasVideo: false
-                }));
-
-                return {
-                    id: g.id,
-                    name: g.goalie_name,
-                    team: g.team,
-                    gradYear: g.grad_year,
-                    height: g.height,
-                    weight: g.weight,
-                    catchHand: g.catch_hand,
-                    sport: g.sport || 'Hockey',
-                    coach: assignedCoachName,
-                    coachIds: assignedCoachIds,
-                    coachDetails: primaryCoachDetails,
-                    coachId: g.assigned_coach_id,
-                    session: g.session_count || 0,
-                    lesson: g.lesson_count || 0,
-                    credits: creditsMap.get(g.id) || 0,
-                    stats: {
-                        gaa: "0.00",
-                        sv: ".000",
-                        memberSince: gSessions.length > 0 ? new Date(gSessions[gSessions.length - 1].date).getFullYear() : new Date().getFullYear(),
-                        totalSessions: g.session_count || 0,
-                        totalLessons: g.lesson_count || 0
-                    },
-                    events: goalieEvents,
-                    feedback: feedbackItems,
-                    latestMood: reflectionsMap.get(g.id) || 'neutral'
-                };
+            // Map Sessions
+            const sessionsMap = new Map<string, any[]>();
+            sessionsData?.forEach((s: any) => {
+                const list = sessionsMap.get(s.roster_id) || [];
+                list.push(s);
+                sessionsMap.set(s.roster_id, list);
             });
-            setGoalies(realGoalies);
-        } else {
+
+            // Map Reflections
+            const reflectionsMap = new Map<string, string>();
+            const reflectionsContentMap = new Map<string, string>();
+            refData?.forEach((r: any) => {
+                const isAthleteVoice = r.author_role === 'goalie' || r.author_role === null || r.author_role === undefined;
+                if (isAthleteVoice && !reflectionsMap.has(r.roster_id)) {
+                    reflectionsMap.set(r.roster_id, r.mood);
+                    if (r.content) reflectionsContentMap.set(r.roster_id, r.content);
+                }
+            });
+
+            // Map Credits
+            const creditsMap = new Map<string, number>();
+            creditsData.data?.forEach((c: any) => {
+                const current = creditsMap.get(c.roster_id) || 0;
+                creditsMap.set(c.roster_id, current + c.amount);
+            });
+
+            // 3. Transform Data
+            const realGoalies = (rosterData || []).map(g =>
+                transformRosterToGoalie(
+                    g, userProfile, allEvents, registeredIds, userId,
+                    coachMap, sessionsMap, reflectionsMap, reflectionsContentMap, creditsMap
+                )
+            );
+
+            // 4. Sort
+            const sortedGoalies = realGoalies.sort((a, b) => {
+                const aHasName = a.name !== 'Unknown Goalie' ? 1 : 0;
+                const bHasName = b.name !== 'Unknown Goalie' ? 1 : 0;
+                if (aHasName !== bHasName) return bHasName - aHasName;
+
+                const aDate = new Date(a.activation_date || 0).getTime();
+                const bDate = new Date(b.activation_date || 0).getTime();
+                return bDate - aDate;
+            });
+
+            setGoalies(sortedGoalies);
+        } catch (err) {
+            console.error("Fetch Error in useGoalieData:", err);
             setGoalies([]);
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
-    // Initial Fetch
     useEffect(() => {
-        if (!authLoading) {
-            fetchMyGoalies(true);
-        }
+        if (!authLoading) fetchMyGoalies(true);
     }, [userEmail, localId, authLoading]);
 
-    return {
-        goalies,
-        isLoading,
-        fetchMyGoalies
-    };
+    return { goalies, isLoading, fetchMyGoalies };
 }

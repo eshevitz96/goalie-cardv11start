@@ -63,7 +63,7 @@ export function ActiveDrillTimer({ drillName, duration, onExit, onNext, isLastPh
                     {!timerActive ? (
                         <Button
                             onClick={onNext}
-                            className={`px-8 py-3 font-bold rounded-xl flex items-center gap-2 transition-all ${isLastPhase ? 'bg-primary text-black hover:bg-primary/90' : 'bg-foreground text-background hover:scale-105'}`}
+                            className="px-8 py-3 bg-foreground text-background font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-all"
                         >
                             {isLastPhase ? (
                                 <><CheckCircle size={18} /> Finish & Reflect</>

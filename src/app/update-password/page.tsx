@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2, Lock, ArrowRight, AlertCircle, CheckCircle } from "lucide-react";
@@ -14,6 +14,18 @@ export default function UpdatePasswordPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [checkingSession, setCheckingSession] = useState(true);
+
+    useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                setError("No active reset session found. Please request a new password reset link.");
+            }
+            setCheckingSession(false);
+        };
+        checkSession();
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -68,7 +80,12 @@ export default function UpdatePasswordPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-6"
                 >
-                    {success ? (
+                    {checkingSession ? (
+                        <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+                            <Loader2 className="animate-spin mb-4" size={32} />
+                            <p className="text-sm font-medium">Verifying reset session...</p>
+                        </div>
+                    ) : success ? (
                         <div className="text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl text-center space-y-4">
                             <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
                                 <CheckCircle size={24} />
@@ -128,6 +145,16 @@ export default function UpdatePasswordPage() {
                                     </>
                                 )}
                             </button>
+
+                            {error?.includes("reset session") && (
+                                <button
+                                    type="button"
+                                    onClick={() => router.push('/login')}
+                                    className="w-full bg-secondary hover:bg-muted text-foreground font-bold py-4 rounded-xl transition-all border border-border mt-4"
+                                >
+                                    Back to Login
+                                </button>
+                            )}
                         </form>
                     )}
                 </motion.div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Calendar, MapPin, QrCode } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { supabase } from "@/utils/supabase/client";
 
 export interface Event {
-    id: string; // Changed from number to string (UUID)
+    id: string;
     name: string;
     date: string;
     location: string;
@@ -19,9 +19,8 @@ export interface Event {
     price?: number;
     access_code?: string;
     sport?: string;
+    created_by?: string;
 }
-
-// ... (previous imports)
 
 interface EventsListProps {
     events: Event[];
@@ -30,19 +29,31 @@ interface EventsListProps {
     sport?: string;
     maxItems?: number;
     hidePayments?: boolean;
-    goalieId?: string; // NEW: Needed for auto-registration
+    goalieId?: string;
 }
 
 export function EventsList({ events, onRegister, onEventAdded, sport, maxItems, hidePayments, goalieId }: EventsListProps) {
-    const [showAddEventModal, setShowAddEventModal] = useState(false);
+    const [showEventModal, setShowEventModal] = useState(false);
+    const [editingEvent, setEditingEvent] = useState<Event | null>(null);
     const { toast } = useToast();
+
+    const handleEdit = (e: React.MouseEvent, event: Event) => {
+        e.stopPropagation();
+        setEditingEvent(event);
+        setShowEventModal(true);
+    };
+
+    const handleAdd = () => {
+        setEditingEvent(null);
+        setShowEventModal(true);
+    };
 
     return (
         <div className="w-full space-y-4">
-            <div className="flex items-end justify-between mb-2">
-                <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
-                    <Calendar className="text-primary" />
-                    Event Passes & Schedule
+            <div className="flex items-center justify-between gap-4 mb-2 flex-nowrap">
+                <h3 className="text-xl font-black text-foreground flex items-center gap-2 whitespace-nowrap">
+                    <Calendar className="text-primary shrink-0" />
+                    Events & Schedule
                 </h3>
                 <div className="flex items-center gap-3">
                     {maxItems && (
@@ -57,8 +68,8 @@ export function EventsList({ events, onRegister, onEventAdded, sport, maxItems, 
                     )}
                     <Button
                         variant="ghost"
-                        onClick={() => setShowAddEventModal(true)}
-                        className="text-xs font-bold text-primary hover:text-primary/80 transition-colors h-auto py-1 px-2 hover:bg-primary/10"
+                        onClick={handleAdd}
+                        className="text-[10px] font-black text-primary hover:text-primary/80 transition-colors h-auto py-1.5 px-3 hover:bg-primary/10 border border-primary/20 rounded-full whitespace-nowrap"
                     >
                         + Add Event
                     </Button>
@@ -67,38 +78,53 @@ export function EventsList({ events, onRegister, onEventAdded, sport, maxItems, 
 
             <div className="space-y-3">
                 {events.length > 0 ? (
-                    events.slice(0, maxItems || events.length).map((event, idx) => (
-                        <motion.div
-                            key={event.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.1 }}
-                            onClick={() => window.location.href = `/events/${event.id}`}
-                            className="bg-secondary/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between group hover:bg-secondary/50 transition-all cursor-pointer"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-black transition-all">
-                                    <QrCode size={20} />
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-foreground text-sm">{event.name}</h4>
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] text-muted-foreground font-medium">
-                                        <span className="flex items-center gap-1">
-                                            <Calendar size={12} />
-                                            {new Date(event.date).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <MapPin size={12} />
-                                            {event.location}
-                                        </span>
+                    events.slice(0, maxItems || events.length).map((event, idx) => {
+                        const isOwner = event.created_by === goalieId;
+                        return (
+                            <motion.div
+                                key={event.id}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.1 }}
+                                onClick={() => window.location.href = `/events/${event.id}`}
+                                className="bg-secondary/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between group hover:bg-secondary/50 transition-all cursor-pointer"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-black transition-all">
+                                        <QrCode size={20} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-foreground text-sm">{event.name}</h4>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] text-muted-foreground font-medium">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar size={12} />
+                                                {new Date(event.date).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <MapPin size={12} />
+                                                {event.location}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <Badge variant={event.status === 'open' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5">
-                                {event.status}
-                            </Badge>
-                        </motion.div>
-                    ))
+                                <div className="flex items-center gap-2">
+                                    {isOwner && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => handleEdit(e, event)}
+                                            className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 h-auto bg-primary/5 hover:bg-primary/20 text-primary border border-primary/20"
+                                        >
+                                            Edit
+                                        </Button>
+                                    )}
+                                    <Badge variant={event.status === 'open' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5">
+                                        {event.status}
+                                    </Badge>
+                                </div>
+                            </motion.div>
+                        );
+                    })
                 ) : (
                     <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-secondary/10 border border-dashed border-border rounded-2xl">
                         <Calendar className="text-muted-foreground mb-3 opacity-20" size={32} />
@@ -108,23 +134,71 @@ export function EventsList({ events, onRegister, onEventAdded, sport, maxItems, 
                 )}
             </div>
 
-            <AddEventModal
-                isOpen={showAddEventModal}
-                onClose={() => setShowAddEventModal(false)}
+            <EventModal
+                isOpen={showEventModal}
+                onClose={() => {
+                    setShowEventModal(false);
+                    setEditingEvent(null);
+                }}
                 onAdded={() => onEventAdded?.()}
                 defaultSport={sport}
                 goalieId={goalieId}
+                editEvent={editingEvent}
             />
         </div>
     );
 }
 
-function AddEventModal({ isOpen, onClose, onAdded, defaultSport, goalieId }: { isOpen: boolean, onClose: () => void, onAdded?: () => void, defaultSport?: string, goalieId?: string }) {
-    const [manualEvent, setManualEvent] = useState({ type: 'Game', name: '', date: '', location: '' });
+function EventModal({ isOpen, onClose, onAdded, defaultSport, goalieId, editEvent }: {
+    isOpen: boolean,
+    onClose: () => void,
+    onAdded?: () => void,
+    defaultSport?: string,
+    goalieId?: string,
+    editEvent: Event | null
+}) {
+    // Helper to format date for datetime-local input
+    const formatForInput = (dateString: string) => {
+        if (!dateString) return "";
+        const d = new Date(dateString);
+        // Correctly handle local time offset for datetime-local input
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
+    const [manualEvent, setManualEvent] = useState({
+        type: 'Game',
+        name: '',
+        date: '',
+        location: ''
+    });
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
 
-    const handleManualSubmit = async () => {
+
+    // We use a useEffect to ensure form is updated when opening for edit
+    useEffect(() => {
+        if (isOpen) {
+            if (editEvent) {
+                const parts = editEvent.name.split(': ');
+                setManualEvent({
+                    type: ['Game', 'Practice', 'Training'].includes(parts[0]) ? parts[0] : 'Game',
+                    name: parts.length > 1 ? parts.slice(1).join(': ') : editEvent.name,
+                    date: formatForInput(editEvent.date),
+                    location: editEvent.location
+                });
+            } else {
+                setManualEvent({ type: 'Game', name: '', date: '', location: '' });
+            }
+        }
+    }, [isOpen, editEvent]);
+
+    const handleSubmit = async () => {
         if (!manualEvent.name || !manualEvent.date) {
             toast("Please fill in required fields.", "error");
             return;
@@ -132,45 +206,71 @@ function AddEventModal({ isOpen, onClose, onAdded, defaultSport, goalieId }: { i
         setIsSubmitting(true);
 
         const { data: { user } } = await supabase.auth.getUser();
+        const finalName = `${manualEvent.type}: ${manualEvent.name}`;
+        // Ensure we parse the date correctly as local time
+        const finalDate = new Date(manualEvent.date).toISOString();
 
-        const { data: eventData, error: eventError } = await supabase.from('events').insert({
-            name: `${manualEvent.type}: ${manualEvent.name}`,
-            date: new Date(manualEvent.date).toISOString(),
-            location: manualEvent.location || 'TBA',
-            sport: defaultSport || 'Hockey',
-            price: 0,
-            image: "from-zinc-500 to-zinc-700",
-            created_by: user?.id
-        }).select().single();
-
-        if (eventError) {
-            toast("Error adding event: " + eventError.message, "error");
-        } else if (eventData && user) {
-            const { error: regError } = await supabase.from('registrations').insert({
-                goalie_id: user.id,
-                event_id: eventData.id,
-                status: 'registered'
+        if (editEvent) {
+            const { updateEvent } = await import('@/app/events/actions');
+            const result = await updateEvent(editEvent.id, {
+                name: finalName,
+                date: finalDate,
+                location: manualEvent.location || 'TBA',
+                sport: defaultSport || editEvent.sport || 'Hockey'
             });
 
-            if (regError) {
-                console.error("Auto-registration failed", regError);
-                toast("Event added, but auto-registration failed.", "error");
+            if (result.success) {
+                toast("Event updated successfully!", "success");
+                onAdded?.();
+                onClose();
             } else {
-                toast(`${manualEvent.type} Added & Registered!`, "success");
+                toast("Error updating event: " + result.error, "error");
             }
-
-            onAdded?.();
-            onClose();
         } else {
-            toast("Event Added (No Registration linked)", "success");
-            onAdded?.();
-            onClose();
+            const { addEvent } = await import('@/app/events/actions');
+            const result = await addEvent({
+                name: finalName,
+                date: finalDate,
+                location: manualEvent.location || 'TBA',
+                sport: defaultSport || 'Hockey',
+                userId: user?.id
+            });
+
+            if (result.success) {
+                toast(`${manualEvent.type} Added & Registered!`, "success");
+                onAdded?.();
+                onClose();
+            } else {
+                toast("Error adding event: " + result.error, "error");
+            }
+        }
+        setIsSubmitting(false);
+    };
+
+    const handleDelete = async () => {
+        if (!editEvent) return;
+        if (!confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
+
+        setIsSubmitting(true);
+        try {
+            const { deleteEvent } = await import('@/app/events/actions');
+            const result = await deleteEvent(editEvent.id);
+
+            if (result.success) {
+                toast("Event deleted successfully.", "success");
+                onAdded?.();
+                onClose();
+            } else {
+                toast("Error deleting event: " + result.error, "error");
+            }
+        } catch (err: any) {
+            toast("Exception deleting event: " + err.message, "error");
         }
         setIsSubmitting(false);
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Add New Event">
+        <Modal isOpen={isOpen} onClose={onClose} title={editEvent ? "Edit Event" : "Add New Event"}>
             <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium mb-1">Event Type</label>
@@ -204,6 +304,9 @@ function AddEventModal({ isOpen, onClose, onAdded, defaultSport, goalieId }: { i
                         onChange={e => setManualEvent({ ...manualEvent, date: e.target.value })}
                         className="w-full bg-secondary border border-border rounded-lg px-3 py-2"
                     />
+                    <p className="text-[10px] text-muted-foreground mt-1 ml-1 italic">
+                        Select your local date and time.
+                    </p>
                 </div>
                 <div>
                     <label className="block text-sm font-medium mb-1">Location</label>
@@ -215,11 +318,22 @@ function AddEventModal({ isOpen, onClose, onAdded, defaultSport, goalieId }: { i
                         className="w-full bg-secondary border border-border rounded-lg px-3 py-2"
                     />
                 </div>
-                <div className="flex gap-2 pt-4">
-                    <Button variant="ghost" className="flex-1" onClick={onClose}>Cancel</Button>
-                    <Button className="flex-1" onClick={handleManualSubmit} disabled={isSubmitting}>
-                        {isSubmitting ? "Adding..." : "Confirm"}
-                    </Button>
+                <div className="flex flex-col gap-2 pt-4">
+                    <div className="flex gap-2">
+                        <Button variant="ghost" className="flex-1" onClick={onClose}>Cancel</Button>
+                        <Button className="flex-1" onClick={handleSubmit} disabled={isSubmitting}>
+                            {isSubmitting ? (editEvent ? "Updating..." : "Adding...") : (editEvent ? "Save Changes" : "Confirm")}
+                        </Button>
+                    </div>
+                    {editEvent && (
+                        <button
+                            onClick={handleDelete}
+                            disabled={isSubmitting}
+                            className="text-xs text-red-500 hover:text-red-400 font-bold py-2 transition-colors uppercase tracking-widest"
+                        >
+                            Delete Event
+                        </button>
+                    )}
                 </div>
             </div>
         </Modal>

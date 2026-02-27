@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
-import { X, Maximize2 } from "lucide-react";
+import { X } from "lucide-react";
+import { GoalieGuardLogo as ShieldIcon } from "@/components/ui/GoalieGuardLogo";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/context/ToastContext";
@@ -20,19 +21,37 @@ export function WalletPreviewModal({ isOpen, onClose, data }: WalletPreviewModal
     const toast = useToast();
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} size="sm" className="bg-transparent shadow-none border-none p-0 overflow-visible">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            size="sm"
+            className="bg-transparent shadow-none border-none p-0 overflow-visible"
+            hideCloseButton={true}
+        >
             <div className="relative w-full max-w-xs mx-auto" onClick={(e) => e.stopPropagation()}>
                 {/* Wallet Pass UI - Mimics PKPass */}
-                <div className="bg-[#1c1c1e] w-full rounded-[14px] overflow-hidden text-white shadow-2xl border border-white/10 relative">
-                    {/* Header Strip */}
+                <div className="bg-[#1c1c1e] w-full rounded-[24px] overflow-hidden text-white shadow-2xl border border-white/10 relative">
+
+                    {/* Header Strip - Refined Integrated UI */}
                     <div className="bg-[#2c2c2e] p-4 flex justify-between items-center relative">
-                        <div className="flex items-center gap-2">
-                            <Button onClick={() => { }} className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors h-auto w-auto">
-                                <Maximize2 size={12} className="text-white/70" />
-                            </Button>
-                            <span className="font-bold tracking-tight">Goalie Card</span>
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center shadow-lg border border-white/10">
+                                <ShieldIcon size={16} className="text-white" />
+                            </div>
+                            <span className="font-bold tracking-tight text-sm">Goalie Card</span>
                         </div>
-                        <Button variant="ghost" onClick={onClose} className="bg-white/10 p-1 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors z-50 cursor-pointer relative h-auto w-auto p-0 hover:bg-white/20"><X size={12} /></Button>
+
+                        <div className="flex items-center gap-2">
+                            <div className="bg-white/5 px-2 py-1 rounded-full text-white/40 flex items-center justify-center border border-white/5">
+                                <span className="text-[10px] font-bold tracking-tighter">PASS</span>
+                            </div>
+                            <button
+                                onClick={onClose}
+                                className="bg-white/10 p-1.5 rounded-full text-white/50 hover:text-white hover:bg-white/20 transition-all cursor-pointer"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Pass Body */}
@@ -80,7 +99,7 @@ export function WalletPreviewModal({ isOpen, onClose, data }: WalletPreviewModal
 
                 <div className="text-center mt-6">
                     <p className="text-white/50 text-xs mb-4">This is how your card appears in Apple Wallet.</p>
-                    <Button onClick={() => toast.success("Pass Signed & Downloaded!")} className="bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-blue-500 transition-all w-full">
+                    <Button onClick={() => toast.success("Verified Pass Generation: Coming Soon! This is a high-fidelity preview.")} className="bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-blue-500 transition-all w-full">
                         Add to Wallet
                     </Button>
                 </div>

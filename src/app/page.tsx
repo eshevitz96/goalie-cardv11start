@@ -4,26 +4,36 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
+import { supabase } from "@/utils/supabase/client";
 
 export default function EntryPortal() {
     const router = useRouter();
     const [showWelcome, setShowWelcome] = useState(true);
 
     useEffect(() => {
-        // Show welcome message for a few seconds for that premium feel
-        const timer = setTimeout(() => {
-            setShowWelcome(false);
-            // Wait for exit animation to finish before redirecting
-            setTimeout(() => {
-                router.replace("/login");
-            }, 800);
-        }, 2500);
+        const checkSessionAndRedirect = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                router.replace("/dashboard");
+                return;
+            }
 
-        return () => clearTimeout(timer);
+            // Show welcome message for a few seconds if no session
+            const timer = setTimeout(() => {
+                setShowWelcome(false);
+                setTimeout(() => {
+                    router.replace("/login");
+                }, 800);
+            }, 2500);
+
+            return () => clearTimeout(timer);
+        };
+
+        checkSessionAndRedirect();
     }, [router]);
 
     return (
-        <main className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
+        <main className="min-h-screen bg-background flex items-center justify-center overflow-hidden">
             <AnimatePresence>
                 {showWelcome && (
                     <motion.div
@@ -34,7 +44,7 @@ export default function EntryPortal() {
                         className="flex flex-col items-center justify-center space-y-6"
                     >
                         <motion.h1
-                            className="text-5xl md:text-7xl font-black text-white italic tracking-tighter text-center px-4 uppercase"
+                            className="text-5xl md:text-7xl font-bold text-foreground tracking-tighter text-center px-4 uppercase"
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ duration: 0.4, ease: "easeOut" }}

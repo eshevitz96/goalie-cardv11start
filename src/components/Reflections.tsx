@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Plus, Save, Smile, Frown, Meh, Maximize2, Minimize2, ChevronRight, X } from "lucide-react";
+import { BookOpen, Plus, Save, Smile, Frown, Meh, Maximize2, Minimize2, ChevronRight, X, Paperclip, FileText, Loader2 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 
 interface Reflection {
@@ -12,6 +12,7 @@ interface Reflection {
     mood: 'happy' | 'frustrated' | 'neutral' | string;
     created_at: string;
     author_role?: 'goalie' | 'parent' | 'coach';
+    file_url?: string;
 }
 
 interface ReflectionsProps {
@@ -36,6 +37,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
     });
     const [loading, setLoading] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
         if (!rosterId) return;
@@ -79,6 +82,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             .from('reflections')
             .select('*')
             .eq('roster_id', rosterId)
+            .neq('title', 'BETA FEEDBACK')
             .order('created_at', { ascending: false });
         if (data) setReflections(data);
     };
@@ -156,6 +160,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
 
         // Server Action Submission
         let result;
+        const finalFileUrl = selectedFile ? await uploadFile() : (editingId ? reflections.find(r => r.id === editingId)?.file_url : null);
+
         if (editingId) {
             const { updateReflection } = await import('@/app/actions');
             result = await updateReflection(editingId, rosterId, {
@@ -165,7 +171,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                 activity_type: newReflection.activity_type,
                 skip_reason: newReflection.skip_reason,
                 injury_expected_return: newReflection.injury_expected_return || null,
-                injury_details: newReflection.injury_details || null
+                injury_details: newReflection.injury_details || null,
+                file_url: finalFileUrl
             });
         } else {
             const { submitReflection } = await import('@/app/actions');
@@ -177,7 +184,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                 activity_type: newReflection.activity_type,
                 skip_reason: newReflection.skip_reason,
                 injury_expected_return: newReflection.injury_expected_return || null,
-                injury_details: newReflection.injury_details || null
+                injury_details: newReflection.injury_details || null,
+                file_url: finalFileUrl
             });
         }
 
@@ -190,9 +198,68 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             setIsWriting(false);
             setEditingId(null);
             setNewReflection({ title: "", content: "", mood: "neutral", activity_type: null, skip_reason: null });
+            setSelectedFile(null);
             fetchReflections();
         }
         setLoading(false);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.type !== 'application/pdf') {
+                alert("Please select a PDF file.");
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                alert("File size must be less than 5MB.");
+                return;
+            }
+            setSelectedFile(file);
+        }
+    };
+
+    const uploadFile = async (): Promise<string | null> => {
+        if (!selectedFile || !rosterId) return null;
+        setUploading(true);
+        try {
+            const fileExt = selectedFile.name.split('.').pop();
+            const fileName = `${rosterId}_${Date.now()}.${fileExt}`;
+            const filePath = `reflections/${fileName}`;
+
+            const { data, error } = await supabase.storage
+                .from('reflection-attachments')
+                .upload(filePath, selectedFile);
+
+            if (error) throw error;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('reflection-attachments')
+                .getPublicUrl(filePath);
+
+            return publicUrl;
+        } catch (err: any) {
+            console.error("Upload Error:", err);
+            alert("Failed to upload file. Entry will be saved without attachment.");
+            return null;
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    // Modified handleSave to include upload
+    const handleSaveWithUpload = async () => {
+        let fileUrl = null;
+        if (selectedFile) {
+            fileUrl = await uploadFile();
+        }
+        const reflectionWithFile = { ...newReflection, file_url: fileUrl };
+
+        // Re-use logic but with fileUrl
+        // I'll actually just integrate this into handleSave directly in the next turn if I can't do it all at once.
+        // For now I'll just keep the original handleSave and wrap it.
+        // Wait, I should just modify the original handleSave.
+        // But multi_replace is safer.
     };
 
     const getMoodIcon = (mood: string) => {
@@ -215,13 +282,13 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                 className="bg-card/50 border border-border rounded-3xl p-5 hover:bg-card/80 hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden"
                 onClick={onToggleExpand}
             >
-                <div className="flex justify-between items-start mb-2 relative z-10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-black transition-colors">
+                <div className="flex justify-between items-center gap-4 mb-2 relative z-10 flex-nowrap">
+                    <div className="flex items-center gap-3 whitespace-nowrap">
+                        <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-black transition-colors shrink-0">
                             <BookOpen size={18} />
                         </div>
                         <div>
-                            <h3 className="text-base font-bold text-foreground">Training Journal</h3>
+                            <h3 className="text-base font-black text-foreground">Training Journal</h3>
                         </div>
                     </div>
                 </div>
@@ -261,14 +328,14 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             layoutId="journal-card"
             className="bg-card border border-border rounded-3xl p-6 relative overflow-hidden shadow-2xl"
         >
-            <div className="flex justify-between items-center mb-6 relative z-10">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <div className="flex justify-between items-center gap-4 mb-6 relative z-10 flex-nowrap">
+                <div className="flex items-center gap-3 whitespace-nowrap">
+                    <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
                         <BookOpen size={20} />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-foreground">Training Journal</h3>
-                        <p className="text-[10px] text-muted-foreground">Updates your Performance Insight. Log daily.</p>
+                        <h3 className="text-xl font-black text-foreground leading-none">Training Journal</h3>
+                        <p className="text-[10px] text-muted-foreground mt-1">Updates insights. Log daily.</p>
                     </div>
                 </div>
 
@@ -276,7 +343,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                     {!isWriting ? (
                         <button
                             onClick={() => setIsWriting(true)}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-xl transition-colors shadow-lg shadow-primary/20 text-xs font-bold flex items-center gap-2"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-full transition-colors shadow-lg shadow-primary/20 text-[10px] font-black flex items-center gap-2 whitespace-nowrap shrink-0"
                         >
                             <Plus size={16} /> New Entry
                         </button>
@@ -372,6 +439,23 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                                         onChange={(e) => setNewReflection({ ...newReflection, content: e.target.value })}
                                         autoFocus
                                     />
+                                    <div className="mt-3 flex items-center gap-3">
+                                        <label className="flex items-center gap-2 cursor-pointer bg-secondary/50 hover:bg-secondary border border-border px-3 py-1.5 rounded-lg transition-colors group">
+                                            <Paperclip size={14} className="text-muted-foreground group-hover:text-primary" />
+                                            <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Clip PDF</span>
+                                            <input type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
+                                        </label>
+                                        {selectedFile && (
+                                            <div className="flex items-center gap-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20">
+                                                <FileText size={12} />
+                                                <span className="truncate max-w-[150px]">{selectedFile.name}</span>
+                                                <button onClick={() => setSelectedFile(null)} className="hover:text-foreground">
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        )}
+                                        {uploading && <Loader2 size={14} className="animate-spin text-primary" />}
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -458,6 +542,19 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                             <p className="text-xs text-muted-foreground line-clamp-2 group-hover:line-clamp-none transition-all">
                                 {ref.content}
                             </p>
+                            {ref.file_url && (
+                                <div className="mt-2 flex items-center gap-2">
+                                    <a
+                                        href={ref.file_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="flex items-center gap-2 text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded border border-primary/20 hover:bg-primary/20 transition-colors w-fit"
+                                    >
+                                        <FileText size={12} /> View Attachment
+                                    </a>
+                                </div>
+                            )}
                         </motion.div>
                     ))
                 )}

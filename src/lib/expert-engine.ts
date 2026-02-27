@@ -30,86 +30,26 @@ export interface ExpertRule {
 }
 
 import { EXPERT_RULES } from "@/lib/data/expert-rules";
+import { WARMUPS, MENTAL_RESETS, DEFAULT_DRILL } from "@/lib/data/protocols";
 
 // Helper for Warmups
-function getWarmup(sport: string, mood: string): DrillDef {
-    if (sport.toLowerCase().includes('lacrosse')) {
-        return {
-            name: "Wall Ball Activation",
-            duration: "10 mins",
-            type: "physical",
-            steps: [
-                "50 right hand, 50 left hand.",
-                "Quick stick exchanges.",
-                "Focus on soft hands and tracking the ball to the plastic."
-            ]
-        };
-    }
-
-    // Default / Hockey
-    return {
-        name: "Hand-Eye & Movement Prep",
-        duration: "10 mins",
-        type: "physical",
-        steps: [
-            "2-ball juggling for 3 minutes to lock in focus.",
-            "Dynamic stretching (lunges, leg swings).",
-            "Crease movement: 5 sets of post-to-post slides.",
-            "Visual tracking: Follow the puck/ball to your hand."
-        ]
-    };
+function getWarmup(sport: string): DrillDef {
+    const s = sport.toLowerCase();
+    if (s.includes('lacrosse')) return WARMUPS.lacrosse;
+    if (s.includes('soccer')) return WARMUPS.soccer;
+    if (s.includes('hockey')) return WARMUPS.hockey;
+    return WARMUPS.default;
 }
 
 // Helper for Mental Reset
 function getMentalReset(mood: string): DrillDef {
-    if (mood === 'frustrated' || mood === 'anxious') {
-        return {
-            name: "Box Breathing (Reset)",
-            duration: "3 mins",
-            type: "mental",
-            steps: [
-                "Find a quiet spot or close your eyes at the bench.",
-                "Inhale for 4 seconds.",
-                "Hold for 4 seconds.",
-                "Exhale for 4 seconds.",
-                "Hold for 4 seconds.",
-                "Repeat. Let go of the session's outcome."
-            ]
-        };
-    }
-
-    if (mood === 'happy') {
-        return {
-            name: "Success Visualization",
-            duration: "3 mins",
-            type: "mental",
-            steps: [
-                "Close your eyes and replay your best save from today.",
-                "Notice your positioning and how effortless it felt.",
-                "Lock in that feeling of confidence.",
-                "Recognize the work you put in today."
-            ]
-        };
-    }
-
-    // Neutral
-    return {
-        name: "End of Session Review",
-        duration: "3 mins",
-        type: "mental",
-        steps: [
-            "Take 3 deep breaths.",
-            "Review one thing you did really well today.",
-            "Review one micro-adjustment you want to bring into tomorrow.",
-            "Leave the work at the rink and step away clean."
-        ]
-    };
+    return MENTAL_RESETS[mood] || MENTAL_RESETS.neutral;
 }
 
 export function determineRecommendation(text: string, mood: string, sport: string = 'Hockey', isGameday: boolean = false, coachNotes?: string): PracticePlan {
     const normalizeText = text.toLowerCase();
 
-    const warmup = getWarmup(sport, mood);
+    const warmup = getWarmup(sport);
     const mental = getMentalReset(mood);
 
     // 0. GAME DAY RULES (Highest Priority Check)
@@ -189,17 +129,7 @@ export function determineRecommendation(text: string, mood: string, sport: strin
     let mainFocusTop = matches.length > 0 ? matches[0].recommendation : {
         focus: "Fundamentals",
         reason: "Let's get back to basics and build consistency.",
-        drill: {
-            name: "Goal Area Movement",
-            duration: "15 mins",
-            type: "physical" as const,
-            steps: [
-                "10 Lateral pushes left to right.",
-                "10 Drop slides left to right.",
-                "10 Shuffles forward and backward.",
-                "Focus on quiet upper body."
-            ]
-        },
+        drill: DEFAULT_DRILL,
         videoWait: 0
     };
 
@@ -212,3 +142,4 @@ export function determineRecommendation(text: string, mood: string, sport: strin
         videoWait: mainFocusTop.videoWait
     };
 }
+

@@ -156,8 +156,8 @@ export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: Coa
                                                 key={coach.id}
                                                 onClick={() => setSelectedCoachId(coach.id)}
                                                 className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between group ${selectedCoachId === coach.id
-                                                        ? 'border-primary bg-primary/5'
-                                                        : 'border-border bg-muted/50 hover:border-primary/50'
+                                                    ? 'border-primary bg-primary/5'
+                                                    : 'border-border bg-muted/50 hover:border-primary/50'
                                                     }`}
                                             >
                                                 <div>
@@ -194,8 +194,8 @@ export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: Coa
                                 className="space-y-6"
                             >
                                 <div className="text-center mb-6">
-                                    <div className="text-3xl font-black italic tracking-tighter text-primary mb-2">PRO TIER</div>
-                                    <div className="text-4xl font-black text-foreground mb-1">$300<span className="text-lg text-muted-foreground font-medium">/mo</span></div>
+                                    <div className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80 mb-2">PRO TIER SUBSCRIPTION</div>
+                                    <div className="text-5xl font-black tracking-tighter text-foreground mb-1">$300<span className="text-xl text-muted-foreground font-normal">/mo</span></div>
                                 </div>
 
                                 <div className="space-y-4 bg-muted/40 border border-border rounded-xl p-5">

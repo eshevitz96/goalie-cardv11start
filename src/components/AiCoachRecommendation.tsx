@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Target, Zap, ChevronRight, Activity, Check, CheckCircle, ThumbsUp, ThumbsDown, User, Flame, ArrowRight } from "lucide-react";
+import { Brain, Target, Zap, ChevronRight, Activity, Check, CheckCircle, ThumbsUp, ThumbsDown, User, Flame, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { determineRecommendation, PracticePlan, DrillDef } from "@/lib/expert-engine";
@@ -28,13 +28,13 @@ export function AiCoachRecommendation({
     const { textContext, activeMood, seasonGoal, loading: contextLoading } = useAiContext(rosterId || null, overrideText, lastMood, nextEvent);
 
     // Feedback State
-    const [feedbackGiven, setFeedbackGiven] = useState(false);
+    const [feedbackSelection, setFeedbackSelection] = useState<'positive' | 'negative' | null>(null);
     const handleFeedback = async (isPositive: boolean) => {
-        setFeedbackGiven(true);
+        setFeedbackSelection(isPositive ? 'positive' : 'negative');
     };
 
     useEffect(() => {
-        setFeedbackGiven(false);
+        setFeedbackSelection(null);
 
         if (contextLoading) return;
 
@@ -51,6 +51,7 @@ export function AiCoachRecommendation({
     // UI state
     const [expandedArea, setExpandedArea] = useState<'warmup' | 'main' | 'mental' | null>(null);
     const [sessionActive, setSessionActive] = useState(false);
+    const [isFolded, setIsFolded] = useState(false);
     const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0); // 0: warmup, 1: main, 2: mental
 
     // LIVE GAME MODE
@@ -121,8 +122,9 @@ export function AiCoachRecommendation({
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
                 <button
+                    type="button"
                     onClick={() => setExpandedArea(isExpanded ? null : id)}
-                    className="w-full text-left bg-background/50 p-4 md:p-5 flex items-center justify-between gap-4 backdrop-blur-sm"
+                    className={`w-full text-left bg-background/50 p-4 md:p-5 flex items-center justify-between gap-4 backdrop-blur-sm transition-all hover:bg-background/80 ${isExpanded ? 'ring-1 ring-primary/20' : ''}`}
                 >
                     <div className="flex items-center gap-4 w-full">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${colorClass}`}>
@@ -132,7 +134,7 @@ export function AiCoachRecommendation({
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-0.5">
                                 {title}
                             </span>
-                            <h3 className="text-lg font-black text-foreground tracking-tight leading-none mb-1 shadow-sm">
+                            <h3 className="text-lg font-black text-foreground tracking-tight leading-none mb-1">
                                 {drill.name}
                             </h3>
                             <p className="text-xs text-foreground/70 font-medium">
@@ -141,8 +143,8 @@ export function AiCoachRecommendation({
                         </div>
                     </div>
 
-                    <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                        <ChevronRight size={16} className={`transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
+                    <div className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-all ${isExpanded ? 'bg-primary text-black rotate-90' : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'}`}>
+                        <ChevronRight size={16} />
                     </div>
                 </button>
 
@@ -201,17 +203,17 @@ export function AiCoachRecommendation({
             animate={{ opacity: 1, y: 0 }}
             className="w-full mb-8 relative"
         >
-            <div className="flex flex-col gap-1 mb-6 border-b border-border/50 pb-6">
+            <div className="flex flex-col gap-1 mb-6 border-b border-border/50 pb-6 relative">
                 <h1 className="text-4xl md:text-5xl font-black text-foreground tracking-tighter leading-none mb-2">
-                    Let's work, {goalieName ? goalieName.split(' ')[0] : 'Goalie'}.
+                    {(activeMood === 'frustrated' || activeMood === 'anxious') ? "Hey," : "Let's work,"} {goalieName ? goalieName.split(' ')[0] : 'Goalie'}
                 </h1>
-                <p className="text-lg font-medium text-muted-foreground tracking-tight">
+                <p className="text-lg font-medium text-muted-foreground tracking-tight pr-24">
                     {plan.reason}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                         onClick={() => handleStartSession(0)}
-                        className="bg-primary text-black font-black px-6 py-2 rounded-xl hover:scale-105 transition-all text-sm flex items-center gap-2 h-auto"
+                        className="bg-foreground text-background font-black px-6 py-2 rounded-xl hover:scale-105 transition-all text-sm flex items-center gap-2 h-auto"
                     >
                         <Zap size={16} /> Start Full Session
                     </Button>
@@ -226,65 +228,116 @@ export function AiCoachRecommendation({
                         </div>
                     )}
                 </div>
-            </div>
 
-            <div className="space-y-4">
-                {/* 1. WARMUP */}
-                {renderDrillCard(
-                    'warmup',
-                    0,
-                    'Phase 1: Activation',
-                    plan.warmup,
-                    <Flame size={24} strokeWidth={1.5} />,
-                    'bg-orange-500/10 text-orange-500'
-                )}
-
-                {/* 2. MAIN FOCUS */}
-                {renderDrillCard(
-                    'main',
-                    1,
-                    `Phase 2: Main Focus - ${plan.focus}`,
-                    plan.main,
-                    <Zap size={24} strokeWidth={1.5} />,
-                    'bg-primary/10 text-primary'
-                )}
-
-                {/* 3. MENTAL RESET */}
-                {renderDrillCard(
-                    'mental',
-                    2,
-                    'Phase 3: Cooldown & Reflect',
-                    plan.mental,
-                    <Brain size={24} strokeWidth={1.5} />,
-                    'bg-purple-500/10 text-purple-500'
-                )}
-            </div>
-
-            {/* Final Completion Action */}
-            <div className="mt-8">
-                <Button
-                    onClick={handleLogAndComplete}
-                    className="w-full py-6 md:py-8 bg-foreground text-background font-black rounded-2xl hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 h-auto text-lg shadow-xl"
-                >
-                    <CheckCircle size={24} />
-                    <span>Finish Plan & Reflect</span>
-                </Button>
-                <p className="text-center text-xs text-muted-foreground mt-3 font-medium">
-                    Completing the plan will unlock the Daily Journal
-                </p>
-            </div>
-
-            {/* Subtle Feedback */}
-            <div className="mt-8 flex justify-center items-center">
-                <div className={`flex gap-2 transition-opacity duration-300 ${feedbackGiven ? 'opacity-50 pointer-events-none' : 'opacity-60 hover:opacity-100'}`}>
-                    <Button variant="ghost" size="sm" onClick={() => handleFeedback(true)} className="gap-2 hover:bg-muted transition-colors rounded-full text-xs font-bold tracking-wide">
-                        <ThumbsUp size={14} /> Helpful
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleFeedback(false)} className="gap-2 hover:bg-muted transition-colors rounded-full text-xs font-bold tracking-wide">
-                        <ThumbsDown size={14} /> Not Helpful
+                <div className="absolute right-0 top-0 pt-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsFolded(!isFolded)}
+                        className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/30 hover:bg-muted/50 transition-all font-bold text-[10px] uppercase tracking-wider"
+                    >
+                        {isFolded ? (
+                            <>
+                                <ChevronDown size={14} /> Show Plan
+                            </>
+                        ) : (
+                            <>
+                                <ChevronUp size={14} /> Collapse Plan
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>
-        </motion.div>
+
+            <AnimatePresence>
+                {!isFolded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                        className="overflow-hidden"
+                    >
+                        <div className="space-y-4">
+                            {/* 1. WARMUP */}
+                            {renderDrillCard(
+                                'warmup',
+                                0,
+                                'Phase 1: Activation',
+                                plan.warmup,
+                                <Flame size={24} strokeWidth={1.5} />,
+                                'bg-orange-500/10 text-orange-500'
+                            )}
+
+                            {/* 2. MAIN FOCUS */}
+                            {renderDrillCard(
+                                'main',
+                                1,
+                                `Phase 2: Main Focus - ${plan.focus}`,
+                                plan.main,
+                                <Zap size={24} strokeWidth={1.5} />,
+                                'bg-primary/10 text-primary'
+                            )}
+
+                            {/* 3. MENTAL RESET */}
+                            {renderDrillCard(
+                                'mental',
+                                2,
+                                'Phase 3: Cooldown & Reflect',
+                                plan.mental,
+                                <Brain size={24} strokeWidth={1.5} />,
+                                'bg-purple-500/10 text-purple-500'
+                            )}
+                        </div>
+
+                        {/* Final Completion Action */}
+                        <div className="mt-8">
+                            <Button
+                                onClick={handleLogAndComplete}
+                                className="w-full py-6 md:py-8 bg-foreground text-background font-black rounded-2xl hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 h-auto text-lg shadow-xl"
+                            >
+                                <CheckCircle size={24} />
+                                <span>Finish Plan & Reflect</span>
+                            </Button>
+                            <p className="text-center text-xs text-muted-foreground mt-3 font-medium">
+                                Completing the plan will unlock the Daily Journal
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Subtle Feedback */}
+            <div className="mt-8 flex flex-col items-center gap-2">
+                {feedbackSelection ? (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-xs font-bold text-primary flex items-center gap-2 bg-primary/5 px-4 py-2 rounded-full border border-primary/20"
+                    >
+                        <Check size={14} /> Thank you for your feedback!
+                    </motion.div>
+                ) : (
+                    <div className="flex gap-2 opacity-60 hover:opacity-100 transition-opacity">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleFeedback(true)}
+                            className="gap-2 hover:bg-muted transition-colors rounded-full text-xs font-bold tracking-wide border border-transparent hover:border-border"
+                        >
+                            <ThumbsUp size={14} /> Helpful
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleFeedback(false)}
+                            className="gap-2 hover:bg-muted transition-colors rounded-full text-xs font-bold tracking-wide border border-transparent hover:border-border"
+                        >
+                            <ThumbsDown size={14} /> Not Helpful
+                        </Button>
+                    </div>
+                )}
+            </div>
+        </motion.div >
     );
 }

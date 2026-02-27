@@ -152,15 +152,15 @@ export function GoalsWidget({ rosterId, goalieId }: GoalsWidgetProps) {
                                         <button
                                             key={cat}
                                             onClick={() => setNewGoal({ ...newGoal, category: cat as any })}
-                                            className={`text-[10px] px-2 py-1 rounded border transition-colors ${newGoal.category === cat ? 'bg-primary text-black border-primary' : 'border-zinc-700 text-zinc-500 hover:text-zinc-300'}`}
+                                            className={`text-[10px] px-2 py-1 rounded border transition-colors ${newGoal.category === cat ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'}`}
                                         >
                                             {cat.toUpperCase()}
                                         </button>
                                     ))}
                                 </div>
                                 <div className="flex justify-end gap-2">
-                                    <button onClick={() => setIsAdding(false)} className="text-xs text-muted-foreground hover:text-white">Cancel</button>
-                                    <button onClick={handleAddGoal} disabled={loading} className="text-xs bg-primary text-black px-3 py-1 rounded font-bold">
+                                    <button onClick={() => setIsAdding(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                                    <button onClick={handleAddGoal} disabled={loading} className="text-xs bg-foreground text-background px-3 py-1 rounded font-bold hover:opacity-90 transition-opacity">
                                         {loading ? 'Saving...' : 'Add Goal'}
                                     </button>
                                 </div>

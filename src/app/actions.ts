@@ -74,6 +74,7 @@ export async function submitReflection(rosterId: string, entryData: any) {
             skip_reason: entryData.skip_reason,
             injury_expected_return: entryData.injury_expected_return,
             injury_details: entryData.injury_details,
+            file_url: entryData.file_url,
             created_at: new Date().toISOString()
         };
 
@@ -112,6 +113,7 @@ export async function updateReflection(reflectionId: string, rosterId: string, e
         if (entryData.skip_reason !== undefined) updatePayload.skip_reason = entryData.skip_reason;
         if (entryData.injury_expected_return !== undefined) updatePayload.injury_expected_return = entryData.injury_expected_return;
         if (entryData.injury_details !== undefined) updatePayload.injury_details = entryData.injury_details;
+        if (entryData.file_url !== undefined) updatePayload.file_url = entryData.file_url;
 
         const { error } = await supabaseAdmin
             .from('reflections')

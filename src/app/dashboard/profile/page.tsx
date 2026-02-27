@@ -36,7 +36,11 @@ export default function DashboardProfilePage() {
                 if (error || !data) {
                     console.error("Profile Fetch Error:", error);
                 } else {
-                    setGoalie(data);
+                    // Map goalie_name to name for ProfileContent component
+                    setGoalie({
+                        ...data,
+                        name: data.goalie_name
+                    });
                 }
             } catch (err) {
                 console.error("Profile Load Error", err);

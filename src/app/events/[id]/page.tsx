@@ -6,6 +6,7 @@ import { supabase } from "@/utils/supabase/client";
 import { motion } from "framer-motion";
 import { ArrowLeft, Calendar, MapPin, Clock, User, Video, Star, Share2, DollarSign, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import { deleteEvent } from "@/app/events/actions";
 
 type EventData = {
     id: string;
@@ -158,7 +159,7 @@ export default function EventDetailsPage() {
     return (
         <main className="min-h-screen bg-background text-foreground pb-12">
             {/* Header / Hero */}
-            <div className={`relative w-full h-48 md:h-64 overflow-hidden ${isSession ? 'bg-gradient-to-br from-indigo-900 to-black' : `bg-gradient-to-br ${data.image || 'from-emerald-900 to-black'}`}`}>
+            <div className={`relative w-full h-64 md:h-80 overflow-hidden ${isSession ? 'bg-gradient-to-br from-indigo-900 to-black' : `bg-gradient-to-br ${data.image || 'from-emerald-900 to-black'}`}`}>
                 <div className="absolute inset-0 bg-black/40" />
                 <div className="absolute top-6 left-6 z-10">
                     <button onClick={() => router.back()} className="p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:bg-black/70 transition-all group">
@@ -177,7 +178,7 @@ export default function EventDetailsPage() {
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-6 -mt-8 relative z-20">
+            <div className="max-w-4xl mx-auto px-6 mt-16 relative z-20">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* Main Content */}
                     <motion.div
@@ -285,6 +286,28 @@ export default function EventDetailsPage() {
                                     <Share2 size={14} /> Copy Link
                                 </button>
                             </div>
+
+                            {data.createdBy === data.currentUser && !isSession && (
+                                <div className="mt-4 pt-4 border-t border-border">
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const result = await deleteEvent(data.id);
+                                                if (result.success) {
+                                                    router.push('/dashboard');
+                                                } else {
+                                                    alert("Error deleting event: " + result.error);
+                                                }
+                                            } catch (err: any) {
+                                                alert("Exception deleting event: " + err.message);
+                                            }
+                                        }}
+                                        className="w-full py-2 text-red-500 hover:text-red-400 text-xs font-bold uppercase tracking-widest transition-colors"
+                                    >
+                                        Delete Event
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                     </motion.div>

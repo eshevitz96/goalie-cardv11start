@@ -11,9 +11,10 @@ interface SessionCarouselProps {
     currentIndex: number;
     setCurrentIndex: (index: number | ((prev: number) => number)) => void;
     isPro: boolean;
+    sport?: string;
 }
 
-export function SessionCarousel({ goalies, currentIndex, setCurrentIndex, isPro }: SessionCarouselProps) {
+export function SessionCarousel({ goalies, currentIndex, setCurrentIndex, isPro, sport }: SessionCarouselProps) {
     const activeGoalie = goalies[currentIndex];
     // Internal state for showProgress to avoid lifting it if not needed elsewhere
     // But wait, the original page used it to toggle.
@@ -46,6 +47,7 @@ export function SessionCarousel({ goalies, currentIndex, setCurrentIndex, isPro 
                     catchHand={activeGoalie.catchHand}
                     showProgress={showProgress}
                     credits={activeGoalie.credits}
+                    sport={sport}
                     className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-[500px]"
                 />
 
@@ -65,25 +67,21 @@ export function SessionCarousel({ goalies, currentIndex, setCurrentIndex, isPro 
                 {/* Switcher */}
                 {goalies.length > 1 && (
                     <>
-                        <div className="absolute top-1/2 -left-4 -translate-y-1/2 md:-left-12">
-                            <Button
-                                variant="ghost"
-                                size="sm"
+                        <div className="absolute top-1/2 -left-4 md:-left-10 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            <button
                                 onClick={() => setCurrentIndex((prev) => (prev === 0 ? goalies.length - 1 : prev - 1))}
-                                className="p-1.5 bg-card/80 rounded-full backdrop-blur-sm border border-border shadow-xl hover:bg-card transform hover:scale-110 transition-all"
+                                className="p-2 text-foreground/40 hover:text-foreground transition-colors"
                             >
-                                <ChevronLeft size={16} />
-                            </Button>
+                                <ChevronLeft size={32} strokeWidth={0.5} />
+                            </button>
                         </div>
-                        <div className="absolute top-1/2 -right-4 -translate-y-1/2 md:-right-12">
-                            <Button
-                                variant="ghost"
-                                size="sm"
+                        <div className="absolute top-1/2 -right-4 md:-right-10 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            <button
                                 onClick={() => setCurrentIndex((prev) => (prev === goalies.length - 1 ? 0 : prev + 1))}
-                                className="p-1.5 bg-card/80 rounded-full backdrop-blur-sm border border-border shadow-xl hover:bg-card transform hover:scale-110 transition-all"
+                                className="p-2 text-foreground/40 hover:text-foreground transition-colors"
                             >
-                                <ChevronRight size={16} />
-                            </Button>
+                                <ChevronRight size={32} strokeWidth={0.5} />
+                            </button>
                         </div>
 
                         <div className="flex justify-center gap-2 mt-4">

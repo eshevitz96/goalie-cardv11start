@@ -22,6 +22,8 @@ import { WhatsNewGuide } from "@/components/WhatsNewGuide";
 import { EventsList } from "@/components/EventsList";
 import { Button } from "@/components/ui/Button";
 import { GoalieCard } from "@/components/GoalieCard";
+import TrainingInsights from "@/components/TrainingInsights";
+import { GoalsWidget } from "@/components/GoalsWidget";
 
 // Shared Components
 import { DashboardHeader } from "@/components/shared/DashboardHeader";
@@ -63,9 +65,13 @@ export default function Dashboard() {
         }
 
         const fetchNotifications = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
             const { data } = await supabase
                 .from('notifications')
                 .select('*')
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
                 .limit(10);
 
@@ -78,12 +84,14 @@ export default function Dashboard() {
         fetchNotifications();
     }, []);
 
-    // Sync progress toggle default
+    // Sync progress toggle default based on paid training status
     useEffect(() => {
         if (activeGoalie) {
-            setShowProgress(!isPro);
+            // Visible if goalie has paid lessons or credits
+            const hasPaidTraining = (activeGoalie.lesson && activeGoalie.lesson > 0) || (activeGoalie.credits && activeGoalie.credits > 0);
+            setShowProgress(!!hasPaidTraining);
         }
-    }, [activeGoalie, isPro]);
+    }, [activeGoalie?.id]);
 
     const handleLogout = async () => {
         if (!confirm("Are you sure you want to sign out?")) return;
@@ -137,6 +145,23 @@ export default function Dashboard() {
         }
     };
 
+    const handleClearNotifications = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { error } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('user_id', user.id);
+
+        if (error) {
+            toast.error("Failed to clear notifications");
+        } else {
+            setNotifications([]);
+            setAlertNotification(null);
+        }
+    };
+
     const handleLogActivity = (activityName: string) => {
         setLogPrefill(activityName);
         // Scroll to journal
@@ -157,31 +182,14 @@ export default function Dashboard() {
         );
     }
 
-    // No goalies found
+    // Data loading or no goalies found - show loading state to avoid "No Card Found" anxiety
     if (goalies.length === 0) {
         return (
-            <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-8 text-center transition-colors duration-300">
-                <h2 className="text-2xl font-bold mb-4">No Goalie Card Found</h2>
-                <p className="text-muted-foreground mb-8">We couldn't find a roster spot linked to this account.</p>
-                <Link href="/activate" className="bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity">
-                    Activate My Card
-                </Link>
-                {/* Hydration Safe Debug UI */}
-                {typeof window !== 'undefined' && (
-                    <div className="mt-8 p-4 bg-card border border-border rounded-lg text-xs text-muted-foreground font-mono text-left opacity-80 min-w-[300px]">
-                        <p className="font-bold border-b border-border pb-2 mb-2">Debug Info:</p>
-                        <p>Local ID: <span className="text-accent">{String(auth.localId || 'None')}</span></p>
-                        <p>Auth Email: {String(auth.userEmail || 'None')} (Optional)</p>
-                        <p>Goalies Found: {goalies ? goalies.length : 0}</p>
-                        {error && <p className="text-destructive mt-2 font-bold">Error: {String(error)}</p>}
-                        <button
-                            onClick={() => fetchMyGoalies(true)}
-                            className="mt-4 bg-secondary hover:bg-muted text-foreground px-3 py-1 rounded text-xs w-full transition-colors"
-                        >
-                            Retry Fetch
-                        </button>
-                    </div>
-                )}
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-4">
+                <Loader2 className="animate-spin text-primary" size={40} />
+                <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">
+                    Synchronizing Goalie Card...
+                </p>
             </div>
         );
     }
@@ -209,6 +217,7 @@ export default function Dashboard() {
                     activeGoalieName={activeGoalie.name}
                     userRole={auth.userRole || 'goalie'}
                     onLogout={handleLogout}
+                    onClearNotifications={handleClearNotifications}
                     notifications={notifications}
                 />
 
@@ -258,6 +267,7 @@ export default function Dashboard() {
                                     const today = new Date();
                                     return eventDate.toDateString() === today.toDateString();
                                 })}
+                                nextEvent={activeGoalie.events?.[0] || null}
                             />
                         </div>
                     </div>
@@ -281,20 +291,37 @@ export default function Dashboard() {
                                     isPro={isPro}
                                     showProgress={showProgress}
                                     setShowProgress={setShowProgress}
+                                    sport={activeGoalie.sport}
                                     className="h-full"
                                 />
                             ) : (
-                                <GoalieCard
-                                    name={activeGoalie.name}
-                                    session={activeGoalie.session}
-                                    lesson={activeGoalie.lesson}
-                                    team={activeGoalie.team}
-                                    gradYear={activeGoalie.gradYear}
-                                    id={activeGoalie.id}
-                                    isPro={isPro}
-                                    pendingPayment={activeGoalie.pendingPayment}
-                                    className="h-full"
-                                />
+                                <div className="flex flex-col h-full gap-4">
+                                    <GoalieCard
+                                        name={activeGoalie.name}
+                                        session={activeGoalie.session}
+                                        lesson={activeGoalie.lesson}
+                                        team={activeGoalie.team}
+                                        gradYear={activeGoalie.gradYear}
+                                        id={activeGoalie.id}
+                                        isPro={isPro}
+                                        showProgress={showProgress}
+                                        pendingPayment={activeGoalie.pendingPayment}
+                                        sport={activeGoalie.sport}
+                                        className="flex-1"
+                                    />
+                                    {/* Display Controls for single goalie */}
+                                    <div className="flex justify-center">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowProgress(!showProgress)}
+                                            className="gap-2 bg-secondary/30 rounded-full"
+                                        >
+                                            {showProgress ? <span className="text-primary">●</span> : <span className="text-muted-foreground">○</span>}
+                                            {showProgress ? "Hide Activity Counts" : "Show Activity Counts"}
+                                        </Button>
+                                    </div>
+                                </div>
                             )}
                         </motion.div>
 
@@ -382,6 +409,15 @@ export default function Dashboard() {
 
                     {/* Coach & Actions Stack */}
                     <div className="md:col-span-4 flex flex-col gap-6">
+                        {/* Targets Section */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.45 }}
+                        >
+                            <GoalsWidget rosterId={activeGoalie.id} goalieId={auth.userId || undefined} />
+                        </motion.div>
+
                         {/* Coaches Corner */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}

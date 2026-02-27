@@ -51,14 +51,36 @@ export async function updateProfile(rosterId: string, updates: {
     );
 
     try {
+        // 1. Update Roster Record
         const { error } = await supabase
             .from('roster_uploads')
             .update(updates)
             .eq('id', rosterId);
 
         if (error) {
-            console.error("Profile Update Error (Admin):", error);
+            console.error("Profile Update Error (Roster):", error);
             return { success: false, error: error.message };
+        }
+
+        // 2. Update Profile Record (if linked)
+        // Find if this roster is linked to a user
+        const { data: roster } = await supabase
+            .from('roster_uploads')
+            .select('linked_user_id')
+            .eq('id', rosterId)
+            .single();
+
+        if (roster?.linked_user_id) {
+            const profileUpdates: any = {};
+            if (updates.goalie_name) profileUpdates.goalie_name = updates.goalie_name;
+            // Add other profile fields here if schema supports them (e.g. grad_year, etc.)
+
+            if (Object.keys(profileUpdates).length > 0) {
+                await supabase
+                    .from('profiles')
+                    .update(profileUpdates)
+                    .eq('id', roster.linked_user_id);
+            }
         }
 
         return { success: true };

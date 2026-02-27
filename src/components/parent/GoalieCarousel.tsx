@@ -14,11 +14,12 @@ interface GoalieCarouselProps {
     isPro: boolean;
     showProgress: boolean;
     setShowProgress: (show: boolean) => void;
+    sport?: string;
     className?: string;
 }
 
 export function GoalieCarousel({
-    goalies, currentIndex, setCurrentIndex, activeGoalie, isPro, showProgress, setShowProgress, className
+    goalies, currentIndex, setCurrentIndex, activeGoalie, isPro, showProgress, setShowProgress, sport, className
 }: GoalieCarouselProps) {
     if (!activeGoalie) return null;
 
@@ -39,6 +40,7 @@ export function GoalieCarousel({
                 seasonProgress={undefined}
                 credits={activeGoalie.credits}
                 pendingPayment={activeGoalie.pendingPayment}
+                sport={sport}
                 className="w-full flex-1 md:aspect-auto"
             />
 

@@ -30,7 +30,8 @@ function ActivateController() {
     // Form Data
     const [formData, setFormData] = useState({
         goalieName: "", parentName: "", parentEmail: "", phone: "",
-        gradYear: "", height: "", weight: "", team: "", birthday: "" // YYYY-MM-DD
+        gradYear: "", height: "", weight: "", team: "", birthday: "", // YYYY-MM-DD
+        sport: "Hockey"
     });
 
     const [baselineAnswers, setBaselineAnswers] = useState([
@@ -105,7 +106,8 @@ function ActivateController() {
                 parent_name: formData.parentName,
                 parent_phone: formData.phone,
                 grad_year: parseInt(formData.gradYear) || 0,
-                team: formData.team
+                team: formData.team,
+                sport: formData.sport
             }).eq('id', rosterData.id);
         }
         setIsLoading(false);

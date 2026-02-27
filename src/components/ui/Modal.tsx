@@ -12,6 +12,7 @@ interface ModalProps {
     children: React.ReactNode;
     size?: 'sm' | 'md' | 'lg' | 'xl';
     className?: string;
+    hideCloseButton?: boolean;
 }
 
 const sizeStyles = {
@@ -23,7 +24,7 @@ const sizeStyles = {
 
 import { createPortal } from 'react-dom';
 
-export function Modal({ isOpen, onClose, title, children, size = 'md', className }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', className, hideCloseButton = false }: ModalProps) {
     const [mounted, setMounted] = React.useState(false);
 
     React.useEffect(() => {
@@ -78,18 +79,20 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', className
                         {title && (
                             <div className="p-4 border-b border-border flex items-center justify-between bg-card/95 backdrop-blur-sm">
                                 <h3 className="font-bold text-lg text-foreground">{title}</h3>
-                                <button
-                                    onClick={onClose}
-                                    className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
-                                    aria-label="Close modal"
-                                >
-                                    <X size={20} />
-                                </button>
+                                {!hideCloseButton && (
+                                    <button
+                                        onClick={onClose}
+                                        className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
+                                        aria-label="Close modal"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                )}
                             </div>
                         )}
 
                         {/* Close button without title */}
-                        {!title && (
+                        {!title && !hideCloseButton && (
                             <button
                                 onClick={onClose}
                                 className="absolute top-4 right-4 p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground z-10"

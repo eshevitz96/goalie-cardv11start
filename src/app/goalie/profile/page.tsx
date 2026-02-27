@@ -51,8 +51,8 @@ export default function ProfilePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-black flex items-center justify-center text-white">
-                <Loader2 className="animate-spin text-emerald-500" size={32} />
+            <div className="min-h-screen bg-background flex items-center justify-center text-foreground">
+                <Loader2 className="animate-spin text-primary" size={32} />
             </div>
         );
     }
@@ -60,9 +60,9 @@ export default function ProfilePage() {
     if (!goalie) {
         // Fallback UI or Redirect
         return (
-            <div className="min-h-screen bg-black text-white p-6 flex items-center justify-center flex-col gap-4">
+            <div className="min-h-screen bg-background text-foreground p-6 flex items-center justify-center flex-col gap-4">
                 <p>Profile not found.</p>
-                <button onClick={() => router.push('/activate')} className="bg-white text-black px-4 py-2 rounded-lg font-bold">
+                <button onClick={() => router.push('/activate')} className="bg-foreground text-background px-4 py-2 rounded-lg font-bold">
                     Go to Activation
                 </button>
             </div>

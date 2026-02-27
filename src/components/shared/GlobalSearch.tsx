@@ -100,10 +100,10 @@ export function GlobalSearch({ isOpen, onClose, userId }: GlobalSearchProps) {
             if (userId) {
                 const { data: reflexes } = await supabase
                     .from('reflections')
-                    .select('id, mood, notes, created_at')
+                    .select('id, mood, content, created_at')
                     .eq('author_role', 'goalie')
-                    // Assuming notes is text, we can ilike search. Mood is an enum usually.
-                    .ilike('notes', term)
+                    .neq('title', 'BETA FEEDBACK')
+                    .ilike('content', term)
                     .limit(3);
 
                 if (reflexes) {
@@ -111,9 +111,9 @@ export function GlobalSearch({ isOpen, onClose, userId }: GlobalSearchProps) {
                         id: r.id,
                         type: 'reflection' as const,
                         title: `Journal Entry (${r.mood})`,
-                        description: r.notes || '',
+                        description: r.content || '',
                         date: new Date(r.created_at).toLocaleDateString(),
-                        url: `/goalie` // Or specific journal view if existed
+                        url: `/dashboard`
                     }));
                     combinedResults = [...combinedResults, ...reflexResults];
                 }

@@ -54,66 +54,15 @@ interface AppContextType {
 }
 
 // --- Mock Initial Data ---
-const MASTER_ROSTER: RosterEntry[] = [
-    {
-        emails: ["sarah@example.com", "sarah.vance@work.com"],
-        parentName: "Sarah Vance",
-        goalieName: "Leo Vance",
-        gradYear: "2028",
-        gcId: "GC-2024-L8V",
-        session: 1,
-        lesson: 4,
-        status: "active"
-    },
-    {
-        emails: ["mike@example.com"],
-        parentName: "Mike Ross",
-        goalieName: "Jamie Ross",
-        gradYear: "2030",
-        gcId: "GC-2024-J9R",
-        session: 2,
-        lesson: 1,
-        status: "active"
-    }
-];
+const MASTER_ROSTER: RosterEntry[] = [];
 
-const INITIAL_GOALIES: GoalieProfile[] = [
-    {
-        id: 1,
-        name: "Leo Vance",
-        coach: "Coach Mike",
-        session: 1,
-        lesson: 4,
-        stats: { gaa: "2.10", sv: ".925" },
-        events: [
-            {
-                id: 1,
-                name: "GS Baltimore Camp",
-                date: "Dec 12-14, 2024",
-                location: "Reistertown Sportsplex",
-                status: "upcoming",
-                image: "from-blue-600 to-indigo-600"
-            }
-        ],
-        feedback: [
-            {
-                id: 1,
-                date: "Today, 10:00 AM",
-                coach: "Coach Mike",
-                title: "Glove Hand Precision",
-                content: "Leo was electric today. We really focused on keeping that glove hand elevated during the butterfly slide.",
-                rating: 5,
-                hasVideo: true,
-            }
-        ]
-    }
-];
+const INITIAL_GOALIES: GoalieProfile[] = [];
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
     // State
-    const [myGoalies, setMyGoalies] = useState<GoalieProfile[]>(INITIAL_GOALIES);
+    const [myGoalies, setMyGoalies] = useState<GoalieProfile[]>([]);
     const [activationRequests, setActivationRequests] = useState<ActivationRequest[]>([]);
     const [availableSlots, setAvailableSlots] = useState<any[]>([
         { id: 101, day: "Wed, Dec 14", time: "4:00 PM" },

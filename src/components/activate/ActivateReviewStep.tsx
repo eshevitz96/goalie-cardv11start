@@ -119,6 +119,22 @@ export function ActivateReviewStep({ formData, setFormData, onSubmit, isLoading,
                         />
                     </div>
 
+                    <div className="col-span-2">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Primary Sport</label>
+                        <select
+                            value={formData.sport || 'Hockey'}
+                            onChange={(e) => handleChange('sport', e.target.value)}
+                            className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-emerald-500 outline-none transition-colors appearance-none"
+                        >
+                            <option value="Hockey">Hockey</option>
+                            <option value="Soccer">Soccer</option>
+                            <option value="Lacrosse">Lacrosse</option>
+                        </select>
+                        <p className="text-[10px] text-muted-foreground mt-1 ml-1 italic">
+                            Used to calibrate your season timeline.
+                        </p>
+                    </div>
+
                 </div>
             </div>
 

@@ -225,7 +225,8 @@ export async function completeActivationWithPassword(
                 parent_name: formData.parentName,
                 parent_phone: formData.phone,
                 grad_year: parseInt(formData.gradYear) || 0,
-                team: formData.team
+                team: formData.team,
+                sport: formData.sport
             })
             .eq('id', rosterId);
 

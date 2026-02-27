@@ -1,16 +1,19 @@
 "use client";
 
 import React from 'react';
-import { User, Briefcase, Settings, Plus, LogOut, Bell } from 'lucide-react';
+import { User, Briefcase, Settings, Plus, LogOut, Bell, Search } from 'lucide-react';
 import { GoalieGuardLogo } from '@/components/ui/GoalieGuardLogo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { requestRole } from '@/app/actions';
+import { GlobalSearch } from '@/components/shared/GlobalSearch';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DashboardHeaderProps {
     activeGoalieName: string;
     userRole?: string;
     onLogout: () => void;
+    onClearNotifications?: () => void;
     notifications?: any[];
 }
 
@@ -22,10 +25,13 @@ export function DashboardHeader({
     activeGoalieName,
     userRole = 'goalie',
     onLogout,
+    onClearNotifications,
     notifications = []
 }: DashboardHeaderProps) {
     const [notificationsOpen, setNotificationsOpen] = React.useState(false);
     const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+    const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+    const { userId } = useAuth();
 
     // Close menus when clicking outside
     React.useEffect(() => {
@@ -42,6 +48,12 @@ export function DashboardHeader({
 
     return (
         <header className="flex justify-between items-center mb-8 md:col-span-2 relative">
+            <GlobalSearch
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                userId={userId || undefined}
+            />
+
             <div className="flex flex-col">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1">Athlete Portal</span>
                 <div className="flex items-center gap-2">
@@ -51,6 +63,15 @@ export function DashboardHeader({
                 </div>
             </div>
             <div className="flex items-center gap-4">
+                {/* Search Trigger */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsSearchOpen(true)}
+                    className="h-10 w-10 rounded-full border border-border hover:border-primary hover:bg-muted p-0 transition-colors"
+                >
+                    <Search size={18} className="text-muted-foreground hover:text-foreground" />
+                </Button>
                 {/* Notification Bell */}
                 <div className="relative z-50">
                     <Button
@@ -71,7 +92,17 @@ export function DashboardHeader({
                     >
                         <div className="px-3 py-2 border-b border-border mb-1 flex justify-between items-center">
                             <div className="text-sm font-bold text-foreground">Notifications</div>
-                            <span className="text-[10px] text-muted-foreground">{notifications.length} New</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-muted-foreground">{notifications.length} New</span>
+                                {notifications.length > 0 && onClearNotifications && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onClearNotifications(); }}
+                                        className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors bg-primary/5 px-1.5 py-0.5 rounded"
+                                    >
+                                        Clear All
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         {notifications.length === 0 ? (
                             <div className="p-4 text-center text-xs text-muted-foreground">No new notifications</div>

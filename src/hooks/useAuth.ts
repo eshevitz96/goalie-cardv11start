@@ -33,6 +33,18 @@ export function useAuth() {
 
     useEffect(() => {
         loadAuth();
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            // console.log("Auth Event:", event, session?.user?.email);
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+                loadAuth();
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     const loadAuth = async () => {

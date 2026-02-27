@@ -30,7 +30,7 @@ export function PaymentSection({ activeGoalie }: PaymentSectionProps) {
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                     else alert("Please verify your assigned coach details.");
                 }}
-                className="bg-primary text-black px-4 py-2 rounded-xl text-xs font-bold hover:opacity-90"
+                className="bg-foreground text-background px-4 py-2 rounded-xl text-xs font-bold hover:opacity-90 transition-opacity"
             >
                 Buy Now
             </button>

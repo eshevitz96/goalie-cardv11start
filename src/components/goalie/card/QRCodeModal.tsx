@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import { X, Wallet } from "lucide-react";
+import { Wallet, X } from "lucide-react";
 import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -13,24 +13,39 @@ interface QRCodeModalProps {
 
 export function QRCodeModal({ isOpen, onClose, id, onPreviewWallet }: QRCodeModalProps) {
     return (
-        <Modal isOpen={isOpen} onClose={onClose} size="sm" className="bg-transparent shadow-none border-none p-0 overflow-visible">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            size="sm"
+            className="bg-transparent shadow-none border-none p-0 overflow-visible"
+            hideCloseButton={true}
+        >
             <div className="bg-card w-full rounded-[32px] overflow-hidden shadow-2xl border border-border relative">
                 {/* Card Header */}
-                <div className="bg-gradient-to-br from-zinc-800 to-black p-6 text-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-primary/20 blur-3xl rounded-full pointer-events-none" />
-                    <div className="relative z-10">
-                        <div className="w-12 h-12 bg-zinc-900 rounded-full mx-auto flex items-center justify-center mb-3 shadow-lg border border-white/10">
-                            <GoalieGuardLogo size={24} className="text-white" />
+                <div className="bg-[#2c2c2e] p-4 flex justify-between items-center relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none" />
+
+                    <div className="flex items-center gap-3 relative z-10">
+                        <div className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center shadow-lg border border-white/10">
+                            <GoalieGuardLogo size={16} className="text-white" />
                         </div>
-                        <h3 className="text-white font-black text-xl tracking-tight">GOALIE CARD</h3>
-                        <p className="text-zinc-400 text-xs font-medium uppercase tracking-widest mt-1">Official Digital ID</p>
+                        <div className="flex flex-col">
+                            <span className="text-white font-black text-sm tracking-tight leading-none">GOALIE CARD</span>
+                            <span className="text-zinc-500 text-[8px] font-bold uppercase tracking-widest mt-0.5">Official Pass</span>
+                        </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white/50 hover:text-white transition-colors z-50 cursor-pointer"
-                    >
-                        <X size={16} />
-                    </button>
+
+                    <div className="flex items-center gap-2 relative z-10">
+                        <div className="bg-white/5 px-2 py-1 rounded-full text-white/40 flex items-center justify-center border border-white/5">
+                            <span className="text-[10px] font-bold tracking-tighter">PASS</span>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="bg-white/10 p-1.5 rounded-full text-white/50 hover:text-white hover:bg-white/20 transition-all cursor-pointer"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* QR Section */}

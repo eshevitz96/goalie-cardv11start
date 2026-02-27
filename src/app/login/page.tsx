@@ -116,7 +116,7 @@ export default function LoginPage() {
 
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/update-password`,
+                redirectTo: `${window.location.protocol}//${window.location.host}/auth/callback?next=/update-password&type=recovery`,
             });
 
             if (error) throw error;
@@ -143,145 +143,172 @@ export default function LoginPage() {
                 </div>
 
                 <AnimatePresence mode="wait">
-                    {step === 'email' && (
-                        <motion.div
-                            key="email-step"
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            className="space-y-6"
-                        >
-                            <form onSubmit={handleEmailSubmit} className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Welcome</label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                    <div className="bg-card/30 backdrop-blur-xl border border-border/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                        <form onSubmit={step === 'email' ? handleEmailSubmit : handleLoginSubmit} className="space-y-6 relative z-10">
+                            <AnimatePresence mode="wait">
+                                {step === 'email' ? (
+                                    <motion.div
+                                        key="email-step"
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                        className="space-y-6"
+                                    >
+                                        <div className="space-y-2">
+                                            <label htmlFor="email" className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Email Address</label>
+                                            <div className="relative">
+                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                                                <input
+                                                    id="email"
+                                                    name="email"
+                                                    type="email"
+                                                    autoComplete="username email"
+                                                    required
+                                                    value={email}
+                                                    onChange={(e) => setEmail(e.target.value)}
+                                                    className="w-full bg-secondary border border-border rounded-2xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50 text-lg"
+                                                    placeholder="name@example.com"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {error && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="text-red-500 bg-red-500/10 border border-red-500/20 text-sm flex items-center gap-2 p-4 rounded-xl"
+                                            >
+                                                <AlertCircle size={16} /> {error}
+                                            </motion.div>
+                                        )}
+
+                                        <button
+                                            type="submit"
+                                            disabled={isLoading}
+                                            className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/10 group"
+                                        >
+                                            {isLoading ? <Loader2 className="animate-spin" /> : (
+                                                <>
+                                                    Continue <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                                </>
+                                            )}
+                                        </button>
+                                    </motion.div>
+                                ) : step === 'password' ? (
+                                    <motion.div
+                                        key="password-step"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className="space-y-6"
+                                    >
+                                        {/* Hidden Email for Password Managers */}
                                         <input
                                             type="email"
-                                            required
+                                            name="email"
+                                            autoComplete="username email"
                                             value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50 text-lg"
-                                            placeholder="Enter your email..."
-                                            autoFocus
+                                            readOnly
+                                            className="sr-only"
+                                            tabIndex={-1}
                                         />
-                                    </div>
-                                </div>
 
-                                {error && (
-                                    <div className="text-red-500 bg-red-500/10 border border-red-500/20 text-sm flex items-center gap-2 p-3 rounded-lg">
-                                        <AlertCircle size={14} /> {error}
-                                    </div>
-                                )}
+                                        <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-2xl border border-border/50 mb-2">
+                                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                                                {email[0].toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 overflow-hidden">
+                                                <p className="font-bold truncate text-sm">{userStatus?.profile?.goalie_name || 'Welcome Back'}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{email}</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setStep('email'); setPassword(''); setError(null); }}
+                                                className="text-xs text-primary font-bold hover:underline px-2"
+                                            >
+                                                Change
+                                            </button>
+                                        </div>
 
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/5"
-                                >
-                                    {isLoading ? <Loader2 className="animate-spin" /> : (
-                                        <>
-                                            Continue <ArrowRight size={18} />
-                                        </>
-                                    )}
-                                </button>
-                            </form>
-                        </motion.div>
-                    )}
-                    {step === 'password' && (
-                        <motion.div
-                            key="password-step"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            className="space-y-6"
-                        >
-                            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl border border-border/50 mb-6">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                                    {email[0].toUpperCase()}
-                                </div>
-                                <div className="flex-1 overflow-hidden">
-                                    <p className="font-bold truncate text-sm">{userStatus?.profile?.goalie_name || 'Welcome Back'}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{email}</p>
-                                </div>
-                                <button
-                                    onClick={() => { setStep('email'); setPassword(''); }}
-                                    className="text-xs text-primary font-bold hover:underline"
-                                >
-                                    Change
-                                </button>
-                            </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center px-1">
+                                                <label htmlFor="password" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Password</label>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleForgotPassword}
+                                                    disabled={isLoading}
+                                                    className="text-[10px] font-black uppercase tracking-tighter text-primary hover:text-primary/80 disabled:opacity-50"
+                                                >
+                                                    Forgot?
+                                                </button>
+                                            </div>
+                                            <div className="relative">
+                                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                                                <input
+                                                    id="password"
+                                                    name="password"
+                                                    type="password"
+                                                    autoComplete="current-password"
+                                                    required
+                                                    value={password}
+                                                    onChange={(e) => setPassword(e.target.value)}
+                                                    className="w-full bg-secondary border border-border rounded-2xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50 text-lg"
+                                                    placeholder="••••••••"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                        </div>
 
-                            <form onSubmit={handleLoginSubmit} className="space-y-4">
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center px-1">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Password</label>
+                                        {error && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="text-red-500 bg-red-500/10 border border-red-500/20 text-sm flex items-center gap-2 p-4 rounded-xl"
+                                            >
+                                                <AlertCircle size={16} /> {error}
+                                            </motion.div>
+                                        )}
+
+                                        <button
+                                            type="submit"
+                                            disabled={isLoading}
+                                            className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/10 group"
+                                        >
+                                            {isLoading ? <Loader2 className="animate-spin" /> : (
+                                                <>
+                                                    Sign In <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                                </>
+                                            )}
+                                        </button>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="reset-step"
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        className="text-center flex flex-col items-center"
+                                    >
+                                        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
+                                            <CheckCircle2 size={40} className="text-primary" />
+                                        </div>
+                                        <h2 className="text-2xl font-black text-foreground mb-3 uppercase tracking-tighter">Check Your Inbox</h2>
+                                        <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
+                                            We've sent a secure password reset link to <br /><span className="font-bold text-foreground">{email}</span>. Click the link to securely choose a new password.
+                                        </p>
                                         <button
                                             type="button"
-                                            onClick={handleForgotPassword}
-                                            disabled={isLoading}
-                                            className="text-[10px] font-black uppercase tracking-tighter text-primary hover:text-primary/80 disabled:opacity-50"
+                                            onClick={() => { setStep('email'); setPassword(''); setError(null); }}
+                                            className="w-full bg-secondary hover:bg-muted text-foreground font-bold py-4 rounded-2xl transition-all border border-border"
                                         >
-                                            Forgot?
+                                            Back to Login
                                         </button>
-                                    </div>
-                                    <div className="relative">
-                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                                        <input
-                                            type="password"
-                                            required
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50 text-lg"
-                                            placeholder="••••••••"
-                                            autoFocus
-                                        />
-                                    </div>
-                                </div>
-
-                                {error && (
-                                    <div className="text-red-500 bg-red-500/10 border border-red-500/20 text-sm flex items-center gap-2 p-3 rounded-lg">
-                                        <AlertCircle size={14} /> {error}
-                                    </div>
+                                    </motion.div>
                                 )}
-
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/5"
-                                >
-                                    {isLoading ? <Loader2 className="animate-spin" /> : (
-                                        <>
-                                            Sign In <ArrowRight size={18} />
-                                        </>
-                                    )}
-                                </button>
-                            </form>
-                        </motion.div>
-                    )}
-                    {step === 'reset-sent' && (
-                        <motion.div
-                            key="reset-step"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-card border border-border rounded-2xl p-8 text-center shadow-2xl flex flex-col items-center"
-                        >
-                            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
-                                <CheckCircle2 size={40} className="text-primary" />
-                            </div>
-                            <h2 className="text-2xl font-black text-foreground mb-3">Check Your Inbox</h2>
-                            <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
-                                We've sent a secure password reset link to <br /><span className="font-bold text-foreground">{email}</span>. Click the link to securely choose a new password.
-                            </p>
-                            <button
-                                onClick={() => { setStep('email'); setPassword(''); }}
-                                className="w-full bg-secondary hover:bg-muted text-foreground font-bold py-4 rounded-xl transition-all border border-border"
-                            >
-                                Back to Login
-                            </button>
-                        </motion.div>
-                    )}
+                            </AnimatePresence>
+                        </form>
+                    </div>
                 </AnimatePresence>
             </div>
         </main>
