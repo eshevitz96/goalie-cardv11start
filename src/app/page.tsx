@@ -44,12 +44,12 @@ export default function EntryPortal() {
                         className="flex flex-col items-center justify-center space-y-6"
                     >
                         <motion.h1
-                            className="text-5xl md:text-7xl font-bold text-foreground tracking-tighter text-center px-4 uppercase"
+                            className="text-5xl md:text-7xl font-black italic text-foreground tracking-tighter text-center px-4 uppercase"
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ duration: 0.4, ease: "easeOut" }}
                         >
-                            Goalie Card
+                            Goalie <span className="text-primary uppercase">Card</span>
                         </motion.h1>
 
 
