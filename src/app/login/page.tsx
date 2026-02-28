@@ -115,8 +115,12 @@ export default function LoginPage() {
         setError(null);
 
         try {
+            const redirectUrl = new URL('/auth/callback', window.location.origin);
+            redirectUrl.searchParams.set('next', '/update-password');
+            redirectUrl.searchParams.set('type', 'recovery');
+
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.protocol}//${window.location.host}/auth/callback?next=/update-password&type=recovery`,
+                redirectTo: redirectUrl.toString(),
             });
 
             if (error) throw error;

@@ -12,6 +12,14 @@ export default function EntryPortal() {
 
     useEffect(() => {
         const checkSessionAndRedirect = async () => {
+            // Check for recovery/auth code and forward to callback if it missed the target
+            const searchParams = new URLSearchParams(window.location.search);
+            const code = searchParams.get('code');
+            if (code) {
+                router.replace(`/auth/callback${window.location.search}`);
+                return;
+            }
+
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
                 router.replace("/dashboard");
