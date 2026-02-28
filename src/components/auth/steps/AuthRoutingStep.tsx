@@ -52,7 +52,7 @@ export function AuthRoutingStep({ showRoleSelector, userRoles = [] }: AuthRoutin
                     )}
 
                     {(hasRole('goalie') || hasRole('parent')) && (
-                        <Button variant="ghost" onClick={() => router.replace('/goalie')} className="w-full p-6 bg-zinc-900 border border-zinc-800 hover:border-emerald-500 hover:bg-black rounded-2xl group transition-all text-left relative overflow-hidden h-auto block">
+                        <Button variant="ghost" onClick={() => router.replace('/dashboard')} className="w-full p-6 bg-zinc-900 border border-zinc-800 hover:border-emerald-500 hover:bg-black rounded-2xl group transition-all text-left relative overflow-hidden h-auto block">
                             <div className="absolute right-4 top-4 opacity-20 group-hover:opacity-100 transition-opacity">
                                 <FileText className="text-emerald-500" size={32} />
                             </div>

@@ -211,8 +211,10 @@ export async function completeActivationWithPassword(
             ...rosterData.raw_data,
             setup_complete: true,
             linked_user_id: authUserId,
-            activation_date: new Date().toISOString()
-            // We can drop access_pin if we rely on auth, or keep it as backup.
+            activation_date: new Date().toISOString(),
+            height: formData.height,
+            weight: formData.weight,
+            birthday: formData.birthday
         };
 
         const { error: rosterError } = await supabaseAdmin

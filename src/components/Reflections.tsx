@@ -334,7 +334,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                         <BookOpen size={18} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-black text-foreground leading-none lowercase italic">Journal</h3>
+                        <h3 className="text-lg font-black text-foreground flex items-center gap-2 whitespace-nowrap">Journal</h3>
                     </div>
                 </div>
 

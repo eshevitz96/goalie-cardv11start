@@ -8,20 +8,16 @@ import { checkUserStatus } from "@/app/actions";
 
 // Components
 import { ActivateEmailStep } from "@/components/activate/ActivateEmailStep";
-import { ActivateLookupResult } from "@/components/activate/ActivateLookupResult";
-import { ActivateIdentityStep } from "@/components/activate/ActivateIdentityStep";
-import { ActivateCreateStep } from "@/components/activate/ActivateCreateStep";
-import { ActivateReviewStep } from "@/components/activate/ActivateReviewStep";
+import { ActivateVerifyReviewStep } from "@/components/activate/ActivateVerifyReviewStep";
 import { ActivateBaselineStep } from "@/components/activate/ActivateBaselineStep";
-import { ActivateTermsStep } from "@/components/activate/ActivateTermsStep";
-import { ActivatePasswordStep } from "@/components/activate/ActivatePasswordStep";
+import { ActivateSecurityStep } from "@/components/activate/ActivateSecurityStep";
 
 function ActivateController() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
     // State
-    const [step, setStep] = useState<'email' | 'lookup_result' | 'identity' | 'create' | 'review' | 'baseline' | 'terms' | 'password' | 'success'>('email');
+    const [step, setStep] = useState<'email' | 'verify_review' | 'baseline' | 'security' | 'success'>('email');
     const [email, setEmail] = useState(searchParams.get('email') || "");
     const [rosterData, setRosterData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -47,15 +43,12 @@ function ActivateController() {
 
     const handleEmailNext = (status: { exists: boolean, rosterStatus: 'found' | 'not_found' | 'linked' | 'error', isClaimed?: boolean }) => {
         if (status.exists || status.rosterStatus === 'linked') {
-            // Already has account -> Redirect to Login
             router.push('/login?email=' + email);
         } else if (status.rosterStatus === 'found') {
-            // Found Roster -> Verify Identity
-            // We need to fetch the roster data first to verify DOB
             fetchRosterAndProceed();
         } else {
-            // Not Found -> Go straight to create form
-            setStep('create');
+            // New user - start with fresh form
+            setStep('verify_review');
         }
     };
 
@@ -69,35 +62,28 @@ function ActivateController() {
 
         if (data) {
             setRosterData(data);
-            setIsLoading(false);
-            setStep('identity');
+            setFormData(prev => ({
+                ...prev,
+                goalieName: data.goalie_name || "",
+                parentName: data.parent_name || "",
+                phone: data.parent_phone || "",
+                gradYear: data.grad_year?.toString() || "",
+                team: data.team || "",
+            }));
+            setStep('verify_review');
         } else {
-            // Should not happen if check passed, but handle gracefully
-            setIsLoading(false);
-            setStep('lookup_result');
+            setStep('verify_review');
         }
+        setIsLoading(false);
     };
 
-    const handleIdentityVerified = () => {
-        // Pre-fill form
-        setFormData(prev => ({
-            ...prev,
-            goalieName: rosterData?.goalie_name || "",
-            parentName: rosterData?.parent_name || "",
-            // parentEmail: rosterData?.raw_data?.parent_email || "", // Don't auto-fill parent email for privacy/correctness? Maybe fine.
-            phone: rosterData?.parent_phone || "",
-            gradYear: rosterData?.grad_year || "",
-            team: rosterData?.team || "",
-        }));
-        setStep('review');
-    };
+    const handleVerifyReviewSubmit = async () => {
+        // Validate Birthday if it was on the roster (Identity check)
+        if (rosterData?.raw_data?.dob && formData.birthday !== rosterData.raw_data.dob) {
+            setError("The birthday provided doesn't match our records for this goalie.");
+            return;
+        }
 
-    const handleCreateSuccess = (newData: any) => {
-        setRosterData(newData);
-        setStep('review');
-    };
-
-    const handleReviewSubmit = async () => {
         setIsLoading(true);
         // Save updates to Roster if exists (or temp state)
         if (rosterData?.id) {
@@ -109,77 +95,58 @@ function ActivateController() {
                 team: formData.team,
                 sport: formData.sport
             }).eq('id', rosterData.id);
+        } else {
+            // New user - first time creating roster entry
+            const { createInitialProfile } = await import('./actions');
+            const result = await createInitialProfile(email);
+            if (result.success) {
+                setRosterData(result.data);
+            }
         }
         setIsLoading(false);
         setStep('baseline');
     };
 
-    const handleBaselineSubmit = async () => {
-        setStep('terms');
-    };
-
-    const handleTermsNext = () => {
-        if (!termsAccepted) return;
-        setStep('password');
-    }
+    const handleBaselineSubmit = () => setStep('security');
 
     const handleFinalActivation = async () => {
         if (!password) return;
+        if (!termsAccepted) {
+            setError("Please accept the terms to continue.");
+            return;
+        }
         setIsLoading(true);
         setError(null);
 
         try {
-            // 1. Activate ALL-IN-ONE (Server Action)
             const { completeActivationWithPassword } = await import('./actions');
-
             const result = await completeActivationWithPassword(
                 email,
                 password,
                 rosterData.id,
                 rosterData,
-                formData, // Includes updated name/phone etc
+                formData,
                 baselineAnswers
             );
 
             if (!result.success) throw new Error(result.error);
-
-            // 2. Redirect to Dashboard
-            // We use window.location to ensure full refresh and middleware check
             window.location.href = '/dashboard';
-
         } catch (err: any) {
             setError(err.message);
         } finally {
             setIsLoading(false);
         }
     };
-
-    // Render Logic
-
-    // Initial State Check
-    // If the URL has an email, the login page already checked it. 
-    // We can assume they need to either verify identity (found) or create (not found).
-    useState(() => {
-        const initialEmail = searchParams.get('email');
-        if (initialEmail && step === 'email') {
-            // We'll optimistically skip the email entry and check status.
-            // Since we don't want a heavy side effect in render, we just set state here,
-            // but realistically we should just set step to 'lookup_result' or run fetchRosterAndProceed
-            // For simplicity, let's just trigger fetchRosterAndProceed on mount if email exists in params
-        }
-    });
-
     useEffect(() => {
         const initialEmail = searchParams.get('email');
         if (initialEmail && step === 'email') {
-            // Check status immediately
             const initCheck = async () => {
                 const status = await checkUserStatus(initialEmail);
                 handleEmailNext(status as any);
             };
             initCheck();
         }
-    }, []);
+    }, [searchParams, step]);
 
     return (
         <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -197,39 +164,15 @@ function ActivateController() {
                     />
                 )}
 
-                {step === 'lookup_result' && (
-                    <ActivateLookupResult
-                        email={email}
-                        onRetry={() => router.push('/login')}
-                        onCreateNew={() => setStep('create')}
-                    />
-                )}
-
-                {step === 'identity' && (
-                    <ActivateIdentityStep
-                        birthday={formData.birthday}
-                        setBirthday={(d) => setFormData({ ...formData, birthday: d })}
-                        onNext={handleIdentityVerified}
-                        onBack={() => router.push('/login')}
-                        storedDob={rosterData?.raw_data?.dob}
-                    />
-                )}
-
-                {step === 'create' && (
-                    <ActivateCreateStep
-                        email={email}
-                        onSuccess={handleCreateSuccess}
-                        onBack={() => router.push('/login')}
-                    />
-                )}
-
-                {step === 'review' && (
-                    <ActivateReviewStep
+                {step === 'verify_review' && (
+                    <ActivateVerifyReviewStep
                         formData={formData}
                         setFormData={setFormData}
-                        onSubmit={handleReviewSubmit}
+                        onSubmit={handleVerifyReviewSubmit}
                         isLoading={isLoading}
                         email={email}
+                        error={error}
+                        rosterData={rosterData}
                     />
                 )}
 
@@ -242,20 +185,12 @@ function ActivateController() {
                     />
                 )}
 
-                {step === 'terms' && (
-                    <ActivateTermsStep
-                        termsAccepted={termsAccepted}
-                        setTermsAccepted={setTermsAccepted}
-                        onSubmit={handleTermsNext}
-                        error={error}
-                        isLoading={false}
-                    />
-                )}
-
-                {step === 'password' && (
-                    <ActivatePasswordStep
+                {step === 'security' && (
+                    <ActivateSecurityStep
                         password={password}
                         setPassword={setPassword}
+                        termsAccepted={termsAccepted}
+                        setTermsAccepted={setTermsAccepted}
                         onSubmit={handleFinalActivation}
                         isLoading={isLoading}
                         error={error}

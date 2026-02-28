@@ -52,8 +52,10 @@ export default function UpdatePasswordPage() {
             if (updateError) throw updateError;
             setSuccess(true);
             setTimeout(() => {
-                router.push('/login');
-            }, 3000);
+                // After successful update, user is typically logged in by Supabase.
+                // Redirecting to dashboard is better UX than sending them back to login.
+                router.push('/dashboard');
+            }, 2000);
         } catch (err: any) {
             setError(err.message || "Failed to update password.");
         } finally {

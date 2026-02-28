@@ -62,7 +62,7 @@ export function ProfileDashboard({
                         <ArrowLeft size={24} />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-black italic tracking-tighter">CARD <span className="text-muted-foreground">SETTINGS</span></h1>
+                        <h1 className="text-3xl font-black tracking-tighter text-foreground">Card Settings</h1>
                     </div>
                 </header>
 

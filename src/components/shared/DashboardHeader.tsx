@@ -56,11 +56,11 @@ export function DashboardHeader({
 
             <div className="flex flex-col">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1">Athlete Portal</span>
-                <div className="flex items-center gap-2">
+                <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity group">
                     <h1 className="text-2xl md:text-3xl font-black text-foreground italic tracking-tighter">
                         GOALIE <span className="text-primary">CARD</span>
                     </h1>
-                </div>
+                </Link>
             </div>
             <div className="flex items-center gap-4">
                 {/* Search Trigger */}

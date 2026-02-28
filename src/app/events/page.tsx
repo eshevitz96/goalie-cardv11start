@@ -23,13 +23,13 @@ export default function EventsPage() {
         if (user) {
             const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
             if (profile?.role === 'goalie') {
-                setBackLink("/goalie");
+                setBackLink("/dashboard");
                 // For goalies, they are their own roster spot
                 const { data: roster } = await supabase.from('roster_uploads').select('id').eq('linked_user_id', user.id).single();
                 if (roster) setGoalieId(roster.id);
             }
-            else if (profile?.role === 'coach') setBackLink("/coach");
-            else if (profile?.role === 'admin') setBackLink("/admin");
+            else if (profile?.role === 'coach') setBackLink("/dashboard");
+            else if (profile?.role === 'admin') setBackLink("/dashboard");
             else {
                 // Parent: possibly multiple children, but for events page we might need to know which goalie we're looking at.
                 // For now, let's fetch the first linked goalie for this parent.
@@ -109,8 +109,8 @@ export default function EventsPage() {
                     >
                         <ArrowLeft size={20} />
                     </Link>
-                    <h1 className="text-2xl font-black italic tracking-tighter">
-                        FULL <span className="text-primary">SCHEDULE</span>
+                    <h1 className="text-3xl font-black tracking-tighter">
+                        Full Schedule
                     </h1>
                 </div>
 

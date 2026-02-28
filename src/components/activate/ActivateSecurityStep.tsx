@@ -2,16 +2,27 @@
 
 import { useState } from "react";
 import { Loader2, Lock, ArrowRight, AlertCircle, Check, Eye, EyeOff } from "lucide-react";
+import { clsx } from "clsx";
 
-interface ActivatePasswordStepProps {
+interface ActivateSecurityStepProps {
     password: string;
     setPassword: (password: string) => void;
+    termsAccepted: boolean;
+    setTermsAccepted: (accepted: boolean) => void;
     onSubmit: () => void;
     isLoading: boolean;
     error: string | null;
 }
 
-export function ActivatePasswordStep({ password, setPassword, onSubmit, isLoading, error }: ActivatePasswordStepProps) {
+export function ActivateSecurityStep({
+    password,
+    setPassword,
+    termsAccepted,
+    setTermsAccepted,
+    onSubmit,
+    isLoading,
+    error
+}: ActivateSecurityStepProps) {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [localError, setLocalError] = useState<string | null>(null);
@@ -30,6 +41,11 @@ export function ActivatePasswordStep({ password, setPassword, onSubmit, isLoadin
             return;
         }
 
+        if (!termsAccepted) {
+            setLocalError("Please accept the terms to continue.");
+            return;
+        }
+
         onSubmit();
     };
 
@@ -40,25 +56,28 @@ export function ActivatePasswordStep({ password, setPassword, onSubmit, isLoadin
                     <Lock className="text-primary" size={32} />
                 </div>
                 <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">
-                    Secure Your Account
+                    SECURE YOUR ACCOUNT
                 </h2>
                 <p className="text-muted-foreground text-sm mt-2">
-                    Set a password to log in to your dashboard.
+                    Final step to activate your Goalie Card.
                 </p>
             </div>
 
             <div className="space-y-4">
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Password</label>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Create Password</label>
                     <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <input
                             type={showPassword ? "text" : "password"}
                             required
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(e) => {
+                                setPassword(e.target.value);
+                                setLocalError(null);
+                            }}
                             className="w-full bg-secondary border border-border rounded-xl pl-12 pr-12 py-4 text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50 text-lg"
-                            placeholder="Create a password"
+                            placeholder="Password (min 6 chars)"
                             minLength={6}
                         />
                         <button
@@ -79,11 +98,32 @@ export function ActivatePasswordStep({ password, setPassword, onSubmit, isLoadin
                             type={showPassword ? "text" : "password"}
                             required
                             value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            onChange={(e) => {
+                                setConfirmPassword(e.target.value);
+                                setLocalError(null);
+                            }}
                             className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50 text-lg"
                             placeholder="Confirm password"
                         />
                     </div>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                <div className="bg-secondary/30 rounded-xl p-3 border border-border text-[10px] text-muted-foreground h-24 overflow-y-auto leading-relaxed">
+                    <p className="font-bold text-foreground mb-1">Terms of Service</p>
+                    <p className="mb-1">By activating, you agree to our standard liability waiver and data privacy policies. We use AI to analyze performance and provide feedback.</p>
+                    <p>Data is shared with your assigned coaches and guardians for athletic development purposes.</p>
+                </div>
+
+                <div
+                    onClick={() => setTermsAccepted(!termsAccepted)}
+                    className="flex items-center gap-3 p-4 rounded-xl bg-card border border-border cursor-pointer hover:border-primary/50 transition-colors shadow-sm"
+                >
+                    <div className={clsx("w-5 h-5 rounded border flex items-center justify-center transition-all", termsAccepted ? "bg-primary border-primary text-white" : "border-muted-foreground/30 bg-background")}>
+                        {termsAccepted && <Check size={12} />}
+                    </div>
+                    <div className="font-bold text-xs text-foreground">I Accept the Terms & Conditions</div>
                 </div>
             </div>
 
@@ -96,9 +136,9 @@ export function ActivatePasswordStep({ password, setPassword, onSubmit, isLoadin
             <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
             >
-                {isLoading ? <Loader2 className="animate-spin" /> : <>Complete Activation <ArrowRight size={18} /></>}
+                {isLoading ? <Loader2 className="animate-spin" /> : <>Activate Account <ArrowRight size={18} /></>}
             </button>
         </form>
     );

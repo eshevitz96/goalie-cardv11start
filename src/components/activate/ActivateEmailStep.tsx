@@ -51,9 +51,9 @@ export function ActivateEmailStep({ email, setEmail, onNext, onError }: Activate
         <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
             <div className="text-center mb-8">
                 <h1 className="text-3xl font-black italic tracking-tighter text-foreground mb-2">
-                    GET <span className="text-primary">STARTED</span>
+                    GOALIE <span className="text-primary">CARD</span>
                 </h1>
-                <p className="text-muted-foreground text-sm">Enter your email to find your card.</p>
+                <p className="text-muted-foreground text-sm">Enter your email to activate your account.</p>
             </div>
 
             <div className="space-y-2">
