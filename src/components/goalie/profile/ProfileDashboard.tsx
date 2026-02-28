@@ -21,6 +21,7 @@ interface ProfileDashboardProps {
         height: string | null;
         weight: string | null;
         grad_year: number | null;
+        team_history: { team: string, years: string }[] | null;
     };
     onSave: (data: any) => Promise<void>;
     onDeactivate: () => void;
@@ -45,8 +46,27 @@ export function ProfileDashboard({
         team: goalie.team || '',
         height: goalie.height || '',
         weight: goalie.weight || '',
-        catch_hand: goalie.catch_hand || 'Left'
+        catch_hand: goalie.catch_hand || 'Left',
+        team_history: goalie.team_history || []
     });
+
+    const addTeamHistory = () => {
+        setFormData({
+            ...formData,
+            team_history: [...formData.team_history, { team: '', years: '' }]
+        });
+    };
+
+    const updateTeamHistory = (index: number, field: 'team' | 'years', value: string) => {
+        const newHistory = [...formData.team_history];
+        newHistory[index] = { ...newHistory[index], [field]: value };
+        setFormData({ ...formData, team_history: newHistory });
+    };
+
+    const removeTeamHistory = (index: number) => {
+        const newHistory = formData.team_history.filter((_, i) => i !== index);
+        setFormData({ ...formData, team_history: newHistory });
+    };
 
     const handleSaveClick = async () => {
         await onSave(formData);
@@ -201,18 +221,19 @@ export function ProfileDashboard({
                         />
                     </div>
                     <div>
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Email (Linked to Login)</label>
-                        <div className="relative opacity-75">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Email (Login Identity)</label>
+                        <div className="relative">
                             <input
                                 value={formData.email}
-                                readOnly
-                                className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-sm text-muted-foreground focus:outline-none cursor-not-allowed"
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-all placeholder:text-muted-foreground"
+                                placeholder="Email Address"
                             />
                             <div className="absolute right-3 top-3 text-muted-foreground">
                                 <GoalieGuardLogo size={16} />
                             </div>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-1">To change your email, please contact support.</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Note: A confirmation link will be sent to your new email if changed.</p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -259,6 +280,45 @@ export function ProfileDashboard({
                             />
                         </div>
                     </div>
+                    <div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Team History</label>
+                            <button
+                                onClick={addTeamHistory}
+                                className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors"
+                            >
+                                + Add Past Team
+                            </button>
+                        </div>
+                        <div className="space-y-2">
+                            {formData.team_history.map((entry, idx) => (
+                                <div key={idx} className="flex gap-2 animate-in fade-in slide-in-from-right-2 duration-300">
+                                    <input
+                                        value={entry.team}
+                                        onChange={(e) => updateTeamHistory(idx, 'team', e.target.value)}
+                                        className="flex-[2] bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-all"
+                                        placeholder="Team Name"
+                                    />
+                                    <input
+                                        value={entry.years}
+                                        onChange={(e) => updateTeamHistory(idx, 'years', e.target.value)}
+                                        className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-all"
+                                        placeholder="e.g. 2022-24"
+                                    />
+                                    <button
+                                        onClick={() => removeTeamHistory(idx)}
+                                        className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                                    >
+                                        <ArrowLeft size={14} className="rotate-45" /> {/* Use as close X */}
+                                    </button>
+                                </div>
+                            ))}
+                            {formData.team_history.length === 0 && (
+                                <p className="text-[10px] text-muted-foreground italic py-2">No history added yet.</p>
+                            )}
+                        </div>
+                    </div>
+
                     <div>
                         <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Catch Hand</label>
                         <div className="grid grid-cols-2 gap-2">

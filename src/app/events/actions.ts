@@ -11,6 +11,7 @@ export async function addEvent(eventData: {
     date: string;
     location: string;
     sport: string;
+    scouting_report?: string;
     price?: number;
     image?: string;
     userId?: string; // Optional: Link creator to event
@@ -26,6 +27,7 @@ export async function addEvent(eventData: {
         date: eventData.date,
         location: eventData.location,
         sport: eventData.sport,
+        scouting_report: eventData.scouting_report || null,
         price: eventData.price || 0,
         image: eventData.image || "from-zinc-500 to-zinc-700",
         created_by: eventData.userId || null
@@ -83,6 +85,7 @@ export async function updateEvent(eventId: string, eventData: {
     date: string;
     location: string;
     sport: string;
+    scouting_report?: string;
 }) {
     const supabaseAdmin = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,7 +98,8 @@ export async function updateEvent(eventId: string, eventData: {
             name: eventData.name,
             date: eventData.date,
             location: eventData.location,
-            sport: eventData.sport
+            sport: eventData.sport,
+            scouting_report: eventData.scouting_report
         })
         .eq('id', eventId);
 

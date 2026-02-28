@@ -19,6 +19,7 @@ export interface Event {
     price?: number;
     access_code?: string;
     sport?: string;
+    scouting_report?: string;
     created_by?: string;
 }
 
@@ -174,7 +175,8 @@ function EventModal({ isOpen, onClose, onAdded, defaultSport, goalieId, editEven
         type: 'Game',
         name: '',
         date: '',
-        location: ''
+        location: '',
+        scouting_report: ''
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -190,10 +192,11 @@ function EventModal({ isOpen, onClose, onAdded, defaultSport, goalieId, editEven
                     type: ['Game', 'Practice', 'Training'].includes(parts[0]) ? parts[0] : 'Game',
                     name: parts.length > 1 ? parts.slice(1).join(': ') : editEvent.name,
                     date: formatForInput(editEvent.date),
-                    location: editEvent.location
+                    location: editEvent.location,
+                    scouting_report: editEvent.scouting_report || ''
                 });
             } else {
-                setManualEvent({ type: 'Game', name: '', date: '', location: '' });
+                setManualEvent({ type: 'Game', name: '', date: '', location: '', scouting_report: '' });
             }
         }
     }, [isOpen, editEvent]);
@@ -216,7 +219,8 @@ function EventModal({ isOpen, onClose, onAdded, defaultSport, goalieId, editEven
                 name: finalName,
                 date: finalDate,
                 location: manualEvent.location || 'TBA',
-                sport: defaultSport || editEvent.sport || 'Hockey'
+                sport: defaultSport || editEvent.sport || 'Hockey',
+                scouting_report: manualEvent.scouting_report
             });
 
             if (result.success) {
@@ -233,6 +237,7 @@ function EventModal({ isOpen, onClose, onAdded, defaultSport, goalieId, editEven
                 date: finalDate,
                 location: manualEvent.location || 'TBA',
                 sport: defaultSport || 'Hockey',
+                scouting_report: manualEvent.scouting_report,
                 userId: user?.id
             });
 
@@ -316,6 +321,15 @@ function EventModal({ isOpen, onClose, onAdded, defaultSport, goalieId, editEven
                         onChange={e => setManualEvent({ ...manualEvent, location: e.target.value })}
                         placeholder="Arena Name"
                         className="w-full bg-secondary border border-border rounded-lg px-3 py-2"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Scouting Report</label>
+                    <textarea
+                        value={manualEvent.scouting_report}
+                        onChange={e => setManualEvent({ ...manualEvent, scouting_report: e.target.value })}
+                        placeholder="Log scout feedback or performance notes..."
+                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 h-24 resize-none text-sm"
                     />
                 </div>
                 <div className="flex flex-col gap-2 pt-4">

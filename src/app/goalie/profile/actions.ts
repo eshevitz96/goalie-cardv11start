@@ -42,6 +42,7 @@ export async function updateProfile(rosterId: string, updates: {
     height?: string;
     weight?: string;
     catch_hand?: string;
+    team_history?: { team: string, years: string }[];
 }) {
     if (!rosterId) return { success: false, error: "Missing roster ID" };
 
@@ -51,29 +52,59 @@ export async function updateProfile(rosterId: string, updates: {
     );
 
     try {
-        // 1. Update Roster Record
-        const { error } = await supabase
-            .from('roster_uploads')
-            .update(updates)
-            .eq('id', rosterId);
+        // 1. Prepare Roster Updates
+        const { team_history, ...rosterUpdates } = updates;
 
-        if (error) {
-            console.error("Profile Update Error (Roster):", error);
-            return { success: false, error: error.message };
-        }
-
-        // 2. Update Profile Record (if linked)
-        // Find if this roster is linked to a user
-        const { data: roster } = await supabase
+        const { data: roster, error: fetchError } = await supabase
             .from('roster_uploads')
-            .select('linked_user_id')
+            .select('id, email, linked_user_id')
             .eq('id', rosterId)
             .single();
 
-        if (roster?.linked_user_id) {
+        if (fetchError) throw fetchError;
+
+        // 2. Perform Roster Update
+        const { error: rosterError } = await supabase
+            .from('roster_uploads')
+            .update(rosterUpdates)
+            .eq('id', rosterId);
+
+        if (rosterError) {
+            console.error("Profile Update Error (Roster):", rosterError);
+            return { success: false, error: rosterError.message };
+        }
+
+        // 3. Handle Email Update in Auth if changed
+        if (updates.email && updates.email !== roster.email && roster.linked_user_id) {
+            const { error: authError } = await supabase.auth.admin.updateUserById(
+                roster.linked_user_id,
+                { email: updates.email }
+            );
+            if (authError) {
+                console.warn("Auth Email Update Failed:", authError.message);
+                // We continue, as roster was updated, but email change might need manual help or session refresh
+            }
+        }
+
+        // 4. Update Profile Record (Metadata & Settings)
+        if (roster.linked_user_id) {
             const profileUpdates: any = {};
             if (updates.goalie_name) profileUpdates.goalie_name = updates.goalie_name;
-            // Add other profile fields here if schema supports them (e.g. grad_year, etc.)
+            if (updates.email) profileUpdates.email = updates.email;
+
+            // Store Team History in 'settings' JSON
+            if (team_history) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('settings')
+                    .eq('id', roster.linked_user_id)
+                    .single();
+
+                profileUpdates.settings = {
+                    ...(profile?.settings || {}),
+                    team_history: team_history
+                };
+            }
 
             if (Object.keys(profileUpdates).length > 0) {
                 await supabase

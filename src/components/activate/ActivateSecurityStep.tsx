@@ -55,10 +55,10 @@ export function ActivateSecurityStep({
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/20">
                     <Lock className="text-primary" size={32} />
                 </div>
-                <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">
-                    SECURE YOUR ACCOUNT
-                </h2>
-                <p className="text-muted-foreground text-sm mt-2">
+                <h1 className="text-3xl font-black text-foreground tracking-tighter">
+                    Secure Your Account
+                </h1>
+                <p className="text-muted-foreground text-sm mt-1">
                     Final step to activate your Goalie Card.
                 </p>
             </div>
@@ -110,10 +110,23 @@ export function ActivateSecurityStep({
             </div>
 
             <div className="space-y-4">
-                <div className="bg-secondary/30 rounded-xl p-3 border border-border text-[10px] text-muted-foreground h-24 overflow-y-auto leading-relaxed">
-                    <p className="font-bold text-foreground mb-1">Terms of Service</p>
-                    <p className="mb-1">By activating, you agree to our standard liability waiver and data privacy policies. We use AI to analyze performance and provide feedback.</p>
-                    <p>Data is shared with your assigned coaches and guardians for athletic development purposes.</p>
+                <div className="bg-secondary/30 rounded-xl p-4 border border-border text-[10px] text-muted-foreground h-40 overflow-y-auto leading-relaxed scrollbar-hide">
+                    <p className="font-bold text-foreground mb-2 text-xs">Terms of Service & Privacy</p>
+                    <div className="space-y-2">
+                        <p>By activating your Goalie Card, you enter into a binding agreement with Goalie Card ("the Company"). You acknowledge that Goalie Card is a performance monitoring and athletic development platform.</p>
+
+                        <p className="font-bold text-foreground/80">1. Data Usage & AI Analysis</p>
+                        <p>We utilize advanced technical models and AI to analyze your training data, reflections, and performance metrics. This data is used to provide personalized feedback and insights. You grant Goalie Card a non-exclusive license to use this data for service improvement and aggregated research.</p>
+
+                        <p className="font-bold text-foreground/80">2. Privacy & Sharing</p>
+                        <p>Your data is strictly shared with assigned coaches, guardians, and organizations you are affiliated with. We do not sell your personal data to third parties. For users under 18, guardian consent is mandatory and verified through parent email linkage.</p>
+
+                        <p className="font-bold text-foreground/80">3. Liability Waiver</p>
+                        <p>Athletic training involves inherent risks. Goalie Card is a tool for development and does not replace qualified medical advice or supervised physical training. You assume all risks associated with the implementation of AI-generated suggestions.</p>
+
+                        <p className="font-bold text-foreground/80">4. Community Guidelines</p>
+                        <p>You agree to provide honest reflections and maintain professional conduct when interacting with the AI Coach and human staff. Misuse of the platform may lead to account suspension.</p>
+                    </div>
                 </div>
 
                 <div

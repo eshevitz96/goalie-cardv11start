@@ -27,10 +27,10 @@ export function ActivateVerifyReviewStep({ formData, setFormData, onSubmit, isLo
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/20">
                     <ShieldCheck size={32} className="text-primary" />
                 </div>
-                <h1 className="text-2xl font-black text-foreground uppercase tracking-tight">
-                    {isNewUser ? "CREATE YOUR PROFILE" : "VERIFY YOUR DETAILS"}
+                <h1 className="text-3xl font-black text-foreground tracking-tighter">
+                    {isNewUser ? "Create Your Profile" : "Verify Your Details"}
                 </h1>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-muted-foreground text-sm mt-1">
                     {isNewUser ? "Let's get your dashboard set up." : "We found your spot! Please confirm these details."}
                 </p>
             </div>

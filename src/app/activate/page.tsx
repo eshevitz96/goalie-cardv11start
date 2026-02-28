@@ -3,6 +3,7 @@
 import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { supabase } from "@/utils/supabase/client";
 import { checkUserStatus } from "@/app/actions";
 
@@ -148,6 +149,16 @@ function ActivateController() {
         }
     }, [searchParams, step]);
 
+    const stepInfo = {
+        email: { index: 1, title: "Identity" },
+        verify_review: { index: 2, title: "Profile" },
+        baseline: { index: 3, title: "Baseline" },
+        security: { index: 4, title: "Security" },
+        success: { index: 4, title: "Ready" }
+    };
+
+    const currentStep = stepInfo[step];
+
     return (
         <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
             {/* Background */}
@@ -155,6 +166,23 @@ function ActivateController() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
             <div className="w-full max-w-md relative z-10">
+                {/* Progress Indicator */}
+                {step !== 'success' && (
+                    <div className="mb-8 space-y-2 animate-in fade-in slide-in-from-top-4 duration-700">
+                        <div className="flex items-center justify-between text-[10px] uppercase font-black tracking-widest text-muted-foreground">
+                            <span>Step {currentStep.index} of 4</span>
+                            <span className="text-primary">{currentStep.title}</span>
+                        </div>
+                        <div className="h-1 w-full bg-secondary rounded-full overflow-hidden">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(currentStep.index / 4) * 100}%` }}
+                                className="h-full bg-primary"
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {step === 'email' && (
                     <ActivateEmailStep
                         email={email}

@@ -15,6 +15,7 @@ type EventData = {
     startTime?: string;
     endTime?: string;
     location: string;
+    scouting_report?: string;
     description?: string;
     coach?: string;
     price?: number;
@@ -123,6 +124,7 @@ export default function EventDetailsPage() {
                     image: event.image,
                     sport: event.sport,
                     status: 'upcoming',
+                    scouting_report: event.scouting_report || event.description,
                     createdBy: event.created_by,
                     isRegistered: isRegistered,
                     currentUser: user?.id
@@ -223,10 +225,10 @@ export default function EventDetailsPage() {
                             <div>
                                 <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
                                     {isSession ? <User size={20} className="text-primary" /> : <CheckCircle size={20} className="text-primary" />}
-                                    {isSession ? "Coach's Report" : "Event Details"}
+                                    {isSession ? "Coach's Report" : "Scouting Report"}
                                 </h3>
                                 <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                    {data.description || data.feedback || "No additional details available."}
+                                    {data.scouting_report || data.description || data.feedback || "No scouting report available."}
                                 </div>
                             </div>
                         </div>

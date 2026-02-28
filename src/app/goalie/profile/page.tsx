@@ -37,6 +37,19 @@ export default function ProfilePage() {
                 if (error || !data) {
                     console.error("Profile Fetch Error:", error);
                 } else {
+                    // Fetch profile settings for team history
+                    if (data.linked_user_id) {
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('settings')
+                            .eq('id', data.linked_user_id)
+                            .single();
+
+                        // Merge settings into goalie object
+                        data.team_history = profile?.settings?.team_history || [];
+                    } else {
+                        data.team_history = [];
+                    }
                     setGoalie(data);
                 }
             } catch (err) {
