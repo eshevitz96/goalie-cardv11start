@@ -331,21 +331,20 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             <div className="flex justify-between items-center gap-4 mb-6 relative z-10 flex-nowrap">
                 <div className="flex items-center gap-3 whitespace-nowrap">
                     <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
-                        <BookOpen size={20} />
+                        <BookOpen size={18} />
                     </div>
                     <div>
-                        <h3 className="text-xl font-black text-foreground leading-none">Training Journal</h3>
-                        <p className="text-[10px] text-muted-foreground mt-1">Updates insights. Log daily.</p>
+                        <h3 className="text-lg font-black text-foreground leading-none lowercase italic">Journal</h3>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     {!isWriting ? (
                         <button
                             onClick={() => setIsWriting(true)}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-full transition-colors shadow-lg shadow-primary/20 text-[10px] font-black flex items-center gap-2 whitespace-nowrap shrink-0"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-full transition-colors shadow-lg shadow-primary/20 text-[10px] font-black flex items-center gap-2 whitespace-nowrap shrink-0 h-8"
                         >
-                            <Plus size={16} /> New Entry
+                            <Plus size={14} /> New Entry
                         </button>
                     ) : (
                         <button
@@ -354,19 +353,19 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                                 setEditingId(null);
                                 setNewReflection({ title: "", content: "", mood: "neutral", activity_type: null, skip_reason: null });
                             }}
-                            className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors"
+                            className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors h-8 w-8 flex items-center justify-center"
                             title="Cancel Entry"
                         >
-                            <X size={16} />
+                            <X size={14} />
                         </button>
                     )}
                     {onToggleExpand && (
                         <button
                             onClick={onToggleExpand}
-                            className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors"
+                            className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors h-8 w-8 flex items-center justify-center"
                             title="Close Journal"
                         >
-                            <X size={16} />
+                            <X size={14} />
                         </button>
                     )}
                 </div>

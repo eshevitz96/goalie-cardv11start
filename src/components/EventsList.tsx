@@ -50,17 +50,17 @@ export function EventsList({ events, onRegister, onEventAdded, sport, maxItems, 
 
     return (
         <div className="w-full space-y-4">
-            <div className="flex items-center justify-between gap-4 mb-2 flex-nowrap">
-                <h3 className="text-xl font-black text-foreground flex items-center gap-2 whitespace-nowrap">
-                    <Calendar className="text-primary shrink-0" />
-                    Events & Schedule
+            <div className="flex items-center justify-between gap-4 mb-4 flex-nowrap px-4 pt-4">
+                <h3 className="text-lg font-black text-foreground flex items-center gap-2 whitespace-nowrap">
+                    <Calendar className="text-primary shrink-0" size={18} />
+                    Events
                 </h3>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     {maxItems && (
                         <Button
                             variant="ghost"
                             onClick={() => window.location.href = '/events'}
-                            className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors h-auto py-1 px-2"
+                            className="text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors h-7 px-2"
                             title="View Full Calendar"
                         >
                             See All
@@ -69,7 +69,7 @@ export function EventsList({ events, onRegister, onEventAdded, sport, maxItems, 
                     <Button
                         variant="ghost"
                         onClick={handleAdd}
-                        className="text-[10px] font-black text-primary hover:text-primary/80 transition-colors h-auto py-1.5 px-3 hover:bg-primary/10 border border-primary/20 rounded-full whitespace-nowrap"
+                        className="text-[10px] font-black text-primary hover:text-primary/80 transition-colors h-7 px-3 hover:bg-primary/10 border border-primary/20 rounded-full whitespace-nowrap"
                     >
                         + Add Event
                     </Button>

@@ -394,10 +394,7 @@ export default function Dashboard() {
                         id="training-journal"
                     >
                         <div className="bg-card glass rounded-3xl p-1 h-full min-h-[300px] flex flex-col">
-                            <div className="p-5 pb-0">
-                                <h3 className="font-bold text-lg">Journal</h3>
-                            </div>
-                            <div className="flex-1 p-4">
+                            <div className="flex-1 p-0">
                                 <Reflections
                                     rosterId={activeGoalie.id}
                                     currentUserRole={isPro ? 'goalie' : 'parent'}
