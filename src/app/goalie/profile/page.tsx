@@ -14,12 +14,9 @@ export default function ProfilePage() {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                // 1. Check Session
-                // We prioritize Supabase Auth, but fall back to localStorage for "Soft Login"
                 const { data: { user } } = await supabase.auth.getUser();
                 const sessionEmail = user?.email;
                 const localEmail = localStorage.getItem('user_email');
-
                 const targetEmail = sessionEmail || localEmail;
 
                 if (!targetEmail) {
@@ -27,29 +24,48 @@ export default function ProfilePage() {
                     return;
                 }
 
-                // 2. Fetch Roster Data (Client Side - mirroring ActivatePage logic)
+                // 1. Fetch primary roster entry
                 const { data, error } = await supabase
                     .from('roster_uploads')
                     .select('*')
                     .ilike('email', targetEmail)
+                    .limit(1)
                     .single();
 
                 if (error || !data) {
                     console.error("Profile Fetch Error:", error);
                 } else {
-                    // Fetch profile settings for team history
-                    if (data.linked_user_id) {
-                        const { data: profile } = await supabase
-                            .from('profiles')
-                            .select('settings')
-                            .eq('id', data.linked_user_id)
-                            .single();
+                    // 2. Parallel fetch: profile settings, coach, credits, transactions
+                    const [profileRes, creditsRes, txRes] = await Promise.all([
+                        data.linked_user_id
+                            ? supabase.from('profiles').select('settings').eq('id', data.linked_user_id).single()
+                            : Promise.resolve({ data: null }),
+                        supabase.from('credit_transactions').select('amount').eq('roster_id', data.id),
+                        supabase.from('credit_transactions')
+                            .select('amount, description, created_at')
+                            .eq('roster_id', data.id)
+                            .order('created_at', { ascending: false })
+                            .limit(20),
+                    ]);
 
-                        // Merge settings into goalie object
-                        data.team_history = profile?.settings?.team_history || [];
-                    } else {
-                        data.team_history = [];
+                    // 3. Coach name
+                    let coachName: string | null = null;
+                    if (data.assigned_coach_ids?.length > 0 || data.assigned_coach_id) {
+                        const coachId = data.assigned_coach_ids?.[0] || data.assigned_coach_id;
+                        const { data: coach } = await supabase
+                            .from('roster_uploads')
+                            .select('goalie_name')
+                            .eq('id', coachId)
+                            .single();
+                        coachName = coach?.goalie_name || null;
                     }
+
+                    // 4. Merge
+                    data.team_history = profileRes.data?.settings?.team_history || [];
+                    data.credits = creditsRes.data?.reduce((sum: number, c: any) => sum + c.amount, 0) || 0;
+                    data.transactions = txRes.data || [];
+                    data.coach_name = coachName;
+
                     setGoalie(data);
                 }
             } catch (err) {
@@ -71,7 +87,6 @@ export default function ProfilePage() {
     }
 
     if (!goalie) {
-        // Fallback UI or Redirect
         return (
             <div className="min-h-screen bg-background text-foreground p-6 flex items-center justify-center flex-col gap-4">
                 <p>Profile not found.</p>
@@ -82,6 +97,5 @@ export default function ProfilePage() {
         );
     }
 
-    // 3. Render Content
     return <ProfileContent goalie={goalie} />;
 }

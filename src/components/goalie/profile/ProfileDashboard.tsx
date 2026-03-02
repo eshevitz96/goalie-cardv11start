@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, User, ChevronRight, HelpCircle, Edit2, Save, Loader2, Settings, Shield } from "lucide-react";
+import { ArrowLeft, User, ChevronRight, HelpCircle, Edit2, Save, Loader2, Settings, Shield, CreditCard, Receipt } from "lucide-react";
 import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +22,12 @@ interface ProfileDashboardProps {
         weight: string | null;
         grad_year: number | null;
         team_history: { team: string, years: string }[] | null;
+        // Extended data
+        credits?: number;
+        coach_name?: string | null;
+        sport?: string | null;
+        is_pro?: boolean;
+        transactions?: { amount: number; description: string | null; created_at: string }[];
     };
     onSave: (data: any) => Promise<void>;
     onDeactivate: () => void;
@@ -36,6 +42,12 @@ export function ProfileDashboard({
     isSaving,
     isProcessing
 }: ProfileDashboardProps) {
+    const credits = goalie.credits ?? 0;
+    const coachName = goalie.coach_name ?? null;
+    const sport = goalie.sport ?? null;
+    const isPro = goalie.is_pro ?? false;
+    const transactions: { amount: number; description: string | null; created_at: string }[] = goalie.transactions ?? [];
+
     const [showEditModal, setShowEditModal] = useState(false);
 
     // Local form state for the modal
@@ -143,7 +155,71 @@ export function ProfileDashboard({
                     </div>
                 </motion.div>
 
-                {/* Preferences */}
+                {/* Plan & Coach */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 }}
+                    className="bg-card border border-border rounded-3xl overflow-hidden backdrop-blur-md p-6 space-y-4"
+                >
+                    <div className="flex items-center gap-2 mb-1 text-muted-foreground">
+                        <CreditCard size={18} />
+                        <span className="text-xs font-bold uppercase tracking-wider">Plan & Coach</span>
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Sport</span>
+                            <span className="text-sm font-bold text-foreground">{sport || '—'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Tier</span>
+                            <span className={`text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-tight ${isPro ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-muted text-muted-foreground border border-border'
+                                }`}>{isPro ? 'Pro' : 'Standard'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Assigned Coach</span>
+                            <span className="text-sm font-bold text-foreground">{coachName || 'Unassigned'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Lesson Credits</span>
+                            <span className="text-sm font-black text-foreground">{credits} remaining</span>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Transactions */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.07 }}
+                    className="bg-card border border-border rounded-3xl overflow-hidden backdrop-blur-md p-6"
+                >
+                    <div className="flex items-center gap-2 mb-4 text-muted-foreground">
+                        <Receipt size={18} />
+                        <span className="text-xs font-bold uppercase tracking-wider">Credit History</span>
+                    </div>
+                    {transactions.length === 0 ? (
+                        <p className="text-sm text-muted-foreground italic">No transactions yet.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {transactions.map((tx, i) => (
+                                <div key={i} className="flex justify-between items-center py-2 border-b border-border/40 last:border-0">
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground">{tx.description || (tx.amount > 0 ? 'Credits added' : 'Lesson used')}</p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </p>
+                                    </div>
+                                    <span className={`text-sm font-black ${tx.amount > 0 ? 'text-emerald-500' : 'text-muted-foreground'
+                                        }`}>
+                                        {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </motion.div>
+
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
