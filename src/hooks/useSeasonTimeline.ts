@@ -61,7 +61,7 @@ export function useSeasonTimeline(sport: string = 'Hockey') {
         const normalizedSport = sport?.toLowerCase() || 'hockey';
 
         if (normalizedSport.includes('soccer') || normalizedSport.includes('lacrosse')) {
-            return `${year} Season`;
+            return `${year}`;
         }
 
         // Hockey split-year logic
