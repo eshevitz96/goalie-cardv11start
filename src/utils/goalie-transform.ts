@@ -100,6 +100,13 @@ export function transformRosterToGoalie(
     const pastEventsCount = goalieEvents.filter(e => e.rawDate < new Date()).length;
     const totalActivityCount = (Number(g.session_count) || 0) + (gSessions.length) + pastEventsCount;
 
+    // Derive counts as the max of static DB columns vs actual logged sessions
+    const derivedSessionCount = Math.max(Number(g.session_count) || 0, gSessions.length);
+    const derivedLessonCount = Math.max(
+        Number(g.lesson_count) || 0,
+        gSessions.reduce((max: number, s: any) => Math.max(max, Number(s.lesson_number) || 0), 0)
+    );
+
     return {
         id: g.id,
         name: g.goalie_name && g.goalie_name !== g.team ? g.goalie_name : (userProfile?.goalie_name || g.goalie_name || 'Unknown Goalie'),
@@ -113,8 +120,8 @@ export function transformRosterToGoalie(
         coachIds: assignedCoachIds,
         coachDetails: primaryCoachDetails,
         coachId: g.assigned_coach_id,
-        session: Number(g.session_count) || 0,
-        lesson: Number(g.lesson_count) || 0,
+        session: derivedSessionCount,
+        lesson: derivedLessonCount,
         credits: creditsMap.get(g.id) || 0,
         activation_date: g.activation_date || g.created_at,
         pendingPayment: pendingPaymentMap.get(g.id) || null,
@@ -123,7 +130,7 @@ export function transformRosterToGoalie(
             sv: ".000",
             memberSince: gSessions.length > 0 ? new Date(gSessions[gSessions.length - 1].date).getFullYear() : new Date().getFullYear(),
             totalSessions: totalActivityCount,
-            totalLessons: Number(g.lesson_count) || 0,
+            totalLessons: derivedLessonCount,
             games: g.games_count || 0,
             practices: g.practice_count || 0
         },

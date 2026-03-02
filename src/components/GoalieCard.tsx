@@ -55,8 +55,9 @@ export function GoalieCard({
     const safeLesson = lesson ?? 0;
     const safeName = name ?? "";
 
-    const maxLessons = 4; // Standard package size
-    const trainingProgress = (safeLesson / maxLessons) * 100;
+    // Dynamic package size: rounds up to nearest block of 4 (4, 8, 12, etc.)
+    const maxLessons = safeLesson <= 4 ? 4 : Math.ceil(safeLesson / 4) * 4;
+    const trainingProgress = Math.min(100, (safeLesson / maxLessons) * 100);
 
     const [showQR, setShowQR] = useState(false);
     const [showWalletPreview, setShowWalletPreview] = useState(false);
