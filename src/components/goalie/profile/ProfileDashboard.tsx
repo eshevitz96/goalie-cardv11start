@@ -290,26 +290,26 @@ export function ProfileDashboard({
                                 + Add Past Team
                             </button>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2 overflow-hidden">
                             {formData.team_history.map((entry, idx) => (
-                                <div key={idx} className="flex gap-2 animate-in fade-in slide-in-from-right-2 duration-300">
+                                <div key={idx} className="flex gap-2 items-center w-full animate-in fade-in slide-in-from-top-1 duration-300">
                                     <input
                                         value={entry.team}
                                         onChange={(e) => updateTeamHistory(idx, 'team', e.target.value)}
-                                        className="flex-[2] bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-all"
+                                        className="min-w-0 flex-[2] bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-all"
                                         placeholder="Team Name"
                                     />
                                     <input
                                         value={entry.years}
                                         onChange={(e) => updateTeamHistory(idx, 'years', e.target.value)}
-                                        className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-all"
-                                        placeholder="e.g. 2022-24"
+                                        className="min-w-0 w-24 flex-none bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-all"
+                                        placeholder="2022-24"
                                     />
                                     <button
                                         onClick={() => removeTeamHistory(idx)}
-                                        className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                                        className="flex-none p-1.5 text-muted-foreground hover:text-destructive transition-colors"
                                     >
-                                        <ArrowLeft size={14} className="rotate-45" /> {/* Use as close X */}
+                                        ✕
                                     </button>
                                 </div>
                             ))}
