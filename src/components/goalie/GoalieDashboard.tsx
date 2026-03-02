@@ -23,6 +23,7 @@ import { GoalieHeader } from "@/components/goalie/GoalieHeader";
 import { CoachesCorner } from "@/components/goalie/CoachesCorner";
 import { HighlightsSection } from "@/components/goalie/HighlightsSection";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
+import { MonthlyCreditsWidget } from "@/components/goalie/MonthlyCreditsWidget";
 
 // Utils
 import { isPastSeniorSeason } from "@/utils/role-logic";
@@ -227,6 +228,14 @@ export function GoalieDashboard({
                             )}
                         </div>
                     </motion.div>
+
+                    {/* Monthly Credits Widget */}
+                    {activeGoalie.credits > 0 && (
+                        <MonthlyCreditsWidget
+                            credits={activeGoalie.credits}
+                            coachName={activeGoalie.coach !== 'Assigned Coach' ? activeGoalie.coach : undefined}
+                        />
+                    )}
 
                     {/* Events */}
                     <motion.div

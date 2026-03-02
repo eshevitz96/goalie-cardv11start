@@ -53,13 +53,6 @@ export function GoalieCard({
 }: GoalieCardProps) {
     const safeName = name ?? "";
 
-    // Credits system: 4 credits per billing period, depletes as lessons are logged
-    const CREDITS_PER_PERIOD = 4;
-    const safeCredits = credits ?? 0;
-    const creditsUsed = Math.max(0, CREDITS_PER_PERIOD - safeCredits);
-    const creditsProgress = Math.min(100, (creditsUsed / CREDITS_PER_PERIOD) * 100); // Fills as credits are consumed
-    const hasActiveCredits = safeCredits > 0;
-
     const [showQR, setShowQR] = useState(false);
     const [showWalletPreview, setShowWalletPreview] = useState(false);
     const [showRequestModal, setShowRequestModal] = useState(false);
@@ -178,41 +171,6 @@ export function GoalieCard({
                     {/* 1. Progress Bars Section */}
                     {showProgress && (
                         <div className="space-y-4">
-                            {/* Credits Remaining Widget - only show when coach is assigned with credits */}
-                            {hasActiveCredits && (
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-end px-1">
-                                        <div>
-                                            <div className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1 opacity-50">
-                                                Monthly Lessons
-                                            </div>
-                                            <div className="flex items-baseline gap-1.5">
-                                                <span className="text-2xl font-black text-foreground tracking-tighter leading-none">{safeCredits}</span>
-                                                <span className="text-xs text-muted-foreground font-bold">of {CREDITS_PER_PERIOD} remaining</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-1 items-end pb-0.5">
-                                            {Array.from({ length: CREDITS_PER_PERIOD }).map((_, i) => (
-                                                <div
-                                                    key={i}
-                                                    className={`w-2.5 rounded-sm transition-all ${i < safeCredits
-                                                        ? 'h-4 bg-primary'
-                                                        : 'h-2 bg-muted-foreground/20'
-                                                        }`}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <ProgressBar
-                                        value={100 - creditsProgress}
-                                        height="h-2"
-                                        showGlow={safeCredits > 0}
-                                        delay={0.2}
-                                        className="rounded-full overflow-hidden border border-foreground/5 shadow-inner"
-                                    />
-                                </div>
-                            )}
-
                             {/* Season Progress */}
                             <div className="space-y-1.5">
                                 <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 px-1">
@@ -233,23 +191,6 @@ export function GoalieCard({
                     {/* 2. CTA / Up-Sell Section (Only for non-pro) */}
                     {!isPro && showProgress && (
                         <div className="space-y-3">
-                            {safeCredits === 0 ? (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: 0.5 }}
-                                >
-                                    <div className="w-full py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl font-black text-amber-500 flex items-center justify-center gap-2 uppercase tracking-wide text-xs">
-                                        <span>⚡</span> All lessons used this month
-                                    </div>
-                                </motion.div>
-                            ) : hasActiveCredits ? (
-                                <div className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter px-1 flex justify-between">
-                                    <span>Book with your coach</span>
-                                    <span>{safeCredits} {safeCredits === 1 ? 'lesson' : 'lessons'} left</span>
-                                </div>
-                            ) : null}
-
                             {pendingPayment?.status === 'approved_pending_payment' ? (
                                 <Button
                                     onClick={handleUpgradeCheckout}
