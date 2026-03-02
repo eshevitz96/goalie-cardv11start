@@ -38,15 +38,33 @@ export function AiCoachRecommendation({
 
         if (contextLoading) return;
 
-        // B. Run the Local Expert Engine
+        // Check 24-hour cache
+        const cacheKey = `ai_plan_${rosterId}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            try {
+                const { plan: cachedPlan, timestamp } = JSON.parse(cached);
+                const hoursSince = (Date.now() - timestamp) / (1000 * 60 * 60);
+                if (hoursSince < 24) {
+                    setPlan(cachedPlan);
+                    setLoading(false);
+                    if (onRecommendationReady) onRecommendationReady(cachedPlan);
+                    return;
+                }
+            } catch (_) { /* Corrupt cache, regenerate */ }
+        }
+
+        // Generate a fresh plan
         setTimeout(() => {
             const generatedPlan = determineRecommendation(textContext, activeMood, sport, isGameday, "");
             setPlan(generatedPlan);
             setLoading(false);
-            if (onRecommendationReady) onRecommendationReady(generatedPlan); // Send plan up
+            if (onRecommendationReady) onRecommendationReady(generatedPlan);
+            // Cache for 24 hours
+            localStorage.setItem(cacheKey, JSON.stringify({ plan: generatedPlan, timestamp: Date.now() }));
         }, 1200);
 
-    }, [contextLoading, textContext, activeMood, sport, isGameday, onRecommendationReady]);
+    }, [contextLoading, textContext, activeMood, sport, isGameday, onRecommendationReady, rosterId]);
 
     // UI state
     const [expandedArea, setExpandedArea] = useState<'warmup' | 'main' | 'mental' | null>(null);
