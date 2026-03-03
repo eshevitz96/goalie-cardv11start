@@ -17,14 +17,36 @@ export default function UpdatePasswordPage() {
     const [checkingSession, setCheckingSession] = useState(true);
 
     useEffect(() => {
-        const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setError("No active reset session found. Please request a new password reset link.");
+        // Supabase exchanges the hash token asynchronously.
+        // We must wait for the PASSWORD_RECOVERY event — not call getSession() immediately.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                // Token exchanged — user is now in recovery session, show the form
+                setCheckingSession(false);
+            } else if (event === 'SIGNED_IN' && session) {
+                // Already signed in (e.g. came from a valid link click)
+                setCheckingSession(false);
+            } else if (!session && event !== 'INITIAL_SESSION') {
+                setError("No active reset session. Please request a new password reset link.");
+                setCheckingSession(false);
             }
-            setCheckingSession(false);
+        });
+
+        // Fallback: if no event fires within 3s (e.g. token already exchanged), check session directly
+        const timeout = setTimeout(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                setCheckingSession(false);
+            } else {
+                setError("Reset link expired or already used. Please request a new one.");
+                setCheckingSession(false);
+            }
+        }, 3000);
+
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(timeout);
         };
-        checkSession();
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -85,7 +107,8 @@ export default function UpdatePasswordPage() {
                     {checkingSession ? (
                         <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
                             <Loader2 className="animate-spin mb-4" size={32} />
-                            <p className="text-sm font-medium">Verifying reset session...</p>
+                            <p className="text-sm font-medium">Verifying your reset link...</p>
+                            <p className="text-xs text-muted-foreground/60 mt-1">This will just take a moment</p>
                         </div>
                     ) : success ? (
                         <div className="text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl text-center space-y-4">
