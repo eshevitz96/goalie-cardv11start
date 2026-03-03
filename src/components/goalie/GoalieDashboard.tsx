@@ -59,6 +59,7 @@ export function GoalieDashboard({
     const [currentIndex, setCurrentIndex] = useState(0);
     const [expandedBlock, setExpandedBlock] = useState<'journal' | 'notes' | null>(null);
     const [showProgress, setShowProgress] = useState(true);
+    const [showPlan, setShowPlan] = useState(false);
 
     const activeGoalie = goalies[currentIndex];
 
@@ -68,6 +69,7 @@ export function GoalieDashboard({
     useEffect(() => {
         if (activeGoalie) {
             setShowProgress(!isPro);
+            setShowPlan(false); // collapse plan when switching cards
         }
     }, [activeGoalie?.id, isPro]);
 
@@ -98,18 +100,30 @@ export function GoalieDashboard({
 
                 {/* Performance Directive */}
                 <div className="md:col-span-2 mb-6">
-                    <AiCoachRecommendation
-                        lastMood={activeGoalie.latestMood}
-                        rosterId={activeGoalie.id}
-                        sport={activeGoalie.sport}
-                        onLogAction={onLogAction}
-                        goalieName={activeGoalie.name}
-                        isGameday={activeGoalie.events?.some((e: any) => {
-                            const eventDate = new Date(e.rawDate || e.date);
-                            const today = new Date();
-                            return eventDate.toDateString() === today.toDateString();
-                        })}
-                    />
+                    <button
+                        onClick={() => setShowPlan(p => !p)}
+                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-muted/40 border border-border hover:bg-muted transition-colors text-sm font-bold text-foreground"
+                    >
+                        <span>🤖 Today's Training Plan</span>
+                        <span className="text-xs text-muted-foreground font-semibold">{showPlan ? 'Hide Plan ▲' : 'Show Plan ▼'}</span>
+                    </button>
+
+                    {showPlan && (
+                        <div className="mt-3">
+                            <AiCoachRecommendation
+                                lastMood={activeGoalie.latestMood}
+                                rosterId={activeGoalie.id}
+                                sport={activeGoalie.sport}
+                                onLogAction={onLogAction}
+                                goalieName={activeGoalie.name}
+                                isGameday={activeGoalie.events?.some((e: any) => {
+                                    const eventDate = new Date(e.rawDate || e.date);
+                                    const today = new Date();
+                                    return eventDate.toDateString() === today.toDateString();
+                                })}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Pro Insights (Admin/Coach Only) */}
