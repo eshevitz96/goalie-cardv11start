@@ -142,7 +142,7 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
                                             type="number"
                                             value={form.gradYear}
                                             onChange={e => setForm({ ...form, gradYear: e.target.value })}
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                            className="w-full bg-black/50 border border-white/10 rounded-xl p-3 pr-16 text-sm focus:border-primary outline-none transition-colors"
                                             placeholder="2026"
                                         />
                                         {form.gradYear && (
