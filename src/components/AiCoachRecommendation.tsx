@@ -235,6 +235,13 @@ export function AiCoachRecommendation({
                     >
                         <Zap size={16} /> Start Full Session
                     </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => setIsFolded(!isFolded)}
+                        className="px-4 py-2 rounded-xl border-border bg-card hover:bg-muted transition-all font-bold text-sm flex items-center gap-2 h-auto"
+                    >
+                        {isFolded ? <><ChevronDown size={16} /> Show Plan</> : <><ChevronUp size={16} /> Hide Plan</>}
+                    </Button>
                     {isGameday && (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-xs font-bold text-orange-500 w-fit animate-pulse">
                             <Flame size={12} /> Game Day
@@ -247,24 +254,6 @@ export function AiCoachRecommendation({
                     )}
                 </div>
 
-                <div className="absolute right-0 top-0 pt-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsFolded(!isFolded)}
-                        className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/30 hover:bg-muted/50 transition-all font-bold text-[10px] uppercase tracking-wider"
-                    >
-                        {isFolded ? (
-                            <>
-                                <ChevronDown size={14} /> Show Plan
-                            </>
-                        ) : (
-                            <>
-                                <ChevronUp size={14} /> Collapse Plan
-                            </>
-                        )}
-                    </Button>
-                </div>
             </div>
 
             <AnimatePresence>
