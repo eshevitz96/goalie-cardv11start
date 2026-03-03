@@ -2,11 +2,10 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.goalieguard.app',
-  appName: 'GoalieGuard',
+  appName: 'Goalie Card',
   webDir: 'public',
   server: {
-    url: 'http://192.168.1.181:3000', // Automatically updated to your local IP
-    cleartext: true
+    url: 'https://goalie-cardv11start.vercel.app',
   }
 };
 
