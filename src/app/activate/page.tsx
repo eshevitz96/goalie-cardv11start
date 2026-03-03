@@ -9,7 +9,7 @@ import { checkUserStatus } from "@/app/actions";
 
 // Components
 import { ActivateEmailStep } from "@/components/activate/ActivateEmailStep";
-import { ActivateVerifyReviewStep } from "@/components/activate/ActivateVerifyReviewStep";
+import { ActivateProfileWizard, type ProfilePayload } from "@/components/activate/ActivateProfileWizard";
 import { ActivateBaselineStep } from "@/components/activate/ActivateBaselineStep";
 import { ActivateSecurityStep } from "@/components/activate/ActivateSecurityStep";
 
@@ -78,34 +78,55 @@ function ActivateController() {
         setIsLoading(false);
     };
 
-    const handleVerifyReviewSubmit = async () => {
-        // Validate Birthday if it was on the roster (Identity check)
-        if (rosterData?.raw_data?.dob && formData.birthday !== rosterData.raw_data.dob) {
-            setError("The birthday provided doesn't match our records for this goalie.");
-            return;
-        }
-
+    const handleProfileWizardSubmit = async (profile: ProfilePayload) => {
         setIsLoading(true);
-        // Save updates to Roster if exists (or temp state)
-        if (rosterData?.id) {
-            await supabase.from('roster_uploads').update({
-                goalie_name: formData.goalieName,
-                parent_name: formData.parentName,
-                parent_phone: formData.phone,
-                grad_year: parseInt(formData.gradYear) || 0,
-                team: formData.team,
-                sport: formData.sport
-            }).eq('id', rosterData.id);
-        } else {
-            // New user - first time creating roster entry
-            const { createInitialProfile } = await import('./actions');
-            const result = await createInitialProfile(email);
-            if (result.success) {
-                setRosterData(result.data);
+        setError(null);
+        try {
+            const height = profile.heightFt && profile.heightIn
+                ? `${profile.heightFt}'${profile.heightIn}"`
+                : profile.heightFt ? `${profile.heightFt}'0"` : '';
+
+            const updates = {
+                goalie_name: profile.goalieName,
+                parent_name: profile.parentName,
+                parent_phone: profile.guardianPhone,
+                guardian_email: profile.guardianEmail,
+                guardian_phone: profile.guardianPhone,
+                athlete_email: profile.athleteEmail,
+                athlete_phone: profile.athletePhone,
+                grad_year: parseInt(profile.gradYear) || null,
+                height,
+                weight: profile.weight,
+                catch_hand: profile.catchHand,
+                birthday: profile.birthday,
+            };
+
+            // Update form state for downstream use
+            setFormData(prev => ({
+                ...prev,
+                goalieName: profile.goalieName,
+                parentName: profile.parentName,
+                phone: profile.guardianPhone,
+                gradYear: profile.gradYear,
+                height,
+                weight: profile.weight,
+                birthday: profile.birthday,
+            }));
+
+            if (rosterData?.id) {
+                await supabase.from('roster_uploads').update(updates).eq('id', rosterData.id);
+            } else {
+                const { createInitialProfile } = await import('./actions');
+                const result = await createInitialProfile(email);
+                if (result.success) setRosterData(result.data);
             }
+
+            setStep('baseline');
+        } catch (err: any) {
+            setError(err.message || 'Something went wrong. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
-        setStep('baseline');
     };
 
     const handleBaselineSubmit = () => setStep('security');
@@ -193,14 +214,13 @@ function ActivateController() {
                 )}
 
                 {step === 'verify_review' && (
-                    <ActivateVerifyReviewStep
-                        formData={formData}
-                        setFormData={setFormData}
-                        onSubmit={handleVerifyReviewSubmit}
-                        isLoading={isLoading}
+                    <ActivateProfileWizard
                         email={email}
-                        error={error}
                         rosterData={rosterData}
+                        onSubmit={handleProfileWizardSubmit}
+                        onCancel={() => setStep('email')}
+                        isLoading={isLoading}
+                        error={error}
                     />
                 )}
 
