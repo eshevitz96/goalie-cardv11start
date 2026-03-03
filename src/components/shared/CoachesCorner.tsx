@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { Medal, Briefcase } from 'lucide-react';
+import React, { useState } from 'react';
+import { Medal, Briefcase, BookOpen, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/context/ToastContext';
 import Link from 'next/link';
@@ -18,6 +18,29 @@ interface CoachesCornerProps {
  */
 export function CoachesCorner({ activeGoalie, userRole = 'goalie', isOwner = false }: CoachesCornerProps) {
     const toast = useToast();
+    const [isLoggingLesson, setIsLoggingLesson] = useState(false);
+
+    const handleLogLesson = async () => {
+        if (!activeGoalie.id) return;
+        if (!confirm(`Log 1 lesson for ${activeGoalie.name}? This will deduct 1 credit.`)) return;
+        setIsLoggingLesson(true);
+        try {
+            const { logLessonCredit } = await import('@/app/actions/credits');
+            const result = await logLessonCredit({
+                rosterId: activeGoalie.id,
+                coachName: activeGoalie.coach,
+            });
+            if (!result.success) {
+                toast.error(result.error || 'Failed to log lesson');
+            } else {
+                toast.success(`Lesson logged ✅  — ${result.newBalance} credits remaining`);
+            }
+        } catch (err: any) {
+            toast.error(err.message);
+        } finally {
+            setIsLoggingLesson(false);
+        }
+    };
 
     // Purchase handler - only for account owners
     const handlePurchase = async () => {
@@ -164,10 +187,19 @@ export function CoachesCorner({ activeGoalie, userRole = 'goalie', isOwner = fal
                 </div>
             </div>
 
-            {/* Coach OS Access - Condensed */}
+            {/* Log Lesson — Coach/Admin only */}
             {(userRole === 'coach' || userRole === 'admin') && (
-                <div className="mt-4 pt-4 border-t border-border/50 relative z-10">
-                    <Link href="/coach" className="flex items-center justify-between text-xs font-bold text-foreground hover:text-primary transition-colors">
+                <div className="mt-4 pt-4 border-t border-border/50 relative z-10 space-y-2">
+                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Lesson Tracking</div>
+                    <Button
+                        onClick={handleLogLesson}
+                        disabled={isLoggingLesson}
+                        className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl py-2 text-xs font-black uppercase tracking-wide transition-all"
+                    >
+                        {isLoggingLesson ? <Loader2 size={14} className="animate-spin" /> : <BookOpen size={14} />}
+                        Log Lesson (−1 credit)
+                    </Button>
+                    <Link href="/coach" className="flex items-center justify-between text-xs font-bold text-foreground hover:text-primary transition-colors mt-2">
                         <span>Open Coach OS</span>
                         <Briefcase size={12} />
                     </Link>

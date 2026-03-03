@@ -33,6 +33,11 @@ export async function createAdditionalCard({ sport, team, gradYear, email, name 
             return { success: false, error: `You already have a ${sport} card.` };
         }
 
+        // Look up linked_user_id from auth users by email
+        const { data: { users }, error: userError } = await supabaseAdmin.auth.admin.listUsers();
+        const authUser = users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+        const linkedUserId = authUser?.id || null;
+
         // Generate a unique activation code
         const uniqueId = `${sport.substring(0, 3).toUpperCase()}${Date.now().toString(36).toUpperCase()}`;
 
@@ -45,7 +50,7 @@ export async function createAdditionalCard({ sport, team, gradYear, email, name 
                 team,
                 grad_year: gradYear,
                 assigned_unique_id: uniqueId,
-                // New self-created cards start unlinked; will link on next auth refresh
+                linked_user_id: linkedUserId,  // Auto-link immediately
             });
 
         if (error) throw error;
