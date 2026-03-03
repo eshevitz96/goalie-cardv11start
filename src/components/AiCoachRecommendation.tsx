@@ -69,7 +69,7 @@ export function AiCoachRecommendation({
     // UI state
     const [expandedArea, setExpandedArea] = useState<'warmup' | 'main' | 'mental' | null>(null);
     const [sessionActive, setSessionActive] = useState(false);
-    const [isFolded, setIsFolded] = useState(false);
+    const [isFolded, setIsFolded] = useState(true);
     const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0); // 0: warmup, 1: main, 2: mental
 
     // LIVE GAME MODE
