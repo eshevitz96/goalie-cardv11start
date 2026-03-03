@@ -10,7 +10,7 @@ export default function BetaSurveyPage() {
                 <header className="mb-12 flex justify-between items-center">
                     <div>
                         <Link href="/" className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block">&larr; Back to App</Link>
-                        <h1 className="text-3xl font-black tracking-tighter italic">BETA <span className="text-primary">SURVEY</span></h1>
+                        <h1 className="text-3xl font-black tracking-tighter">BETA <span className="text-primary">SURVEY</span></h1>
                         <p className="text-muted-foreground mt-2">Help us shape the future of Goalie Card.</p>
                     </div>
                     <div className="text-right hidden md:block">
