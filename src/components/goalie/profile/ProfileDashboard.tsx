@@ -275,6 +275,7 @@ export function ProfileDashboard({
             {showEditModal && (
                 <ActivateProfileWizard
                     email={goalie.email}
+                    title="Edit Profile"
                     rosterData={{
                         goalie_name: goalie.name,
                         grad_year: goalie.grad_year,

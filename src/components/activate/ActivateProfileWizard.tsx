@@ -13,6 +13,7 @@ interface ActivateProfileWizardProps {
     onCancel: () => void;
     isLoading: boolean;
     error: string | null;
+    title?: string;
 }
 
 export interface ProfilePayload {
@@ -30,7 +31,7 @@ export interface ProfilePayload {
     guardianPhone: string;
 }
 
-export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, isLoading, error }: ActivateProfileWizardProps) {
+export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, isLoading, error, title = 'Edit Goalie' }: ActivateProfileWizardProps) {
     const [step, setStep] = useState(1);
 
     // Pre-fill from roster data when available
@@ -79,7 +80,7 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
                 <div className="p-6 border-b border-border bg-muted/20 flex justify-between items-center">
                     <div>
                         <h3 className="text-xl font-bold flex items-center gap-2">
-                            <Users className="text-primary" size={20} /> Edit Goalie
+                            <Users className="text-primary" size={20} /> {title}
                         </h3>
                         <div className="flex items-center gap-2 mt-2">
                             {[1, 2, 3].map(s => (
