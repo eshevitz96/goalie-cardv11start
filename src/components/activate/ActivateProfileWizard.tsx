@@ -173,15 +173,26 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Catch Hand</label>
+                                    <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">
+                                        {rosterData?.sport === 'Hockey' ? 'Catch Hand' : 'Dominant Hand'}
+                                    </label>
                                     <select
                                         value={form.catchHand}
                                         onChange={e => setForm({ ...form, catchHand: e.target.value })}
                                         className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
                                     >
                                         <option value="">-- Select --</option>
-                                        <option value="Left">Left (Regular)</option>
-                                        <option value="Right">Right (Full Right)</option>
+                                        {rosterData?.sport === 'Hockey' ? (
+                                            <>
+                                                <option value="Left">Left (Regular)</option>
+                                                <option value="Right">Right (Full Right)</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="Left">Left</option>
+                                                <option value="Right">Right</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
                                 <div>
