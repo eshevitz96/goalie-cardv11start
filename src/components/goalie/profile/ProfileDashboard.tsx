@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, User, ChevronRight, HelpCircle, Edit2, Save, Loader2, Settings, Shield, CreditCard, Receipt } from "lucide-react";
+import { ArrowLeft, User, ChevronRight, HelpCircle, Edit2, Settings, Shield, CreditCard, Receipt } from "lucide-react";
 import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
-import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ActivateProfileWizard, type ProfilePayload } from "@/components/activate/ActivateProfileWizard";
 
 interface ProfileDashboardProps {
     goalie: {
@@ -49,39 +48,27 @@ export function ProfileDashboard({
     const transactions: { amount: number; description: string | null; created_at: string }[] = goalie.transactions ?? [];
 
     const [showEditModal, setShowEditModal] = useState(false);
+    const [isSavingWizard, setIsSavingWizard] = useState(false);
 
-    // Local form state for the modal
-    const [formData, setFormData] = useState({
-        name: goalie.name || '',
-        email: goalie.email || '',
-        grad_year: goalie.grad_year?.toString() || '',
-        team: goalie.team || '',
-        height: goalie.height || '',
-        weight: goalie.weight || '',
-        catch_hand: goalie.catch_hand || 'Left',
-        team_history: goalie.team_history || []
-    });
-
-    const addTeamHistory = () => {
-        setFormData({
-            ...formData,
-            team_history: [...formData.team_history, { team: '', years: '' }]
+    const handleWizardSubmit = async (profile: ProfilePayload) => {
+        setIsSavingWizard(true);
+        const height = profile.heightFt && profile.heightIn
+            ? `${profile.heightFt}'${profile.heightIn}"`
+            : profile.heightFt ? `${profile.heightFt}'0"` : goalie.height || '';
+        await onSave({
+            name: profile.goalieName,
+            grad_year: profile.gradYear,
+            height,
+            weight: profile.weight,
+            catch_hand: profile.catchHand,
+            parentName: profile.parentName,
+            phone: profile.guardianPhone,
+            guardian_email: profile.guardianEmail,
+            athlete_email: profile.athleteEmail,
+            athlete_phone: profile.athletePhone,
+            birthday: profile.birthday,
         });
-    };
-
-    const updateTeamHistory = (index: number, field: 'team' | 'years', value: string) => {
-        const newHistory = [...formData.team_history];
-        newHistory[index] = { ...newHistory[index], [field]: value };
-        setFormData({ ...formData, team_history: newHistory });
-    };
-
-    const removeTeamHistory = (index: number) => {
-        const newHistory = formData.team_history.filter((_, i) => i !== index);
-        setFormData({ ...formData, team_history: newHistory });
-    };
-
-    const handleSaveClick = async () => {
-        await onSave(formData);
+        setIsSavingWizard(false);
         setShowEditModal(false);
     };
 
@@ -284,148 +271,25 @@ export function ProfileDashboard({
                 </div>
             </div>
 
-            {/* Edit Modal */}
-            <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Profile" size="sm">
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Name</label>
-                        <input
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-all placeholder:text-muted-foreground"
-                            placeholder="Full Name"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Email (Login Identity)</label>
-                        <div className="relative">
-                            <input
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-all placeholder:text-muted-foreground"
-                                placeholder="Email Address"
-                            />
-                            <div className="absolute right-3 top-3 text-muted-foreground">
-                                <GoalieGuardLogo size={16} />
-                            </div>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground mt-1">Note: A confirmation link will be sent to your new email if changed.</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Grad Year</label>
-                            <input
-                                value={formData.grad_year}
-                                onChange={(e) => {
-                                    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                                    setFormData({ ...formData, grad_year: val });
-                                }}
-                                maxLength={4}
-                                pattern="\d*"
-                                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-muted-foreground"
-                                placeholder="e.g. 2026"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Team</label>
-                            <input
-                                value={formData.team}
-                                onChange={(e) => setFormData({ ...formData, team: e.target.value })}
-                                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-all placeholder:text-muted-foreground"
-                                placeholder="Current Team"
-                            />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Height</label>
-                            <input
-                                value={formData.height}
-                                onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-muted-foreground"
-                                placeholder="e.g. 6'2"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Weight</label>
-                            <input
-                                value={formData.weight}
-                                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-muted-foreground"
-                                placeholder="e.g. 185"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Team History</label>
-                            <button
-                                onClick={addTeamHistory}
-                                className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors"
-                            >
-                                + Add Past Team
-                            </button>
-                        </div>
-                        <div className="space-y-2 overflow-hidden">
-                            {formData.team_history.map((entry, idx) => (
-                                <div key={idx} className="flex gap-2 items-center w-full animate-in fade-in slide-in-from-top-1 duration-300">
-                                    <input
-                                        value={entry.team}
-                                        onChange={(e) => updateTeamHistory(idx, 'team', e.target.value)}
-                                        className="min-w-0 flex-[2] bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-all"
-                                        placeholder="Team Name"
-                                    />
-                                    <input
-                                        value={entry.years}
-                                        onChange={(e) => updateTeamHistory(idx, 'years', e.target.value)}
-                                        className="min-w-0 w-24 flex-none bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-all"
-                                        placeholder="2022-24"
-                                    />
-                                    <button
-                                        onClick={() => removeTeamHistory(idx)}
-                                        className="flex-none p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            ))}
-                            {formData.team_history.length === 0 && (
-                                <p className="text-[10px] text-muted-foreground italic py-2">No history added yet.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Catch Hand</label>
-                        <div className="grid grid-cols-2 gap-2">
-                            {['Left', 'Right'].map((hand) => (
-                                <button
-                                    key={hand}
-                                    onClick={() => setFormData({ ...formData, catch_hand: hand })}
-                                    className={`py-3 rounded-xl text-sm font-bold transition-all ${formData.catch_hand === hand
-                                        ? 'bg-accent text-accent-foreground shadow-lg shadow-accent/20'
-                                        : 'bg-secondary text-muted-foreground hover:bg-muted'
-                                        }`}
-                                >
-                                    {hand}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="pt-4 mt-4 border-t border-border">
-                    <button
-                        onClick={handleSaveClick}
-                        disabled={isSaving}
-                        className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                    >
-                        {isSaving ? <Loader2 className="animate-spin" size={18} /> : <>Save Changes <Save size={18} /></>}
-                    </button>
-                </div>
-            </Modal>
-            <AnimatePresence>
-            </AnimatePresence>
+            {/* 3-Step Edit Wizard */}
+            {showEditModal && (
+                <ActivateProfileWizard
+                    email={goalie.email}
+                    rosterData={{
+                        goalie_name: goalie.name,
+                        grad_year: goalie.grad_year,
+                        catch_hand: goalie.catch_hand,
+                        height: goalie.height,
+                        weight: goalie.weight,
+                        sport: goalie.sport,
+                    }}
+                    onSubmit={handleWizardSubmit}
+                    onCancel={() => setShowEditModal(false)}
+                    isLoading={isSavingWizard}
+                    error={null}
+                />
+            )}
+            <AnimatePresence />
         </div>
     );
 }
