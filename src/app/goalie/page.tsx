@@ -30,6 +30,7 @@ import { ReflectionSection } from "@/components/goalie/ReflectionSection";
 import { GoalieDashboard } from "@/components/goalie/GoalieDashboard";
 import { transformGoalieData } from "@/lib/transformers/goalie-transformers";
 import { GoalieCard } from "@/components/GoalieCard";
+import { AddCardModal } from "@/components/goalie/AddCardModal";
 
 export default function Home() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expandedBlock, setExpandedBlock] = useState<'journal' | 'notes' | null>(null);
   const [journalPrefill, setJournalPrefill] = useState<string | null>(null);
+  const [showAddCard, setShowAddCard] = useState(false);
 
   // Notification Handling
   const [notification, setNotification] = useState<{ id: string, title: string, message: string, type?: string } | null>(null);
@@ -205,6 +207,16 @@ export default function Home() {
             sport={activeGoalie.sport}
           />
 
+          {/* Add Card chip */}
+          <div className="flex justify-center">
+            <button
+              onClick={() => setShowAddCard(true)}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-all text-xs font-bold"
+            >
+              <span className="text-base leading-none">+</span> Add card
+            </button>
+          </div>
+
           {/* Events */}
           <motion.div
             key={`events-${activeGoalie.id}`}
@@ -273,6 +285,13 @@ export default function Home() {
       </div>
       <BetaFeedback rosterId={activeGoalie.id} userId={userId || undefined} userRole="goalie" />
       <WhatsNewGuide />
+      <AddCardModal
+        isOpen={showAddCard}
+        onClose={() => setShowAddCard(false)}
+        onCreated={() => { fetchMyGoalies(false); setCurrentIndex(goalies.length); }}
+        userEmail={activeGoalie.email || ''}
+        userName={activeGoalie.name}
+      />
     </main>
   );
 }

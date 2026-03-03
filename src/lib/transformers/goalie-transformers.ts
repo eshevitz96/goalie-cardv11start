@@ -81,6 +81,8 @@ export function transformGoalieData(goalie: any) {
         events,
         stats,
         // Pass-through other necessary fields
+        email: goalie.email || goalie.settings?.email || '',
+        credits: goalie.credits || 0,
         feedback: goalie.feedback || [],
         latestMood: goalie.latestMood || 'neutral',
         latestContent: goalie.latestContent || ""
