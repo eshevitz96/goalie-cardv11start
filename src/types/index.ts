@@ -67,4 +67,6 @@ export interface RosterItem {
     catchHand?: string; // Legacy support
     catch_hand?: string; // Database column
     birthday?: string;
+    sport?: string;
+    role?: string;
 }

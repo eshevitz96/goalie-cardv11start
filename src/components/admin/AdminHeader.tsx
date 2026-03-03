@@ -1,9 +1,11 @@
-import { Database, FileSpreadsheet, BarChart3, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { Database, FileSpreadsheet, BarChart3, MessageSquare, CheckCircle2, CreditCard } from 'lucide-react';
+
+type AdminTab = 'roster' | 'insights' | 'sessions' | 'feedback' | 'survey' | 'credits';
 
 interface AdminHeaderProps {
     currentUser: any;
-    activeTab: 'roster' | 'insights' | 'sessions' | 'feedback' | 'survey';
-    setActiveTab: (tab: 'roster' | 'insights' | 'sessions' | 'feedback' | 'survey') => void;
+    activeTab: AdminTab;
+    setActiveTab: (tab: AdminTab) => void;
 }
 
 export function AdminHeader({ currentUser, activeTab, setActiveTab }: AdminHeaderProps) {
@@ -49,6 +51,12 @@ export function AdminHeader({ currentUser, activeTab, setActiveTab }: AdminHeade
                     className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'survey' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                     <CheckCircle2 size={16} /> Beta Survey
+                </button>
+                <button
+                    onClick={() => setActiveTab('credits')}
+                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'credits' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                    <CreditCard size={16} /> Credits
                 </button>
                 <button
                     onClick={() => setActiveTab('insights')}
