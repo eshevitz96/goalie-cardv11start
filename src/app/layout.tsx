@@ -47,6 +47,12 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover", // exposes env(safe-area-inset-*) on iOS
+};
+
 
 import { AppProvider } from "@/context/AppContext";
 import { ThemeProvider } from "@/context/ThemeProvider";
