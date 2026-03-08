@@ -20,6 +20,7 @@ export interface ProfilePayload {
     goalieName: string;
     birthday: string;
     gradYear: string;
+    sport: string;
     catchHand: string;
     heightFt: string;
     heightIn: string;
@@ -39,6 +40,7 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
         goalieName: rosterData?.goalie_name || "",
         birthday: rosterData?.birthday || "",
         gradYear: rosterData?.grad_year?.toString() || "",
+        sport: rosterData?.sport || "Hockey",
         catchHand: rosterData?.catch_hand || "",
         heightFt: rosterData?.height ? rosterData.height.split("'")[0] : "",
         heightIn: rosterData?.height ? (rosterData.height.split("'")[1] || "").replace('"', '') : "",
@@ -174,8 +176,20 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
+                                    <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Sport</label>
+                                    <select
+                                        value={form.sport}
+                                        onChange={e => setForm({ ...form, sport: e.target.value, catchHand: "" })} // reset catchHand on sport change
+                                        className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
+                                    >
+                                        <option value="Hockey">Ice Hockey</option>
+                                        <option value="Lacrosse">Lacrosse</option>
+                                        <option value="Soccer">Soccer</option>
+                                    </select>
+                                </div>
+                                <div>
                                     <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">
-                                        {rosterData?.sport === 'Hockey' ? 'Catch Hand' : 'Dominant Hand'}
+                                        {form.sport === 'Hockey' ? 'Catch Hand' : 'Dominant Hand / Foot'}
                                     </label>
                                     <select
                                         value={form.catchHand}
@@ -183,7 +197,7 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
                                         className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
                                     >
                                         <option value="">-- Select --</option>
-                                        {rosterData?.sport === 'Hockey' ? (
+                                        {form.sport === 'Hockey' ? (
                                             <>
                                                 <option value="Left">Left (Regular)</option>
                                                 <option value="Right">Right (Full Right)</option>
@@ -196,6 +210,9 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
                                         )}
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Height</label>
                                     <div className="flex gap-2">
@@ -308,7 +325,8 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
                                 {[
                                     { label: "Name", value: `${firstNameVal} ${lastNameVal}` },
                                     { label: "Grad Year", value: form.gradYear || "—" },
-                                    { label: "Catch Hand", value: form.catchHand || "—" },
+                                    { label: "Sport", value: form.sport || "Hockey" },
+                                    { label: form.sport === 'Hockey' ? "Catch Hand" : "Dominant", value: form.catchHand || "—" },
                                     { label: "Height", value: form.heightFt ? `${form.heightFt}'${form.heightIn}"` : "—" },
                                     { label: "Weight", value: form.weight || "—" },
                                     { label: "Guardian Email", value: form.guardianEmail || "—" },

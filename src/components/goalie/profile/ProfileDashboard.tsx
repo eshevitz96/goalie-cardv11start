@@ -58,6 +58,7 @@ export function ProfileDashboard({
         await onSave({
             name: profile.goalieName,
             grad_year: profile.gradYear,
+            sport: profile.sport,
             height,
             weight: profile.weight,
             catch_hand: profile.catchHand,

@@ -97,6 +97,7 @@ function ActivateController() {
                 grad_year: parseInt(profile.gradYear) || null,
                 height,
                 weight: profile.weight,
+                sport: profile.sport,
                 catch_hand: profile.catchHand,
                 birthday: profile.birthday,
             };

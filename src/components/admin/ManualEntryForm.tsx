@@ -35,6 +35,7 @@ export function ManualEntryForm({ isOpen, onClose, editItem, coaches, onSuccess 
         heightFt: "",
         heightIn: "",
         weight: "",
+        sport: "Hockey",
         catchHand: "",
         team: "",
         gradYear: DEFAULT_GRAD_YEAR.toString(),
@@ -61,6 +62,7 @@ export function ManualEntryForm({ isOpen, onClose, editItem, coaches, onSuccess 
                 heightFt: editItem.height ? editItem.height.split("'")[0] : "",
                 heightIn: editItem.height ? (editItem.height.split("'")[1] || "").replace('"', '') : "",
                 weight: editItem.weight || "",
+                sport: editItem.sport || "Hockey",
                 catchHand: (editItem as any).catch_hand || editItem.catchHand || "",
                 team: editItem.team,
                 gradYear: editItem.grad_year?.toString() || DEFAULT_GRAD_YEAR.toString(),
@@ -75,7 +77,7 @@ export function ManualEntryForm({ isOpen, onClose, editItem, coaches, onSuccess 
             setFormData({
                 firstName: "", lastName: "", email: "",
                 guardianEmail: "", guardianPhone: "", athleteEmail: "", athletePhone: "", backupEmail: "",
-                heightFt: "", heightIn: "", weight: "", catchHand: "",
+                heightFt: "", heightIn: "", weight: "", sport: "Hockey", catchHand: "",
                 team: "", gradYear: DEFAULT_GRAD_YEAR.toString(), parentName: "", phone: "", coachId: "", birthday: "", rawData: {}
             });
         }
@@ -98,6 +100,7 @@ export function ManualEntryForm({ isOpen, onClose, editItem, coaches, onSuccess 
                 athlete_phone: formData.athletePhone,
                 height: formData.heightFt && formData.heightIn ? `${formData.heightFt}'${formData.heightIn}"` : "",
                 weight: formData.weight,
+                sport: formData.sport,
                 catch_hand: formData.catchHand,
                 grad_year: parseInt(formData.gradYear) || DEFAULT_GRAD_YEAR,
                 team: formData.team || UNASSIGNED_TEAM,
@@ -188,6 +191,44 @@ export function ManualEntryForm({ isOpen, onClose, editItem, coaches, onSuccess 
                                 </div>
                                 <div>
                                     <Input label="Birthday" type="date" value={formData.birthday} onChange={e => setFormData({ ...formData, birthday: e.target.value })} required />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Sport</label>
+                                    <select
+                                        value={formData.sport}
+                                        onChange={e => setFormData({ ...formData, sport: e.target.value, catchHand: "" })}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="Hockey">Ice Hockey</option>
+                                        <option value="Lacrosse">Lacrosse</option>
+                                        <option value="Soccer">Soccer</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">
+                                        {formData.sport === 'Hockey' ? 'Catch Hand' : 'Dominant Hand / Foot'}
+                                    </label>
+                                    <select
+                                        value={formData.catchHand}
+                                        onChange={e => setFormData({ ...formData, catchHand: e.target.value })}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="">-- Select --</option>
+                                        {formData.sport === 'Hockey' ? (
+                                            <>
+                                                <option value="Left">Left (Regular)</option>
+                                                <option value="Right">Right (Full Right)</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="Left">Left</option>
+                                                <option value="Right">Right</option>
+                                            </>
+                                        )}
+                                    </select>
                                 </div>
                             </div>
                             {/* Detailed stats omitted for brevity in this step, can add back if critical or keep simple */}
