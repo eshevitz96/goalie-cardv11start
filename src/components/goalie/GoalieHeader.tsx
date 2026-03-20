@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Settings, Plus, LogOut, Bell, Search } from 'lucide-react';
+import { User, Settings, Plus, LogOut, Bell, Search, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
@@ -69,6 +69,9 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                         </Link>
                         <Link href="/activate" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                             <Plus size={16} /> Activate New Card
+                        </Link>
+                        <Link href="/team" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
+                            <ShieldCheck size={16} /> Team Dashboard
                         </Link>
 
                         <div className="h-px bg-border my-1" />

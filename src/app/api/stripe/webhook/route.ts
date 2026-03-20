@@ -63,6 +63,40 @@ export async function POST(req: Request) {
                     // Log but don't fail webhook if payment already recorded
                 }
             }
+        } else if (session.metadata.type === 'team_credit_purchase') {
+            const teamId = session.metadata.teamId;
+            const creditAmount = parseInt(session.metadata.creditAmount || "0");
+
+            if (teamId && creditAmount > 0) {
+                // 1. Audit Log in Team Fund Transactions
+                await supabase.from('team_fund_transactions').insert({
+                    team_id: teamId,
+                    amount: creditAmount,
+                    description: `Stripe Top-up: ${creditAmount} credits`,
+                    metadata: { stripe_payment_id: session.payment_intent as string }
+                });
+
+                // 2. Atomic-ish update of shared fund (assuming one team per fund)
+                const { data: currentFund } = await supabase
+                    .from('team_credit_funds')
+                    .select('balance')
+                    .eq('team_id', teamId)
+                    .maybeSingle();
+                
+                const newBalance = (currentFund?.balance || 0) + creditAmount;
+
+                const { error: fundUpdateError } = await supabase
+                    .from('team_credit_funds')
+                    .upsert({ 
+                        team_id: teamId, 
+                        balance: newBalance,
+                        last_topup: new Date().toISOString()
+                    });
+
+                if (fundUpdateError) {
+                    console.error("Team fund sync error:", fundUpdateError);
+                }
+            }
         } else if (session.metadata.type === 'pro_upgrade') {
             const rosterId = session.metadata.rosterId;
             const coachId = session.metadata.coachId;

@@ -152,6 +152,14 @@ export function GoalieDashboard({
         setShotEvents(prev => [...prev, newShot]);
     };
 
+    // Events to show in both Dashboard list and Workspace dropdown
+    const dashboardEvents = (activeGoalie.events && activeGoalie.events.length > 0) 
+        ? activeGoalie.events 
+        : [
+            { id: 'm1', name: 'Game: vs Rangers', date: new Date(Date.now() - 86400000).toISOString(), location: 'Home', status: 'past', image: '' },
+            { id: 'm2', name: 'Practice: Skills', date: new Date(Date.now() + 86400000).toISOString(), location: 'Home', status: 'upcoming', image: '' }
+        ];
+
     return (
         <main className="min-h-screen bg-background p-4 md:p-8 overflow-x-hidden selection:bg-primary selection:text-white">
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
@@ -215,10 +223,7 @@ export function GoalieDashboard({
                     {/* Column 1: Events */}
                     <div className="space-y-4">
                         <EventsList
-                            events={activeGoalie.events || [
-                                { id: 'm1', name: 'Game: vs Rangers', date: new Date(Date.now() - 86400000).toISOString(), location: 'Home', status: 'past', image: '' },
-                                { id: 'm2', name: 'Practice: Skills', date: new Date(Date.now() + 86400000).toISOString(), location: 'Home', status: 'upcoming', image: '' }
-                            ]}
+                            events={dashboardEvents}
                             onRegister={(eventId) => onRegister(eventId, activeGoalie.id)}
                             onUploadFilm={() => setIsUploadingFilm(true)}
                             hidePayments={true}
@@ -455,7 +460,7 @@ export function GoalieDashboard({
                                     sport={goalieContext.sport} 
                                     videoUrl="https://example.com/mock-game.mp4" 
                                     initialClips={activeGoalie.unchartedClips || (unchartedCount > 0 ? [{ id: 'u1', timestamp: 12, type: 'save', status: 'pending' }, { id: 'u2', timestamp: 45, type: 'goal', status: 'pending' }] : [])}
-                                    events={activeGoalie.events || []}
+                                    events={dashboardEvents}
                                     onComplete={(data) => {
                                         setIsAnalyzingFilm(false);
                                         setUnchartedCount(0);

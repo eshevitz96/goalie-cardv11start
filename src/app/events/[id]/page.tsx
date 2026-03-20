@@ -112,7 +112,7 @@ export default function EventDetailsPage() {
                     let journalEntry = undefined;
                     let analytics = undefined;
                     let results = undefined;
-                    let isUnlocked = true;
+                    let analysisMetaUnlocked = false;
 
                     if (isGame && user) {
                         const { data: ref } = await supabase
@@ -143,6 +143,17 @@ export default function EventDetailsPage() {
                         }
 
                         results = { home: 3, away: 2, periods: [1, 1, 1] };
+
+                        // Check Credits
+                        const { data: unlockTx } = await supabase
+                            .from('credit_transactions')
+                            .select('id')
+                            .eq('roster_id', user.id)
+                            .eq('metadata->>event_id', id)
+                            .eq('metadata->>type', 'analysis_unlock')
+                            .maybeSingle();
+                        
+                        analysisMetaUnlocked = !!unlockTx;
                     }
 
                     setData({
@@ -158,7 +169,7 @@ export default function EventDetailsPage() {
                         scouting_report: event.scouting_report || event.description,
                         createdBy: event.created_by,
                         isRegistered: isRegistered,
-                        isUnlocked: true, // Always included for now
+                        isUnlocked: !isGame || analysisMetaUnlocked, 
                         currentUser: user?.id,
                         journalEntry,
                         analytics,
@@ -195,7 +206,7 @@ export default function EventDetailsPage() {
 
             if (result.success) {
                 toast.success("Analysis Unlocked!");
-                setData({ ...data, isUnlocked: true });
+                setData(prev => prev ? { ...prev, isUnlocked: true } : null);
             } else {
                 toast.error(result.error || "Failed to unlock.");
             }
@@ -292,28 +303,48 @@ export default function EventDetailsPage() {
                         </div>
 
                         {data.analytics && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center gap-2">
-                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Game Performance</div>
-                                    <div className="text-4xl font-black text-primary">{data.analytics.savePct}%</div>
-                                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                        {data.analytics.saves} / {data.analytics.totalShots} Saves
-                                    </div>
-                                </div>
-                                <div className="bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center gap-2">
-                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Game Results</div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="text-center">
-                                            <div className="text-2xl font-black text-foreground/70">Home</div>
-                                            <div className="text-3xl font-bold">{data.results?.home}</div>
-                                        </div>
-                                        <div className="text-sm font-bold text-muted-foreground">VS</div>
-                                        <div className="text-center">
-                                            <div className="text-2xl font-black text-foreground/70">Away</div>
-                                            <div className="text-3xl font-bold">{data.results?.away}</div>
+                            <div className="relative group">
+                                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all duration-700 ${!data.isUnlocked ? 'blur-2xl opacity-40 select-none pointer-events-none' : ''}`}>
+                                    <div className="bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center gap-2">
+                                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Game Performance</div>
+                                        <div className="text-4xl font-black text-primary">{data.analytics.savePct}%</div>
+                                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                                            {data.analytics.saves} / {data.analytics.totalShots} Saves
                                         </div>
                                     </div>
+                                    <div className="bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center gap-2">
+                                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Game Results</div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-center">
+                                                <div className="text-2xl font-black text-foreground/70">Home</div>
+                                                <div className="text-3xl font-bold">{data.results?.home}</div>
+                                            </div>
+                                            <div className="text-sm font-bold text-muted-foreground">VS</div>
+                                            <div className="text-center">
+                                                <div className="text-2xl font-black text-foreground/70">Away</div>
+                                                <div className="text-3xl font-bold">{data.results?.away}</div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
+
+                                {!data.isUnlocked && (
+                                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/20 backdrop-blur-sm rounded-[2.5rem] p-8 border border-white/5 shadow-2xl animate-in fade-in duration-500">
+                                        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 border border-primary/30 text-primary">
+                                            <Zap size={24} className="animate-pulse" />
+                                        </div>
+                                        <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Unlock Intelligence</h4>
+                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center mb-6 max-w-xs leading-loose">
+                                            Access the interactive heatmap, shot distribution, and professional performance analytics.
+                                        </p>
+                                        <Button 
+                                            onClick={handleUnlock}
+                                            className="bg-primary text-black font-black uppercase tracking-widest text-[10px] px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(var(--primary),0.3)]"
+                                        >
+                                            Unlock with 1 Credit
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         )}
 
