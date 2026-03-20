@@ -425,6 +425,9 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
     try {
         const supabaseAdmin = getSupabaseAdmin();
         
+        // Handle mock IDs from demo data
+        const validEventId = (eventId && !eventId.startsWith('m')) ? eventId : null;
+
         // 1. Get User ID from roster
         const { data: roster } = await supabaseAdmin
             .from('roster_uploads')
@@ -436,7 +439,7 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
 
         // 2. Prepare shots for insertion
         const insertShots = shots.map(s => ({
-            event_id: eventId || null,
+            event_id: validEventId,
             goalie_id: roster.linked_user_id,
             sport: s.sport,
             period: s.period,
@@ -457,8 +460,8 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
         if (shotError) throw shotError;
 
         // 4. Update Event Status if exists
-        if (eventId) {
-            await supabaseAdmin.from('events').update({ is_charted: true }).eq('id', eventId);
+        if (validEventId) {
+            await supabaseAdmin.from('events').update({ is_charted: true }).eq('id', validEventId);
         }
 
         return { success: true };

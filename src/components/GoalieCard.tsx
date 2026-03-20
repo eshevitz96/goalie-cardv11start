@@ -30,6 +30,8 @@ export interface GoalieCardProps {
     pendingPayment?: any;
     sport?: string;
     pureIcon?: boolean;
+    games?: number;
+    practices?: number;
 }
 
 export function GoalieCard({
@@ -49,7 +51,9 @@ export function GoalieCard({
     credits,
     pendingPayment,
     sport,
-    pureIcon
+    pureIcon,
+    games,
+    practices
 }: GoalieCardProps) {
     const safeName = name ?? "";
     const { theme } = useTheme();
@@ -201,6 +205,26 @@ export function GoalieCard({
                                     delay={0.4}
                                     className="rounded-full overflow-hidden bg-muted/20"
                                 />
+                            </div>
+
+                            {/* Additional Volume Counts */}
+                            <div className="grid grid-cols-4 gap-1.5">
+                                <div className="bg-muted/30 border border-border/50 rounded-xl p-2 text-center">
+                                    <div className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/50 mb-0.5 whitespace-nowrap">Sess</div>
+                                    <div className="text-xs font-bold text-foreground">{session || 0}</div>
+                                </div>
+                                <div className="bg-muted/30 border border-border/50 rounded-xl p-2 text-center">
+                                    <div className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/50 mb-0.5 whitespace-nowrap">Less</div>
+                                    <div className="text-xs font-bold text-foreground">{lesson || 0}</div>
+                                </div>
+                                <div className="bg-muted/30 border border-border/50 rounded-xl p-2 text-center">
+                                    <div className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/50 mb-0.5 whitespace-nowrap">Games</div>
+                                    <div className="text-xs font-bold text-foreground">{games || 0}</div>
+                                </div>
+                                <div className="bg-muted/30 border border-border/50 rounded-xl p-2 text-center">
+                                    <div className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/50 mb-0.5 whitespace-nowrap">Prac</div>
+                                    <div className="text-xs font-bold text-foreground">{practices || 0}</div>
+                                </div>
                             </div>
                         </div>
                     )}

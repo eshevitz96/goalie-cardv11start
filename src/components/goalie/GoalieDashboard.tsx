@@ -239,12 +239,19 @@ export function GoalieDashboard({
                             gradYear={activeGoalie.gradYear}
                             showProgress={showProgress}
                             credits={activeGoalie.credits}
+                            session={activeGoalie.session}
+                            lesson={activeGoalie.lesson}
+                            games={activeGoalie.stats?.games}
+                            practices={activeGoalie.stats?.practices}
                             className="w-full h-auto shadow-2xl"
                         />
-                        <div className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                            <div className="w-1.5 h-1.5 rounded-full border border-muted-foreground" />
-                            <span>Show Activity Counts</span>
-                        </div>
+                        <button 
+                            onClick={() => setShowProgress(!showProgress)}
+                            className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors group cursor-pointer"
+                        >
+                            <div className={`w-1.5 h-1.5 rounded-full border ${showProgress ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
+                            <span>{showProgress ? 'Hide' : 'Show'} Activity Counts</span>
+                        </button>
                     </motion.div>
                 </div>
 
