@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Activity, TrendingUp, Calendar, Clock, ChevronRight, BarChart3, Target, Zap, 
-  ShieldCheck, Film, X, Repeat, Maximize2, ArrowRight, Shield, Plus, Trash2, Camera 
+  ShieldCheck, Film, X, Repeat, Maximize2, ArrowRight, Shield, Plus, Trash2, Camera,
+  Video
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
 
 // Components
 import { GoalieCard } from "@/components/GoalieCard";
@@ -73,6 +75,7 @@ export function GoalieDashboard({
 }: GoalieDashboardProps) {
 
     const { theme, setTheme } = useTheme();
+    const router = useRouter();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [expandedBlock, setExpandedBlock] = useState<'journal' | 'notes' | null>(null);
     const [showProgress, setShowProgress] = useState(true);
@@ -316,12 +319,12 @@ export function GoalieDashboard({
                                     </Button>
                                 </div>
                                 {shotEvents.length > 0 && (
-                                    <Button 
-                                        variant="ghost" 
-                                        className="w-full text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-2"
+                                    <Link 
+                                        href="/clips"
+                                        className="w-full text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center justify-center gap-2 py-4 rounded-2xl hover:bg-muted transition-all"
                                     >
                                         <TrendingUp size={12} /> View Full Season Insights <ChevronRight size={12} />
-                                    </Button>
+                                    </Link>
                                 )}
                             </div>
                             
@@ -367,7 +370,7 @@ export function GoalieDashboard({
                                     <div className="grid grid-cols-2 gap-2 mt-2">
                                         <Button 
                                             variant="outline" 
-                                            onClick={() => setIsAnalyzingFilm(true)}
+                                            onClick={() => router.push('/clips')}
                                             className="h-9 text-[9px] font-black uppercase tracking-widest bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
                                         >
                                             Review Clips
@@ -378,6 +381,19 @@ export function GoalieDashboard({
                                             className="h-9 text-[9px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
                                         >
                                             Game Report
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {performanceView === 'season' && (
+                                    <div className="mt-2 text-center">
+                                        <Button 
+                                            variant="outline" 
+                                            onClick={() => router.push('/clips')}
+                                            className="w-full h-12 text-[9px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary rounded-2xl flex items-center justify-center gap-3 transition-all"
+                                        >
+                                            <Video size={14} />
+                                            Open Season Video Database
                                         </Button>
                                     </div>
                                 )}
