@@ -9,6 +9,7 @@ import { Loader2, Bell } from "lucide-react";
 import { useParentData } from "@/hooks/useParentData";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/context/ToastContext";
+import { useTheme } from "next-themes";
 import { supabase } from "@/utils/supabase/client";
 import { getUserType } from "@/utils/user-type";
 
@@ -34,6 +35,7 @@ export default function Dashboard() {
     const router = useRouter();
     const toast = useToast();
     const auth = useAuth();
+    const { theme } = useTheme();
     const { goalies, isLoading, error, fetchMyGoalies } = useParentData();
 
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -50,8 +52,23 @@ export default function Dashboard() {
     // Loading state
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center text-foreground">
-                <Loader2 className="animate-spin text-primary" size={32} />
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-8 transition-colors duration-500">
+                <div className="flex items-center gap-2">
+                    <img 
+                        src="/flower-logo.png?v=5" 
+                        alt="CIC Logo" 
+                        width={48} 
+                        height={48} 
+                        draggable={false}
+                        className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                        style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                    />
+                    <h1 className="text-3xl font-black text-foreground tracking-tighter">Goalie Card</h1>
+                </div>
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="animate-spin text-primary/30" size={32} />
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">Initializing V11 Hub</p>
+                </div>
             </div>
         );
     }
@@ -59,22 +76,46 @@ export default function Dashboard() {
     // Data loading or no goalies found
     if (goalies.length === 0) {
         return (
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-4">
-                <Loader2 className="animate-spin text-primary" size={40} />
-                <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">
-                    Synchronizing Goalie Card...
-                </p>
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-8 transition-colors duration-500">
+                <div className="flex items-center gap-2">
+                    <img 
+                        src="/flower-logo.png?v=5" 
+                        alt="CIC Logo" 
+                        width={48} 
+                        height={48} 
+                        draggable={false}
+                        className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                        style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                    />
+                    <h1 className="text-3xl font-black text-foreground tracking-tighter">Goalie Card</h1>
+                </div>
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="animate-spin text-primary/30" size={32} />
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">Syncing Active Profile</p>
+                </div>
             </div>
         );
     }
 
     return (
         <Suspense fallback={
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-4">
-                <Loader2 className="animate-spin text-primary" size={40} />
-                <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">
-                    Preparing Dashboard...
-                </p>
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-8 transition-colors duration-500">
+                <div className="flex items-center gap-2">
+                    <img 
+                        src="/flower-logo.png?v=5" 
+                        alt="CIC Logo" 
+                        width={48} 
+                        height={48} 
+                        draggable={false}
+                        className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                        style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                    />
+                    <h1 className="text-3xl font-black text-foreground tracking-tighter">Goalie Card</h1>
+                </div>
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="animate-spin text-primary/30" size={32} />
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">Preparing Hub</p>
+                </div>
             </div>
         }>
             <GoalieDashboard 
