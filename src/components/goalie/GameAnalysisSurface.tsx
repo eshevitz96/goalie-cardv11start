@@ -166,7 +166,7 @@ export function GameAnalysisSurface({
       case 'lacrosse-box': {
         const GL = 68.0; // Moved up 
         const EL = 92.0; // Moved up 
-        const RL = 36.3; 
+        const RL = 20.0; 
         const GW = 3.3;  
         const GH = 3.3;  
         const BoxW = 58.3; 
@@ -177,12 +177,13 @@ export function GameAnalysisSurface({
             <line x1="0" y1={EL} x2="100" y2={EL} stroke="currentColor" strokeWidth="1.5" />
             <line x1="0" y1={RL} x2="100" y2={RL} stroke="currentColor" strokeWidth="1" />
             <rect x={50 - BoxW/2} y={RL} width={BoxW} height={GL - RL} fill="currentColor" opacity="0.05" stroke="currentColor" strokeWidth="0.8" />
-            <text x="50" y={RL + (GL-RL)/2 + 2} fill="currentColor" fontSize="3.5" fontWeight="black" textAnchor="middle" opacity="0.3">Defensive Area</text>
             <text x="3" y={EL - (EL-GL)/2} fill="currentColor" fontSize="2" opacity="0.4" transform={`rotate(-90, 3, ${EL - (EL-GL)/2})`}>15 yd</text>
             <text x="3" y={GL - (GL-RL)/2} fill="currentColor" fontSize="2" opacity="0.4" transform={`rotate(-90, 3, ${GL - (GL-RL)/2})`}>20 yd</text>
-            <circle cx="50" cy={GL} r={5.4} fill="none" stroke="currentColor" strokeWidth="1" />
-            <path d={`M${50 - GW/2} ${GL} L${50 + GW/2} ${GL} L${50} ${GL + GH} Z`} fill="none" stroke="currentColor" strokeWidth="1.2" />
-            <line x1={50} y1={GL} x2={50} y2={GL + GH} stroke="currentColor" strokeWidth="0.8" opacity="0.6" />
+            <circle cx="50" cy={GL} r={5.4} fill="none" stroke="currentColor" strokeWidth="1.2" />
+            {/* Improved Goal Representation */}
+            <path d={`M${50 - GW/2} ${GL} L${50 + GW/2} ${GL} L${50} ${GL + GH} Z`} fill="currentColor" opacity="0.15" />
+            <path d={`M${50 - GW/2} ${GL} L${50 + GW/2} ${GL} L${50} ${GL + GH} Z`} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+            <line x1="50" y1={GL} x2="50" y2={GL + GH} stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
           </>
         );
       }

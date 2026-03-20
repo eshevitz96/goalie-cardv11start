@@ -325,11 +325,6 @@ export function AiCoachRecommendation({
                     >
                         <Zap size={16} fill="currentColor" /> {isGameday ? "Log Game Report" : "Log Training"}
                     </Button>
-                    {isGameday && (
-                        <div className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 text-xs font-bold text-orange-500 w-fit animate-pulse">
-                            <Flame size={14} /> Critical: Reflection
-                        </div>
-                    )}
                 </div>
 
                 {/* Training Protocol Cards Hidden for Now */}
