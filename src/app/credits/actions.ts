@@ -147,3 +147,37 @@ export async function processScheduleRequest(requestId: string, action: 'confirm
         return { success: false, error: err.message };
     }
 }
+
+export async function unlockAnalysis(rosterId: string, eventId: string) {
+    if (!rosterId || !eventId) return { success: false, error: "Invalid parameters" };
+
+    try {
+        // 1. Check Balance
+        const { balance, success: balSuccess, error: balError } = await getBalance(rosterId);
+        if (!balSuccess) throw new Error(balError);
+
+        if (balance < 1) {
+            return { success: false, error: "Insufficient Credits. Please purchase more." };
+        }
+
+        // 2. Deduct 
+        const { error } = await supabaseAdmin.from('credit_transactions').insert({
+            roster_id: rosterId,
+            amount: -1,
+            description: "Game Intelligence Unlock",
+            metadata: { 
+                event_id: eventId, 
+                type: 'analysis_unlock', 
+                source: 'v11_event_intel' 
+            }
+        });
+
+        if (error) throw error;
+
+        return { success: true };
+    } catch (err: any) {
+        console.error("Unlock Analysis Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+

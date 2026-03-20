@@ -4,14 +4,19 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, MapPin, Clock, User, Video, Star, Share2, DollarSign, CheckCircle } from "lucide-react";
+import { 
+    ArrowLeft, Calendar, MapPin, Clock, User, Video, 
+    Star, Share2, DollarSign, CheckCircle, Zap 
+} from "lucide-react";
 import Link from "next/link";
 import { deleteEvent } from "@/app/events/actions";
+import { useToast } from "@/context/ToastContext";
+import { Button } from "@/components/ui/Button";
 
 type EventData = {
     id: string;
     title: string;
-    date: string; // ISO or date string
+    date: string;
     startTime?: string;
     endTime?: string;
     location: string;
@@ -20,7 +25,6 @@ type EventData = {
     coach?: string;
     price?: number;
     status?: string;
-    // Session specific
     rating?: number;
     videoUrl?: string;
     feedback?: string;
@@ -30,6 +34,7 @@ type EventData = {
     image?: string;
     createdBy?: string;
     isRegistered?: boolean;
+    isUnlocked?: boolean;
     currentUser?: string;
     journalEntry?: { title: string; content: string; mood: string };
     analytics?: { totalShots: number; saves: number; savePct: string };
@@ -40,149 +45,172 @@ export default function EventDetailsPage() {
     const params = useParams();
     const id = params?.id as string;
     const searchParams = useSearchParams();
-    const type = searchParams.get('type') || 'event'; // 'event' or 'session'
+    const type = searchParams.get('type') || 'event';
     const router = useRouter();
+    const toast = useToast();
 
     const [data, setData] = useState<EventData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (id) fetchData();
+        if (!id) return;
+
+        const fetchData = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                if (type === 'session') {
+                    const { data: session, error: sessError } = await supabase
+                        .from('sessions')
+                        .select('*, roster_uploads(assigned_coach_id, parent_name)')
+                        .eq('id', id)
+                        .single();
+
+                    if (sessError) throw sessError;
+                    if (!session) throw new Error("Session not found");
+
+                    setData({
+                        id: session.id,
+                        title: `Session ${session.session_number} • Lesson ${session.lesson_number}`,
+                        date: session.date,
+                        startTime: session.start_time,
+                        endTime: session.end_time,
+                        location: session.location,
+                        description: session.notes,
+                        status: 'completed',
+                        rating: 5,
+                        feedback: session.notes,
+                        sessionNumber: session.session_number,
+                        lessonNumber: session.lesson_number,
+                        isUnlocked: true
+                    });
+                } else {
+                    const { data: event, error: eventError } = await supabase
+                        .from('events')
+                        .select('*')
+                        .eq('id', id)
+                        .single();
+
+                    if (eventError) throw eventError;
+                    if (!event) throw new Error("Event not found");
+
+                    const { data: { user } } = await supabase.auth.getUser();
+                    let isRegistered = false;
+
+                    if (user) {
+                        const { data: reg } = await supabase
+                            .from('registrations')
+                            .select('id')
+                            .eq('event_id', id)
+                            .eq('goalie_id', user.id)
+                            .maybeSingle();
+                        isRegistered = !!reg;
+                    }
+
+                    const isGame = (event.name || "").toLowerCase().includes('game');
+                    let journalEntry = undefined;
+                    let analytics = undefined;
+                    let results = undefined;
+                    let isUnlocked = true;
+
+                    if (isGame && user) {
+                        const { data: ref } = await supabase
+                            .from('reflections')
+                            .select('*')
+                            .eq('goalie_id', user.id)
+                            .gte('created_at', new Date(new Date(event.date).setHours(0,0,0,0)).toISOString())
+                            .lte('created_at', new Date(new Date(event.date).setHours(23,59,59,999)).toISOString())
+                            .limit(1)
+                            .maybeSingle();
+
+                        if (ref) journalEntry = { title: ref.title, content: ref.content, mood: ref.mood };
+
+                        const { data: shots } = await supabase
+                            .from('shot_events')
+                            .select('*')
+                            .eq('event_id', id);
+
+                        if (shots && shots.length > 0) {
+                            const saves = shots.filter(s => s.result === 'save').length;
+                            analytics = {
+                                totalShots: shots.length,
+                                saves: saves,
+                                savePct: ((saves / shots.length) * 100).toFixed(1)
+                            };
+                        } else {
+                            analytics = { totalShots: 28, saves: 26, savePct: "92.8" };
+                        }
+
+                        results = { home: 3, away: 2, periods: [1, 1, 1] };
+
+                        const { data: unlockTx } = await supabase
+                            .from('credit_transactions')
+                            .select('id')
+                            .eq('roster_id', user.id)
+                            .eq('metadata->>event_id', id)
+                            .eq('metadata->>type', 'analysis_unlock')
+                            .maybeSingle();
+                        
+                        isUnlocked = !!unlockTx;
+                    }
+
+                    setData({
+                        id: event.id,
+                        title: event.name,
+                        date: event.date,
+                        location: event.location,
+                        description: event.description || "No description provided.",
+                        price: event.price,
+                        image: event.image,
+                        sport: event.sport,
+                        status: 'upcoming',
+                        scouting_report: event.scouting_report || event.description,
+                        createdBy: event.created_by,
+                        isRegistered: isRegistered,
+                        isUnlocked: isUnlocked || !isGame,
+                        currentUser: user?.id,
+                        journalEntry,
+                        analytics,
+                        results
+                    });
+                }
+            } catch (err: any) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
     }, [id, type]);
 
-    const fetchData = async () => {
-        setLoading(true);
-        setError(null);
+    const handleUnlock = async () => {
+        if (!data || !id) return;
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return toast.error("Please log in to unlock analysis.");
+
+        const { data: roster } = await supabase
+            .from('roster_uploads')
+            .select('id')
+            .eq('linked_user_id', user.id)
+            .maybeSingle();
+
+        if (!roster) return toast.error("No active goalie card found.");
+
         try {
-            if (type === 'session') {
-                // Fetch from Sessions
-                const { data: session, error } = await supabase
-                    .from('sessions')
-                    .select('*, roster_uploads(assigned_coach_id, parent_name)') // join to get coach/parent info if needed
-                    .eq('id', id)
-                    .single();
+            const { unlockAnalysis } = await import("@/app/credits/actions");
+            const result = await unlockAnalysis(roster.id, id);
 
-                if (error) throw error;
-                if (!session) throw new Error("Session not found");
-
-                // Get Coach Name if possible
-                let coachName = "Assigned Coach";
-                // logic to fetch coach name if needed, or just use what we have
-                // For now, simpler is better. Sessions usually imply a relationship.
-
-                setData({
-                    id: session.id,
-                    title: `Session ${session.session_number} • Lesson ${session.lesson_number}`,
-                    date: session.date,
-                    startTime: session.start_time,
-                    endTime: session.end_time,
-                    location: session.location,
-                    description: session.notes, // Notes as description
-                    coach: "Coach", // Could fetch, but maybe generic for now
-                    status: 'completed',
-                    rating: 5, // Default for now, schema doesn't seem to have rating yet? Or it was hardcoded in UI?
-                    // In PostGameReport, rating was hardcoded to 5 or passed in props. 
-                    // Viewing file `PostGameReport.tsx`, rating is in FeedbackItem interface. 
-                    // `src/app/goalie/page.tsx` hardcoded rating: 5.
-                    videoUrl: undefined, // Schema doesn't show video url in session directly yet?
-                    feedback: session.notes,
-                    sessionNumber: session.session_number,
-                    lessonNumber: session.lesson_number
-                });
-
+            if (result.success) {
+                toast.success("Analysis Unlocked!");
+                setData({ ...data, isUnlocked: true });
             } else {
-                // Fetch from Events
-                const { data: event, error } = await supabase
-                    .from('events')
-                    .select('*')
-                    .eq('id', id)
-                    .single();
-
-                if (error) throw error;
-                if (!event) throw new Error("Event not found");
-
-                // Fetch current user and registration status
-                const { data: { user } } = await supabase.auth.getUser();
-                let isRegistered = false;
-
-                if (user) {
-                    const { data: reg } = await supabase
-                        .from('registrations')
-                        .select('id')
-                        .eq('event_id', id)
-                        .eq('goalie_id', user.id)
-                        .maybeSingle();
-
-                    isRegistered = !!reg;
-                }
-
-                // Fetch Journal / Analytics if it's a Game
-                const isGame = (event.name || "").toLowerCase().includes('game');
-                let journalEntry = undefined;
-                let analytics = undefined;
-                let results = undefined;
-
-                if (isGame && user) {
-                    // Try to find a reflection for this user near this date
-                    const { data: ref } = await supabase
-                        .from('reflections')
-                        .select('*')
-                        .eq('goalie_id', user.id)
-                        .gte('created_at', new Date(new Date(event.date).setHours(0,0,0,0)).toISOString())
-                        .lte('created_at', new Date(new Date(event.date).setHours(23,59,59,999)).toISOString())
-                        .limit(1)
-                        .maybeSingle();
-
-                    if (ref) {
-                        journalEntry = { title: ref.title, content: ref.content, mood: ref.mood };
-                    }
-
-                    // Try to find shot analytics
-                    const { data: shots } = await supabase
-                        .from('shot_events')
-                        .select('*')
-                        .eq('event_id', id);
-
-                    if (shots && shots.length > 0) {
-                        const saves = shots.filter(s => s.result === 'save').length;
-                        analytics = {
-                            totalShots: shots.length,
-                            saves: saves,
-                            savePct: ((saves / shots.length) * 100).toFixed(1)
-                        };
-                    } else {
-                        // Mock for high-fidelity demo if no shots yet
-                        analytics = { totalShots: 28, saves: 26, savePct: "92.8" };
-                    }
-
-                    results = { home: 3, away: 2, periods: [1, 1, 1] }; // Default mock results
-                }
-
-                setData({
-                    id: event.id,
-                    title: event.name,
-                    date: event.date,
-                    location: event.location,
-                    description: event.description || "No description provided.",
-                    price: event.price,
-                    image: event.image,
-                    sport: event.sport,
-                    status: 'upcoming',
-                    scouting_report: event.scouting_report || event.description,
-                    createdBy: event.created_by,
-                    isRegistered: isRegistered,
-                    currentUser: user?.id,
-                    journalEntry,
-                    analytics,
-                    results
-                });
+                toast.error(result.error || "Failed to unlock.");
             }
         } catch (err: any) {
-            console.error("Error fetching details:", err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
+            toast.error("Error: " + err.message);
         }
     };
 
@@ -208,7 +236,6 @@ export default function EventDetailsPage() {
 
     return (
         <main className="min-h-screen bg-background text-foreground pb-12">
-            {/* Header / Hero */}
             <div className={`relative w-full h-64 md:h-80 overflow-hidden ${isSession ? 'bg-gradient-to-br from-indigo-900 to-black' : `bg-gradient-to-br ${data.image || 'from-emerald-900 to-black'}`}`}>
                 <div className="absolute inset-0 bg-black/40" />
                 <div className="absolute top-6 left-6 z-10">
@@ -230,18 +257,14 @@ export default function EventDetailsPage() {
 
             <div className="max-w-4xl mx-auto px-6 mt-16 relative z-20">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Main Content */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
                         className="md:col-span-2 space-y-6"
                     >
-                        {/* Info Card */}
                         <div className="bg-card border border-border rounded-3xl p-6 shadow-xl relative overflow-hidden">
-                            {/* Decorative glow */}
                             <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-
                             <div className="grid grid-cols-2 gap-6 mb-6">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -266,10 +289,7 @@ export default function EventDetailsPage() {
                                     <div className="text-lg font-bold text-foreground">{data.location}</div>
                                 </div>
                             </div>
-
                             <hr className="border-border mb-6" />
-
-                            {/* Description / Notes */}
                             <div>
                                 <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
                                     {isSession ? <User size={20} className="text-primary" /> : <CheckCircle size={20} className="text-primary" />}
@@ -279,34 +299,54 @@ export default function EventDetailsPage() {
                                     {data.scouting_report || data.description || data.feedback || "No scouting report available."}
                                 </div>
                             </div>
-                        </div>                        {/* Performance Details for Games */}
+                        </div>
+
                         {data.analytics && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center gap-2">
-                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Game Performance</div>
-                                    <div className="text-4xl font-black text-primary">{data.analytics.savePct}%</div>
-                                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                        {data.analytics.saves} / {data.analytics.totalShots} Saves
-                                    </div>
-                                </div>
-                                <div className="bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center gap-2">
-                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Game Results</div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="text-center">
-                                            <div className="text-2xl font-black">Home</div>
-                                            <div className="text-3xl font-bold">{data.results?.home}</div>
-                                        </div>
-                                        <div className="text-sm font-bold text-muted-foreground">VS</div>
-                                        <div className="text-center">
-                                            <div className="text-2xl font-black">Away</div>
-                                            <div className="text-3xl font-bold">{data.results?.away}</div>
+                            <div className="relative group">
+                                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all duration-700 ${!data.isUnlocked ? 'blur-2xl opacity-40 select-none pointer-events-none' : ''}`}>
+                                    <div className="bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center gap-2">
+                                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Game Performance</div>
+                                        <div className="text-4xl font-black text-primary">{data.analytics.savePct}%</div>
+                                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                                            {data.analytics.saves} / {data.analytics.totalShots} Saves
                                         </div>
                                     </div>
+                                    <div className="bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center gap-2">
+                                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Game Results</div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-center">
+                                                <div className="text-2xl font-black text-foreground/70">Home</div>
+                                                <div className="text-3xl font-bold">{data.results?.home}</div>
+                                            </div>
+                                            <div className="text-sm font-bold text-muted-foreground">VS</div>
+                                            <div className="text-center">
+                                                <div className="text-2xl font-black text-foreground/70">Away</div>
+                                                <div className="text-3xl font-bold">{data.results?.away}</div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
+
+                                {!data.isUnlocked && (
+                                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/20 backdrop-blur-sm rounded-[2.5rem] p-8 border border-white/5 shadow-2xl animate-in fade-in duration-500">
+                                        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 border border-primary/30 text-primary">
+                                            <Zap size={24} className="animate-pulse" />
+                                        </div>
+                                        <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Unlock Intelligence</h4>
+                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center mb-6 max-w-xs leading-loose">
+                                            Access the interactive heatmap, shot distribution, and professional performance analytics.
+                                        </p>
+                                        <Button 
+                                            onClick={handleUnlock}
+                                            className="bg-primary text-black font-black uppercase tracking-widest text-[10px] px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(var(--primary),0.3)]"
+                                        >
+                                            Unlock with 1 Credit
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         )}
 
-                        {/* Journal Reflection for Games */}
                         {data.journalEntry && (
                             <div className="bg-card border border-border rounded-3xl p-8 relative overflow-hidden group">
                                 <div className="flex items-center gap-3 mb-4">
@@ -326,7 +366,7 @@ export default function EventDetailsPage() {
                                 </div>
                             </div>
                         )}
-                        {/* Session Specifics (Video / Rating) */}
+
                         {isSession && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center gap-2">
@@ -347,10 +387,8 @@ export default function EventDetailsPage() {
                                 </button>
                             </div>
                         )}
-
                     </motion.div>
 
-                    {/* Sidebar Actions */}
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -368,9 +406,6 @@ export default function EventDetailsPage() {
                                 <button className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:brightness-110 transition-all shadow-lg shadow-primary/25 mb-3">
                                     {data.status === 'upcoming' ? 'Register Now' : 'Join Waitlist'}
                                 </button>
-                                <p className="text-center text-xs text-muted-foreground">
-                                    Secure your spot today.
-                                </p>
                             </div>
                         )}
 
@@ -391,10 +426,10 @@ export default function EventDetailsPage() {
                                                 if (result.success) {
                                                     router.push('/dashboard');
                                                 } else {
-                                                    alert("Error deleting event: " + result.error);
+                                                    toast.error("Error deleting event: " + result.error);
                                                 }
                                             } catch (err: any) {
-                                                alert("Exception deleting event: " + err.message);
+                                                toast.error("Exception deleting event: " + err.message);
                                             }
                                         }}
                                         className="w-full py-2 text-red-500 hover:text-red-400 text-xs font-bold uppercase tracking-widest transition-colors"
@@ -404,7 +439,6 @@ export default function EventDetailsPage() {
                                 </div>
                             )}
                         </div>
-
                     </motion.div>
                 </div>
             </div>
