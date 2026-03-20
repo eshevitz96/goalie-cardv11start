@@ -25,6 +25,7 @@ export function ActiveDrillTimer({ drillName, duration, onExit, onNext, isLastPh
 
     const [timer, setTimer] = useState(parseSeconds(duration));
     const [timerActive, setTimerActive] = useState(true);
+    const [msgIndex, setMsgIndex] = useState(0);
 
     useEffect(() => {
         let interval: any;
@@ -36,15 +37,36 @@ export function ActiveDrillTimer({ drillName, duration, onExit, onNext, isLastPh
         return () => clearInterval(interval);
     }, [timerActive, timer]);
 
+    const motivations = [
+        "Find your edge.", "Breathe through the fatigue.", "Eyes on the ball.", "Precision over power.",
+        "Repetition is the mother of skill.", "Trust your instincts.", "Control the crease.", "Lock in your focus.",
+        "Every second counts.", "Stay tall in the frame.", "Active hands, quiet mind.", "Small adjustments, big results.",
+        "Visualize the save.", "Chase the standard.", "The grind pays dividends.", "Stay in the moment.",
+        "Focus on the process.", "Own your depth.", "Track it into the pocket.", "Resilience is built here.",
+        "Don't guess, react.", "Solidify your stance.", "Master the metrics.", "Push through the burn.",
+        "Elite goalies find a way.", "One more rep.", "Track the release point.", "Quiet the noise.",
+        "You are the wall.", "Settle the nerves.", "Reaction speed activation.", "Stay low, stay ready.",
+        "Attack the angle.", "Seal the posts.", "Hand-eye synchronization.", "Recover instantly."
+    ];
+
+    useEffect(() => {
+        if (timerActive) {
+            const interval = setInterval(() => {
+                setMsgIndex(prev => (prev + 1) % motivations.length);
+            }, 4000);
+            return () => clearInterval(interval);
+        }
+    }, [timerActive, motivations.length]);
+
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="w-full relative overflow-hidden rounded-3xl bg-background border border-emerald-500/30 p-1 shadow-2xl"
         >
-            <div className="relative bg-background rounded-[24px] p-8 flex flex-col items-center justify-center text-center min-h-[350px]">
+            <div className="relative bg-background rounded-[24px] p-8 flex flex-col items-center justify-center text-center min-h-[380px]">
                 <div className="absolute top-4 right-4">
-                    <Button variant="ghost" onClick={onExit} className="text-muted-foreground hover:text-foreground text-xs font-bold uppercase p-0 h-auto hover:bg-transparent">Exit</Button>
+                    <Button variant="ghost" onClick={onExit} className="text-muted-foreground hover:text-foreground text-xs font-bold uppercase p-0 h-auto hover:bg-transparent transition-all">Exit</Button>
                 </div>
 
                 <div className="mb-6">
@@ -59,11 +81,11 @@ export function ActiveDrillTimer({ drillName, duration, onExit, onNext, isLastPh
                     {timerActive ? "Focus Active" : "Phase Complete"}
                 </p>
 
-                <div className="h-20 flex flex-col items-center justify-center">
+                <div className="h-28 flex flex-col items-center justify-center gap-4">
                     {!timerActive ? (
                         <Button
                             onClick={onNext}
-                            className="px-8 py-3 bg-foreground text-background font-bold rounded-xl flex items-center gap-2 hover:scale-105 transition-all"
+                            className="px-8 py-4 bg-foreground text-background font-black rounded-2xl flex items-center gap-2 hover:scale-105 transition-all shadow-xl shadow-foreground/5 mr-0"
                         >
                             {isLastPhase ? (
                                 <><CheckCircle size={18} /> Finish & Reflect</>
@@ -72,9 +94,13 @@ export function ActiveDrillTimer({ drillName, duration, onExit, onNext, isLastPh
                             )}
                         </Button>
                     ) : (
-                        <p className="text-foreground/50 text-sm max-w-[240px] italic">
-                            "{drillName}"
-                        </p>
+                        <div className="flex flex-col gap-2 items-center">
+                            <p className="text-foreground/30 text-[10px] font-black uppercase tracking-widest">Training Direction</p>
+                            <p className="text-foreground/60 text-lg font-medium tracking-tight h-14 max-w-[280px] flex items-center justify-center leading-snug">
+                                {motivations[msgIndex]}
+                            </p>
+                            <p className="text-muted-foreground/40 text-[10px] italic mt-2">"{drillName}"</p>
+                        </div>
                     )}
                 </div>
             </div>

@@ -5,11 +5,13 @@ import { EventsList } from "@/components/EventsList";
 import { motion } from "framer-motion";
 import { ArrowLeft, Calendar, User } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PRO_SCHEDULE } from "@/lib/demo-data";
 import { supabase } from "@/utils/supabase/client";
 
 // Re-fetch logic similar to parent/page
 export default function EventsPage() {
+    const router = useRouter();
     const [events, setEvents] = useState<any[]>([]);
     const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
     const [goalieId, setGoalieId] = useState<string | undefined>();
@@ -103,12 +105,12 @@ export default function EventsPage() {
         <main className="min-h-screen bg-background p-4 md:p-8">
             <div className="max-w-6xl mx-auto space-y-8">
                 <div className="flex items-center gap-4">
-                    <Link
-                        href={backLink}
+                    <button
+                        onClick={() => router.back()}
                         className="p-2 rounded-full bg-secondary border border-border hover:bg-secondary/80 transition-colors text-foreground"
                     >
                         <ArrowLeft size={20} />
-                    </Link>
+                    </button>
                     <h1 className="text-3xl font-black tracking-tighter">
                         Full Schedule
                     </h1>

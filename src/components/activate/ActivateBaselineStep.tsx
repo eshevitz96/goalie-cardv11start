@@ -25,8 +25,7 @@ export function ActivateBaselineStep({ answers, setAnswers, onSubmit, isLoading 
                 <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
                     <FileText size={32} className="text-blue-500" />
                 </div>
-                <h1 className="text-3xl font-black text-foreground tracking-tighter">Baseline</h1>
-                <p className="text-muted-foreground text-sm mt-1">Reflect on where you start.</p>
+                <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter font-black">Baseline</h1>
             </div>
 
             <div className="space-y-4">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useTheme } from "next-themes";
 
 import { useParentData } from "@/hooks/useParentData";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +16,7 @@ import { transformGoalieData } from "@/lib/transformers/goalie-transformers";
 export default function ParentPage() {
   const router = useRouter();
   const { userRole, logout } = useAuth();
+  const { theme } = useTheme();
   const { goalies: rawGoalies, isLoading, fetchMyGoalies } = useParentData();
 
   // Apply Transformation Layer
@@ -36,7 +38,18 @@ export default function ParentPage() {
   if (goalies.length === 0) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-8 text-center">
-        <h2 className="text-2xl font-bold mb-4">No Goalie Card Found</h2>
+        <div className="flex items-center gap-3 mb-4">
+            <img 
+                src="/flower-logo.png?v=5" 
+                alt="CIC Logo" 
+                width={34} 
+                height={34} 
+                draggable={false}
+                className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+            />
+            <h2 className="text-2xl font-bold">No Goalie Card Found</h2>
+        </div>
         <p className="text-muted-foreground mb-8">We couldn't find a roster spot linked to this account.</p>
         <Link href="/activate" className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity">
           Activate My Card

@@ -109,7 +109,6 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
                                 <GoalieGuardLogo size={32} className="text-primary" />
                                 <div>
                                     <h4 className="text-sm font-bold text-foreground uppercase tracking-wider">Goalie Identity</h4>
-                                    <p className="text-xs text-muted-foreground">Establish the athlete's core profile.</p>
                                 </div>
                             </div>
 
@@ -317,7 +316,6 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
                                 <ShieldCheck className="text-emerald-400" size={28} />
                                 <div>
                                     <h4 className="text-sm font-bold text-foreground uppercase tracking-wider">Confirm & Activate</h4>
-                                    <p className="text-xs text-muted-foreground">Review your info before we create your card.</p>
                                 </div>
                             </div>
 

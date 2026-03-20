@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Mail, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
 import { checkUserStatus } from "@/app/actions";
+import { useTheme } from "next-themes";
 import { supabase } from "@/utils/supabase/client";
 
 interface ActivateEmailStepProps {
@@ -10,11 +11,14 @@ interface ActivateEmailStepProps {
     setEmail: (email: string) => void;
     onNext: (status: any) => void;
     onError: (msg: string) => void;
+    isLoading: boolean;
+    setIsLoading: (isLoading: boolean) => void;
+    autoChecked: boolean;
 }
 
-export function ActivateEmailStep({ email, setEmail, onNext, onError }: ActivateEmailStepProps) {
-    const [isLoading, setIsLoading] = useState(false);
+export function ActivateEmailStep({ email, setEmail, onNext, onError, isLoading, setIsLoading, autoChecked }: ActivateEmailStepProps) {
     const [localError, setLocalError] = useState<string | null>(null);
+    const { theme } = useTheme();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -49,11 +53,19 @@ export function ActivateEmailStep({ email, setEmail, onNext, onError }: Activate
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="text-center mb-8">
-                <h1 className="text-3xl font-black italic tracking-tighter text-foreground mb-2">
-                    GOALIE <span className="text-primary">CARD</span>
+            <div className="text-center mb-8 flex justify-center">
+                <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter flex items-center gap-1.5 md:gap-2">
+                    <img 
+                        src="/flower-logo.png?v=5" 
+                        alt="CIC Logo" 
+                        width={34} 
+                        height={34} 
+                        draggable={false}
+                        className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                        style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                    />
+                    Goalie Card
                 </h1>
-                <p className="text-muted-foreground text-sm">Enter your email to activate your account.</p>
             </div>
 
             <div className="space-y-2">

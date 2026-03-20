@@ -58,9 +58,6 @@ export function ActivateSecurityStep({
                 <h1 className="text-3xl font-black text-foreground tracking-tighter">
                     Secure Your Account
                 </h1>
-                <p className="text-muted-foreground text-sm mt-1">
-                    Final step to activate your Goalie Card.
-                </p>
             </div>
 
             <div className="space-y-4">

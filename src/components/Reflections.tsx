@@ -340,12 +340,23 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
 
                 <div className="flex items-center gap-3">
                     {!isWriting ? (
-                        <button
-                            onClick={() => setIsWriting(true)}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-full transition-colors shadow-lg shadow-primary/20 text-[10px] font-black flex items-center gap-2 whitespace-nowrap shrink-0 h-8"
-                        >
-                            <Plus size={14} /> New Entry
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setIsWriting(true)}
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-full transition-colors shadow-lg shadow-primary/20 text-[10px] font-black flex items-center gap-2 whitespace-nowrap shrink-0 h-8"
+                            >
+                                <Plus size={14} /> New Entry
+                            </button>
+                            {onToggleExpand && (
+                                <button
+                                    onClick={onToggleExpand}
+                                    className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors h-8 w-8 flex items-center justify-center"
+                                    title="Close Journal"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </>
                     ) : (
                         <button
                             onClick={() => {
@@ -355,15 +366,6 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                             }}
                             className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors h-8 w-8 flex items-center justify-center"
                             title="Cancel Entry"
-                        >
-                            <X size={14} />
-                        </button>
-                    )}
-                    {onToggleExpand && (
-                        <button
-                            onClick={onToggleExpand}
-                            className="bg-secondary hover:bg-muted text-foreground p-2 rounded-xl transition-colors h-8 w-8 flex items-center justify-center"
-                            title="Close Journal"
                         >
                             <X size={14} />
                         </button>
@@ -380,20 +382,17 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                         className="mb-6 bg-muted/30 rounded-2xl p-4 border border-border overflow-hidden"
                     >
                         <div className="mb-4">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Did you train today?</label>
-                            <div className="flex gap-2 mb-4">
-                                <button
-                                    onClick={() => setNewReflection({ ...newReflection, activity_type: 'practice' })}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all ${newReflection.activity_type && newReflection.activity_type !== 'none' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:border-foreground/50'}`}
-                                >
-                                    Yes
-                                </button>
-                                <button
-                                    onClick={() => setNewReflection({ ...newReflection, activity_type: 'none' })}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all ${newReflection.activity_type === 'none' ? 'bg-muted text-foreground border-border' : 'border-border hover:border-foreground/50'}`}
-                                >
-                                    No
-                                </button>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Intensity / Session Type</label>
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {['game', 'practice', 'training', 'none'].map((type) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setNewReflection({ ...newReflection, activity_type: type })}
+                                        className={`flex-1 min-w-[80px] py-2 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all ${newReflection.activity_type === type ? (type === 'none' ? 'bg-secondary text-foreground border-border' : 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20') : 'border-border hover:border-foreground/50'}`}
+                                    >
+                                        {type === 'none' ? 'Off Day' : type}
+                                    </button>
+                                ))}
                             </div>
 
                             {newReflection.activity_type === 'none' && (

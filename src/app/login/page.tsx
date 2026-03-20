@@ -7,9 +7,11 @@ import { Loader2, Mail, ArrowRight, AlertCircle, Lock, CheckCircle2 } from "luci
 import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import { motion, AnimatePresence } from "framer-motion";
 import { checkUserStatus } from "@/app/actions";
+import { useTheme } from "next-themes";
 
 export default function LoginPage() {
     const router = useRouter();
+    const { theme } = useTheme();
 
     // UI State
     const [step, setStep] = useState<'email' | 'password' | 'reset-sent'>('email');
@@ -139,11 +141,19 @@ export default function LoginPage() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
             <div className="w-full max-w-md relative z-10">
-                <div className="text-center mb-10">
-                    <h1 className="text-4xl font-black italic tracking-tighter text-foreground mb-2">
-                        GOALIE <span className="text-primary">CARD</span>
+                <div className="text-center mb-10 flex justify-center">
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-foreground flex items-center gap-2 md:gap-3">
+                        <img 
+                            src="/flower-logo.png?v=5" 
+                            alt="CIC Logo" 
+                            width={42} 
+                            height={42} 
+                            draggable={false}
+                            className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                            style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                        />
+                        Goalie Card
                     </h1>
-                    <p className="text-muted-foreground font-medium">The standard for goalie development.</p>
                 </div>
 
                 <AnimatePresence mode="wait">
@@ -297,7 +307,7 @@ export default function LoginPage() {
                                         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 border border-primary/20">
                                             <CheckCircle2 size={40} className="text-primary" />
                                         </div>
-                                        <h2 className="text-2xl font-black text-foreground mb-3 uppercase tracking-tighter">Check Your Inbox</h2>
+                                        <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter font-black mb-3">Check Your Inbox</h2>
                                         <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
                                             We've sent a secure password reset link to <br /><span className="font-bold text-foreground">{email}</span>. Click the link to securely choose a new password.
                                         </p>

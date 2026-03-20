@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { User, Settings, Plus, LogOut, Bell, Search } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { GlobalSearch } from '@/components/shared/GlobalSearch';
@@ -15,19 +17,28 @@ interface GoalieHeaderProps {
 export function GoalieHeader({ activeGoalieName, onLogout, notifications }: GoalieHeaderProps) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const { userId } = useAuth();
+    const { theme } = useTheme();
 
     return (
-        <header className="flex justify-between items-center mb-8 md:col-span-2 relative">
+        <header className="flex justify-between items-center mb-12 col-span-full relative">
             <GlobalSearch
                 isOpen={isSearchOpen}
                 onClose={() => setIsSearchOpen(false)}
                 userId={userId || undefined}
             />
 
-            <div className="flex flex-col">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1">Goalie Portal</span>
-                <h1 className="text-2xl md:text-3xl font-black text-foreground italic tracking-tighter">
-                    GOALIE <span className="text-primary">CARD</span>
+            <div className="flex flex-col justify-center">
+                <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter leading-none flex items-center gap-1.5 md:gap-2">
+                    <img 
+                        src="/flower-logo.png?v=5" 
+                        alt="CIC Logo" 
+                        width={34} 
+                        height={34} 
+                        draggable={false}
+                        className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                        style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                    />
+                    Goalie Card
                 </h1>
             </div>
             <div className="flex items-center gap-3 md:gap-4">

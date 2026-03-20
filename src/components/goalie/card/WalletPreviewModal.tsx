@@ -1,6 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
 import { X } from "lucide-react";
-import { GoalieGuardLogo as ShieldIcon } from "@/components/ui/GoalieGuardLogo";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/context/ToastContext";
@@ -35,8 +34,16 @@ export function WalletPreviewModal({ isOpen, onClose, data }: WalletPreviewModal
                     {/* Header Strip - Refined Integrated UI */}
                     <div className="bg-[#2c2c2e] p-4 flex justify-between items-center relative">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center shadow-lg border border-white/10">
-                                <ShieldIcon size={16} className="text-white" />
+                            <div className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center shadow-lg border border-white/10 overflow-hidden">
+                                <img 
+                                    src="/flower-logo.png?v=5" 
+                                    alt="CIC Logo" 
+                                    width={22} 
+                                    height={22} 
+                                    draggable={false}
+                                    className="object-contain pointer-events-none select-none"
+                                    style={{ filter: 'invert(1)' }}
+                                />
                             </div>
                             <span className="font-bold tracking-tight text-sm">Goalie Card</span>
                         </div>

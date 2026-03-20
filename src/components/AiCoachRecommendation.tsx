@@ -11,7 +11,8 @@ import { LiveModeView } from "./goalie/LiveModeView";
 import { ActiveDrillTimer } from "./goalie/ActiveDrillTimer";
 
 export function AiCoachRecommendation({
-    lastMood, recentGames, rosterId, overrideText, sport, isLive, onExit, onComplete, onLogAction, onRecommendationReady, goalieName, isGameday, nextEvent
+    lastMood, recentGames, rosterId, overrideText, sport, isLive, onExit, onComplete, onLogAction, onRecommendationReady, goalieName, isGameday, nextEvent, gradYear, stats,
+    v11Title, customMessage, variant = 'full'
 }: {
     lastMood?: string, recentGames?: any[], rosterId?: string, overrideText?: string, sport?: string, isLive?: boolean,
     onExit?: () => void, onComplete?: (planFocus?: string) => void,
@@ -19,49 +20,103 @@ export function AiCoachRecommendation({
     onRecommendationReady?: (rec: any) => void, // Kept to not break existing signature
     goalieName?: string,
     isGameday?: boolean,
-    nextEvent?: any // { title: string, date: string, type: string }
+    nextEvent?: any, // { title: string, date: string, type: string }
+    gradYear?: string | number,
+    stats?: { gaa?: string, sv?: string, games?: number },
+    v11Title?: string,
+    customMessage?: string,
+    variant?: 'full' | 'compact'
 }) {
     const [plan, setPlan] = useState<PracticePlan | null>(null);
+    const [currentGreeting, setCurrentGreeting] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     // 1. Get Context from Hook
     const { textContext, activeMood, seasonGoal, loading: contextLoading } = useAiContext(rosterId || null, overrideText, lastMood, nextEvent);
 
-    // Feedback State
-    const [feedbackSelection, setFeedbackSelection] = useState<'positive' | 'negative' | null>(null);
-    const handleFeedback = async (isPositive: boolean) => {
-        setFeedbackSelection(isPositive ? 'positive' : 'negative');
-    };
 
     useEffect(() => {
-        setFeedbackSelection(null);
 
         if (contextLoading) return;
 
-        // Check 24-hour cache
-        const cacheKey = `ai_plan_${rosterId}`;
+        // Check cache with mood-specificity
+        const cacheKey = `ai_plan_v3_${rosterId}_${activeMood}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
             try {
-                const { plan: cachedPlan, timestamp } = JSON.parse(cached);
+                const { plan: cachedPlan, greeting: cachedGreeting, timestamp } = JSON.parse(cached);
                 const hoursSince = (Date.now() - timestamp) / (1000 * 60 * 60);
-                if (hoursSince < 24) {
+                if (hoursSince < 1) {
                     setPlan(cachedPlan);
+                    setCurrentGreeting(cachedGreeting || "Morning, Goalie");
                     setLoading(false);
                     if (onRecommendationReady) onRecommendationReady(cachedPlan);
                     return;
                 }
-            } catch (_) { /* Corrupt cache, regenerate */ }
+            } catch (_) { /* Corrupt cache */ }
         }
+ 
+        setLoading(true);
+ 
+        // Derive Season Stage
+        const getSeasonStage = () => {
+            const now = new Date();
+            const month = now.getMonth();
+            const s = sport?.toLowerCase() || 'hockey';
+            
+            if (s.includes('hockey')) {
+                if (month >= 8 && month <= 9) return 'pre-season';
+                if (month >= 10 || month <= 1) return 'in-season';
+                if (month >= 2 && month <= 3) return 'playoffs';
+                return 'off-season';
+            }
+            if (s.includes('lacrosse')) {
+                if (month === 1) return 'pre-season';
+                if (month >= 2 && month <= 4) return 'in-season';
+                if (month === 5) return 'playoffs';
+                return 'off-season';
+            }
+            return 'in-season';
+        };
+
+        // Derive Career Stage
+        const getCareerStage = () => {
+            if (!gradYear) return 'high-school';
+            const year = typeof gradYear === 'string' ? parseInt(gradYear) : gradYear;
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const diff = year - currentYear;
+            
+            if (diff > 4) return 'youth';
+            if (diff >= 0) return 'high-school';
+            return 'college-pro';
+        };
+
+        const seasonStage = getSeasonStage();
+        const careerStage = getCareerStage();
 
         // Generate a fresh plan
         setTimeout(() => {
-            const generatedPlan = determineRecommendation(textContext, activeMood, sport, isGameday, "");
+            const rawName = goalieName ? goalieName.split(' ')[0] : 'Goalie';
+            const name = (rawName.toLowerCase() === 'boys' || rawName.toLowerCase() === 'girls') ? 'Goalie' : rawName;
+            const hour = new Date().getHours();
+            const timeGreeting = hour < 12 ? "Morning," : hour < 17 ? "Afternoon," : "Evening,";
+            
+            const options = activeMood === 'frustrated' || activeMood === 'anxious' 
+                ? ["Reset,", "Deep breath,", "Steady,", "Next one,", "Focus,"]
+                : (activeMood === 'happy' || activeMood === 'confident'
+                    ? ["Let's work,", "Keep going,", "Stay dialed,", "Locked in,", "Ready,"]
+                    : [timeGreeting, "Ready,", "Consistency,", "Let's go,", "Focus,"]);
+            
+            const selectedGreeting = `${options[Math.floor(Math.random() * options.length)]} ${name}`;
+            const generatedPlan = determineRecommendation(textContext, activeMood, sport, isGameday, "", seasonStage, careerStage, stats);
+            
+            setCurrentGreeting(selectedGreeting);
             setPlan(generatedPlan);
             setLoading(false);
             if (onRecommendationReady) onRecommendationReady(generatedPlan);
-            // Cache for 24 hours
-            localStorage.setItem(cacheKey, JSON.stringify({ plan: generatedPlan, timestamp: Date.now() }));
+            // Cache for 24 hours (with mood context)
+            localStorage.setItem(cacheKey, JSON.stringify({ plan: generatedPlan, greeting: selectedGreeting, timestamp: Date.now() }));
         }, 1200);
 
     }, [contextLoading, textContext, activeMood, sport, isGameday, onRecommendationReady, rosterId]);
@@ -80,14 +135,10 @@ export function AiCoachRecommendation({
     const handleLogAndComplete = () => {
         if (!plan) return;
         if (onLogAction) {
-            onLogAction(`Completed Plan: ${plan.focus}`);
+            onLogAction(isGameday ? "Log Game Report" : "Log Training");
         }
         if (onComplete) {
             onComplete(plan.focus);
-        } else {
-            // Fallback scroll
-            const element = document.getElementById('training-journal');
-            if (element) element.scrollIntoView({ behavior: 'smooth' });
         }
     };
 
@@ -116,7 +167,11 @@ export function AiCoachRecommendation({
 
     // ACTIVE MODE UI (Sequential Timer)
     if (sessionActive && plan) {
-        const phases: DrillDef[] = [plan.warmup, plan.main, plan.mental];
+        const phases: DrillDef[] = [
+            plan.warmup || { name: "Warmup", duration: "5 mins", type: "physical" },
+            plan.main || { name: "Directional Review", duration: "10 mins", type: "mental" },
+            plan.mental || { name: "Reset", duration: "5 mins", type: "mental" }
+        ];
         const activeDrill = phases[currentPhaseIndex];
 
         return (
@@ -215,135 +270,76 @@ export function AiCoachRecommendation({
         );
     };
 
+    if (variant === 'compact') {
+        return (
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full relative"
+            >
+                <div className="flex flex-col gap-4 bg-primary/5 border border-primary/10 rounded-2xl p-4">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                                <Brain size={16} className="text-primary" />
+                            </div>
+                            <p className="text-sm font-medium text-foreground tracking-tight leading-snug">
+                                <span className="text-primary font-bold mr-1">Coach Recommendation:</span>
+                                {customMessage || plan.reason}
+                            </p>
+                        </div>
+                        <Button
+                            onClick={() => handleStartSession(0)}
+                            className="bg-foreground text-background font-black px-4 py-1.5 rounded-xl hover:scale-105 transition-all text-xs flex items-center gap-2 h-auto shrink-0"
+                        >
+                            <Zap size={14} /> Log Training
+                        </Button>
+                    </div>
+                </div>
+            </motion.div>
+        );
+    }
+
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="w-full mb-8 relative"
         >
-            <div className="flex flex-col gap-1 mb-6 border-b border-border/50 pb-6 relative">
-                <h1 className="text-4xl md:text-5xl font-black text-foreground tracking-tighter leading-none mb-2">
-                    {(activeMood === 'frustrated' || activeMood === 'anxious') ? "Hey," : "Let's work,"} {goalieName ? goalieName.split(' ')[0] : 'Goalie'}
+            <div className="flex flex-col gap-1 relative">
+                <div className="flex items-center gap-2 mb-2 translate-y-1">
+                    <Brain size={14} className="text-foreground" />
+                    <span className="text-[10px] font-black uppercase tracking-[.2em] text-foreground opacity-70">Coach OS</span>
+                </div>
+                <h1 className="text-5xl md:text-6xl font-black text-foreground tracking-tighter leading-tight mb-4">
+                    {currentGreeting}
                 </h1>
-                <p className="text-lg font-medium text-muted-foreground tracking-tight pr-24">
-                    {plan.reason}
+                <p className="text-xl font-medium text-muted-foreground tracking-tight leading-relaxed max-w-2xl mb-8">
+                    {customMessage || plan.reason}
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-4 items-center">
                     <Button
-                        onClick={() => handleStartSession(0)}
-                        className="bg-foreground text-background font-black px-6 py-2 rounded-xl hover:scale-105 transition-all text-sm flex items-center gap-2 h-auto"
+                        onClick={() => handleLogAndComplete()}
+                        className="bg-foreground text-background font-black px-8 py-4 rounded-2xl hover:scale-105 transition-all text-sm flex items-center gap-2 h-auto shadow-xl shadow-foreground/5"
                     >
-                        <Zap size={16} /> Start Full Session
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={() => setIsFolded(!isFolded)}
-                        className="px-4 py-2 rounded-xl border-border bg-card hover:bg-muted transition-all font-bold text-sm flex items-center gap-2 h-auto"
-                    >
-                        {isFolded ? <><ChevronDown size={16} /> Show Plan</> : <><ChevronUp size={16} /> Hide Plan</>}
+                        <Zap size={16} fill="currentColor" /> {isGameday ? "Log Game Report" : "Log Training"}
                     </Button>
                     {isGameday && (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-xs font-bold text-orange-500 w-fit animate-pulse">
-                            <Flame size={12} /> Game Day
-                        </div>
-                    )}
-                    {seasonGoal && (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary w-fit">
-                            <Target size={12} /> Goal: {seasonGoal}
+                        <div className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 text-xs font-bold text-orange-500 w-fit animate-pulse">
+                            <Flame size={14} /> Critical: Reflection
                         </div>
                     )}
                 </div>
 
-            </div>
-
-            <AnimatePresence>
-                {!isFolded && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                        className="overflow-hidden"
-                    >
-                        <div className="space-y-4">
-                            {/* 1. WARMUP */}
-                            {renderDrillCard(
-                                'warmup',
-                                0,
-                                'Phase 1: Activation',
-                                plan.warmup,
-                                <Flame size={24} strokeWidth={1.5} />,
-                                'bg-orange-500/10 text-orange-500'
-                            )}
-
-                            {/* 2. MAIN FOCUS */}
-                            {renderDrillCard(
-                                'main',
-                                1,
-                                `Phase 2: Main Focus - ${plan.focus}`,
-                                plan.main,
-                                <Zap size={24} strokeWidth={1.5} />,
-                                'bg-primary/10 text-primary'
-                            )}
-
-                            {/* 3. MENTAL RESET */}
-                            {renderDrillCard(
-                                'mental',
-                                2,
-                                'Phase 3: Cooldown & Reflect',
-                                plan.mental,
-                                <Brain size={24} strokeWidth={1.5} />,
-                                'bg-purple-500/10 text-purple-500'
-                            )}
-                        </div>
-
-                        {/* Final Completion Action */}
-                        <div className="mt-8">
-                            <Button
-                                onClick={handleLogAndComplete}
-                                className="w-full py-6 md:py-8 bg-foreground text-background font-black rounded-2xl hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 h-auto text-lg shadow-xl"
-                            >
-                                <CheckCircle size={24} />
-                                <span>Finish Plan & Reflect</span>
-                            </Button>
-                            <p className="text-center text-xs text-muted-foreground mt-3 font-medium">
-                                Completing the plan will unlock the Daily Journal
-                            </p>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Subtle Feedback */}
-            <div className="mt-8 flex flex-col items-center gap-2">
-                {feedbackSelection ? (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="text-xs font-bold text-primary flex items-center gap-2 bg-primary/5 px-4 py-2 rounded-full border border-primary/20"
-                    >
-                        <Check size={14} /> Thank you for your feedback!
-                    </motion.div>
-                ) : (
-                    <div className="flex gap-2 opacity-60 hover:opacity-100 transition-opacity">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleFeedback(true)}
-                            className="gap-2 hover:bg-muted transition-colors rounded-full text-xs font-bold tracking-wide border border-transparent hover:border-border"
-                        >
-                            <ThumbsUp size={14} /> Helpful
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleFeedback(false)}
-                            className="gap-2 hover:bg-muted transition-colors rounded-full text-xs font-bold tracking-wide border border-transparent hover:border-border"
-                        >
-                            <ThumbsDown size={14} /> Not Helpful
-                        </Button>
+                {/* Training Protocol Cards Hidden for Now */}
+                {/* {!isGameday && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-8 border-t border-border/10">
+                        {plan.warmup && renderDrillCard('warmup', 0, "Warmup", plan.warmup, <Activity className="text-blue-500" />, "bg-blue-500/10 text-blue-500")}
+                        {plan.main && renderDrillCard('main', 1, "Main Logic", plan.main, <Target className="text-primary" />, "bg-primary/10 text-primary")}
+                        {plan.mental && renderDrillCard('mental', 2, "Mental Reset", plan.mental, <Brain className="text-purple-500" />, "bg-purple-500/10 text-purple-500")}
                     </div>
-                )}
+                )} */}
             </div>
         </motion.div >
     );

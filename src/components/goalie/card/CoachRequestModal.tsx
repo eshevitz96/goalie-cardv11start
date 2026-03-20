@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronRight, X, AlertCircle } from "lucide-react";
+import { Check, ChevronRight, X, AlertCircle, BarChart2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 
@@ -13,7 +13,8 @@ interface CoachRequestModalProps {
 }
 
 export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: CoachRequestModalProps) {
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useState(0); // Step 0: Service Selection
+    const [serviceType, setServiceType] = useState<'pro' | 'recruiting' | null>(null);
 
     // Step 1 State
     const [coaches, setCoaches] = useState<{ id: string, goalie_name: string, bio?: string }[]>([]);
@@ -48,7 +49,8 @@ export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: Coa
     useEffect(() => {
         if (!isOpen) {
             setTimeout(() => {
-                setStep(1);
+                setStep(0);
+                setServiceType(null);
                 setSelectedCoachId(null);
                 setAgreedToTerms(false);
                 setGoalieWhy("");
@@ -108,7 +110,7 @@ export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: Coa
                 {/* Header */}
                 <div className="p-6 border-b border-border flex justify-between items-center bg-muted/30">
                     <div>
-                        <h2 className="text-xl font-bold">Request Pro Coach</h2>
+                        <h2 className="text-xl font-bold">Request Expert Access</h2>
                         <div className="text-xs text-muted-foreground mt-1">Step {step} of 3</div>
                     </div>
                     <button
@@ -131,6 +133,49 @@ export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: Coa
 
                 <div className="p-6 overflow-y-auto max-h-[70vh]">
                     <AnimatePresence mode="wait">
+                        {step === 0 && (
+                            <motion.div
+                                key="step0"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-4"
+                            >
+                                <h3 className="text-lg font-bold mb-4">Select Support Type</h3>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <button
+                                        onClick={() => { setServiceType('pro'); setStep(1); }}
+                                        className="w-full text-left p-5 rounded-2xl border-2 border-border hover:border-primary bg-card/50 transition-all group"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                                <Check size={24} />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-foreground">Pro Goaltending Coach</div>
+                                                <div className="text-xs text-muted-foreground">Technical analysis and recurring hybrid sessions.</div>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        onClick={() => { setServiceType('recruiting'); setStep(1); }}
+                                        className="w-full text-left p-5 rounded-2xl border-2 border-border hover:border-blue-500 bg-card/50 transition-all group"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                                                <BarChart2 size={24} />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-foreground">Recruiting Consulting</div>
+                                                <div className="text-xs text-muted-foreground">College coach connections and game film analysis.</div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+
                         {step === 1 && (
                             <motion.div
                                 key="step1"
@@ -201,9 +246,9 @@ export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: Coa
                                 <div className="space-y-4 bg-muted/40 border border-border rounded-xl p-5">
                                     <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">What's Included</h4>
                                     <ul className="space-y-3 text-sm">
-                                        <li className="flex gap-3"><Check size={16} className="text-primary shrink-0 mt-0.5" /> <span><strong>4 Hybrid Lessons</strong> per month with your selected Pro Coach.</span></li>
-                                        <li className="flex gap-3"><Check size={16} className="text-primary shrink-0 mt-0.5" /> <span><strong>Direct Feedback Modules</strong> analyzing your season performance and reflections.</span></li>
-                                        <li className="flex gap-3"><Check size={16} className="text-primary shrink-0 mt-0.5" /> <span><strong>Personalized Development Plan</strong> tailored to your specific Goalie's Why.</span></li>
+                                        <li className="flex gap-3"><Check size={16} className="text-primary shrink-0 mt-0.5" /> <span><strong>4 {serviceType === 'recruiting' ? 'Consultations' : 'Hybrid Lessons'}</strong> per month with your Pro Coach.</span></li>
+                                        <li className="flex gap-3"><Check size={16} className="text-primary shrink-0 mt-0.5" /> <span><strong>Direct Feedback Modules</strong> analyzing your {serviceType === 'recruiting' ? 'game film' : 'performance'}.</span></li>
+                                        <li className="flex gap-3"><Check size={16} className="text-primary shrink-0 mt-0.5" /> <span><strong>{serviceType === 'recruiting' ? 'College Connection Strategy' : 'Personalized Development Plan'}</strong> tailored to your specific Goalie's Why.</span></li>
                                     </ul>
                                 </div>
 
@@ -221,7 +266,7 @@ export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: Coa
 
                                 <div className="flex gap-3 mt-6">
                                     <button
-                                        onClick={() => setStep(1)}
+                                        onClick={() => setStep(serviceType === 'recruiting' ? 0 : 1)}
                                         className="w-1/3 bg-muted text-foreground font-bold py-4 rounded-xl hover:bg-muted/80 transition-colors"
                                     >
                                         Back

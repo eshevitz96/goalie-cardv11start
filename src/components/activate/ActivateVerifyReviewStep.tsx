@@ -30,9 +30,6 @@ export function ActivateVerifyReviewStep({ formData, setFormData, onSubmit, isLo
                 <h1 className="text-3xl font-black text-foreground tracking-tighter">
                     {isNewUser ? "Create Your Profile" : "Verify Your Details"}
                 </h1>
-                <p className="text-muted-foreground text-sm mt-1">
-                    {isNewUser ? "Let's get your dashboard set up." : "We found your spot! Please confirm these details."}
-                </p>
             </div>
 
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-sm relative overflow-hidden">

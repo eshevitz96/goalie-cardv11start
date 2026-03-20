@@ -29,7 +29,7 @@ export function useAdminData() {
                     *,
                     roster:roster_uploads (goalie_name, email)
                 `)
-                .eq('title', 'BETA FEEDBACK')
+                .in('title', ['BETA FEEDBACK', 'BETA_SURVEY_RESPONSE'])
                 .order('created_at', { ascending: false });
 
             if (data) setFeedback(data);

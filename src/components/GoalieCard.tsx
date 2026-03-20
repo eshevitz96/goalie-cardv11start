@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle, QrCode } from "lucide-react";
-import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import { useState } from "react";
+import { useTheme } from "next-themes";
 import { twMerge } from "tailwind-merge";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -52,6 +52,7 @@ export function GoalieCard({
     pureIcon
 }: GoalieCardProps) {
     const safeName = name ?? "";
+    const { theme } = useTheme();
 
     const [showQR, setShowQR] = useState(false);
     const [showWalletPreview, setShowWalletPreview] = useState(false);
@@ -65,7 +66,15 @@ export function GoalieCard({
     if (pureIcon) {
         return (
             <div className={twMerge("flex items-center justify-center bg-muted rounded-2xl text-foreground border border-border shrink-0 shadow-inner", className)}>
-                <GoalieGuardLogo size={className?.includes('w-12') ? 24 : 36} />
+                <img 
+                    src="/flower-logo.png?v=5" 
+                    alt="CIC Logo" 
+                    width={className?.includes('w-12') ? 22 : 34} 
+                    height={className?.includes('w-12') ? 22 : 34} 
+                    draggable={false}
+                    className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                    style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                />
             </div>
         );
     }
@@ -110,7 +119,7 @@ export function GoalieCard({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
                 className={twMerge(
-                    "relative overflow-hidden rounded-3xl bg-card border border-border p-6 shadow-2xl transition-colors min-h-[440px] flex flex-col",
+                    "relative overflow-hidden rounded-3xl bg-card border border-border p-6 shadow-2xl transition-colors min-h-[500px] flex flex-col",
                     className
                 )}
             >
@@ -121,7 +130,15 @@ export function GoalieCard({
                 {/* Identity Section (Top) */}
                 <div className="relative z-10 flex items-center gap-4 mb-4">
                     <div className="h-[4.5rem] w-[4.5rem] flex items-center justify-center bg-muted rounded-2xl text-foreground border border-border shrink-0 shadow-inner">
-                        <GoalieGuardLogo size={36} />
+                        <img 
+                            src="/flower-logo.png?v=5" 
+                            alt="CIC Logo" 
+                            width={34} 
+                            height={34} 
+                            draggable={false}
+                            className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                            style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                        />
                     </div>
                     <div className="flex flex-col justify-center min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">

@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
+import { useTheme } from "next-themes";
 import { supabase } from "@/utils/supabase/client";
 
 export default function EntryPortal() {
     const router = useRouter();
+    const { theme } = useTheme();
     const [showWelcome, setShowWelcome] = useState(true);
 
     useEffect(() => {
@@ -51,14 +52,25 @@ export default function EntryPortal() {
                         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }} // Apple-esque ease-out
                         className="flex flex-col items-center justify-center space-y-6"
                     >
-                        <motion.h1
-                            className="text-5xl md:text-7xl font-black italic text-foreground tracking-tighter text-center px-4 uppercase"
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ duration: 0.4, ease: "easeOut" }}
-                        >
-                            Goalie <span className="text-primary uppercase">Card</span>
-                        </motion.h1>
+                        <div className="flex items-center gap-4">
+                            <img
+                                src="/flower-logo.png?v=5"
+                                alt="CIC Logo"
+                                width={56}
+                                height={56}
+                                draggable={false}
+                                className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                                style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                            />
+                            <motion.h1
+                                className="text-5xl md:text-7xl font-black italic text-foreground tracking-tighter text-center uppercase"
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ duration: 0.4, ease: "easeOut" }}
+                            >
+                                Goalie <span className="text-primary uppercase">Card</span>
+                            </motion.h1>
+                        </div>
 
 
                     </motion.div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Calendar, MapPin, QrCode } from "lucide-react";
+import { Calendar, MapPin, QrCode, Film, Database, Video } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -21,11 +21,14 @@ export interface Event {
     sport?: string;
     scouting_report?: string;
     created_by?: string;
+    video_id?: string;
+    is_charted?: boolean;
 }
 
 interface EventsListProps {
     events: Event[];
     onRegister?: (eventId: string) => void;
+    onUploadFilm?: (eventId: string) => void;
     onEventAdded?: () => void;
     sport?: string;
     maxItems?: number;
@@ -33,7 +36,7 @@ interface EventsListProps {
     goalieId?: string;
 }
 
-export function EventsList({ events, onRegister, onEventAdded, sport, maxItems, hidePayments, goalieId }: EventsListProps) {
+export function EventsList({ events, onRegister, onUploadFilm, onEventAdded, sport, maxItems, hidePayments, goalieId }: EventsListProps) {
     const [showEventModal, setShowEventModal] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
     const { toast } = useToast();
@@ -81,6 +84,8 @@ export function EventsList({ events, onRegister, onEventAdded, sport, maxItems, 
                 {events.length > 0 ? (
                     events.slice(0, maxItems || events.length).map((event, idx) => {
                         const isOwner = event.created_by === goalieId;
+                        const isPast = event.status === 'past' || new Date(event.date) < new Date();
+
                         return (
                             <motion.div
                                 key={event.id}
@@ -91,25 +96,41 @@ export function EventsList({ events, onRegister, onEventAdded, sport, maxItems, 
                                 className="bg-secondary/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between group hover:bg-secondary/50 transition-all cursor-pointer"
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-black transition-all">
-                                        <QrCode size={20} />
+                                    <div className={`p-3 rounded-xl transition-all ${
+                                        event.video_id ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-black'
+                                    }`}>
+                                        {event.video_id ? <Film size={20} /> : <QrCode size={20} />}
                                     </div>
-                                    <div>
-                                        <h4 className="font-bold text-foreground text-sm">{event.name}</h4>
-                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] text-muted-foreground font-medium">
-                                            <span className="flex items-center gap-1">
+                                    <div className="min-w-0">
+                                        <h4 className="font-bold text-foreground text-sm truncate">{event.name}</h4>
+                                        <div className="flex items-center gap-x-3 gap-y-1 mt-1 text-[10px] text-muted-foreground font-medium">
+                                            <span className="flex items-center gap-1 whitespace-nowrap">
                                                 <Calendar size={12} />
-                                                {new Date(event.date).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                {new Date(event.date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                                             </span>
-                                            <span className="flex items-center gap-1">
-                                                <MapPin size={12} />
-                                                {event.location}
-                                            </span>
+                                            {isPast && event.video_id && (
+                                                <span className="flex items-center gap-1 text-primary font-bold">
+                                                    <Database size={10} />
+                                                    {event.is_charted ? 'Charted' : 'Processing AI'}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {isOwner && (
+                                    {isPast && !event.video_id && (
+                                        <Button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onUploadFilm?.(event.id);
+                                            }}
+                                            className="h-8 px-4 bg-primary text-black font-black text-[10px] uppercase tracking-widest rounded-full hover:scale-105 transition-transform"
+                                        >
+                                            <Video size={10} className="mr-1.5" fill="currentColor" />
+                                            Film
+                                        </Button>
+                                    )}
+                                    {isOwner && !isPast && (
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -119,8 +140,8 @@ export function EventsList({ events, onRegister, onEventAdded, sport, maxItems, 
                                             Edit
                                         </Button>
                                     )}
-                                    <Badge variant={event.status === 'open' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5">
-                                        {event.status}
+                                    <Badge variant={event.status === 'open' ? 'default' : (isPast ? 'outline' : 'secondary')} className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 whitespace-nowrap">
+                                        {isPast ? 'Completed' : event.status}
                                     </Badge>
                                 </div>
                             </motion.div>

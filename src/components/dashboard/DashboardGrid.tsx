@@ -36,7 +36,7 @@ export function DashboardGrid({ widgets: initialWidgets, onLayoutChange, renderW
         { id: 'profile', type: 'profile', size: 'md', title: 'Goalie Card' },
         { id: 'coach', type: 'coaches_corner', size: 'sm', title: 'Coaches Corner' },
         { id: 'events', type: 'events', size: 'md', title: 'Schedule & History' },
-        { id: 'ai_coach', type: 'ai_coach', size: 'xl', title: 'AI Coach' },
+        { id: 'ai_coach', type: 'ai_coach', size: 'xl', title: 'Coach OS' },
         { id: 'stats', type: 'stats', size: 'sm', title: 'Stats' },
         { id: 'notifications', type: 'notifications', size: 'md', title: 'Notifications' },
     ];

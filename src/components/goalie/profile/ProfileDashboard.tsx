@@ -78,9 +78,12 @@ export function ProfileDashboard({
             <div className="max-w-md mx-auto space-y-8">
                 {/* Modern Header */}
                 <header className="flex items-center gap-4 mb-8">
-                    <Link href="/dashboard" className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                    <button 
+                        onClick={() => window.history.back()} 
+                        className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    >
                         <ArrowLeft size={24} />
-                    </Link>
+                    </button>
                     <div>
                         <h1 className="text-3xl font-black tracking-tighter text-foreground">Card Settings</h1>
                     </div>

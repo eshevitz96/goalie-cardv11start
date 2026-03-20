@@ -1,4 +1,5 @@
 import { supabase } from "@/utils/supabase/client";
+import { notificationService } from "./notifications";
 
 /**
  * Scheduling Service
@@ -44,6 +45,15 @@ export const schedulingService = {
      * Updates request status and optionally marks slot as booked
      */
     async acceptRequest(requestId: string, slotId?: string) {
+        // Fetch request details first to get goalie_id and date
+        const { data: reqData, error: fetchError } = await supabase
+            .from('schedule_requests')
+            .select('goalie_id, requested_date')
+            .eq('id', requestId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
         // Update request status
         const { error: requestError } = await supabase
             .from('schedule_requests')
@@ -61,6 +71,13 @@ export const schedulingService = {
 
             if (slotError) throw slotError;
         }
+
+        // Trigger Notification
+        await notificationService.sendSessionConfirmation(
+            reqData.goalie_id,
+            "Your Coach", // In a real scenario, we'd fetch the coach's name
+            reqData.requested_date
+        );
 
         return { success: true };
     },
