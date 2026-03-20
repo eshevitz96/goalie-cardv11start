@@ -34,10 +34,12 @@ export default function CoachDashboard() {
     const [roster, setRoster] = useState<any[]>([]);
     const [highlights, setHighlights] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | 'assigned'>('all');
+    const [filter, setFilter] = useState<'all' | 'active'>('all');
+    const [sportFilter, setSportFilter] = useState<'all' | 'Hockey' | 'Lacrosse'>('all');
 
     const [pendingReviews, setPendingReviews] = useState<any[]>([]);
     const [pendingActivations, setPendingActivations] = useState<any[]>([]);
+    const [issuedIds, setIssuedIds] = useState<Record<number, string>>({});
 
     useEffect(() => {
         const fetchData = async () => {
@@ -82,7 +84,8 @@ export default function CoachDashboard() {
                     status: g.is_claimed ? 'active' : 'pending',
                     lastSeen: 'N/A',
                     assigned_coach_id: g.assigned_coach_id,
-                    user_id: g.linked_user_id
+                    user_id: g.linked_user_id,
+                    sport: g.sport
                 })));
 
                 if (coachId) {
@@ -138,14 +141,16 @@ export default function CoachDashboard() {
         fetchData();
     }, []);
 
-    const [issuedIds, setIssuedIds] = useState<Record<number, string>>({});
-
     const handleLogout = async () => {
         await supabase.auth.signOut();
         window.location.href = "/login";
     };
 
-    const filteredRoster = filter === 'all' ? roster : roster.filter(r => r.status === 'active' || r.status === 'renew_needed');
+    const filteredRoster = roster.filter(r => {
+        const matchesStatus = filter === 'all' || (filter === 'active' && r.status === 'active');
+        const matchesSport = sportFilter === 'all' || (r.sport && r.sport.includes(sportFilter));
+        return matchesStatus && matchesSport;
+    });
 
     return (
         <main className="min-h-screen bg-background text-foreground p-4 md:p-8">
@@ -231,13 +236,33 @@ export default function CoachDashboard() {
                                     onClick={() => setFilter('all')}
                                     className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'all' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
                                 >
-                                    All
+                                    All Status
                                 </button>
                                 <button
-                                    onClick={() => setFilter('active' as any)}
-                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'active' as any ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                                    onClick={() => setFilter('active')}
+                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", filter === 'active' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
                                 >
-                                    Active Goalies
+                                    Active
+                                </button>
+                            </div>
+                            <div className="flex bg-muted rounded-lg p-1 border border-border">
+                                <button
+                                    onClick={() => setSportFilter('all')}
+                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", sportFilter === 'all' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                                >
+                                    All Sports
+                                </button>
+                                <button
+                                    onClick={() => setSportFilter('Hockey')}
+                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", sportFilter === 'Hockey' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                                >
+                                    Hockey
+                                </button>
+                                <button
+                                    onClick={() => setSportFilter('Lacrosse')}
+                                    className={clsx("px-3 py-1 rounded-md text-xs font-bold transition-all", sportFilter === 'Lacrosse' ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+                                >
+                                    Lacrosse
                                 </button>
                             </div>
                         </div>

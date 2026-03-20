@@ -99,7 +99,8 @@ export function useParentData() {
                 coachesData,
                 refData,
                 requestsDataRaw,
-                creditsData
+                creditsData,
+                shotsDataRaw
             ] = await Promise.all([
                 eventsService.fetchUpcoming(),
                 auth.user ? eventsService.fetchRegistrations(auth.user.id) : Promise.resolve([]),
@@ -107,12 +108,14 @@ export function useParentData() {
                 coachesService.fetchAllProfiles(),
                 rosterIds.length > 0 ? reflectionsService.fetchByRosterIds(rosterIds) : Promise.resolve([]),
                 rosterIds.length > 0 ? supabase.from('coach_requests').select('*').in('roster_id', rosterIds) : Promise.resolve({ data: [] }),
-                rosterIds.length > 0 ? supabase.from('credit_transactions').select('roster_id, amount').in('roster_id', rosterIds) : Promise.resolve({ data: [] })
+                rosterIds.length > 0 ? supabase.from('credit_transactions').select('roster_id, amount').in('roster_id', rosterIds) : Promise.resolve({ data: [] }),
+                auth.userId ? supabase.from('shot_events').select('*').eq('goalie_id', auth.userId) : Promise.resolve({ data: [] })
             ]);
 
             const registeredIds = new Set(registeredIdsData?.map(r => r.event_id) || []);
             const requestsData = requestsDataRaw?.data || [];
             const coachMap = new Map(coachesData?.map((c: any) => [c.id, c]) || []);
+            const shotsData = shotsDataRaw?.data || [];
 
             // Pending Payment Map
             const pendingPaymentMap = new Map<string, any>();
@@ -152,7 +155,7 @@ export function useParentData() {
             const realGoalies = (rosterData || []).map(g =>
                 transformRosterToGoalie(
                     g, null, allEvents, registeredIds, auth.userId,
-                    coachMap, sessionsMap, reflectionsMap, reflectionsContentMap, creditsMap, pendingPaymentMap
+                    coachMap, sessionsMap, reflectionsMap, reflectionsContentMap, creditsMap, pendingPaymentMap, shotsDataRaw?.data || []
                 )
             );
 

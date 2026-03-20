@@ -309,6 +309,7 @@ export function GoalieCard({
                     onClose={() => setShowRequestModal(false)}
                     rosterId={id || ''}
                     goalieName={safeName}
+                    goalieSport={sport}
                 />
             )}
         </>

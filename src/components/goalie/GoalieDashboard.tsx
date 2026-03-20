@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Activity, TrendingUp, Calendar, Clock, ChevronRight, BarChart3, Target, Zap, 
   ShieldCheck, Film, X, Repeat, Maximize2, ArrowRight, Shield, Plus, Trash2, Camera,
-  Video
+  Video, Brain
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -90,6 +90,7 @@ export function GoalieDashboard({
     const [hasCoach, setHasCoach] = useState(true);
     const [hasAnalyticsAccess, setHasAnalyticsAccess] = useState(true);
     const [readinessState, setReadinessState] = useState({ soreness: 2, sleep: 8 });
+    const journalRef = useRef<HTMLDivElement>(null);
 
     // Sync from search param athleteId (if any)
     useEffect(() => {
@@ -216,6 +217,7 @@ export function GoalieDashboard({
                             onLogAction(action);
                             if (action.includes('Log Training') || action.includes('Log Game Report')) {
                                 setExpandedBlock('journal');
+                                setTimeout(() => journalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
                             }
                         }}
                         goalieName={activeGoalie.name}
@@ -233,6 +235,19 @@ export function GoalieDashboard({
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                     >
+                        {/* Card Switcher Dots */}
+                        {goalies.length > 1 && (
+                            <div className="flex justify-center gap-2 mb-4">
+                                {goalies.map((_, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setCurrentIndex(idx)}
+                                        className={`w-2.5 h-2.5 rounded-full transition-all ${idx === currentIndex ? 'bg-primary w-6' : 'bg-muted-foreground/30 hover:bg-muted-foreground/60'}`}
+                                    />
+                                ))}
+                            </div>
+                        )}
+
                         <GoalieCard
                             name={activeGoalie.name}
                             team={activeGoalie.team}
@@ -243,11 +258,13 @@ export function GoalieDashboard({
                             lesson={activeGoalie.lesson}
                             games={activeGoalie.stats?.games}
                             practices={activeGoalie.stats?.practices}
+                            sport={activeGoalie.sport}
+                            id={activeGoalie.id}
                             className="w-full h-auto shadow-2xl"
                         />
                         <button 
                             onClick={() => setShowProgress(!showProgress)}
-                            className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors group cursor-pointer"
+                            className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors group cursor-pointer w-full"
                         >
                             <div className={`w-1.5 h-1.5 rounded-full border ${showProgress ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
                             <span>{showProgress ? 'Hide' : 'Show'} Activity Counts</span>
@@ -270,7 +287,7 @@ export function GoalieDashboard({
                     </div>
 
                     {/* Column 2: Journal */}
-                    <div className="space-y-4">
+                    <div className="space-y-4" ref={journalRef}>
                         <Reflections
                             rosterId={activeGoalie.id}
                             isExpanded={expandedBlock === 'journal'}
@@ -371,8 +388,14 @@ export function GoalieDashboard({
                                         },
                                         { label: "Total Shots", value: shotEvents.length.toString() }
                                     ] : [
-                                        { label: getSportTerms(goalieContext.sport).saveMetric, value: v11Model.seasonSavePercentage.toString().replace('0.', '.') },
-                                        { label: getSportTerms(goalieContext.sport).averageMetric, value: v11Model.seasonGAA },
+                                        { 
+                                            label: getSportTerms(goalieContext.sport).saveMetric, 
+                                            value: activeGoalie.stats?.sv ? activeGoalie.stats.sv.replace('0.', '.') : '.000' 
+                                        },
+                                        { 
+                                            label: getSportTerms(goalieContext.sport).averageMetric, 
+                                            value: activeGoalie.stats?.gaa || '0.00' 
+                                        },
                                         { label: getSportTerms(goalieContext.sport).advancedMetric, value: '82.5' }
                                     ]}
                                 />
@@ -598,7 +621,10 @@ export function GoalieDashboard({
                             />
                             <div className="flex justify-center mt-12 mb-20">
                                 <Button 
-                                    onClick={() => setShowGameReport(false)}
+                                    onClick={() => {
+                                        setShowGameReport(false);
+                                        onCoachUpdate(); // Logic for data refresh
+                                    }}
                                     className="w-full max-w-sm py-4 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
                                 >
                                     Confirm & Sync Season Stats

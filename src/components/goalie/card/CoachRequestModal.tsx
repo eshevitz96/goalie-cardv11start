@@ -10,14 +10,15 @@ interface CoachRequestModalProps {
     onClose: () => void;
     rosterId: string;
     goalieName: string;
+    goalieSport?: string;
 }
 
-export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: CoachRequestModalProps) {
+export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName, goalieSport }: CoachRequestModalProps) {
     const [step, setStep] = useState(0); // Step 0: Service Selection
     const [serviceType, setServiceType] = useState<'pro' | 'recruiting' | null>(null);
 
     // Step 1 State
-    const [coaches, setCoaches] = useState<{ id: string, goalie_name: string, bio?: string }[]>([]);
+    const [coaches, setCoaches] = useState<{ id: string, goalie_name: string, bio?: string, sport?: string }[]>([]);
     const [loadingCoaches, setLoadingCoaches] = useState(false);
     const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
 
@@ -34,16 +35,29 @@ export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: Coa
         if (isOpen && coaches.length === 0) {
             setLoadingCoaches(true);
             const fetchCoaches = async () => {
+                // Allow both 'coach' and 'admin' roles to appear as available mentors
                 const { data } = await supabase
                     .from('profiles')
-                    .select('id, goalie_name, bio')
-                    .eq('role', 'coach');
-                if (data) setCoaches(data);
+                    .select('id, goalie_name, bio, sport')
+                    .or('role.eq.coach,role.eq.admin');
+                
+                if (data) {
+                    // Filter by sport if the goalie has one set
+                    let filtered = data;
+                    if (goalieSport) {
+                        filtered = data.filter(c => 
+                            !c.sport || // default to all if not set
+                            c.sport.toLowerCase().includes(goalieSport.toLowerCase()) ||
+                            c.sport.toLowerCase().includes('all')
+                        );
+                    }
+                    setCoaches(filtered);
+                }
                 setLoadingCoaches(false);
             };
             fetchCoaches();
         }
-    }, [isOpen]);
+    }, [isOpen, goalieSport]);
 
     // Reset state on close
     useEffect(() => {
@@ -206,7 +220,14 @@ export function CoachRequestModal({ isOpen, onClose, rosterId, goalieName }: Coa
                                                     }`}
                                             >
                                                 <div>
-                                                    <div className="font-bold text-foreground">{coach.goalie_name}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="font-bold text-foreground">{coach.goalie_name}</div>
+                                                        {coach.sport && (
+                                                            <span className="text-[8px] font-black uppercase tracking-tighter bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">
+                                                                {coach.sport}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <div className="text-xs text-muted-foreground line-clamp-1 mt-1">
                                                         {coach.bio || "Pro Goaltending Coach"}
                                                     </div>

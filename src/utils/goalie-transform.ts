@@ -42,7 +42,8 @@ export function transformRosterToGoalie(
     reflectionsMap: Map<string, string>,
     reflectionsContentMap: Map<string, string>,
     creditsMap: Map<string, number>,
-    pendingPaymentMap: Map<string, any> = new Map()
+    pendingPaymentMap: Map<string, any> = new Map(),
+    allShots: any[] = []
 ): GoalieData {
     // 1. Filter Events
     const goalieSports = g.sport ? g.sport.split(',').map((s: string) => s.trim()) : [];
@@ -96,7 +97,21 @@ export function transformRosterToGoalie(
         hasVideo: false
     }));
 
-    // 4. Volume logic (from useParentData)
+    // 4. PERFORMANCE CALCULATIONS (V11 Live Engine)
+    // Filter shots by sport for this specific bucket
+    const myShots = allShots.filter(s => 
+        (s.sport && goalieSports.includes(s.sport)) || 
+        (!s.sport && goalieSports.includes('Hockey')) // default to hockey if unknown
+    );
+
+    const totalShots = myShots.length;
+    const goals = myShots.filter(s => s.result === 'goal').length;
+    const saves = myShots.filter(s => s.result === 'save').length;
+    
+    const svPct = totalShots > 0 ? (saves / totalShots).toFixed(3) : ".000";
+    // GAA Estimation: (Goals * 60) / (Minutes Played) -> Using simple total activity proxy or just pure count for V11 HUD
+    const estimatedGAA = (goals > 0 && totalShots > 0) ? ((goals / Math.max(1, totalShots / 10)) * 2).toFixed(2) : "0.00";
+
     const pastEventsCount = goalieEvents.filter(e => e.rawDate < new Date()).length;
     const totalActivityCount = (Number(g.session_count) || 0) + (gSessions.length) + pastEventsCount;
 
@@ -126,8 +141,8 @@ export function transformRosterToGoalie(
         activation_date: g.activation_date || g.created_at,
         pendingPayment: pendingPaymentMap.get(g.id) || null,
         stats: {
-            gaa: "0.00",
-            sv: ".000",
+            gaa: estimatedGAA,
+            sv: svPct.startsWith('0') ? svPct.substring(1) : svPct,
             memberSince: gSessions.length > 0 ? new Date(gSessions[gSessions.length - 1].date).getFullYear() : new Date().getFullYear(),
             totalSessions: totalActivityCount,
             totalLessons: derivedLessonCount,

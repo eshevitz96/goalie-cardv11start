@@ -147,8 +147,8 @@ export default function Dashboard() {
                 onDismissNotification={() => {}}
                 onLogout={() => router.push('/login')}
                 onRegister={handleRegisterGoalie}
-                onLogAction={() => {}}
-                onCoachUpdate={() => {}}
+                onLogAction={() => fetchMyGoalies(false)}
+                onCoachUpdate={() => fetchMyGoalies(false)}
                 journalPrefill={null}
             />
         </Suspense>
