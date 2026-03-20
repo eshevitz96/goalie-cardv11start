@@ -28,7 +28,7 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
             />
 
             <div className="flex flex-col justify-center">
-                <h1 className="text-2xl font-medium text-foreground tracking-tight leading-none flex items-center gap-0.5">
+                <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter leading-none flex items-center gap-0.5">
                     <img 
                         src="/flower-logo.png?v=5" 
                         alt="CIC Logo" 
