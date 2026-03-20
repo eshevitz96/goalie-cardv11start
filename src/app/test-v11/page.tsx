@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { GoalieDashboard } from "@/components/goalie/GoalieDashboard";
 import { SupportedSport } from "@/types/goalie-v11";
 
@@ -64,19 +64,21 @@ export default function TestV11Page() {
         <div className="min-h-screen bg-background relative pt-10">
             {/* SPORT SWITCHER REMOVED - PER USER DIRECTION */}
 
-            <GoalieDashboard 
-                goalies={[mockGoalies[goalieIndex]]}
-                userRole="goalie"
-                userId={mockGoalies[goalieIndex].id}
-                notification={null}
-                notifications={[]}
-                onDismissNotification={() => {}}
-                onLogout={() => {}}
-                onRegister={() => {}}
-                onLogAction={(a) => console.log("Action:", a)}
-                onCoachUpdate={() => {}}
-                journalPrefill=""
-            />
+            <Suspense fallback={<div className="p-20 text-center text-zinc-500 uppercase font-black tracking-widest animate-pulse">Loading Test Rig...</div>}>
+                <GoalieDashboard 
+                    goalies={[mockGoalies[goalieIndex]]}
+                    userRole="goalie"
+                    userId={mockGoalies[goalieIndex].id}
+                    notification={null}
+                    notifications={[]}
+                    onDismissNotification={() => {}}
+                    onLogout={() => {}}
+                    onRegister={() => {}}
+                    onLogAction={(a) => console.log("Action:", a)}
+                    onCoachUpdate={() => {}}
+                    journalPrefill=""
+                />
+            </Suspense>
         </div>
     );
 }

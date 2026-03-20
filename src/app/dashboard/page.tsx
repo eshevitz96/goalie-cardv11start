@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -69,18 +69,27 @@ export default function Dashboard() {
     }
 
     return (
-        <GoalieDashboard 
-            goalies={goalies} 
-            userRole={auth.userRole || 'goalie'} 
-            userId={auth.userId || null}
-            notification={null}
-            notifications={[]}
-            onDismissNotification={() => {}}
-            onLogout={() => router.push('/login')}
-            onRegister={() => {}}
-            onLogAction={() => {}}
-            onCoachUpdate={() => {}}
-            journalPrefill={null}
-        />
+        <Suspense fallback={
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-4">
+                <Loader2 className="animate-spin text-primary" size={40} />
+                <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">
+                    Preparing Dashboard...
+                </p>
+            </div>
+        }>
+            <GoalieDashboard 
+                goalies={goalies} 
+                userRole={auth.userRole || 'goalie'} 
+                userId={auth.userId || null}
+                notification={null}
+                notifications={[]}
+                onDismissNotification={() => {}}
+                onLogout={() => router.push('/login')}
+                onRegister={() => {}}
+                onLogAction={() => {}}
+                onCoachUpdate={() => {}}
+                journalPrefill={null}
+            />
+        </Suspense>
     );
 }
