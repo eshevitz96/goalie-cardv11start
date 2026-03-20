@@ -296,17 +296,9 @@ export async function createInitialProfile(email: string) {
     const emailLower = email.toLowerCase().trim();
 
     try {
-        // Double check existence to prevent dupes
-        const { data: existing } = await supabaseAdmin
-            .from('roster_uploads')
-            .select('id')
-            .ilike('email', emailLower)
-            .maybeSingle();
-
-        if (existing) {
-            return { success: false, error: "An account with this email already exists. Please try logging in." };
-        }
-
+        // We no longer block by email here to allow one account to have multiple cards
+        // Double check existence logic removed to support multi-card accounts
+        
         const rId = 'GC-' + Math.floor(1000 + Math.random() * 9000);
 
         const { data, error } = await supabaseAdmin.from('roster_uploads').insert({

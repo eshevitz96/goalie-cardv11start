@@ -60,6 +60,8 @@ function ActivateController() {
             .from('roster_uploads')
             .select('*')
             .ilike('email', email)
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
 
         if (data) {

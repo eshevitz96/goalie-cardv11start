@@ -40,6 +40,26 @@ export default function Dashboard() {
 
     const [currentIndex, setCurrentIndex] = useState(0);
 
+    const handleRegisterGoalie = async () => {
+        const goalieName = prompt("Enter Goalie Full Name:");
+        if (!goalieName) return;
+
+        const sport = prompt("Enter Sport (Hockey or Lacrosse):", "Hockey") || "Hockey";
+
+        try {
+            const { addNewGoalieToAccount } = await import('@/app/actions');
+            const result = await addNewGoalieToAccount(auth.userId!, goalieName, sport);
+            if (result.success) {
+                toast.success(`Card provisioned for ${goalieName}! Registering your new Hub...`);
+                fetchMyGoalies(true);
+            } else {
+                toast.error(result.error || "Failed to add goalie");
+            }
+        } catch (err) {
+            toast.error("Failed to register new goalie card.");
+        }
+    }
+
     // Fetch notifications on mount
     useEffect(() => {
         // Redirect admins to the admin portal if they land here
@@ -126,7 +146,7 @@ export default function Dashboard() {
                 notifications={[]}
                 onDismissNotification={() => {}}
                 onLogout={() => router.push('/login')}
-                onRegister={() => {}}
+                onRegister={handleRegisterGoalie}
                 onLogAction={() => {}}
                 onCoachUpdate={() => {}}
                 journalPrefill={null}

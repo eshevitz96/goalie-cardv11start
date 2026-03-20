@@ -305,6 +305,35 @@ export async function checkUserStatus(email: string) {
     }
 }
 
+export async function addNewGoalieToAccount(userId: string, goalieName: string, sport: string = 'Hockey') {
+    if (!userId || !goalieName) return { success: false, error: "Missing required fields" };
+
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        const rId = 'GC-' + Math.floor(1000 + Math.random() * 9000);
+
+        // Fetch user email for the roster entry
+        const { data: profile } = await supabaseAdmin.from('profiles').select('email').eq('id', userId).single();
+        if (!profile) return { success: false, error: "Profile not found" };
+
+        const { data, error } = await supabaseAdmin.from('roster_uploads').insert({
+            goalie_name: goalieName,
+            sport: sport,
+            email: profile.email,
+            assigned_unique_id: rId,
+            linked_user_id: userId,
+            is_claimed: true,
+            created_at: new Date().toISOString()
+        }).select().single();
+
+        if (error) throw error;
+        return { success: true, goalie: data };
+    } catch (err: any) {
+        console.error("Add New Goalie Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+
 // -----------------------------------------------------------------------------
 // ACCOUNT MANAGEMENT
 // -----------------------------------------------------------------------------
