@@ -182,7 +182,7 @@ export function FilmAnalysisWorkspace({
           <div className="flex justify-center mt-12 mb-20 px-8">
             <Button 
                 onClick={() => onComplete?.({ clips, sport, associatedEventId, sessionType })}
-                className="w-full max-w-sm py-4 bg-primary text-black font-bold uppercase tracking-widest text-[10px] rounded-2xl shadow-lg hover:scale-[1.02] transition-all"
+                className="w-full max-w-sm py-4 bg-foreground text-background font-bold uppercase tracking-widest text-[10px] rounded-2xl shadow-lg hover:scale-[1.02] transition-all"
             >
                 Confirm Analysis & Sync
             </Button>
@@ -364,7 +364,7 @@ export function FilmAnalysisWorkspace({
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); toggleClipType(i); }}
                                     className={`flex-1 py-1 rounded-lg border text-[8px] font-bold uppercase tracking-widest transition-all ${
-                                        clip.type === 'save' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-500' : 'bg-white/5 border-border/20 text-muted-foreground'
+                                        clip.type === 'save' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-500' : 'bg-muted border-border/20 text-muted-foreground'
                                     }`}
                                 >
                                     Save
@@ -372,7 +372,7 @@ export function FilmAnalysisWorkspace({
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); toggleClipType(i); }}
                                     className={`flex-1 py-1 rounded-lg border text-[8px] font-bold uppercase tracking-widest transition-all ${
-                                        clip.type === 'goal' ? 'bg-red-500/20 border-red-500/30 text-red-500' : 'bg-white/5 border-border/20 text-muted-foreground'
+                                        clip.type === 'goal' ? 'bg-red-500/20 border-red-500/30 text-red-500' : 'bg-muted border-border/20 text-muted-foreground'
                                     }`}
                                 >
                                     Goal
@@ -386,7 +386,7 @@ export function FilmAnalysisWorkspace({
                     <Button 
                         disabled={!clips.every(c => c.status === 'plotted')}
                         className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all ${
-                            clips.every(c => c.status === 'plotted') ? 'bg-primary text-black' : 'bg-white/5 opacity-50'
+                            clips.every(c => c.status === 'plotted') ? 'bg-foreground text-background' : 'bg-muted opacity-50'
                         }`}
                         onClick={() => setShowReport(true)}
                     >

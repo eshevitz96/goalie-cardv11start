@@ -111,7 +111,7 @@ export function EventsList({ events, onRegister, onUploadFilm, onEventAdded, spo
                                             {isPast && event.video_id && (
                                                 <span className="flex items-center gap-1 text-primary font-bold">
                                                     <Database size={10} />
-                                                    {event.is_charted ? 'Charted' : 'Processing AI'}
+                                                    {event.is_charted ? 'Charted' : 'Processing Film'}
                                                 </span>
                                             )}
                                         </div>
