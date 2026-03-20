@@ -273,7 +273,7 @@ export function GoalieDashboard({
                                 </div>
                                 <Button 
                                     onClick={() => setIsAnalyzingFilm(true)}
-                                    className="bg-primary text-black hover:bg-primary/90 font-bold uppercase tracking-widest text-[10px] rounded-xl h-auto py-2 px-5 transition-all hover:scale-105"
+                                    className="bg-foreground text-background hover:bg-foreground/90 font-bold uppercase tracking-widest text-[10px] rounded-xl h-auto py-2 px-5 transition-all hover:scale-105"
                                 >
                                     Chart Now
                                 </Button>
@@ -333,13 +333,13 @@ export function GoalieDashboard({
                                     <div className="flex items-center gap-1.5 p-1 bg-background/50 backdrop-blur-sm border border-border/40 rounded-full">
                                         <button 
                                             onClick={() => setPerformanceView('game')}
-                                            className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${performanceView === 'game' ? 'bg-primary text-black shadow-lg scale-[1.05]' : 'text-muted-foreground hover:text-foreground'}`}
+                                            className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${performanceView === 'game' ? 'bg-foreground text-background shadow-lg scale-[1.05]' : 'text-muted-foreground hover:text-foreground'}`}
                                         >
                                             Game
                                         </button>
                                         <button 
                                             onClick={() => setPerformanceView('season')}
-                                            className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${performanceView === 'season' ? 'bg-primary text-black shadow-lg scale-[1.05]' : 'text-muted-foreground hover:text-foreground'}`}
+                                            className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${performanceView === 'season' ? 'bg-foreground text-background shadow-lg scale-[1.05]' : 'text-muted-foreground hover:text-foreground'}`}
                                         >
                                             Season
                                         </button>
