@@ -77,7 +77,7 @@ export function GameAnalysisSurface({
         {/* Mesh Background Pattern */}
         <defs>
           <pattern id="mesh" x="0" y="0" width="3" height="3" patternUnits="userSpaceOnUse">
-            <path d="M 3 0 L 0 0 0 3" fill="none" stroke="currentColor" strokeWidth="0.08" opacity="0.15"/>
+            <path d="M 3 0 L 0 0 0 3" fill="none" stroke="currentColor" strokeWidth="0.08" opacity="0.4"/>
           </pattern>
         </defs>
         <rect x={x} y={y_offset} width={width} height={height} fill="url(#mesh)" />
@@ -111,7 +111,7 @@ export function GameAnalysisSurface({
             <line x1="0" y1={GL} x2="100" y2={GL} stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" />
             <path 
               d={`M ${50 - CW/2} ${GL} L ${50 - CW/2} ${GL - CD} A ${CR} ${CR} 0 0 1 ${50 + CW/2} ${GL - CD} L ${50 + CW/2} ${GL}`} 
-              fill="rgba(0,120,255,0.1)" stroke="currentColor" strokeWidth="0.8" 
+              fill="rgba(0,120,255,0.2)" stroke="currentColor" strokeWidth="1" 
             />
             <circle cx={50 - DRX} cy={DS} r="1" fill="currentColor" />
             <circle cx={50 + DRX} cy={DS} r="1" fill="currentColor" />
@@ -173,7 +173,7 @@ export function GameAnalysisSurface({
 
         return (
           <>
-            <rect x="0" y="0" width="100" height={EL} fill="none" stroke="currentColor" strokeWidth="1" opacity="1" />
+            <rect x="0" y="0" width="100" height={EL} fill="none" stroke="currentColor" strokeWidth="1.2" opacity="1" />
             <line x1="0" y1={EL} x2="100" y2={EL} stroke="currentColor" strokeWidth="1.5" />
             <line x1="0" y1={RL} x2="100" y2={RL} stroke="currentColor" strokeWidth="1" />
             <rect x={50 - BoxW/2} y={RL} width={BoxW} height={GL - RL} fill="currentColor" opacity="0.05" stroke="currentColor" strokeWidth="0.8" />
@@ -181,9 +181,9 @@ export function GameAnalysisSurface({
             <text x="3" y={GL - (GL-RL)/2} fill="currentColor" fontSize="2" opacity="0.4" transform={`rotate(-90, 3, ${GL - (GL-RL)/2})`}>20 yd</text>
             <circle cx="50" cy={GL} r={5.4} fill="none" stroke="currentColor" strokeWidth="1.2" />
             {/* Improved Goal Representation */}
-            <path d={`M${50 - GW/2} ${GL} L${50 + GW/2} ${GL} L${50} ${GL + GH} Z`} fill="currentColor" opacity="0.15" />
-            <path d={`M${50 - GW/2} ${GL} L${50 + GW/2} ${GL} L${50} ${GL + GH} Z`} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-            <line x1="50" y1={GL} x2="50" y2={GL + GH} stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+            <path d={`M${50 - GW/2} ${GL} L${50 + GW/2} ${GL} L${50} ${GL + GH} Z`} fill="currentColor" opacity="0.25" />
+            <path d={`M${50 - GW/2} ${GL} L${50 + GW/2} ${GL} L${50} ${GL + GH} Z`} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            <line x1="50" y1={GL} x2="50" y2={GL + GH} stroke="currentColor" strokeWidth="1.2" opacity="0.6" />
           </>
         );
       }
@@ -214,7 +214,7 @@ export function GameAnalysisSurface({
       <div className="relative w-full h-full rounded-[2rem] border border-border/10 bg-black/5 p-8 flex items-center justify-center">
         <svg 
           viewBox="0 0 100 100" 
-          className="w-full h-full text-foreground/40 cursor-crosshair select-none overflow-visible"
+          className="w-full h-full text-foreground/70 cursor-crosshair select-none overflow-visible"
           onClick={handleClick}
         >
           {/* Heat Wave Layer */}

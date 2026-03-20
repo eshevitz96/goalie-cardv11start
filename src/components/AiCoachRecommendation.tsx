@@ -216,9 +216,6 @@ export function AiCoachRecommendation({
                         </div>
                     </div>
 
-                    <div className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-all ${isExpanded ? 'bg-primary text-black rotate-90' : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'}`}>
-                        <ChevronRight size={16} />
-                    </div>
                 </button>
 
                 {/* Inline Protocol Expansion */}

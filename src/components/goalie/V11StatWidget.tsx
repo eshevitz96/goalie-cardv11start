@@ -17,10 +17,13 @@ export function V11StatWidget({ score, label, sport, stats, className }: V11Stat
   const displayLabel = label || (sport ? `${getSportTerms(sport).surface} Performance` : "Performance");
   return (
     <div className={`glass rounded-[2rem] p-8 border border-border/50 relative overflow-hidden flex flex-col items-center justify-center gap-8 ${className}`}>
-      {/* Sport Label (Top Left as requested) */}
-      <div className="absolute top-6 left-8 pointer-events-none">
+      {/* Sport Label & Category */}
+      <div className="absolute top-6 left-8 pointer-events-none flex flex-col items-start gap-1">
         <span className="text-[10px] font-black uppercase tracking-[.2em] text-muted-foreground opacity-50">
           {sport?.includes('lacrosse') ? 'LACROSSE' : sport?.replace('-', ' ') || 'Goalie'}
+        </span>
+        <span className="text-[10px] font-bold text-foreground">
+          {displayLabel}
         </span>
       </div>
 

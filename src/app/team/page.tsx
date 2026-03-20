@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -34,6 +35,7 @@ interface FundTransaction {
 }
 
 export default function TeamDashboardPage() {
+    const router = useRouter();
     const toast = useToast();
     const [loading, setLoading] = useState(true);
     const [team, setTeam] = useState<TeamData | null>(null);
@@ -41,8 +43,30 @@ export default function TeamDashboardPage() {
     const [roster, setRoster] = useState<RosterMember[]>([]);
     const [history, setHistory] = useState<FundTransaction[]>([]);
 
+    // Team Creation
+    const [isInitializing, setIsInitializing] = useState(false);
+    const [newName, setNewName] = useState("");
+    const [newOrg, setNewOrg] = useState("");
+
+    // Athlete Management
+    const [isAddingAthlete, setIsAddingAthlete] = useState(false);
+    const [athleteEmail, setAthleteEmail] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     useEffect(() => {
         fetchTeamData();
+        
+        // Handle Return from Stripe
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('success')) {
+            toast.success("Payment Received! Your credits are updating now.");
+            // Clear URL
+            window.history.replaceState({}, '', '/team');
+        }
+        if (params.get('canceled')) {
+            toast.error("Process canceled. Your payment was not processed.");
+            window.history.replaceState({}, '', '/team');
+        }
     }, []);
 
     const fetchTeamData = async () => {
@@ -116,7 +140,7 @@ export default function TeamDashboardPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     priceData: {
-                        unit_amount: 250000, // $2,500 for a Team Bucket (demo price)
+                        unit_amount: 250000, 
                         product_name: `Goalie Card - Organizational Credit Bucket (${team.name})`
                     },
                     userId: team.owner_id,
@@ -124,7 +148,7 @@ export default function TeamDashboardPage() {
                     metadata: {
                         type: 'team_credit_purchase',
                         teamId: team.id,
-                        creditAmount: 50 // Demo: 50 credits for $2.5k
+                        creditAmount: 50
                     }
                 })
             });
@@ -134,6 +158,37 @@ export default function TeamDashboardPage() {
         } catch (err: any) {
             toast.error("Stripe Connection Failed: " + err.message);
         }
+    };
+
+    const handleCreateTeam = async () => {
+        if (!newName) return toast.error("Please name your team.");
+        setIsSubmitting(true);
+        const { createTeam } = await import('@/app/actions');
+        const result = await createTeam(newName, newOrg);
+        if (result.success) {
+            toast.success("Team Initialized! Enjoy your 5 gift credits.");
+            fetchTeamData();
+            setIsInitializing(false);
+        } else {
+            toast.error(result.error);
+        }
+        setIsSubmitting(false);
+    };
+
+    const handleAddAthlete = async () => {
+        if (!athleteEmail || !team) return;
+        setIsSubmitting(true);
+        const { addAthleteToTeam } = await import('@/app/actions');
+        const result = await addAthleteToTeam(team.id, athleteEmail);
+        if (result.success) {
+            toast.success("Athlete linked to team!");
+            fetchTeamData();
+            setIsAddingAthlete(false);
+            setAthleteEmail("");
+        } else {
+            toast.error(result.error);
+        }
+        setIsSubmitting(false);
     };
 
     if (loading) {
@@ -147,16 +202,59 @@ export default function TeamDashboardPage() {
     if (!team) {
         return (
             <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
-                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 text-primary">
-                    <ShieldCheck size={40} />
-                </div>
-                <h1 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">Team Hub Activation</h1>
-                <p className="text-zinc-400 max-w-sm mb-8 leading-relaxed">
-                    You haven't initialized a Team Fund yet. Create your organization to manage bulk credits and roster-wide intelligence.
-                </p>
-                <button className="px-8 py-4 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">
-                    Initialize Team Fund
-                </button>
+                <AnimatePresence>
+                    {isInitializing ? (
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="w-full max-w-md bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] shadow-2xl"
+                        >
+                            <h2 className="text-2xl font-black uppercase tracking-tighter mb-6">Initialize Organization</h2>
+                            <div className="space-y-4 text-left">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 block">Team/Group Name</label>
+                                    <input 
+                                        type="text" value={newName} onChange={e => setNewName(e.target.value)}
+                                        placeholder="e.g. Ironbound Elite"
+                                        className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm focus:border-primary outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 block">Organization (Optional)</label>
+                                    <input 
+                                        type="text" value={newOrg} onChange={e => setNewOrg(e.target.value)}
+                                        placeholder="e.g. NJ Youth Hockey"
+                                        className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm focus:border-primary outline-none"
+                                    />
+                                </div>
+                                <button 
+                                    onClick={handleCreateTeam}
+                                    disabled={isSubmitting}
+                                    className="w-full py-4 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-xl mt-4"
+                                >
+                                    {isSubmitting ? "Initializing..." : "Create Organization Hub"}
+                                </button>
+                                <button onClick={() => setIsInitializing(false)} className="w-full text-zinc-500 text-[10px] font-bold uppercase tracking-widest mt-2">Cancel</button>
+                            </div>
+                        </motion.div>
+                    ) : (
+                        <>
+                            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 text-primary">
+                                <ShieldCheck size={40} />
+                            </div>
+                            <h1 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">Team Hub Activation</h1>
+                            <p className="text-zinc-400 max-w-sm mb-8 leading-relaxed">
+                                You haven't initialized a Team Fund yet. Create your organization to manage bulk credits and roster-wide intelligence.
+                            </p>
+                            <button 
+                                onClick={() => setIsInitializing(true)}
+                                className="px-8 py-4 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                            >
+                                Initialize Team Fund
+                            </button>
+                        </>
+                    )}
+                </AnimatePresence>
             </div>
         );
     }
@@ -255,7 +353,30 @@ export default function TeamDashboardPage() {
                                     <Users size={20} className="text-primary" /> Roster of Goalie Athletes
                                 </h3>
                                 <div className="flex gap-2">
-                                    <button className="px-3 py-1.5 bg-zinc-900 border border-white/5 rounded-lg text-[10px] font-black uppercase hover:bg-zinc-800 transition-all">Export Report</button>
+                                    <AnimatePresence>
+                                        {isAddingAthlete ? (
+                                            <motion.div 
+                                                initial={{ width: 0, opacity: 0 }}
+                                                animate={{ width: "auto", opacity: 1 }}
+                                                className="flex gap-2 overflow-hidden"
+                                            >
+                                                <input 
+                                                    type="text" value={athleteEmail} onChange={e => setAthleteEmail(e.target.value)}
+                                                    placeholder="Athlete Email or ID"
+                                                    className="bg-black border border-white/10 rounded-lg px-4 py-1.5 text-[10px] w-48 outline-none focus:border-primary"
+                                                />
+                                                <button onClick={handleAddAthlete} className="bg-primary text-black px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest">Add</button>
+                                                <button onClick={() => setIsAddingAthlete(false)} className="text-zinc-500 px-2 uppercase text-[10px] font-black">X</button>
+                                            </motion.div>
+                                        ) : (
+                                            <button 
+                                                onClick={() => setIsAddingAthlete(true)}
+                                                className="px-4 py-1.5 bg-primary text-black rounded-lg text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+                                            >
+                                                Add Athlete
+                                            </button>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
                             </div>
 
@@ -272,7 +393,11 @@ export default function TeamDashboardPage() {
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
                                         {roster.map((member, idx) => (
-                                            <tr key={member.id} className="group hover:bg-white/[0.02] transition-colors cursor-pointer">
+                                            <tr 
+                                                key={member.id} 
+                                                onClick={() => router.push('/dashboard?athleteId=' + member.id)}
+                                                className="group hover:bg-white/[0.02] transition-colors cursor-pointer"
+                                            >
                                                 <td className="px-8 py-5">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-zinc-800 to-black border border-white/10 flex items-center justify-center text-zinc-400 group-hover:border-primary/50 transition-all">

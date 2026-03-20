@@ -9,6 +9,7 @@ import { GameAnalysisSurface } from './GameAnalysisSurface';
 import { SupportedSport, ShotEvent, ShotResult } from '@/types/goalie-v11';
 import { Button } from '@/components/ui/Button';
 import { useTheme } from 'next-themes';
+import { getSportTerms } from '@/utils/sport-language';
 
 interface GameReportProps {
   sport: SupportedSport;
@@ -25,7 +26,7 @@ interface GameReportProps {
 
 export function GameReport({ sport, opponent, date, shots, stats }: GameReportProps) {
   const { theme } = useTheme();
-  // Sector Analysis
+  const terms = getSportTerms(sport);
   const zoneStats = [
     { label: 'Low Slot', saves: 12, goals: 1 },
     { label: 'High Slot', saves: 8, goals: 0 },
@@ -74,15 +75,24 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
 
       {/* 3. The Visual Shot Chart */}
       <div className="px-10 space-y-16 mb-16">
-        {Array.from({ length: sport.includes('lacrosse') ? 4 : (sport === 'soccer' ? 2 : 3) }).map((_, i) => {
+        {/* Support up to 5 segments (H1, H2, ET1, ET2, PKs for soccer | Q1-Q4, OT for lax) */}
+        {Array.from({ length: 5 }).map((_, i) => {
           const periodNum = i + 1;
           const periodShots = shots.filter(s => s.period === periodNum);
+          if (periodShots.length === 0) return null;
           
           return (
             <div key={periodNum} className="space-y-8">
               <div className="flex items-center justify-between border-b border-border/10 pb-4">
                  <h3 className="text-base font-black uppercase tracking-[.4em] flex items-center gap-3">
-                    {sport === 'soccer' ? `Half ${periodNum}` : `Period ${periodNum}`}
+                    {sport === 'soccer' ? (
+                       periodNum === 1 ? 'Half 1' : 
+                       periodNum === 2 ? 'Half 2' : 
+                       periodNum === 3 ? 'Extra Time 1' : 
+                       periodNum === 4 ? 'Extra Time 2' : 'Penalty Kicks'
+                    ) : (
+                       periodNum > (sport.includes('lacrosse') ? 4 : 3) ? 'Overtime' : `${terms.period} ${periodNum}`
+                    )}
                  </h3>
                  <div className="text-[10px] font-black text-primary uppercase tracking-[.2em]">
                     {periodShots.length} Detections Recorded

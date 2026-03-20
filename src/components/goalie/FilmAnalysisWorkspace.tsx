@@ -12,6 +12,7 @@ import { GameAnalysisSurface } from './GameAnalysisSurface';
 import { GameReport } from './GameReport';
 import { SupportedSport, ShotEvent, ShotResult } from '@/types/goalie-v11';
 import { Button } from '@/components/ui/Button';
+import { getSportTerms } from '@/utils/sport-language';
 
 interface Clip {
   id: string;
@@ -22,6 +23,7 @@ interface Clip {
   plottedY?: number;
   netX?: number;
   netY?: number;
+  period?: number;
 }
 
 interface FilmAnalysisWorkspaceProps {
@@ -48,10 +50,13 @@ export function FilmAnalysisWorkspace({
   const [associatedEventId, setAssociatedEventId] = useState(events.length > 0 ? events[0].id : '');
   const [clipComments, setClipComments] = useState<Record<string, string>>({});
   const [sessionType, setSessionType] = useState<'clips' | 'full_game' | null>(initialClips.length > 0 ? 'clips' : null);
+  const [opponentName, setOpponentName] = useState('Unknown Opponent');
+  const [gameDate, setGameDate] = useState(new Date().toISOString().split('T')[0]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const playbackTimerRef = useRef<NodeJS.Timeout | null>(null);
   const activeClip = activeClipIndex !== null ? clips[activeClipIndex] : null;
+  const terms = getSportTerms(sport);
 
   const addManualClip = () => {
     const newId = `manual-${Date.now()}`;
@@ -163,14 +168,14 @@ export function FilmAnalysisWorkspace({
         <div className="p-4 md:p-8 h-full overflow-y-auto bg-background animate-in fade-in duration-500">
           <GameReport 
             sport={sport}
-            opponent={events.find(e => e.id === associatedEventId)?.name || "Unknown Opponent"}
-            date="2024-12-22"
+            opponent={opponentName}
+            date={gameDate}
             shots={clips.filter(c => c.status === 'plotted').map(c => ({
                 id: c.id, gameId: associatedEventId, sport, result: (c.type === 'goal' ? 'goal' : 'save') as ShotResult,
                 shotType: 'wrist', originX: c.plottedX || 0, originY: c.plottedY || 0,
                 targetX: c.netX, targetY: c.netY || 0,
                 isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false,
-                period: 1
+                period: c.period || 1
             }))}
             stats={{
                 totalShots: clips.length,
@@ -196,9 +201,29 @@ export function FilmAnalysisWorkspace({
     <div className="flex flex-col gap-6 w-full bg-background pb-20 pt-6">
       
       {/* HEADER: Session Context */}
-      <div className="flex flex-col md:flex-row md:items-center justify-end gap-4 px-1">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
+        <div className="flex items-center gap-4">
+            <div className="bg-primary/20 text-primary border border-primary/30 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[.25em] flex items-center gap-2 shadow-2xl">
+                <Brain size={12} /> Draft Session Active
+            </div>
+            <div className="flex items-center gap-2">
+                <input 
+                    type="text" 
+                    value={opponentName}
+                    onChange={(e) => setOpponentName(e.target.value)}
+                    placeholder="Opponent Name"
+                    className="bg-transparent border-b border-border/50 text-xl font-black uppercase tracking-tighter outline-none focus:border-primary px-1 w-[200px]"
+                />
+                <input 
+                    type="date" 
+                    value={gameDate}
+                    onChange={(e) => setGameDate(e.target.value)}
+                    className="bg-card/50 border border-border/40 rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-foreground outline-none"
+                />
+            </div>
+        </div>
         <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Link to Event:</span>
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Link Event:</span>
             <select 
                 value={associatedEventId}
                 onChange={(e) => setAssociatedEventId(e.target.value)}
@@ -377,6 +402,31 @@ export function FilmAnalysisWorkspace({
                                 >
                                     Goal
                                 </button>
+                                <select
+                                    value={clip.period || 1}
+                                    onChange={(e) => {
+                                        const updated = [...clips];
+                                        updated[i].period = parseInt(e.target.value);
+                                        setClips(updated);
+                                    }}
+                                    className="bg-secondary/50 border border-border/20 rounded-lg text-[8px] font-bold px-1"
+                                >
+                                    {sport === 'soccer' ? (
+                                        <>
+                                            <option value="1">H1</option><option value="2">H2</option>
+                                            <option value="3">ET1</option><option value="4">ET2</option>
+                                            <option value="5">PKs</option>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <option value="1">{terms.period[0]}1</option>
+                                            <option value="2">{terms.period[0]}2</option>
+                                            <option value="3">{terms.period[0]}3</option>
+                                            {sport.includes('lacrosse') && <option value="4">{terms.period[0]}4</option>}
+                                            <option value="5">OT</option>
+                                        </>
+                                    )}
+                                </select>
                             </div>
                         </div>
                     ))}

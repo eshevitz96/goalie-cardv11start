@@ -74,6 +74,8 @@ export async function submitReflection(rosterId: string, entryData: any) {
             skip_reason: entryData.skip_reason,
             injury_expected_return: entryData.injury_expected_return,
             injury_details: entryData.injury_details,
+            soreness: entryData.soreness,
+            sleep_quality: entryData.sleep_quality,
             file_url: entryData.file_url,
             created_at: new Date().toISOString()
         };
@@ -142,6 +144,8 @@ export async function updateReflection(reflectionId: string, rosterId: string, e
         if (entryData.skip_reason !== undefined) updatePayload.skip_reason = entryData.skip_reason;
         if (entryData.injury_expected_return !== undefined) updatePayload.injury_expected_return = entryData.injury_expected_return;
         if (entryData.injury_details !== undefined) updatePayload.injury_details = entryData.injury_details;
+        if (entryData.soreness !== undefined) updatePayload.soreness = entryData.soreness;
+        if (entryData.sleep_quality !== undefined) updatePayload.sleep_quality = entryData.sleep_quality;
         if (entryData.file_url !== undefined) updatePayload.file_url = entryData.file_url;
 
         const { error } = await supabaseAdmin
@@ -411,6 +415,129 @@ export async function updateAssignedCoaches(rosterId: string, coachIds: string[]
         return { success: true };
     } catch (err: any) {
         console.error("updateAssignedCoaches Exception:", err);
-        return { success: false, error: "Exception: " + err.message };
+        return { success: false, error: err.message };
+    }
+}
+
+export async function syncShotEvents(rosterId: string, eventId: string, shots: any[]) {
+    if (!rosterId || !shots) return { success: false, error: "Missing data" };
+
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        
+        // 1. Get User ID from roster
+        const { data: roster } = await supabaseAdmin
+            .from('roster_uploads')
+            .select('linked_user_id')
+            .eq('id', rosterId)
+            .single();
+        
+        if (!roster || !roster.linked_user_id) return { success: false, error: "Roster not linked" };
+
+        // 2. Prepare shots for insertion
+        const insertShots = shots.map(s => ({
+            event_id: eventId || null,
+            goalie_id: roster.linked_user_id,
+            sport: s.sport,
+            period: s.period,
+            result: s.result,
+            shot_type: s.shotType,
+            origin_x: s.originX,
+            origin_y: s.originY,
+            target_x: s.targetX,
+            target_y: s.targetY,
+            created_at: new Date().toISOString()
+        }));
+
+        // 3. Insert Shots
+        const { error: shotError } = await supabaseAdmin
+            .from('shot_events')
+            .insert(insertShots);
+
+        if (shotError) throw shotError;
+
+        // 4. Update Event Status if exists
+        if (eventId) {
+            await supabaseAdmin.from('events').update({ is_charted: true }).eq('id', eventId);
+        }
+
+        return { success: true };
+    } catch (err: any) {
+        console.error("Sync Shot Events Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+
+export async function createTeam(name: string, organization: string) {
+    if (!name) return { success: false, error: "Missing Team Name" };
+
+    try {
+        const supabase = createServerSupabase();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { success: false, error: "Not authenticated" };
+
+        const supabaseAdmin = getSupabaseAdmin();
+
+        // 1. Create Team
+        const { data: team, error: teamError } = await supabaseAdmin
+            .from('teams')
+            .insert({ name, organization, owner_id: user.id })
+            .select()
+            .single();
+
+        if (teamError) throw teamError;
+
+        // 2. Create Initial Fund with a "Gift" of 5 credits
+        const { error: fundError } = await supabaseAdmin
+            .from('team_credit_funds')
+            .insert({ team_id: team.id, balance: 5 });
+
+        if (fundError) throw fundError;
+
+        // 3. Log Initial Gift Transaction
+        await supabaseAdmin
+            .from('team_fund_transactions')
+            .insert({ 
+                team_id: team.id, 
+                amount: 5, 
+                description: 'Initial Organization Setup (Gift Credits)' 
+            });
+
+        return { success: true, teamId: team.id };
+    } catch (err: any) {
+        console.error("Create Team Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+
+export async function addAthleteToTeam(teamId: string, emailOrId: string) {
+    if (!teamId || !emailOrId) return { success: false, error: "Missing required data" };
+
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+
+        // Check if roster entry exists with this email/ID
+        const query = emailOrId.includes('@') 
+            ? supabaseAdmin.from('roster_uploads').select('id').ilike('email', emailOrId.trim()) 
+            : supabaseAdmin.from('roster_uploads').select('id').eq('id', emailOrId);
+
+        const { data: roster, error: rosterError } = await query.single();
+
+        if (rosterError || !roster) {
+            return { success: false, error: "Goalie record not found. Please ensure they have activated their card." };
+        }
+
+        // Link Roster to Team
+        const { error: updateError } = await supabaseAdmin
+            .from('roster_uploads')
+            .update({ team_id: teamId })
+            .eq('id', roster.id);
+
+        if (updateError) throw updateError;
+
+        return { success: true };
+    } catch (err: any) {
+        console.error("Add Athlete Error:", err);
+        return { success: false, error: err.message };
     }
 }

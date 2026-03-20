@@ -45,8 +45,8 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
         const { updateAssignedCoaches } = await import('@/app/actions');
         const result = await updateAssignedCoaches(rosterId, newIds);
 
-        if (!result.success) {
-            alert("Error updating coach: " + result.error);
+        if (!result || !result.success) {
+            alert("Error updating coach: " + (result?.error || "Unknown error"));
         } else {
             onCoachUpdate();
         }

@@ -8,6 +8,8 @@ export interface SportTerminology {
   averageMetric: string;
   shutoutMetric: string;
   advancedMetric: string;
+  period: string;
+  periodPlural: string;
   positions?: string[];
 }
 
@@ -20,6 +22,8 @@ const termMap: Record<SupportedSport, SportTerminology> = {
     averageMetric: "GAA",
     shutoutMetric: "SO",
     advancedMetric: "HD Save %",
+    period: "Period",
+    periodPlural: "Periods",
     positions: ["Butterfly", "T-Push", "Post-to-Post"]
   },
   soccer: {
@@ -30,6 +34,8 @@ const termMap: Record<SupportedSport, SportTerminology> = {
     averageMetric: "Goals Against",
     shutoutMetric: "Clean Sheets",
     advancedMetric: "xG Saved",
+    period: "Half",
+    periodPlural: "Halves",
     positions: ["Near Post", "Far Post", "Distribution"]
   },
   "lacrosse-boys": {
@@ -39,7 +45,9 @@ const termMap: Record<SupportedSport, SportTerminology> = {
     saveMetric: "Save %",
     averageMetric: "GAA",
     shutoutMetric: "Shutouts",
-    advancedMetric: "HD Save %"
+    advancedMetric: "HD Save %",
+    period: "Quarter",
+    periodPlural: "Quarters"
   },
   "lacrosse-girls": {
     goal: "Goal",
@@ -48,7 +56,9 @@ const termMap: Record<SupportedSport, SportTerminology> = {
     saveMetric: "Save %",
     averageMetric: "GAA",
     shutoutMetric: "Shutouts",
-    advancedMetric: "HD Save %"
+    advancedMetric: "HD Save %",
+    period: "Quarter",
+    periodPlural: "Quarters"
   },
   "lacrosse-box": {
     goal: "Goal",
@@ -57,7 +67,9 @@ const termMap: Record<SupportedSport, SportTerminology> = {
     saveMetric: "Save %",
     averageMetric: "GAA",
     shutoutMetric: "Shutouts",
-    advancedMetric: "HD Save %"
+    advancedMetric: "HD Save %",
+    period: "Quarter",
+    periodPlural: "Quarters"
   }
 };
 

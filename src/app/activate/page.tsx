@@ -22,6 +22,7 @@ function ActivateController() {
     const [email, setEmail] = useState(searchParams.get('email') || "");
     const [rosterData, setRosterData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [autoChecked, setAutoChecked] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Form Data
@@ -211,6 +212,9 @@ function ActivateController() {
                         setEmail={setEmail}
                         onNext={handleEmailNext}
                         onError={setError}
+                        isLoading={isLoading}
+                        setIsLoading={setIsLoading}
+                        autoChecked={autoChecked}
                     />
                 )}
 

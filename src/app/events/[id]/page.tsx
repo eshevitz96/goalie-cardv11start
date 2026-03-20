@@ -12,6 +12,7 @@ import Link from "next/link";
 import { deleteEvent } from "@/app/events/actions";
 import { useToast } from "@/context/ToastContext";
 import { Button } from "@/components/ui/Button";
+import { EventModal } from "@/components/goalie/EventModal";
 
 type EventData = {
     id: string;
@@ -52,6 +53,7 @@ export default function EventDetailsPage() {
     const [data, setData] = useState<EventData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showEditModal, setShowEditModal] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -421,6 +423,12 @@ export default function EventDetailsPage() {
                             {data.createdBy === data.currentUser && !isSession && (
                                 <div className="mt-4 pt-4 border-t border-border">
                                     <button
+                                        onClick={() => setShowEditModal(true)}
+                                        className="w-full py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold uppercase tracking-widest transition-colors rounded-lg mb-2"
+                                    >
+                                        Edit Event Details
+                                    </button>
+                                    <button
                                         onClick={async () => {
                                             try {
                                                 const result = await deleteEvent(data.id);
@@ -443,6 +451,21 @@ export default function EventDetailsPage() {
                     </motion.div>
                 </div>
             </div>
+            {showEditModal && data && (
+                <EventModal 
+                    isOpen={showEditModal} 
+                    onClose={() => setShowEditModal(false)}
+                    goalieId={data.currentUser}
+                    onAdded={() => window.location.reload()}
+                    editEvent={{
+                        id: data.id,
+                        name: data.title,
+                        date: data.date,
+                        location: data.location,
+                        scouting_report: data.scouting_report || data.description
+                    }}
+                />
+            )}
         </main>
     );
 }

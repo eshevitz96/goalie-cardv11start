@@ -33,7 +33,9 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
         activity_type: null,
         skip_reason: null,
         injury_details: null,
-        injury_expected_return: null
+        injury_expected_return: null,
+        soreness: 2,
+        sleep_quality: 8
     });
     const [loading, setLoading] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -127,6 +129,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             mood: newReflection.mood,
             activity_type: newReflection.activity_type,
             skip_reason: newReflection.skip_reason,
+            soreness: newReflection.soreness,
+            sleep_quality: newReflection.sleep_quality,
             created_at: new Date().toISOString()
         };
 
@@ -145,6 +149,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             }
             localStorage.setItem('demo_latest_mood', newEntry.mood); // Signal to parent
             localStorage.setItem('demo_latest_content', newEntry.content); // Signal text context to AI
+            localStorage.setItem('demo_latest_soreness', String(newEntry.soreness));
+            localStorage.setItem('demo_latest_sleep', String(newEntry.sleep_quality));
 
             // Dispatch a custom event so parent can listen
             window.dispatchEvent(new Event('demo_reflection_updated'));
@@ -185,6 +191,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                 skip_reason: newReflection.skip_reason,
                 injury_expected_return: newReflection.injury_expected_return || null,
                 injury_details: newReflection.injury_details || null,
+                soreness: newReflection.soreness,
+                sleep_quality: newReflection.sleep_quality,
                 file_url: finalFileUrl
             });
         }
@@ -381,6 +389,47 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                         exit={{ height: 0, opacity: 0 }}
                         className="mb-6 bg-muted/30 rounded-2xl p-4 border border-border overflow-hidden"
                     >
+                        {/* THE V11 READINESS INPUTS */}
+                        <div className="grid grid-cols-2 gap-4 mb-6 pt-2">
+                             <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Body Soreness</label>
+                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded ${newReflection.soreness > 7 ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'}`}>
+                                        {newReflection.soreness}/10
+                                    </span>
+                                </div>
+                                <input 
+                                    type="range" min="1" max="10" 
+                                    value={newReflection.soreness}
+                                    onChange={(e) => setNewReflection({...newReflection, soreness: parseInt(e.target.value)})}
+                                    className="w-full accent-primary h-1 bg-border rounded-lg appearance-none cursor-pointer"
+                                />
+                                <div className="flex justify-between text-[8px] font-bold text-muted-foreground/50 uppercase tracking-tighter">
+                                    <span>Fresh</span>
+                                    <span>Sore</span>
+                                </div>
+                             </div>
+
+                             <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sleep Quality</label>
+                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded ${newReflection.sleep_quality < 4 ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'}`}>
+                                        {newReflection.sleep_quality}/10
+                                    </span>
+                                </div>
+                                <input 
+                                    type="range" min="1" max="10" 
+                                    value={newReflection.sleep_quality}
+                                    onChange={(e) => setNewReflection({...newReflection, sleep_quality: parseInt(e.target.value)})}
+                                    className="w-full accent-primary h-1 bg-border rounded-lg appearance-none cursor-pointer"
+                                />
+                                <div className="flex justify-between text-[8px] font-bold text-muted-foreground/50 uppercase tracking-tighter">
+                                    <span>Poor</span>
+                                    <span>Deep</span>
+                                </div>
+                             </div>
+                        </div>
+
                         <div className="mb-4">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Intensity / Session Type</label>
                             <div className="flex flex-wrap gap-2 mb-4">
