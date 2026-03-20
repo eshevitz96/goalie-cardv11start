@@ -30,7 +30,7 @@ interface FilmAnalysisWorkspaceProps {
   sport: SupportedSport;
   videoUrl: string;
   initialClips?: Clip[];
-  events?: { id: string; name: string }[];
+  events?: { id: string; name: string; date?: string }[];
   onComplete?: (sessionData: any) => void;
 }
 
@@ -57,6 +57,21 @@ export function FilmAnalysisWorkspace({
   const playbackTimerRef = useRef<NodeJS.Timeout | null>(null);
   const activeClip = activeClipIndex !== null ? clips[activeClipIndex] : null;
   const terms = getSportTerms(sport);
+
+  // Sync Opponent & Date from Event
+  useEffect(() => {
+    if (associatedEventId) {
+        const event = events.find(e => e.id === associatedEventId);
+        if (event) {
+            // Extract opponent from name (e.g. "Game: vs Rangers" -> "Rangers")
+            const cleanName = event.name.replace(/Game:\s*vs\s*/i, '').replace(/Practice:\s*/i, '');
+            setOpponentName(cleanName);
+            if (event.date) {
+                setGameDate(new Date(event.date).toISOString().split('T')[0]);
+            }
+        }
+    }
+  }, [associatedEventId, events]);
 
   const addManualClip = () => {
     const newId = `manual-${Date.now()}`;
@@ -144,7 +159,7 @@ export function FilmAnalysisWorkspace({
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-loose">Chart every shot and generate a seasonal aggregate report.</p>
                     </div>
                 </button>
-
+ 
                 <button 
                     onClick={() => setSessionType('clips')}
                     className="group bg-card/40 border border-border/30 rounded-[2.5rem] p-10 hover:border-primary/50 transition-all text-left flex flex-col gap-6"
@@ -206,20 +221,11 @@ export function FilmAnalysisWorkspace({
             <div className="bg-primary/20 text-primary border border-primary/30 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[.25em] flex items-center gap-2 shadow-2xl">
                 <Brain size={12} /> Draft Session Active
             </div>
-            <div className="flex items-center gap-2">
-                <input 
-                    type="text" 
-                    value={opponentName}
-                    onChange={(e) => setOpponentName(e.target.value)}
-                    placeholder="Opponent Name"
-                    className="bg-transparent border-b border-border/50 text-xl font-black uppercase tracking-tighter outline-none focus:border-primary px-1 w-[200px]"
-                />
-                <input 
-                    type="date" 
-                    value={gameDate}
-                    onChange={(e) => setGameDate(e.target.value)}
-                    className="bg-card/50 border border-border/40 rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-foreground outline-none"
-                />
+            <div className="flex items-center gap-3">
+                <h2 className="text-xl font-black uppercase tracking-tighter text-foreground">{opponentName}</h2>
+                <div className="bg-card/50 border border-border/40 rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    {new Date(gameDate).toLocaleDateString()}
+                </div>
             </div>
         </div>
         <div className="flex items-center gap-3">
