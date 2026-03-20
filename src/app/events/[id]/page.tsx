@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { motion } from "framer-motion";
@@ -42,7 +42,7 @@ type EventData = {
     results?: { home: number; away: number; periods: number[] };
 };
 
-export default function EventDetailsPage() {
+function EventDetailsController() {
     const params = useParams();
     const id = params?.id as string;
     const searchParams = useSearchParams();
@@ -467,5 +467,17 @@ export default function EventDetailsPage() {
                 />
             )}
         </main>
+    );
+}
+
+export default function EventDetailsPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-black flex items-center justify-center text-white">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary"></div>
+            </div>
+        }>
+            <EventDetailsController />
+        </Suspense>
     );
 }
