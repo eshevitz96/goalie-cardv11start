@@ -63,12 +63,12 @@ export default function EntryPortal() {
                                 style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
                             />
                             <motion.h1
-                                className="text-5xl md:text-7xl font-black italic text-foreground tracking-tighter text-center uppercase"
+                                className="text-5xl md:text-7xl font-black text-foreground tracking-tighter text-center"
                                 initial={{ scale: 0.9, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 transition={{ duration: 0.4, ease: "easeOut" }}
                             >
-                                Goalie <span className="text-primary uppercase">Card</span>
+                                Goalie Card
                             </motion.h1>
                         </div>
 

@@ -47,8 +47,8 @@ export default function SignupPage() {
 
             <div className="w-full max-w-md relative z-10">
                 <div className="text-center mb-10">
-                    <h1 className="text-4xl font-black italic tracking-tighter text-foreground mb-2">
-                        GOALIE <span className="text-primary">CARD</span>
+                    <h1 className="text-4xl font-black tracking-tighter text-foreground mb-2">
+                        Goalie Card
                     </h1>
                     <p className="text-muted-foreground font-medium">Join the standard for goalie development.</p>
                 </div>
