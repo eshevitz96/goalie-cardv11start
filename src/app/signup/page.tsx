@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { Loader2, Mail, ArrowRight, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { checkUserStatus } from "@/app/actions";
+import { useTheme } from "next-themes";
 
 export default function SignupPage() {
     const router = useRouter();
+    const { theme } = useTheme();
     const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -46,8 +48,17 @@ export default function SignupPage() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
             <div className="w-full max-w-md relative z-10">
-                <div className="text-center mb-10">
-                    <h1 className="text-4xl font-black tracking-tighter text-foreground mb-2">
+                <div className="text-center mb-10 flex justify-center">
+                    <h1 className="text-4xl font-black tracking-tighter text-foreground flex items-center gap-2">
+                        <img 
+                            src="/flower-logo.png?v=5" 
+                            alt="CIC Logo" 
+                            width={42} 
+                            height={42} 
+                            draggable={false}
+                            className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                            style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                        />
                         Goalie Card
                     </h1>
                     <p className="text-muted-foreground font-medium">Join the standard for goalie development.</p>

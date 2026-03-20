@@ -54,12 +54,12 @@ export function ActivateEmailStep({ email, setEmail, onNext, onError, isLoading,
     return (
         <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
             <div className="text-center mb-8 flex justify-center">
-                <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter flex items-center gap-1.5 md:gap-2">
+                <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter flex items-center gap-1.5">
                     <img 
                         src="/flower-logo.png?v=5" 
                         alt="CIC Logo" 
-                        width={34} 
-                        height={34} 
+                        width={44} 
+                        height={44} 
                         draggable={false}
                         className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
                         style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}

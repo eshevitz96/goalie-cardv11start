@@ -52,12 +52,12 @@ export default function EntryPortal() {
                         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }} // Apple-esque ease-out
                         className="flex flex-col items-center justify-center space-y-6"
                     >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                             <img
                                 src="/flower-logo.png?v=5"
                                 alt="CIC Logo"
-                                width={56}
-                                height={56}
+                                width={72}
+                                height={72}
                                 draggable={false}
                                 className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
                                 style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}

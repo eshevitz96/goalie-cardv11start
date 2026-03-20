@@ -28,12 +28,12 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
             />
 
             <div className="flex flex-col justify-center">
-                <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter leading-none flex items-center gap-1.5 md:gap-2">
+                <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter leading-none flex items-center gap-1.5">
                     <img 
                         src="/flower-logo.png?v=5" 
                         alt="CIC Logo" 
-                        width={34} 
-                        height={34} 
+                        width={42} 
+                        height={42} 
                         draggable={false}
                         className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
                         style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
