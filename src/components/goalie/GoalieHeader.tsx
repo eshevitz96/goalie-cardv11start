@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Settings, Plus, LogOut, Bell, Search, ShieldCheck } from 'lucide-react';
+import { BrandLogo } from "@/components/ui/BrandLogo";
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
@@ -28,18 +29,7 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
             />
 
             <div className="flex flex-col justify-center">
-                <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter leading-none flex items-center gap-2">
-                    <img 
-                        src="/flower-logo.png?v=5" 
-                        alt="CIC Logo" 
-                        width={56} 
-                        height={56} 
-                        draggable={false}
-                        className="object-contain pointer-events-none select-none opacity-100 transition-all duration-300"
-                        style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
-                    />
-                    Goalie Card
-                </h1>
+                <BrandLogo />
             </div>
             <div className="flex items-center gap-3 md:gap-4">
                 {/* Search Trigger */}

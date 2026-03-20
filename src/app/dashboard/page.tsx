@@ -12,6 +12,7 @@ import { useToast } from "@/context/ToastContext";
 import { useTheme } from "next-themes";
 import { supabase } from "@/utils/supabase/client";
 import { getUserType } from "@/utils/user-type";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 import { PaymentList } from "@/components/PaymentList";
 import { ScheduleRequest } from "@/components/ScheduleRequest";
@@ -73,18 +74,7 @@ export default function Dashboard() {
     if (isLoading) {
         return (
             <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-8 transition-colors duration-500">
-                <div className="flex items-center gap-2">
-                    <img 
-                        src="/flower-logo.png?v=5" 
-                        alt="CIC Logo" 
-                        width={48} 
-                        height={48} 
-                        draggable={false}
-                        className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
-                        style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
-                    />
-                    <h1 className="text-3xl font-black text-foreground tracking-tighter">Goalie Card</h1>
-                </div>
+                <BrandLogo textClassName="text-3xl font-medium tracking-tight" />
                 <div className="flex flex-col items-center gap-3">
                     <Loader2 className="animate-spin text-primary/30" size={32} />
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">Initializing V11 Hub</p>
@@ -97,18 +87,7 @@ export default function Dashboard() {
     if (goalies.length === 0) {
         return (
             <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-8 transition-colors duration-500">
-                <div className="flex items-center gap-2">
-                    <img 
-                        src="/flower-logo.png?v=5" 
-                        alt="CIC Logo" 
-                        width={48} 
-                        height={48} 
-                        draggable={false}
-                        className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
-                        style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
-                    />
-                    <h1 className="text-3xl font-black text-foreground tracking-tighter">Goalie Card</h1>
-                </div>
+                <BrandLogo textClassName="text-3xl font-medium tracking-tight" />
                 <div className="flex flex-col items-center gap-3">
                     <Loader2 className="animate-spin text-primary/30" size={32} />
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">Syncing Active Profile</p>
@@ -120,18 +99,7 @@ export default function Dashboard() {
     return (
         <Suspense fallback={
             <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-8 transition-colors duration-500">
-                <div className="flex items-center gap-2">
-                    <img 
-                        src="/flower-logo.png?v=5" 
-                        alt="CIC Logo" 
-                        width={48} 
-                        height={48} 
-                        draggable={false}
-                        className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
-                        style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
-                    />
-                    <h1 className="text-3xl font-black text-foreground tracking-tighter">Goalie Card</h1>
-                </div>
+                <BrandLogo textClassName="text-3xl font-medium tracking-tight" />
                 <div className="flex flex-col items-center gap-3">
                     <Loader2 className="animate-spin text-primary/30" size={32} />
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">Preparing Hub</p>

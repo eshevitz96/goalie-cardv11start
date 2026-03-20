@@ -8,6 +8,7 @@ import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import { motion, AnimatePresence } from "framer-motion";
 import { checkUserStatus } from "@/app/actions";
 import { useTheme } from "next-themes";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -142,18 +143,10 @@ export default function LoginPage() {
 
             <div className="w-full max-w-md relative z-10">
                 <div className="text-center mb-10 flex justify-center">
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-foreground flex items-center gap-2">
-                        <img 
-                            src="/flower-logo.png?v=5" 
-                            alt="CIC Logo" 
-                            width={52} 
-                            height={52} 
-                            draggable={false}
-                            className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
-                            style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
-                        />
-                        Goalie Card
-                    </h1>
+                    <BrandLogo
+                        size={64}
+                        textClassName="text-4xl md:text-5xl font-medium tracking-tight"
+                    />
                 </div>
 
                 <AnimatePresence mode="wait">

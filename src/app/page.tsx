@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { supabase } from "@/utils/supabase/client";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 export default function EntryPortal() {
     const router = useRouter();
@@ -52,25 +53,10 @@ export default function EntryPortal() {
                         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }} // Apple-esque ease-out
                         className="flex flex-col items-center justify-center space-y-6"
                     >
-                        <div className="flex items-center gap-3">
-                            <img
-                                src="/flower-logo.png?v=5"
-                                alt="CIC Logo"
-                                width={72}
-                                height={72}
-                                draggable={false}
-                                className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
-                                style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
-                            />
-                            <motion.h1
-                                className="text-5xl md:text-7xl font-black text-foreground tracking-tighter text-center"
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                transition={{ duration: 0.4, ease: "easeOut" }}
-                            >
-                                Goalie Card
-                            </motion.h1>
-                        </div>
+                        <BrandLogo 
+                            size={84} 
+                            textClassName="text-5xl md:text-7xl font-medium tracking-tight" 
+                        />
 
 
                     </motion.div>
