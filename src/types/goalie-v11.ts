@@ -40,7 +40,7 @@ export interface GoalieContext {
 }
 
 export type ShotResult = 'save' | 'goal' | 'miss' | 'blocked' | 'pipe' | 'penalty-shot' | 'empty-net';
-export type ShotType = 'wrist' | 'snap' | 'slap' | 'backhand' | 'deflection' | 'wrap-around';
+export type ShotType = 'wrist' | 'snap' | 'slap' | 'backhand' | 'deflection' | 'wrap-around' | 'overhand' | 'sidearm' | 'underhand' | 'bounce' | 'behind-back' | 'unspecified' | 'standard';
 
 export interface ShotEvent {
   id: string;

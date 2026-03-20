@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { GameAnalysisSurface } from './GameAnalysisSurface';
 import { GameReport } from './GameReport';
-import { SupportedSport, ShotEvent, ShotResult } from '@/types/goalie-v11';
+import { SupportedSport, ShotEvent, ShotResult, ShotType } from '@/types/goalie-v11';
 import { Button } from '@/components/ui/Button';
 import { getSportTerms } from '@/utils/sport-language';
 
@@ -24,6 +24,7 @@ interface Clip {
   netX?: number;
   netY?: number;
   period?: number;
+  shotType?: string;
 }
 
 interface FilmAnalysisWorkspaceProps {
@@ -187,7 +188,7 @@ export function FilmAnalysisWorkspace({
             date={gameDate}
             shots={clips.filter(c => c.status === 'plotted').map(c => ({
                 id: c.id, gameId: associatedEventId, sport, result: (c.type === 'goal' ? 'goal' : 'save') as ShotResult,
-                shotType: 'wrist', originX: c.plottedX || 0, originY: c.plottedY || 0,
+                shotType: (c.shotType || 'unspecified') as ShotType, originX: c.plottedX || 0, originY: c.plottedY || 0,
                 targetX: c.netX, targetY: c.netY || 0,
                 isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false,
                 period: c.period || 1
@@ -430,6 +431,34 @@ export function FilmAnalysisWorkspace({
                                             <option value="3">{terms.period[0]}3</option>
                                             {sport.includes('lacrosse') && <option value="4">{terms.period[0]}4</option>}
                                             <option value="5">OT</option>
+                                        </>
+                                    )}
+                                </select>
+                                <select
+                                    value={clip.shotType || 'standard'}
+                                    onChange={(e) => {
+                                        const updated = [...clips];
+                                        updated[i].shotType = e.target.value;
+                                        setClips(updated);
+                                    }}
+                                    className="flex-1 bg-secondary/50 border border-border/20 rounded-lg text-[8px] font-bold px-1"
+                                >
+                                    <option value="standard">Type</option>
+                                    {sport.includes('hockey') ? (
+                                        <>
+                                            <option value="wrist">Wrist</option>
+                                            <option value="slap">Slap</option>
+                                            <option value="snap">Snap</option>
+                                            <option value="backhand">Backhand</option>
+                                            <option value="tip">Tip</option>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <option value="overhand">Overhand</option>
+                                            <option value="sidearm">Sidearm</option>
+                                            <option value="underhand">Underhand</option>
+                                            <option value="bounce">Bounce</option>
+                                            <option value="behind-back">BTB</option>
                                         </>
                                     )}
                                 </select>

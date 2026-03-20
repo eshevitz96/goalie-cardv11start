@@ -28,14 +28,14 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
             />
 
             <div className="flex flex-col justify-center">
-                <h1 className="text-2xl font-medium text-foreground tracking-tight leading-none flex items-center gap-3">
+                <h1 className="text-2xl font-medium text-foreground tracking-tight leading-none flex items-center gap-0.5">
                     <img 
                         src="/flower-logo.png?v=5" 
                         alt="CIC Logo" 
-                        width={48} 
-                        height={48} 
+                        width={64} 
+                        height={64} 
                         draggable={false}
-                        className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
+                        className="object-contain pointer-events-none select-none opacity-100 transition-all duration-300"
                         style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
                     />
                     Goalie Card

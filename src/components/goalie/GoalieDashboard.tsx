@@ -396,7 +396,7 @@ export function GoalieDashboard({
                                             label: getSportTerms(goalieContext.sport).averageMetric, 
                                             value: activeGoalie.stats?.gaa || '0.00' 
                                         },
-                                        { label: getSportTerms(goalieContext.sport).advancedMetric, value: '82.5' }
+                                        { label: 'Shutouts', value: '2' }
                                     ]}
                                 />
                                 <div className="grid grid-cols-2 gap-3">
@@ -570,7 +570,7 @@ export function GoalieDashboard({
                                                 sport: data.sport,
                                                 period: c.period || 1,
                                                 result: c.type === 'goal' ? 'goal' : 'save',
-                                                shotType: 'wrist',
+                                                shotType: c.shotType || 'unspecified',
                                                 originX: c.plottedX,
                                                 originY: c.plottedY,
                                                 targetX: c.netX,

@@ -63,7 +63,6 @@ export default function SeasonClipsPage() {
                 created_at: s.created_at,
                 event_name: s.events?.name || 'Unknown Game',
                 video_url: 'https://example.com/mock-video.mp4',
-                speed: `${Math.floor(Math.random() * 30) + 65} MPH`, // Mocking for high-fidelity feel
                 has_traffic: s.has_traffic
             })) || []);
 
@@ -171,7 +170,6 @@ export default function SeasonClipsPage() {
 
                                     {/* Stats Badge */}
                                     <div className="absolute bottom-4 right-4 z-20 flex flex-col items-end gap-1">
-                                        <div className="text-[10px] font-black text-white/90 drop-shadow-md uppercase tracking-widest">{clip.speed}</div>
                                         <div className="text-[8px] font-bold text-white/50 uppercase tracking-widest">{new Date(clip.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
                                     </div>
                                 </div>
