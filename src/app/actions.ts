@@ -554,17 +554,19 @@ export async function addAthleteToTeam(teamId: string, emailOrId: string) {
             ? supabaseAdmin.from('roster_uploads').select('id').ilike('email', emailOrId.trim()) 
             : supabaseAdmin.from('roster_uploads').select('id').eq('id', emailOrId);
 
-        const { data: roster, error: rosterError } = await query.single();
+        const { data: rosterItems, error: rosterError } = await query;
 
-        if (rosterError || !roster) {
+        if (rosterError || !rosterItems || rosterItems.length === 0) {
             return { success: false, error: "Goalie record not found. Please ensure they have activated their card." };
         }
 
-        // Link Roster to Team
+        const rosterIds = rosterItems.map(item => item.id);
+
+        // Link all matched cards to the team
         const { error: updateError } = await supabaseAdmin
             .from('roster_uploads')
             .update({ team_id: teamId })
-            .eq('id', roster.id);
+            .in('id', rosterIds);
 
         if (updateError) throw updateError;
 

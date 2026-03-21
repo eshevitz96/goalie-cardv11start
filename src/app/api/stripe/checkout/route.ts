@@ -9,7 +9,7 @@ export async function POST(req: Request) {
         const { priceId, priceData, email, userId, returnUrl, mode, metadata = {} } = body;
 
         if (!userId || (!priceId && !priceData)) {
-            return new NextResponse("Missing required fields", { status: 400 });
+            return NextResponse.json({ error: "Missing required fields (Auth or Price info)" }, { status: 400 });
         }
 
         const lineItems = priceId
@@ -47,8 +47,11 @@ export async function POST(req: Request) {
         const session = await stripe.checkout.sessions.create(sessionConfig);
 
         return NextResponse.json({ url: session.url });
-    } catch (error) {
+    } catch (error: any) {
         console.error("[STRIPE_CHECKOUT]", error);
-        return new NextResponse("Internal Error", { status: 500 });
+        return NextResponse.json({ 
+            error: error.message || "An unexpected payment error occurred.",
+            details: process.env.NODE_ENV === 'development' ? error : undefined
+        }, { status: 500 });
     }
 }

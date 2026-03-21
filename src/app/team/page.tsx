@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { Button } from "@/components/ui/Button";
+import { SquadIntelligence } from "@/components/team/SquadIntelligence";
 
 interface TeamData {
     id: string;
@@ -102,14 +103,14 @@ export default function TeamDashboardPage() {
             // 3. Fetch Roster Members
             const { data: rosterData } = await supabase
                 .from('roster_uploads')
-                .select('id, parent_name, athlete_name')
+                .select('id, parent_name, goalie_name')
                 .eq('team_id', teamsData.id);
             
             // Map members with some dummy data for high-fidelity feel if needed
             setRoster(rosterData?.map(m => ({
                 id: m.id,
                 parent_name: m.parent_name,
-                athlete_name: m.athlete_name || m.parent_name,
+                athlete_name: m.goalie_name || m.parent_name || 'Anonymous Athlete',
                 is_active: true,
                 last_usage: '2 days ago'
             })) || []);
@@ -154,6 +155,7 @@ export default function TeamDashboardPage() {
             });
 
             const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Payment Gateway Error");
             if (data.url) window.location.href = data.url;
         } catch (err: any) {
             toast.error("Stripe Connection Failed: " + err.message);
@@ -281,7 +283,7 @@ export default function TeamDashboardPage() {
                             onClick={handleTopUp}
                             className="group flex items-center gap-3 px-6 py-3 bg-white text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary transition-all shadow-xl shadow-white/5"
                         >
-                            <Plus size={16} /> Top Up Shared Fund
+                            <Plus size={16} /> Activate Full Squad Access
                         </button>
                     </div>
                 </div>
@@ -301,26 +303,26 @@ export default function TeamDashboardPage() {
                             <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-[80px] pointer-events-none group-hover:bg-primary/30 transition-all duration-700" />
                             
                             <div className="relative z-10">
-                                <div className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4">Team Wallet</div>
+                                <div className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4">Organization Hub</div>
                                 <div className="flex items-end gap-2 mb-1">
                                     <div className="text-6xl font-black text-white">{balance}</div>
-                                    <div className="text-xs font-black text-primary uppercase pb-2 tracking-widest">Credits</div>
+                                    <div className="text-xs font-black text-primary uppercase pb-2 tracking-widest">Active Seats</div>
                                 </div>
                                 <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
-                                    Shared balance across {roster.length} athletes
+                                    All-access performance tracking for {roster.length} athletes
                                 </div>
                                 
                                 <hr className="my-6 border-white/5" />
                                 
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Active Seats</div>
-                                        <div className="text-sm font-black">{roster.length} / 25</div>
+                                        <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Squad Capacity</div>
+                                        <div className="text-sm font-black">{roster.length} / {Math.max(25, balance)}</div>
                                     </div>
                                     <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
                                         <motion.div 
                                             initial={{ width: 0 }}
-                                            animate={{ width: `${(roster.length / 25) * 100}%` }}
+                                            animate={{ width: `${(roster.length / Math.max(25, balance)) * 100}%` }}
                                             className="h-full bg-primary"
                                         />
                                     </div>
@@ -331,26 +333,32 @@ export default function TeamDashboardPage() {
                         {/* Quick Action Info */}
                         <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
                             <h4 className="flex items-center gap-2 text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-4">
-                                <Info size={14} className="text-primary" /> Team Policies
+                                <Info size={14} className="text-primary" /> Squad Policies
                             </h4>
                             <p className="text-[10px] text-zinc-500 leading-relaxed uppercase tracking-wider">
-                                All roster members have permission to use shared fund credits for game processing and coaching feedback.
+                                All verified squad members have all-access to high-fidelity analytics, game processing, and coaching reflections.
                             </p>
                         </div>
                     </motion.div>
 
-                    {/* Main Roster Management */}
+                    {/* Main Roster & Intel Management */}
                     <motion.div 
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="lg:col-span-3 space-y-6"
+                        className="lg:col-span-3 space-y-8"
                     >
+                        {/* Squad Intelligence (V11 Organization Hub Special) */}
+                        <SquadIntelligence 
+                            teamId={team.id} 
+                            rosterIds={roster.map(m => m.id)} 
+                        />
+
                         {/* ROSTER TABLE (The Core) */}
                         <div className="bg-white/5 border border-white/10 rounded-[2rem] overflow-hidden">
                             <div className="p-8 border-b border-white/5 flex items-center justify-between">
                                 <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-3">
-                                    <Users size={20} className="text-primary" /> Roster of Goalie Athletes
+                                    <Users size={20} className="text-primary" /> Verified Performance Roster
                                 </h3>
                                 <div className="flex gap-2">
                                     <AnimatePresence>
@@ -422,10 +430,9 @@ export default function TeamDashboardPage() {
                             </div>
                         </div>
 
-                        {/* Recent Shared History */}
                         <div className="bg-white/5 border border-white/10 rounded-[2rem] p-8">
                             <h4 className="text-sm font-black uppercase tracking-tighter flex items-center gap-2 mb-6">
-                                <History size={16} className="text-primary" /> Internal Audit Log
+                                <History size={16} className="text-primary" /> Membership Activity Log
                             </h4>
                             <div className="space-y-4">
                                 {history.length > 0 ? history.map(tx => (
