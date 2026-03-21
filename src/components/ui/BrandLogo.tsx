@@ -19,7 +19,7 @@ export function BrandLogo({
   className, 
   size, 
   withText = true,
-  textClassName = "text-2xl font-medium tracking-tight"
+  textClassName = "text-2xl font-black tracking-tighter"
 }: BrandProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);

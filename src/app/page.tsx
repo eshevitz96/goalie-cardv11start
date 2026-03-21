@@ -55,7 +55,7 @@ export default function EntryPortal() {
                     >
                         <BrandLogo 
                             size={68} 
-                            textClassName="text-5xl md:text-7xl font-medium tracking-tight" 
+                            textClassName="text-5xl md:text-7xl font-black tracking-tighter" 
                         />
 
 
