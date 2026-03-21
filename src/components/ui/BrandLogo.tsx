@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { twMerge } from 'tailwind-merge';
 
@@ -17,27 +17,39 @@ interface BrandProps {
  */
 export function BrandLogo({ 
   className, 
-  size = 64, 
+  size, 
   withText = true,
   textClassName = "text-2xl font-medium tracking-tight"
 }: BrandProps) {
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
+  const isDark = mounted && resolvedTheme === 'dark';
+
   return (
-    <div className={twMerge("flex items-center gap-0.5", className)}>
-      <div className="relative flex items-center justify-center overflow-hidden" style={{ width: size, height: size }}>
+    <div 
+      className={twMerge("flex items-center gap-[0.4ch]", textClassName, className)}
+      style={size ? { fontSize: `${size}px` } : undefined}
+    >
+      <div className="relative flex items-center justify-center shrink-0" style={{ height: '0.65em', width: '0.65em' }}>
         <img
           src="/flower-logo.png?v=5"
           alt="Goalie Card Logo"
-          width={size}
-          height={size}
           draggable={false}
-          className="object-contain pointer-events-none select-none opacity-100 transition-all duration-300"
-          style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+          className="h-full w-full object-contain pointer-events-none select-none opacity-100 transition-all duration-300"
+          style={{ 
+            filter: isDark ? 'invert(1)' : 'none',
+            display: mounted ? 'block' : 'none' 
+          }}
         />
+        {!mounted && <div style={{ height: '0.65em', width: '0.65em' }} />}
       </div>
       {withText && (
-        <span className={twMerge("text-foreground leading-none whitespace-nowrap", textClassName)}>
+        <span className="leading-none whitespace-nowrap">
           Goalie Card
         </span>
       )}

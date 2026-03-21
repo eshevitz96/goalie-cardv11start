@@ -13,6 +13,7 @@ import { RosterItem } from '@/types';
 import { FeedbackTable } from '@/components/admin/FeedbackTable';
 import { BetaSurveyTable } from '@/components/admin/BetaSurveyTable';
 import { CreditManager } from '@/components/admin/CreditManager';
+import { DataIntegrityWidget } from '@/components/admin/DataIntegrityWidget';
 import { supabase } from '@/utils/supabase/client';
 
 export default function AdminDashboard() {
@@ -132,7 +133,10 @@ export default function AdminDashboard() {
                         </div>
 
                         {/* Stats Sidebar */}
-                        <AdminStats dbData={dbData} />
+                        <div className="space-y-8">
+                            <AdminStats dbData={dbData} />
+                            <DataIntegrityWidget />
+                        </div>
                     </div>
                 )}
             </main>

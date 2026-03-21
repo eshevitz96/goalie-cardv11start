@@ -144,7 +144,7 @@ export default function LoginPage() {
             <div className="w-full max-w-md relative z-10">
                 <div className="text-center mb-10 flex justify-center">
                     <BrandLogo
-                        size={64}
+                        size={48}
                         textClassName="text-4xl md:text-5xl font-medium tracking-tight"
                     />
                 </div>

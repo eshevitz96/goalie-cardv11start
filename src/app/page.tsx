@@ -54,7 +54,7 @@ export default function EntryPortal() {
                         className="flex flex-col items-center justify-center space-y-6"
                     >
                         <BrandLogo 
-                            size={84} 
+                            size={68} 
                             textClassName="text-5xl md:text-7xl font-medium tracking-tight" 
                         />
 

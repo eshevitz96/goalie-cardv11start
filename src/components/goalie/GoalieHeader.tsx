@@ -17,7 +17,7 @@ interface GoalieHeaderProps {
 
 export function GoalieHeader({ activeGoalieName, onLogout, notifications }: GoalieHeaderProps) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const { userId } = useAuth();
+    const { userId, userRole } = useAuth();
     const { theme } = useTheme();
 
     return (
@@ -57,6 +57,13 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                         <Link href="/dashboard/profile" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                             <Settings size={16} /> Account Settings
                         </Link>
+                        
+                        {userRole === 'admin' && (
+                            <Link href="/coach" className="w-full text-left px-3 py-2 rounded-lg text-sm text-primary font-bold hover:bg-primary/10 transition-colors flex items-center gap-2 mb-1">
+                                <ShieldCheck size={16} /> Admin Dashboard
+                            </Link>
+                        )}
+
                         <Link href="/activate" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                             <Plus size={16} /> Activate New Card
                         </Link>

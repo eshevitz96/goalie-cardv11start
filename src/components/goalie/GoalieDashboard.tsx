@@ -508,7 +508,12 @@ export function GoalieDashboard({
                 {/* Pro Insights / Admin Section */}
                 {(userRole === 'admin' || userRole === 'coach') && (
                     <div className="md:col-span-2 mt-8 mb-8 border-t border-border/10 pt-12">
+                       {/* Global Training Analytics - Admin Only */}
+                {userRole === 'admin' && (
+                    <div className="col-span-full">
                         <TrainingInsights />
+                    </div>
+                )}
                     </div>
                 )}
 

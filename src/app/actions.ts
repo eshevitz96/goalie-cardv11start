@@ -470,6 +470,7 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
         const insertShots = shots.map(s => ({
             event_id: validEventId,
             goalie_id: roster.linked_user_id,
+            roster_id: rosterId, // New V11 anchor
             sport: s.sport,
             period: s.period,
             result: s.result,
