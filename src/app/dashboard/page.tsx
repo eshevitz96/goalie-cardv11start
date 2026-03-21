@@ -113,7 +113,7 @@ export default function Dashboard() {
                 notification={null}
                 notifications={[]}
                 onDismissNotification={() => {}}
-                onLogout={() => router.push('/login')}
+                onLogout={() => auth.logout()}
                 onRegister={handleRegisterGoalie}
                 onLogAction={() => fetchMyGoalies(false)}
                 onCoachUpdate={() => fetchMyGoalies(false)}

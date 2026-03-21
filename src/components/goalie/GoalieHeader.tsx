@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Settings, Plus, LogOut, Bell, Search, ShieldCheck } from 'lucide-react';
+import { User, Settings, Plus, LogOut, Bell, Search, ShieldCheck, Users, LayoutDashboard } from 'lucide-react';
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -31,7 +31,33 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
             <div className="flex flex-col justify-center">
                 <BrandLogo />
             </div>
+            
             <div className="flex items-center gap-3 md:gap-4">
+                {/* Dashboard & Quick Access Shortcuts */}
+                {userRole === 'admin' && (
+                    <Link href="/admin">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Admin Portal"
+                            className="h-10 w-10 rounded-full border border-border hover:border-indigo-500 hover:bg-indigo-500/10 p-0 transition-all"
+                        >
+                            <ShieldCheck size={18} className="text-indigo-500" />
+                        </Button>
+                    </Link>
+                )}
+
+                <Link href="/team">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Organization Hub"
+                        className="h-10 w-10 rounded-full border border-border hover:border-primary hover:bg-primary/10 p-0 transition-all"
+                    >
+                        <Users size={18} className="text-primary" />
+                    </Button>
+                </Link>
+
                 {/* Search Trigger */}
                 <Button
                     variant="ghost"
@@ -67,6 +93,7 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                         <Link href="/activate" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                             <Plus size={16} /> Activate New Card
                         </Link>
+                        
                         <Link href="/team" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                             <ShieldCheck size={16} /> Team Dashboard
                         </Link>

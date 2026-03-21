@@ -392,11 +392,11 @@ export default function TeamDashboardPage() {
                                 <table className="w-full text-left">
                                     <thead>
                                         <tr className="bg-black/40">
-                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Athlete Name</th>
-                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Player ID</th>
-                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Position</th>
-                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Recent Usage</th>
-                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Status</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 tracking-widest">Athlete Name</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 tracking-widest">Player ID</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 tracking-widest">Position</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 tracking-widest">Recent Usage</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 tracking-widest">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
