@@ -145,7 +145,7 @@ export default function LoginPage() {
                 <div className="text-center mb-10 flex justify-center">
                     <BrandLogo
                         size={48}
-                        textClassName="text-4xl md:text-5xl font-black tracking-tighter"
+                        textClassName="text-4xl md:text-5xl font-medium tracking-tight"
                     />
                 </div>
 
