@@ -7,43 +7,39 @@ import { TrendingUp, Users, Target, Activity, Loader2, ShieldCheck, ChevronRight
 import { motion, AnimatePresence } from 'framer-motion';
 import { twMerge } from 'tailwind-merge';
 
-interface SquadIntelProps {
-    teamId: string;
-    rosterIds: string[];
+interface SquadMember {
+    id: string;
+    athlete_name: string;
 }
 
-export function SquadIntelligence({ teamId, rosterIds }: SquadIntelProps) {
-    const [shots, setShots] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+interface SquadIntelProps {
+    teamId: string;
+    members: SquadMember[];
+}
+
+import { useSquadIntel } from '@/hooks/useSquadIntel';
+
+interface SquadMember {
+    id: string;
+    athlete_name: string;
+}
+
+interface SquadIntelProps {
+    teamId: string;
+    members: SquadMember[];
+}
+
+export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
+    const { 
+        shots, 
+        stats, 
+        isLoading, 
+        selectedGoalieId, 
+        setSelectedGoalieId 
+    } = useSquadIntel(members);
+
+    const { saves, goals, total, savePct } = stats;
     const [view, setView] = useState<'net' | 'field'>('net');
-
-    useEffect(() => {
-        if (rosterIds.length > 0) {
-            fetchSquadShots();
-        }
-    }, [rosterIds]);
-
-    const fetchSquadShots = async () => {
-        setIsLoading(true);
-        try {
-            const { data, error } = await supabase
-                .from('shot_events')
-                .select('*')
-                .in('roster_id', rosterIds);
-            
-            if (error) throw error;
-            setShots(data || []);
-        } catch (err) {
-            console.error("Squad Intel Error:", err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const saves = shots.filter(s => s.result === 'save').length;
-    const goals = shots.filter(s => s.result === 'goal').length;
-    const total = shots.length;
-    const savePct = total > 0 ? (saves / total) * 100 : 0;
 
     return (
         <section className="space-y-6">
@@ -54,10 +50,10 @@ export function SquadIntelligence({ teamId, rosterIds }: SquadIntelProps) {
                     <div className="flex items-center justify-between mb-8 relative z-10">
                         <div>
                             <h3 className="text-xl font-black uppercase tracking-tighter flex items-center gap-3 italic">
-                                <Target className="text-primary" size={20} /> Squad Heatmap
+                                <Target className="text-primary" size={20} /> Squad Intelligence
                             </h3>
                             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1 opacity-70">
-                                Aggregated shot density across {rosterIds.length} athletes
+                                {selectedGoalieId ? `Filtered for ${members.find(m => m.id === selectedGoalieId)?.athlete_name}` : `Aggregated performance across ${members.length} athletes`}
                             </p>
                         </div>
                         <div className="flex bg-black/50 p-1 rounded-xl border border-white/5">
@@ -70,6 +66,21 @@ export function SquadIntelligence({ teamId, rosterIds }: SquadIntelProps) {
                                 className={twMerge("px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all", view === 'field' ? "bg-white text-black" : "text-zinc-500 hover:text-white")}
                             >Shot Origin</button>
                         </div>
+                    </div>
+
+                    {/* Goalie Switcher Chips */}
+                    <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide z-10 relative">
+                        <button 
+                            onClick={() => setSelectedGoalieId(null)}
+                            className={twMerge("whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border", !selectedGoalieId ? "bg-primary border-primary text-black" : "bg-black/40 border-white/10 text-zinc-400 hover:border-white/30")}
+                        >Full Squad</button>
+                        {members.map(m => (
+                            <button 
+                                key={m.id}
+                                onClick={() => setSelectedGoalieId(m.id)}
+                                className={twMerge("whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border", selectedGoalieId === m.id ? "bg-white border-white text-black" : "bg-black/40 border-white/10 text-zinc-400 hover:border-white/30")}
+                            >{m.athlete_name}</button>
+                        ))}
                     </div>
 
                     <div className="relative aspect-square md:aspect-video w-full max-h-[400px]">

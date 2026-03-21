@@ -351,7 +351,7 @@ export default function TeamDashboardPage() {
                         {/* Squad Intelligence (V11 Organization Hub Special) */}
                         <SquadIntelligence 
                             teamId={team.id} 
-                            rosterIds={roster.map(m => m.id)} 
+                            members={roster} 
                         />
 
                         {/* ROSTER TABLE (The Core) */}
