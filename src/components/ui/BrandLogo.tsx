@@ -35,7 +35,7 @@ export function BrandLogo({
       className={twMerge("flex items-center gap-[0.4ch]", textClassName, className)}
       style={size ? { fontSize: `${size}px` } : undefined}
     >
-      <div className="relative flex items-center justify-center shrink-0" style={{ height: '0.78em', width: '0.78em' }}>
+      <div className="relative flex items-center justify-center shrink-0" style={{ height: '1.0em', width: '1.0em' }}>
         <img
           src="/flower-logo.png?v=5"
           alt="Goalie Card Logo"
@@ -46,7 +46,7 @@ export function BrandLogo({
             display: mounted ? 'block' : 'none' 
           }}
         />
-        {!mounted && <div style={{ height: '0.78em', width: '0.78em' }} />}
+        {!mounted && <div style={{ height: '1.0em', width: '1.0em' }} />}
       </div>
       {withText && (
         <span className="leading-none whitespace-nowrap">
