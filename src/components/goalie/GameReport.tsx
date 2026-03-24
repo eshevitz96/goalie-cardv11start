@@ -73,18 +73,17 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
         ))}
       </div>
 
-      {/* 3. The Visual Shot Chart */}
-      <div className="px-10 space-y-16 mb-16">
-        {/* Support up to 5 segments (H1, H2, ET1, ET2, PKs for soccer | Q1-Q4, OT for lax) */}
+      {/* 3. Granular Shot Analysis by Segment */}
+      <div className="px-10 space-y-12 mb-16">
         {Array.from({ length: 5 }).map((_, i) => {
           const periodNum = i + 1;
-          const periodShots = shots.filter(s => s.period === periodNum);
+          const periodShots = shots.filter(s => s.period === periodNum).sort((a, b) => (a.clipStart || 0) - (b.clipStart || 0));
           if (periodShots.length === 0) return null;
           
           return (
-            <div key={periodNum} className="space-y-8">
+            <div key={periodNum} className="space-y-6">
               <div className="flex items-center justify-between border-b border-border/10 pb-4">
-                 <h3 className="text-base font-black uppercase tracking-[.4em] flex items-center gap-3">
+                 <h3 className="text-sm font-black uppercase tracking-[.4em] flex items-center gap-3">
                     {sport === 'soccer' ? (
                        periodNum === 1 ? 'Half 1' : 
                        periodNum === 2 ? 'Half 2' : 
@@ -95,37 +94,69 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
                     )}
                  </h3>
                  <div className="text-[10px] font-black text-primary uppercase tracking-[.2em]">
-                    {periodShots.length} Detections Recorded
+                    {periodShots.length} Events Logged
                  </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
-                    <MapPin size={14} className="text-primary" /> Surface Map Distribution
-                  </div>
-                  <div className="aspect-[4/3] rounded-3xl overflow-hidden border border-border/10 bg-black shadow-2xl relative ring-1 ring-white/5">
-                    <GameAnalysisSurface 
-                      sport={sport}
-                      view="field"
-                      interactive={false}
-                      shots={periodShots}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
-                    <Target size={14} className="text-primary" /> Net Perspective Analysis
-                  </div>
-                  <div className="aspect-[4/3] rounded-3xl overflow-hidden border border-border/10 bg-black shadow-2xl relative ring-1 ring-white/5">
-                    <GameAnalysisSurface 
-                      sport={sport}
-                      view="net"
-                      interactive={false}
-                      shots={periodShots}
-                    />
-                  </div>
-                </div>
+              <div className="space-y-4">
+                {periodShots.map((shot, idx) => {
+                  const formatTimestamp = (s: number | undefined) => {
+                    if (s === undefined) return "00:00";
+                    const mins = Math.floor(s / 60);
+                    const secs = Math.floor(s % 60);
+                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                  };
+
+                  return (
+                    <div key={shot.id} className="grid grid-cols-12 gap-4 items-center bg-card/30 hover:bg-card/50 border border-border/10 rounded-2xl p-4 transition-all">
+                       {/* 1. Time & Meta */}
+                       <div className="col-span-2">
+                          <div className="bg-foreground/5 text-foreground/80 font-mono text-xs px-2 py-1.5 rounded-lg border border-border/5 text-center mb-1">
+                             {formatTimestamp(shot.clipStart)}
+                          </div>
+                          <div className={`text-[9px] font-black uppercase tracking-widest text-center ${shot.result === 'goal' ? 'text-red-500' : 'text-emerald-500'}`}>
+                             {shot.result}
+                          </div>
+                       </div>
+
+                       {/* 2. Zone View */}
+                       <div className="col-span-4 flex flex-col gap-1 items-center">
+                          <div className="text-[8px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Origin</div>
+                          <div className="w-full aspect-[4/3] rounded-xl overflow-hidden border border-border/10 bg-black relative">
+                             <GameAnalysisSurface 
+                                sport={sport}
+                                view="field"
+                                interactive={false}
+                                shots={[shot]}
+                             />
+                          </div>
+                       </div>
+
+                       {/* 3. Net View */}
+                       <div className="col-span-4 flex flex-col gap-1 items-center">
+                          <div className="text-[8px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Target</div>
+                          <div className="w-full aspect-[4/3] rounded-xl overflow-hidden border border-border/10 bg-black relative">
+                             <GameAnalysisSurface 
+                                sport={sport}
+                                view="net"
+                                interactive={false}
+                                shots={[shot]}
+                              />
+                          </div>
+                       </div>
+
+                       {/* 4. Action / Type */}
+                       <div className="col-span-2 flex flex-col items-end gap-2 pr-2">
+                          <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">{shot.shotType}</span>
+                          {shot.filmUrl && (
+                             <div className="w-6 h-6 rounded-lg bg-primary/20 text-primary flex items-center justify-center animate-pulse shadow-2xl">
+                                <Film size={12} />
+                             </div>
+                          )}
+                       </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );

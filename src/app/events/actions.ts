@@ -165,3 +165,39 @@ export async function deleteEvent(eventId: string) {
         return { success: false, error: err.message };
     }
 }
+export async function pruneEventVideo(eventId: string, videoUrl: string) {
+    if (!eventId || !videoUrl) return { success: false, error: "Missing data" };
+
+    const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    try {
+        // 1. Extract filename from URL (e.g., .../game-film/roster_123.mp4)
+        const parts = videoUrl.split('/');
+        const fileName = parts[parts.length - 1];
+
+        // 2. Delete from Storage
+        const { error: storageError } = await supabaseAdmin.storage
+            .from('game-film')
+            .remove([fileName]);
+
+        // 3. Update Event Record to detach video and mark as 'clipped'
+        const { error: dbError } = await supabaseAdmin
+            .from('events')
+            .update({ 
+                video_url: null, 
+                is_charted: true,
+                scouting_report: 'Full Game Tape Pruned - Highlights preserved in V11 Reels.' 
+            })
+            .eq('id', eventId);
+
+        if (dbError) throw dbError;
+
+        return { success: true };
+    } catch (err: any) {
+        console.error("Prune Video Error:", err);
+        return { success: false, error: err.message };
+    }
+}
