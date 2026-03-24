@@ -176,6 +176,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                 skip_reason: newReflection.skip_reason,
                 injury_expected_return: newReflection.injury_expected_return || null,
                 injury_details: newReflection.injury_details || null,
+                soreness: newReflection.soreness,
+                sleep_quality: newReflection.sleep_quality,
                 file_url: finalFileUrl
             });
         } else {
