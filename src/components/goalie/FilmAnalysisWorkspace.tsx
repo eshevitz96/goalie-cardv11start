@@ -513,13 +513,20 @@ export function FilmAnalysisWorkspace({
                                 >
                                     {sport === 'soccer' ? (
                                         <><option className="bg-card" value="1">H1</option><option className="bg-card" value="2">H2</option><option className="bg-card" value="3">ET1</option><option className="bg-card" value="4">ET2</option><option className="bg-card" value="5">PKs</option></>
+                                    ) : sport === 'hockey' ? (
+                                        <>
+                                            <option className="bg-card" value="1">P1</option>
+                                            <option className="bg-card" value="2">P2</option>
+                                            <option className="bg-card" value="3">P3</option>
+                                            <option className="bg-card" value="5">OT</option>
+                                        </>
                                     ) : (
                                         <>
                                             <option className="bg-card" value="1">Q1</option>
                                             <option className="bg-card" value="2">Q2</option>
                                             <option className="bg-card" value="3">Q3</option>
-                                            {sport.includes('lacrosse') && <option value="4">{terms.period.charAt(0)}4</option>}
-                                            <option value="5">OT</option>
+                                            {sport.includes('lacrosse') && <option className="bg-card" value="4">Q4</option>}
+                                            <option className="bg-card" value="5">OT</option>
                                         </>
                                     )}
                                 </select>

@@ -47,6 +47,10 @@ export default function TeamDashboardPage() {
     const [history, setHistory] = useState<FundTransaction[]>([]);
     const [copied, setCopied] = useState(false);
 
+    // Access Control
+    const [userRole, setUserRole] = useState<string | null>(null);
+    const [isActivated, setIsActivated] = useState(false);
+
     // Team Creation
     const [isInitializing, setIsInitializing] = useState(false);
     const [newName, setNewName] = useState("");
@@ -77,7 +81,37 @@ export default function TeamDashboardPage() {
         setLoading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) {
+                router.push('/login');
+                return;
+            }
+
+            // Access Control: Check profile role + activation status
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role, sport')
+                .eq('id', user.id)
+                .maybeSingle();
+            
+            const role = profile?.role || 'goalie';
+            setUserRole(role);
+
+            // Check if user has an activated (claimed) roster record
+            const { data: rosterCheck } = await supabase
+                .from('roster_uploads')
+                .select('id, is_claimed')
+                .eq('linked_user_id', user.id)
+                .eq('is_claimed', true)
+                .limit(1);
+            
+            const activated = (rosterCheck && rosterCheck.length > 0) || role === 'admin' || role === 'coach';
+            setIsActivated(activated);
+
+            // If not admin and not activated, stop here
+            if (role !== 'admin' && !activated) {
+                setLoading(false);
+                return;
+            }
 
             // 1. Fetch Team where user is owner
             const { data: teamsData, error: teamError } = await supabase
@@ -95,13 +129,6 @@ export default function TeamDashboardPage() {
 
             setTeam(teamsData);
 
-            // Fetch owner profile for sport
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('sport')
-                .eq('id', user.id)
-                .maybeSingle();
-            
             const defaultSport = profile?.sport || 'Hockey';
 
             // 2. Fetch Balance
