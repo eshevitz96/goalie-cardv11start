@@ -41,7 +41,7 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
           <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-[.25em] text-[10px] mb-3">
             <TrendingUp size={16} /> Performance Analytics Report
           </div>
-          <h2 className="text-5xl font-black uppercase tracking-tighter leading-none mb-4">
+          <h2 className="text-5xl font-black tracking-tighter leading-none mb-4">
             vs {opponent}
           </h2>
           <div className="flex items-center gap-6 text-muted-foreground font-bold text-[10px] uppercase tracking-widest">

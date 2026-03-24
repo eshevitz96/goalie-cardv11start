@@ -234,7 +234,7 @@ export function FilmAnalysisWorkspace({
                 <input 
                     value={opponentName}
                     onChange={(e) => setOpponentName(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xl font-black uppercase tracking-tighter text-foreground hover:bg-white/5 px-2 rounded-lg focus:bg-white/10 transition-colors w-auto min-w-[120px]"
+                    className="bg-transparent border-none outline-none text-xl font-black tracking-tighter text-foreground hover:bg-white/5 px-2 rounded-lg focus:bg-white/10 transition-colors w-auto min-w-[120px]"
                 />
                 <input 
                     type="date"
