@@ -26,6 +26,7 @@ interface RosterMember {
     athlete_name: string;
     last_usage?: string;
     is_active: boolean;
+    sport: string;
 }
 
 interface FundTransaction {
@@ -103,7 +104,7 @@ export default function TeamDashboardPage() {
             // 3. Fetch Roster Members
             const { data: rosterData } = await supabase
                 .from('roster_uploads')
-                .select('id, parent_name, goalie_name')
+                .select('id, parent_name, goalie_name, sport')
                 .eq('team_id', teamsData.id);
             
             // Map members with some dummy data for high-fidelity feel if needed
@@ -112,7 +113,8 @@ export default function TeamDashboardPage() {
                 parent_name: m.parent_name,
                 athlete_name: m.goalie_name || m.parent_name || 'Anonymous Athlete',
                 is_active: true,
-                last_usage: '2 days ago'
+                last_usage: '2 days ago',
+                sport: m.sport || 'Hockey'
             })) || []);
 
             // 4. Fetch History

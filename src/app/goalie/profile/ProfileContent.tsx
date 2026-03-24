@@ -16,6 +16,7 @@ interface ProfileContentProps {
         height: string | null;
         weight: string | null;
         grad_year: number | null;
+        sport: string | null;
         team_history: { team: string, years: string }[] | null;
     }
 }
@@ -62,6 +63,7 @@ export default function ProfileContent({ goalie }: ProfileContentProps) {
                 height: formData.height,
                 weight: formData.weight,
                 catch_hand: formData.catch_hand,
+                sport: formData.sport,
                 team_history: formData.team_history
             });
 
@@ -77,6 +79,7 @@ export default function ProfileContent({ goalie }: ProfileContentProps) {
                 goalie.height = formData.height;
                 goalie.weight = formData.weight;
                 goalie.catch_hand = formData.catch_hand;
+                goalie.sport = formData.sport;
                 goalie.team_history = formData.team_history;
 
                 router.refresh();

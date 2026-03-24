@@ -32,6 +32,7 @@ interface FilmAnalysisWorkspaceProps {
   videoUrl: string;
   initialClips?: Clip[];
   events?: { id: string; name: string; date?: string }[];
+  initialEventId?: string;
   onComplete?: (sessionData: any) => void;
 }
 
@@ -40,6 +41,7 @@ export function FilmAnalysisWorkspace({
   videoUrl, 
   initialClips = [], 
   events = [],
+  initialEventId = '',
   onComplete 
 }: FilmAnalysisWorkspaceProps) {
   const [clips, setClips] = useState<Clip[]>(initialClips);
@@ -48,7 +50,7 @@ export function FilmAnalysisWorkspace({
   const [isPlaying, setIsPlaying] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [associatedEventId, setAssociatedEventId] = useState(events.length > 0 ? events[0].id : '');
+  const [associatedEventId, setAssociatedEventId] = useState(initialEventId || (events.length > 0 ? events[0].id : ''));
   const [clipComments, setClipComments] = useState<Record<string, string>>({});
   const [sessionType, setSessionType] = useState<'clips' | 'full_game' | null>(initialClips.length > 0 ? 'clips' : null);
   const [opponentName, setOpponentName] = useState('Unknown Opponent');

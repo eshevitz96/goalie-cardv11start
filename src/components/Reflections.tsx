@@ -115,9 +115,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
         if (newReflection.activity_type === 'none' && !newReflection.skip_reason) {
             return alert("Please select a reason for your off day.");
         }
-        if (newReflection.activity_type !== 'none' && !newReflection.content) {
-            return alert("Please write a short reflection.");
-        }
+        // No longer enforcing content for practice/game etc.
 
         setLoading(true);
 
@@ -125,7 +123,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             id: Math.random().toString(), // local id
             roster_id: rosterId,
             title: newReflection.title || (newReflection.activity_type === 'none' ? 'Off Day' : new Date().toLocaleDateString()),
-            content: newReflection.content || (newReflection.skip_reason ? `Reason: ${newReflection.skip_reason}` : "No content"),
+            content: newReflection.content || (newReflection.skip_reason ? `Reason: ${newReflection.skip_reason}` : "Training completed."),
             mood: newReflection.mood,
             activity_type: newReflection.activity_type,
             skip_reason: newReflection.skip_reason,
@@ -477,34 +475,30 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                                 </div>
                             )}
 
-                            {newReflection.activity_type !== 'none' && (
-                                <>
-                                    <textarea
-                                        className="w-full bg-transparent p-2 text-sm text-foreground focus:outline-none resize-none min-h-[100px] border border-border rounded-xl mt-2"
-                                        placeholder="How did you feel today? What did you improve?..."
-                                        value={newReflection.content}
-                                        onChange={(e) => setNewReflection({ ...newReflection, content: e.target.value })}
-                                        autoFocus
-                                    />
-                                    <div className="mt-3 flex items-center gap-3">
-                                        <label className="flex items-center gap-2 cursor-pointer bg-secondary/50 hover:bg-secondary border border-border px-3 py-1.5 rounded-lg transition-colors group">
-                                            <Paperclip size={14} className="text-muted-foreground group-hover:text-primary" />
-                                            <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Clip PDF</span>
-                                            <input type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
-                                        </label>
-                                        {selectedFile && (
-                                            <div className="flex items-center gap-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20">
-                                                <FileText size={12} />
-                                                <span className="truncate max-w-[150px]">{selectedFile.name}</span>
-                                                <button onClick={() => setSelectedFile(null)} className="hover:text-foreground">
-                                                    <X size={12} />
-                                                </button>
-                                            </div>
-                                        )}
-                                        {uploading && <Loader2 size={14} className="animate-spin text-primary" />}
+                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-4 block">Note (Optional)</label>
+                            <textarea
+                                className="w-full bg-transparent p-2 text-sm text-foreground focus:outline-none resize-none min-h-[60px] border border-border rounded-xl mt-1"
+                                placeholder="Add a comment..."
+                                value={newReflection.content}
+                                onChange={(e) => setNewReflection({ ...newReflection, content: e.target.value })}
+                            />
+                            <div className="mt-3 flex items-center gap-3">
+                                <label className="flex items-center gap-2 cursor-pointer bg-secondary/50 hover:bg-secondary border border-border px-3 py-1.5 rounded-lg transition-colors group">
+                                    <Paperclip size={14} className="text-muted-foreground group-hover:text-primary" />
+                                    <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Clip PDF</span>
+                                    <input type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
+                                </label>
+                                {selectedFile && (
+                                    <div className="flex items-center gap-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20">
+                                        <FileText size={12} />
+                                        <span className="truncate max-w-[150px]">{selectedFile.name}</span>
+                                        <button onClick={() => setSelectedFile(null)} className="hover:text-foreground">
+                                            <X size={12} />
+                                        </button>
                                     </div>
-                                </>
-                            )}
+                                )}
+                                {uploading && <Loader2 size={14} className="animate-spin text-primary" />}
+                            </div>
                         </div>
 
                         <div className="flex justify-between items-center mt-2 pt-2 border-t border-border">
@@ -533,7 +527,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleSave}
-                                    disabled={loading || !newReflection.activity_type || (newReflection.activity_type === 'none' && !newReflection.skip_reason)}
+                                    disabled={loading || !newReflection.activity_type}
                                     className="bg-foreground text-background px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50"
                                 >
                                     {loading ? "Saving..." : <><Save size={14} /> Save Entry</>}

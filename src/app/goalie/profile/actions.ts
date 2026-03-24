@@ -42,6 +42,7 @@ export async function updateProfile(rosterId: string, updates: {
     height?: string;
     weight?: string;
     catch_hand?: string;
+    sport?: string;
     team_history?: { team: string, years: string }[];
 }) {
     if (!rosterId) return { success: false, error: "Missing roster ID" };
@@ -91,6 +92,7 @@ export async function updateProfile(rosterId: string, updates: {
             const profileUpdates: any = {};
             if (updates.goalie_name) profileUpdates.goalie_name = updates.goalie_name;
             if (updates.email) profileUpdates.email = updates.email;
+            if (updates.sport) profileUpdates.sport = updates.sport;
 
             // Store Team History in 'settings' JSON
             if (team_history) {

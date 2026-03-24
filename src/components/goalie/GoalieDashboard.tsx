@@ -51,6 +51,7 @@ interface GoalieDashboardProps {
     goalies: any[];
     userRole: string | null;
     userId: string | null;
+    userSport: string | null;
     notification: any;
     notifications: any[];
     onDismissNotification: () => void;
@@ -65,6 +66,7 @@ export function GoalieDashboard({
     goalies,
     userRole,
     userId,
+    userSport,
     notification,
     notifications,
     onDismissNotification,
@@ -90,6 +92,8 @@ export function GoalieDashboard({
     const [hasCoach, setHasCoach] = useState(true);
     const [hasAnalyticsAccess, setHasAnalyticsAccess] = useState(true);
     const [readinessState, setReadinessState] = useState({ soreness: 2, sleep: 8 });
+    const [videoUrlToAnalyze, setVideoUrlToAnalyze] = useState<string | null>(null);
+    const [selectedEventIdForAnalysis, setSelectedEventIdForAnalysis] = useState<string>('');
     const journalRef = useRef<HTMLDivElement>(null);
 
     // Sync from search param athleteId (if any)
@@ -118,10 +122,17 @@ export function GoalieDashboard({
 
     const activeGoalie = goalies[currentIndex];
 
-    // V11 Context Mapping
+    const resolveSport = (s?: string): any => {
+        if (!s) return 'hockey';
+        const lower = s.toLowerCase();
+        if (lower.includes('lacrosse')) return 'lacrosse-boys';
+        if (lower.includes('soccer')) return 'soccer';
+        return lower;
+    };
+
     const goalieContext: GoalieContext = {
         userId: userId || activeGoalie?.id || 'anonymous',
-        sport: (activeGoalie?.sport?.toLowerCase() === 'lacrosse' ? 'lacrosse-boys' : activeGoalie?.sport?.toLowerCase() || 'hockey') as any,
+        sport: resolveSport(activeGoalie?.sport || userSport),
         schedule: {
             nextEventDate: new Date(),
             nextEventType: activeGoalie?.events?.some((e: any) => new Date(e.date).toDateString() === new Date().toDateString()) ? 'game' : 'none',
@@ -532,7 +543,22 @@ export function GoalieDashboard({
                                     <X size={20} />
                                 </Button>
                             </div>
-                            <GameFilmUpload rosterId={activeGoalie.id} onUploadComplete={() => setTimeout(() => setIsUploadingFilm(false), 2000)} />
+                            <GameFilmUpload 
+                                rosterId={activeGoalie.id} 
+                                events={dashboardEvents}
+                                onUploadComplete={async (data) => {
+                                    setVideoUrlToAnalyze(data.url);
+                                    if (data.eventId) {
+                                         setSelectedEventIdForAnalysis(data.eventId);
+                                         const { linkFilmToEvent } = await import('@/app/actions');
+                                         await linkFilmToEvent(data.eventId, data.url);
+                                    }
+                                    setTimeout(() => {
+                                        setIsUploadingFilm(false);
+                                        setIsAnalyzingFilm(true);
+                                    }, 1000);
+                                }} 
+                            />
                         </div>
                     </div>
                 )}
@@ -563,9 +589,10 @@ export function GoalieDashboard({
                             <div className="flex-1 min-h-0">
                                 <FilmAnalysisWorkspace 
                                     sport={goalieContext.sport} 
-                                    videoUrl="https://example.com/mock-game.mp4" 
+                                    videoUrl={videoUrlToAnalyze || "https://example.com/mock-game.mp4"} 
                                     initialClips={activeGoalie.unchartedClips || (unchartedCount > 0 ? [{ id: 'u1', timestamp: 12, type: 'save', status: 'pending' }, { id: 'u2', timestamp: 45, type: 'goal', status: 'pending' }] : [])}
                                     events={dashboardEvents}
+                                    initialEventId={selectedEventIdForAnalysis}
                                     onComplete={async (data) => {
                                         const { syncShotEvents } = await import('@/app/actions');
                                         const result = await syncShotEvents(

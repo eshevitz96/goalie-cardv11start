@@ -5,18 +5,21 @@ import { Upload, Film, BarChart2, Eye, CheckCircle, AlertCircle, X, Brain } from
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { supabase } from "@/utils/supabase/client";
 
 interface GameFilmUploadProps {
     rosterId: string;
     title?: string;
+    events?: { id: string; name: string }[];
     onUploadComplete?: (data: any) => void;
 }
 
-export function GameFilmUpload({ rosterId, title = "Game Film Analysis", onUploadComplete }: GameFilmUploadProps) {
+export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events = [], onUploadComplete }: GameFilmUploadProps) {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [analysisType, setAnalysisType] = useState<'shot' | 'play' | null>(null);
+    const [associatedEventId, setAssociatedEventId] = useState(events.length > 0 ? events[0].id : '');
     const [showSuccess, setShowSuccess] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -28,23 +31,41 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", onUploa
         }
     };
 
-    const simulateUpload = () => {
+    const handleUpload = async () => {
         if (!selectedFile || !analysisType) return;
         setIsUploading(true);
         setUploadProgress(0);
 
-        const interval = setInterval(() => {
-            setUploadProgress(prev => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    setIsUploading(false);
-                    setShowSuccess(true);
-                    if (onUploadComplete) onUploadComplete({ file: selectedFile, type: analysisType });
-                    return 100;
-                }
-                return prev + 10;
-            });
-        }, 300);
+        try {
+            const fileExt = selectedFile.name.split('.').pop();
+            const fileName = `${rosterId}_${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            // Real Supabase Upload
+            const { data, error } = await supabase.storage
+                .from('game-film')
+                .upload(filePath, selectedFile, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (error) throw error;
+
+            setUploadProgress(100);
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('game-film')
+                .getPublicUrl(filePath);
+
+            setIsUploading(false);
+            setShowSuccess(true);
+            if (onUploadComplete) onUploadComplete({ file: selectedFile, type: analysisType, url: publicUrl, eventId: associatedEventId });
+            
+        } catch (error: any) {
+            console.error("Upload Error:", error);
+            alert("Upload failed: " + error.message);
+            setIsUploading(false);
+        }
     };
 
     return (
@@ -136,6 +157,25 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", onUploa
                     </button>
                 </div>
 
+                {/* 2.5 Event Allocation */}
+                {events.length > 0 && (
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Allocate to Event</label>
+                        <select
+                            value={associatedEventId}
+                            onChange={(e) => setAssociatedEventId(e.target.value)}
+                            className="w-full bg-card/50 border border-border rounded-xl px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
+                        >
+                            <option value="">No specific event</option>
+                            {events.map((e) => (
+                                <option key={e.id} value={e.id}>
+                                    {e.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
                 {/* 3. Upload Action */}
                 <div className="pt-2">
                     <AnimatePresence mode="wait">
@@ -157,7 +197,7 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", onUploa
                             </div>
                         ) : (
                             <Button
-                                onClick={simulateUpload}
+                                onClick={handleUpload}
                                 disabled={!selectedFile || !analysisType}
                                 className="w-full py-4 bg-foreground text-background font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-foreground/5 disabled:opacity-50"
                             >

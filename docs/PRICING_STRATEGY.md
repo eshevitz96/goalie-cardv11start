@@ -71,6 +71,24 @@ Enterprise organizations do not buy $15/month subscriptions; they buy customized
   - **Data Sovereignty:** They own their data completely.
   - **Multi-Role Access:** Tiered logins for GMs, Medical Staff, Coaches, and Players.
 
+---
+ 
+## 5. The "Black Card" Tier: Elite Mentorship
+*Target: Professional-track goalies, D1 prospects, and elite academy students.*
+
+This is the pinnacle of the Goalie Card ecosystem. It is not advertised publicly but offered via personal invite to the top 1% of performers.
+
+- **Price:** $900 / month
+- **Includes:**
+  - 24/7 direct access to the Founder/Elite Coach via the integrated dash.
+  - Full game breakdown within 12 hours of upload.
+  - Personalized weekly biometry and video feedback loops.
+  - Included VIP access to select seasonal "Black Card" camps.
+- **Why it works:**
+  - High-ticket offering for low-volume, high-value clients.
+  - Creates a prestige "aspirational" tier for the brand.
+  - Anchors the value of the platform. If a user is paying $900/mo, the $15/mo SaaS looks like a bargain.
+
 ## Execution Timeline
 1. **Launch Beta (Current):** Free for all. Accumulate users and find bugs.
 2. **Launch B2C ($15/mo):** Turn on the paywall for new purely-digital users. Transition local clients to $300/mo Hybrid Retainer to stabilize base cash flow.

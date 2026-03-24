@@ -45,7 +45,7 @@ export default function Dashboard() {
         const goalieName = prompt("Enter Goalie Full Name:");
         if (!goalieName) return;
 
-        const sport = prompt("Enter Sport (Hockey or Lacrosse):", "Hockey") || "Hockey";
+        const sport = prompt("Enter Sport (Hockey or Lacrosse):", auth.userSport || "Hockey") || "Hockey";
 
         try {
             const { addNewGoalieToAccount } = await import('@/app/actions');
@@ -110,6 +110,7 @@ export default function Dashboard() {
                 goalies={goalies} 
                 userRole={auth.userRole || 'goalie'} 
                 userId={auth.userId || null}
+                userSport={auth.userSport}
                 notification={null}
                 notifications={[]}
                 onDismissNotification={() => {}}

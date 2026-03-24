@@ -10,10 +10,11 @@ import { supabase } from '@/utils/supabase/client';
 import type { UserRole } from '@/types';
 
 interface AuthState {
-    user: { id: string; email: string; role?: UserRole } | null;
+    user: { id: string; email: string; role?: UserRole; sport?: string } | null;
     userId: string | null;
     userEmail: string | null;
     userRole: UserRole | null;
+    userSport: string | null;
     userRoles: UserRole[];
     localId: string | null;
     isAuthenticated: boolean;
@@ -25,6 +26,7 @@ export function useAuth() {
         userId: null,
         userEmail: null,
         userRole: null,
+        userSport: null,
         userRoles: [],
         localId: null,
         isAuthenticated: false,
@@ -59,22 +61,30 @@ export function useAuth() {
                 ? localStorage.getItem('activated_id')
                 : null;
 
-            // Fetch user role if authenticated
+            // Fetch user role and sport if authenticated
             let userRole: UserRole | null = null;
+            let userSport: string | null = null;
             if (user) {
                 const { data: profile } = await supabase
                     .from('profiles')
-                    .select('role')
+                    .select('role, sport')
                     .eq('id', user.id)
                     .single();
                 userRole = (profile?.role as UserRole) || null;
+                userSport = profile?.sport || null;
             }
 
             setAuthState({
-                user: user ? { id: user.id, email: user.email || '', role: userRole || undefined } : null,
+                user: user ? { 
+                    id: user.id, 
+                    email: user.email || '', 
+                    role: userRole || undefined,
+                    sport: userSport || undefined
+                } : null,
                 userId: user?.id || null,
                 userEmail: user?.email || null,
                 userRole,
+                userSport,
                 userRoles: userRole ? [userRole] : [],
                 localId,
                 isAuthenticated: !!user || !!localId,
@@ -96,6 +106,7 @@ export function useAuth() {
             userId: null,
             userEmail: null,
             userRole: null,
+            userSport: null,
             userRoles: [],
             localId: null,
             isAuthenticated: false,

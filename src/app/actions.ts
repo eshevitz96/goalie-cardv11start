@@ -576,3 +576,20 @@ export async function addAthleteToTeam(teamId: string, emailOrId: string) {
         return { success: false, error: err.message };
     }
 }
+export async function linkFilmToEvent(eventId: string, videoUrl: string) {
+    if (!eventId || !videoUrl) return { success: false, error: "Missing data" };
+
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        const { error } = await supabaseAdmin
+            .from('events')
+            .update({ video_url: videoUrl })
+            .eq('id', eventId);
+
+        if (error) throw error;
+        return { success: true };
+    } catch (err: any) {
+        console.error("Link Film Error:", err);
+        return { success: false, error: err.message };
+    }
+}

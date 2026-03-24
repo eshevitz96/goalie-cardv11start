@@ -10,6 +10,7 @@ import { twMerge } from 'tailwind-merge';
 interface SquadMember {
     id: string;
     athlete_name: string;
+    sport?: string;
 }
 
 interface SquadIntelProps {
@@ -19,17 +20,16 @@ interface SquadIntelProps {
 
 import { useSquadIntel } from '@/hooks/useSquadIntel';
 
-interface SquadMember {
-    id: string;
-    athlete_name: string;
-}
-
-interface SquadIntelProps {
-    teamId: string;
-    members: SquadMember[];
-}
-
 export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
+    const resolveSport = (s?: string): any => {
+        if (!s) return 'hockey';
+        const lower = s.toLowerCase();
+        if (lower.includes('lacrosse')) return 'lacrosse-boys';
+        if (lower.includes('soccer')) return 'soccer';
+        return lower;
+    };
+
+    const teamSport = resolveSport(members[0]?.sport);
     const { 
         shots, 
         stats, 
@@ -124,7 +124,7 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
                                         </div>
                                         <div className="relative aspect-square w-full">
                                             <GameAnalysisSurface 
-                                                sport="lacrosse-boys"
+                                                sport={resolveSport(goalie.shots[0]?.sport || members.find(m => m.id === goalie.id)?.sport)}
                                                 shots={goalie.shots}
                                                 interactive={false}
                                                 view={view}
@@ -137,7 +137,7 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
                             <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 relative overflow-hidden group h-full">
                                 <div className="relative aspect-square md:aspect-video w-full max-h-[450px]">
                                     <GameAnalysisSurface 
-                                        sport="lacrosse-boys" 
+                                        sport={teamSport} 
                                         shots={shots}
                                         interactive={false}
                                         view={view}
