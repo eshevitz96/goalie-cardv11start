@@ -603,27 +603,49 @@ export function GoalieDashboard({
                                     initialEventId={selectedEventIdForAnalysis}
                                     onComplete={async (data) => {
                                         const { syncShotEvents } = await import('@/app/actions');
+                                        
+                                        const newlyPlottedShots = data.clips.filter((c: any) => c.status === 'plotted').map((c: any) => ({
+                                            sport: data.sport,
+                                            period: c.period || 1,
+                                            result: c.type === 'goal' ? 'goal' : c.type === 'clear' ? 'clear' : 'save',
+                                            shotType: c.shotType || 'unspecified',
+                                            originX: c.plottedX,
+                                            originY: c.plottedY,
+                                            targetX: c.netX,
+                                            targetY: c.netY,
+                                            clipStart: Math.max(0, c.timestamp - 6),
+                                            clipEnd: c.timestamp + 4,
+                                            filmUrl: videoUrlToAnalyze
+                                        }));
+
                                         const result = await syncShotEvents(
                                             activeGoalie.id,
                                             data.associatedEventId,
-                                            data.clips.filter((c: any) => c.status === 'plotted').map((c: any) => ({
-                                                sport: data.sport,
-                                                period: c.period || 1,
-                                                result: c.type === 'goal' ? 'goal' : 'save',
-                                                shotType: c.shotType || 'unspecified',
-                                                originX: c.plottedX,
-                                                originY: c.plottedY,
-                                                targetX: c.netX,
-                                                targetY: c.netY,
-                                                clipStart: Math.max(0, c.timestamp - 6),
-                                                clipEnd: c.timestamp + 4,
-                                                filmUrl: videoUrlToAnalyze
-                                            }))
+                                            newlyPlottedShots
                                         );
 
                                         if (result.success) {
                                             setIsAnalyzingFilm(false);
                                             setUnchartedCount(0);
+                                            
+                                            // Sync the local state so the dashboard/index updates instantly
+                                            setShotEvents(newlyPlottedShots.map((s: any) => ({
+                                                id: `temp-${Date.now()}-${Math.random()}`,
+                                                gameId: data.associatedEventId,
+                                                sport: s.sport,
+                                                result: s.result,
+                                                shotType: s.shotType,
+                                                originX: s.originX,
+                                                originY: s.originY,
+                                                targetX: s.targetX,
+                                                targetY: s.targetY,
+                                                period: s.period,
+                                                isShorthanded: false,
+                                                isPowerPlay: false,
+                                                hasTraffic: false,
+                                                isOddManRush: false
+                                            })));
+
                                             // Trigger success state for the report
                                             setShowGameReport(true);
                                         } else {

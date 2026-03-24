@@ -249,7 +249,7 @@ export function FilmAnalysisWorkspace({
                 <input 
                     value={opponentName}
                     onChange={(e) => setOpponentName(e.target.value)}
-                    className="bg-transparent border-none outline-none text-2xl font-black tracking-tighter text-foreground hover:bg-white/5 px-2 rounded-lg focus:bg-white/10 transition-colors w-auto min-w-[100px] uppercase"
+                    className="bg-transparent border-none outline-none text-2xl font-black tracking-tighter text-foreground hover:bg-white/5 px-2 rounded-lg focus:bg-white/10 transition-colors w-auto min-w-[100px]"
                     placeholder="Opponent"
                 />
                 
@@ -474,19 +474,19 @@ export function FilmAnalysisWorkspace({
                                 </div>
                             </button>
                             
-                            <div className="flex gap-2 px-1">
+                            <div className="flex gap-1.5 px-1 py-1 flex-wrap">
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); setClipType(i, 'save'); }}
-                                    className={`flex-1 py-1 rounded-lg border text-[8px] font-bold uppercase tracking-widest transition-all ${
-                                        clip.type === 'save' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-muted border-border/20 text-muted-foreground hover:bg-white/5 hover:border-border/40 hover:text-foreground'
+                                    className={`px-3 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest transition-all ${
+                                        clip.type === 'save' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500' : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:text-foreground'
                                     }`}
                                 >
                                     Save
                                 </button>
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); setClipType(i, 'goal'); }}
-                                    className={`flex-1 py-1 rounded-lg border text-[8px] font-bold uppercase tracking-widest transition-all ${
-                                        clip.type === 'goal' ? 'bg-red-500/20 border-red-500/30 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'bg-muted border-border/20 text-muted-foreground hover:bg-white/5 hover:border-border/40 hover:text-foreground'
+                                    className={`px-3 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest transition-all ${
+                                        clip.type === 'goal' ? 'bg-red-500/10 border-red-500/50 text-red-500' : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:text-foreground'
                                     }`}
                                 >
                                     Goal
@@ -494,8 +494,8 @@ export function FilmAnalysisWorkspace({
                                 {(sport === 'soccer' || sport.includes('lacrosse')) && (
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); setClipType(i, 'clear'); }}
-                                        className={`flex-1 py-1 rounded-lg border text-[8px] font-bold uppercase tracking-widest transition-all ${
-                                            clip.type === 'clear' ? 'bg-blue-500/20 border-blue-500/30 text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'bg-muted border-border/20 text-muted-foreground hover:bg-white/5 hover:border-border/40 hover:text-foreground'
+                                        className={`px-3 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest transition-all ${
+                                            clip.type === 'clear' ? 'bg-white/10 border-white/30 text-white' : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:text-foreground'
                                         }`}
                                     >
                                         Clear
@@ -509,15 +509,15 @@ export function FilmAnalysisWorkspace({
                                         updated[i].period = parseInt(e.target.value);
                                         setClips(updated);
                                     }}
-                                    className="bg-muted/30 border border-border/50 rounded-xl text-[9px] font-black uppercase tracking-tighter px-2 outline-none hover:border-primary/50 transition-colors"
+                                    className="bg-white/5 border border-white/10 rounded-full text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 text-muted-foreground outline-none hover:border-primary/50 transition-colors cursor-pointer appearance-none text-center"
                                 >
                                     {sport === 'soccer' ? (
-                                        <><option value="1">H1</option><option value="2">H2</option><option value="3">ET1</option><option value="4">ET2</option><option value="5">PKs</option></>
+                                        <><option className="bg-card" value="1">H1</option><option className="bg-card" value="2">H2</option><option className="bg-card" value="3">ET1</option><option className="bg-card" value="4">ET2</option><option className="bg-card" value="5">PKs</option></>
                                     ) : (
                                         <>
-                                            <option value="1">{terms.period.charAt(0)}1</option>
-                                            <option value="2">{terms.period.charAt(0)}2</option>
-                                            <option value="3">{terms.period.charAt(0)}3</option>
+                                            <option className="bg-card" value="1">Q1</option>
+                                            <option className="bg-card" value="2">Q2</option>
+                                            <option className="bg-card" value="3">Q3</option>
                                             {sport.includes('lacrosse') && <option value="4">{terms.period.charAt(0)}4</option>}
                                             <option value="5">OT</option>
                                         </>
