@@ -433,7 +433,7 @@ export function GoalieDashboard({
                                         trackGoalieAction("main_upload_new_game");
                                         setIsUploadingFilm(true);
                                     }}
-                                    className="w-full bg-white dark:bg-card hover:bg-zinc-200 dark:hover:bg-muted border border-border/50 text-foreground font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all h-auto uppercase tracking-widest text-[10px] shadow-sm hover:shadow-md"
+                                    className="w-full bg-primary text-primary-foreground hover:opacity-80 font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all h-auto uppercase tracking-widest text-[10px] shadow-lg shadow-black/10 dark:shadow-white/5"
                                 >
                                     <Film size={14} />
                                     <span>Upload New Game Film</span>

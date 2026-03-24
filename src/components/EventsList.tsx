@@ -125,7 +125,7 @@ export function EventsList({ events, onRegister, onUploadFilm, onEventAdded, spo
                                                 e.stopPropagation();
                                                 onUploadFilm?.(event.id);
                                             }}
-                                            className="h-8 px-4 bg-white text-black border border-zinc-200 dark:border-transparent dark:bg-primary dark:text-primary-foreground font-black text-[10px] uppercase tracking-widest rounded-full hover:scale-105 transition-all flex items-center shadow-sm"
+                                            className="h-8 px-4 bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest rounded-full hover:scale-105 transition-all flex items-center shadow-md shadow-black/5"
                                         >
                                             <Video size={10} className="mr-1.5" fill="currentColor" />
                                             Film
