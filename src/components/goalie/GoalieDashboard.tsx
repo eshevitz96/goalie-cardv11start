@@ -87,7 +87,9 @@ export function GoalieDashboard({
     const [isUploadingFilm, setIsUploadingFilm] = useState(false);
     const [isAnalyzingFilm, setIsAnalyzingFilm] = useState(false);
     const [showGameReport, setShowGameReport] = useState(false);
-    const [unchartedCount, setUnchartedCount] = useState(2); // Mock for local state sync
+    const [unchartedCount, setUnchartedCount] = useState(0);
+    const [lastAnalyzedOpponent, setLastAnalyzedOpponent] = useState('');
+    const [lastAnalyzedDate, setLastAnalyzedDate] = useState('');
     const [performanceView, setPerformanceView] = useState<'game' | 'season'>('game');
     const [hasCoach, setHasCoach] = useState(true);
     const [hasAnalyticsAccess, setHasAnalyticsAccess] = useState(true);
@@ -598,7 +600,7 @@ export function GoalieDashboard({
                                 <FilmAnalysisWorkspace 
                                     sport={goalieContext.sport} 
                                     videoUrl={videoUrlToAnalyze || "https://example.com/mock-game.mp4"} 
-                                    initialClips={activeGoalie.unchartedClips || (unchartedCount > 0 ? [{ id: 'u1', timestamp: 12, type: 'save', status: 'pending' }, { id: 'u2', timestamp: 45, type: 'goal', status: 'pending' }] : [])}
+                                    initialClips={activeGoalie.unchartedClips || []}
                                     events={dashboardEvents}
                                     initialEventId={selectedEventIdForAnalysis}
                                     onComplete={async (data) => {
@@ -646,7 +648,11 @@ export function GoalieDashboard({
                                                 isOddManRush: false
                                             })));
 
-                                            // Trigger success state for the report
+                                            // Store opponent/date from workspace for the report
+                                            const linkedEvent = dashboardEvents.find((e: any) => e.id === data.associatedEventId);
+                                            const opponentFromEvent = linkedEvent ? linkedEvent.name.replace(/Game:\s*vs\s*/i, '').replace(/Practice:\s*/i, '') : 'Opponent';
+                                            setLastAnalyzedOpponent(opponentFromEvent);
+                                            setLastAnalyzedDate(new Date().toLocaleDateString());
                                             setShowGameReport(true);
                                         } else {
                                             alert("Failed to sync analysis: " + result.error);
@@ -674,8 +680,8 @@ export function GoalieDashboard({
                             </div>
                             <GameReport 
                                 sport={goalieContext.sport}
-                                opponent="Lutheran South"
-                                date={new Date().toLocaleDateString()}
+                                opponent={lastAnalyzedOpponent || 'Unknown Opponent'}
+                                date={lastAnalyzedDate || new Date().toLocaleDateString()}
                                 shots={shotEvents}
                                 stats={{
                                     totalShots: shotEvents.length,
