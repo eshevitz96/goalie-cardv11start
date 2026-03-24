@@ -320,12 +320,12 @@ export function AiCoachRecommendation({
                 <div className="flex flex-wrap gap-4 items-center">
                     {!isGameday ? (
                         !trainingComplete ? (
-                            <Button
+                            <button
                                 onClick={() => handleStartSession(0)}
-                                className="bg-primary text-black font-black px-8 py-4 rounded-2xl hover:scale-105 transition-all text-sm flex items-center gap-2 h-auto shadow-xl shadow-primary/20"
+                                className="bg-white text-black font-black px-8 py-4 rounded-2xl hover:bg-zinc-100 transition-all text-sm flex items-center gap-2 h-auto shadow-xl shadow-black/10 dark:shadow-white/10 border border-zinc-200 dark:border-white/20"
                             >
                                 <Zap size={16} fill="currentColor" /> Start Training
-                            </Button>
+                            </button>
                         ) : (
                             <Button
                                 onClick={() => handleLogAndComplete()}

@@ -174,7 +174,7 @@ export function FilmAnalysisWorkspace({
                     onClick={() => setSessionType('full_game')}
                     className="group bg-card/40 border border-border/30 rounded-[2.5rem] p-10 hover:border-primary/50 transition-all text-left flex flex-col gap-6"
                 >
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-colors">
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                         <LayoutList size={24} />
                     </div>
                     <div>
@@ -187,7 +187,7 @@ export function FilmAnalysisWorkspace({
                     onClick={() => setSessionType('clips')}
                     className="group bg-card/40 border border-border/30 rounded-[2.5rem] p-10 hover:border-primary/50 transition-all text-left flex flex-col gap-6"
                 >
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-colors">
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                         <Film size={24} />
                     </div>
                     <div>
@@ -302,7 +302,7 @@ export function FilmAnalysisWorkspace({
               <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-4">
                  <button 
                    onClick={() => setIsPlaying(!isPlaying)}
-                   className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-black hover:scale-105 transition-transform"
+                   className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:scale-105 transition-transform"
                  >
                     {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} className="ml-0.5" fill="currentColor" />}
                  </button>
@@ -340,7 +340,7 @@ export function FilmAnalysisWorkspace({
                     exit={{ opacity: 0, y: -10 }}
                     className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/20 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-50 min-w-[240px]"
                   >
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
                       {plotStep === 'field' ? <MapPin size={16} /> : <TargetIcon size={16} />}
                     </div>
                     <div className="flex flex-col">
@@ -425,7 +425,7 @@ export function FilmAnalysisWorkspace({
                     </div>
                     <Button 
                         onClick={addManualClip}
-                        className="bg-primary/10 hover:bg-primary text-primary hover:text-black border border-primary/20 rounded-xl px-3 py-1.5 h-auto text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
+                        className="bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20 rounded-xl px-3 py-1.5 h-auto text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
                     >
                         <Plus size={12} />
                         <span>Chart Shot</span>
@@ -553,7 +553,7 @@ export function FilmAnalysisWorkspace({
                     <Button 
                         disabled={!clips.every(c => c.status === 'plotted')}
                         className={`w-full py-5 rounded-3xl font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] ${
-                            clips.every(c => c.status === 'plotted') ? 'bg-primary text-black' : 'bg-muted opacity-50'
+                            clips.every(c => c.status === 'plotted') ? 'bg-primary text-primary-foreground' : 'bg-muted opacity-50'
                         }`}
                         onClick={() => setShowReport(true)}
                     >

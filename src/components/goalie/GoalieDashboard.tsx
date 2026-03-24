@@ -428,16 +428,16 @@ export function GoalieDashboard({
                                         { label: 'Shutouts', value: '2' }
                                     ]}
                                 />
-                                <Button 
+                                <button 
                                     onClick={() => {
                                         trackGoalieAction("main_upload_new_game");
                                         setIsUploadingFilm(true);
                                     }}
-                                    className="w-full bg-card hover:bg-muted border border-border/50 text-foreground font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all h-auto uppercase tracking-widest text-[10px] hover:border-primary/50 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]"
+                                    className="w-full bg-white dark:bg-card hover:bg-zinc-200 dark:hover:bg-muted border border-border/50 text-foreground font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all h-auto uppercase tracking-widest text-[10px] shadow-sm hover:shadow-md"
                                 >
                                     <Film size={14} />
                                     <span>Upload New Game Film</span>
-                                </Button>
+                                </button>
                                 {shotEvents.length > 0 && (
                                     <Link 
                                         href="/clips"
@@ -690,7 +690,7 @@ export function GoalieDashboard({
                                         setShowGameReport(false);
                                         onCoachUpdate(); // Logic for data refresh
                                     }}
-                                    className="w-full max-w-sm py-4 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
+                                    className="w-full max-w-sm py-4 bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
                                 >
                                     Confirm & Sync Season Stats
                                 </Button>
