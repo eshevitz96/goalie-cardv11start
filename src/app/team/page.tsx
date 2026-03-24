@@ -241,6 +241,44 @@ export default function TeamDashboardPage() {
         );
     }
 
+    // Access Gate: Only activated users or admins can see the Team Hub
+    if (!isActivated && userRole !== 'admin') {
+        return (
+            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="max-w-md"
+                >
+                    <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-6 mx-auto border border-red-500/20">
+                        <ShieldCheck size={40} className="text-red-500" />
+                    </div>
+                    <h1 className="text-2xl font-black text-white mb-3 uppercase tracking-tighter">Access Restricted</h1>
+                    <p className="text-zinc-400 text-sm mb-2 leading-relaxed">
+                        The Team Hub is only available to goalies with an activated Goalie Card.
+                    </p>
+                    <p className="text-zinc-500 text-xs mb-8 leading-relaxed">
+                        If your team has purchased a membership, ask your coach for the special invite link to activate your account.
+                    </p>
+                    <div className="flex flex-col gap-3">
+                        <button 
+                            onClick={() => router.push('/activate')}
+                            className="px-8 py-4 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                        >
+                            Activate Your Card
+                        </button>
+                        <button 
+                            onClick={() => router.push('/dashboard')}
+                            className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors"
+                        >
+                            Back to Dashboard
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
+
     if (!team) {
         return (
             <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
