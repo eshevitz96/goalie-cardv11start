@@ -7,61 +7,25 @@ import { useTheme } from "next-themes";
 import { supabase } from "@/utils/supabase/client";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
+import { LandingHero } from "@/components/LandingHero";
+
 export default function EntryPortal() {
     const router = useRouter();
-    const { theme } = useTheme();
-    const [showWelcome, setShowWelcome] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const checkSessionAndRedirect = async () => {
-            // Check for recovery/auth code and forward to callback if it missed the target
-            const searchParams = new URLSearchParams(window.location.search);
-            const code = searchParams.get('code');
-            if (code) {
-                router.replace(`/auth/callback${window.location.search}`);
-                return;
-            }
-
+        const checkSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
                 router.replace("/dashboard");
-                return;
+            } else {
+                setIsLoading(false);
             }
-
-            // Show welcome message for a few seconds if no session
-            const timer = setTimeout(() => {
-                setShowWelcome(false);
-                setTimeout(() => {
-                    router.replace("/login");
-                }, 800);
-            }, 2500);
-
-            return () => clearTimeout(timer);
         };
-
-        checkSessionAndRedirect();
+        checkSession();
     }, [router]);
 
-    return (
-        <main className="min-h-screen bg-background flex items-center justify-center overflow-hidden">
-            <AnimatePresence>
-                {showWelcome && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
-                        animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                        exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
-                        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }} // Apple-esque ease-out
-                        className="flex flex-col items-center justify-center space-y-6"
-                    >
-                        <BrandLogo 
-                            size={68} 
-                            textClassName="text-5xl md:text-7xl font-medium tracking-tight" 
-                        />
+    if (isLoading) return null;
 
-
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </main>
-    );
+    return <LandingHero />;
 }
