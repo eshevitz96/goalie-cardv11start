@@ -68,6 +68,8 @@ export function ProfileDashboard({
             athlete_email: profile.athleteEmail,
             athlete_phone: profile.athletePhone,
             birthday: profile.birthday,
+            team: profile.team,
+            team_id: profile.teamId,
         });
         setIsSavingWizard(false);
         setShowEditModal(false);

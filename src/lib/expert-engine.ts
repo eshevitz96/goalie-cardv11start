@@ -77,7 +77,7 @@ export function determineRecommendation(
 
     // Dynamic Protocol Generator if specific rules lack hardcoded drills
     const lowerSport = sport.toLowerCase();
-    const sportPrefix = lowerSport.includes('lacrosse') ? 'Lax' : lowerSport.includes('soccer') ? 'Soccer' : 'Hockey';
+    const sportPrefix = lowerSport.includes('lacrosse') ? 'Lacrosse' : lowerSport.includes('soccer') ? 'Soccer' : 'Hockey';
     
     const resolvedWarmup: DrillDef = topMatch.warmup || {
         name: `${sportPrefix} Dynamic Prep`,

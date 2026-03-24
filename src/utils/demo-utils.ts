@@ -9,7 +9,7 @@ export const DEMO_IDS = {
     LUKE_UNIQUE_ID: 'GC-8588'
 };
 
-export const DEMO_LOCAL_IDS = ['GC-PRO-01', 'GC-8001', 'GC-PRO-HKY', 'GC-DEMO-01', 'GC-PRO-LAX', 'GC-8002'];
+export const DEMO_LOCAL_IDS = ['GC-PRO-01', 'GC-8001', 'GC-PRO-HKY', 'GC-DEMO-01', 'GC-PRO-LACROSSE', 'GC-8002'];
 
 export function isDemoId(id: string | null | undefined): boolean {
     if (!id) return false;

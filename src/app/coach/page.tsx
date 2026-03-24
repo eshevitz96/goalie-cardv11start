@@ -48,15 +48,29 @@ export default function CoachDashboard() {
             const { data: { user } } = await supabase.auth.getUser();
             const coachId = user?.id;
 
+            // 0. Fetch Coach Profile (for team visibility)
+            const { data: coachProfile } = await supabase
+                .from('profiles')
+                .select('team_id, sport')
+                .eq('id', coachId)
+                .single();
+
+            const coachTeamId = coachProfile?.team_id;
+
             // 1. Fetch Roster
-            const { data: rawRosterData } = await supabase.from('roster_uploads').select('*');
+            // We fetch goalies assigned directly OR linked to the same team
+            const { data: rawRosterData } = await supabase
+                .from('roster_uploads')
+                .select('*');
+            
             let rosterData: any[] = [];
 
             if (rawRosterData) {
-                // Filter down to ONLY goalies assigned to or requested by this coach
+                // Filter down to goalies assigned to Coach, mentioned in assigned_coach_ids, OR sharing same team_id
                 rosterData = rawRosterData.filter(g =>
                     g.assigned_coach_id === coachId ||
-                    (g.assigned_coach_ids && g.assigned_coach_ids.includes(coachId))
+                    (g.assigned_coach_ids && g.assigned_coach_ids.includes(coachId)) ||
+                    (coachTeamId && g.team_id === coachTeamId)
                 );
 
                 // Fetch Credits

@@ -36,6 +36,7 @@ import { GameFilmUpload } from "@/components/goalie/GameFilmUpload";
 import { RequestSessionWidget } from "@/components/goalie/RequestSessionWidget";
 import { FilmAnalysisWorkspace } from "@/components/goalie/FilmAnalysisWorkspace";
 import { GameReport } from "@/components/goalie/GameReport";
+import { CoachRequestModal } from "@/components/goalie/card/CoachRequestModal";
 
 // V11 Algorithm & Components
 import { v11Engine } from "@/lib/v11-engine";
@@ -98,6 +99,7 @@ export function GoalieDashboard({
     const [readinessState, setReadinessState] = useState({ soreness: 2, sleep: 8 });
     const [videoUrlToAnalyze, setVideoUrlToAnalyze] = useState<string | null>(null);
     const [selectedEventIdForAnalysis, setSelectedEventIdForAnalysis] = useState<string>('');
+    const [isCoachRequestModalOpen, setIsCoachRequestModalOpen] = useState(false);
     const journalRef = useRef<HTMLDivElement>(null);
 
     // Basic Click Tracking for Goalie Interactions
@@ -141,6 +143,20 @@ export function GoalieDashboard({
     }, []);
 
     const activeGoalie = goalies[currentIndex];
+
+    // 🚀 Critical: Clear Session Data on Sport or Goalie Change 🚀
+    useEffect(() => {
+        if (activeGoalie) {
+            setShotEvents([]);
+            setShowGameReport(false);
+            setLastAnalyzedOpponent('');
+            setLastAnalyzedDate('');
+            setLastAnalyzedLocation('');
+            setLastAnalyzedType('');
+            console.log(`[STATE SYNC] Switched Goalie context to: ${activeGoalie.name} (${activeGoalie.sport}). Session cleared.`);
+        }
+    }, [activeGoalie?.id, activeGoalie?.sport]);
+
 
     const resolveSport = (s?: string): any => {
         if (!s) return 'hockey';
@@ -521,7 +537,7 @@ export function GoalieDashboard({
                         <CoachesCorner 
                             activeGoalie={activeGoalie} 
                             hasCoach={hasCoach} 
-                            onPickCoach={() => setHasCoach(true)} 
+                            onPickCoach={() => setIsCoachRequestModalOpen(true)} 
                         />
                         {hasCoach ? (
                             <RequestSessionWidget assignedCoach={activeGoalie.coach} />
@@ -617,7 +633,8 @@ export function GoalieDashboard({
                                     onComplete={async (data) => {
                                         const { syncShotEvents } = await import('@/app/actions');
                                         
-                                        const newlyPlottedShots = data.clips.filter((c: any) => c.status === 'plotted').map((c: any) => ({
+                                        // ONLY sync new shots (those without isExisting flag)
+                                        const newlyPlottedShots = data.clips.filter((c: any) => c.status === 'plotted' && !c.isExisting).map((c: any) => ({
                                             sport: data.sport,
                                             period: c.period || 1,
                                             result: c.type === 'goal' ? 'goal' : c.type === 'clear' ? 'clear' : 'save',
@@ -631,6 +648,24 @@ export function GoalieDashboard({
                                             filmUrl: videoUrlToAnalyze
                                         }));
 
+                                        // For the local report, we want ALL shots (old + new)
+                                        const allShotsForReport = data.clips.filter((c: any) => c.status === 'plotted').map((s: any) => ({
+                                            id: s.id && !s.id.toString().includes('manual') ? s.id.toString() : `temp-${Date.now()}-${Math.random()}`,
+                                            gameId: data.associatedEventId,
+                                            sport: s.sport || data.sport,
+                                            result: s.type || s.result,
+                                            shotType: s.shotType || 'unspecified',
+                                            originX: s.plottedX,
+                                            originY: s.plottedY,
+                                            targetX: s.netX,
+                                            targetY: s.netY,
+                                            period: s.period || 1,
+                                            isShorthanded: false,
+                                            isPowerPlay: false,
+                                            hasTraffic: false,
+                                            isOddManRush: false
+                                        }));
+
                                         const result = await syncShotEvents(
                                             activeGoalie.id,
                                             data.associatedEventId,
@@ -642,22 +677,7 @@ export function GoalieDashboard({
                                             setUnchartedCount(0);
                                             
                                             // Sync the local state so the dashboard/index updates instantly
-                                            setShotEvents(newlyPlottedShots.map((s: any) => ({
-                                                id: `temp-${Date.now()}-${Math.random()}`,
-                                                gameId: data.associatedEventId,
-                                                sport: s.sport,
-                                                result: s.result,
-                                                shotType: s.shotType,
-                                                originX: s.originX,
-                                                originY: s.originY,
-                                                targetX: s.targetX,
-                                                targetY: s.targetY,
-                                                period: s.period,
-                                                isShorthanded: false,
-                                                isPowerPlay: false,
-                                                hasTraffic: false,
-                                                isOddManRush: false
-                                            })));
+                                            setShotEvents(allShotsForReport);
 
                                             // Store opponent/date from workspace for the report
                                             const linkedEvent = dashboardEvents.find((e: any) => e.id === data.associatedEventId);
@@ -725,6 +745,17 @@ export function GoalieDashboard({
 
             <BetaFeedback rosterId={activeGoalie.id} userId={userId || undefined} userRole="goalie" />
             <WhatsNewGuide />
+            <AnimatePresence>
+                {isCoachRequestModalOpen && (
+                    <CoachRequestModal 
+                        isOpen={isCoachRequestModalOpen}
+                        onClose={() => setIsCoachRequestModalOpen(false)}
+                        rosterId={activeGoalie.id}
+                        goalieName={activeGoalie.name}
+                        goalieSport={activeGoalie.sport}
+                    />
+                )}
+            </AnimatePresence>
         </main>
     );
 }

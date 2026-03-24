@@ -30,6 +30,8 @@ export interface ProfilePayload {
     parentName: string;
     guardianEmail: string;
     guardianPhone: string;
+    team: string;
+    teamId?: string | null;
 }
 
 export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, isLoading, error, title = 'Edit Goalie' }: ActivateProfileWizardProps) {
@@ -50,6 +52,8 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
         parentName: rosterData?.parent_name || "",
         guardianEmail: email || rosterData?.guardian_email || "",
         guardianPhone: rosterData?.guardian_phone || rosterData?.parent_phone || "",
+        team: rosterData?.team || "",
+        teamId: rosterData?.team_id || null,
     });
 
     const [firstName, lastName] = (() => {
@@ -246,6 +250,43 @@ export function ActivateProfileWizard({ email, rosterData, onSubmit, onCancel, i
                                         className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors"
                                         placeholder="e.g. 180 lbs"
                                     />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-muted-foreground mb-1 block uppercase tracking-wider">Team / Club Name</label>
+                                    <div className="relative">
+                                        <input
+                                            value={form.team}
+                                            onChange={async (e) => {
+                                                const val = e.target.value;
+                                                setForm({ ...form, team: val, teamId: null });
+                                                if (val.length >= 3) {
+                                                    const { findTeamByName } = await import('@/app/actions');
+                                                    const res = await findTeamByName(val);
+                                                    if (res.success && res.team) {
+                                                        const teamData = res.team;
+                                                        setForm(prev => ({ ...prev, teamId: teamData.id, team: teamData.name }));
+                                                    }
+                                                }
+                                            }}
+                                            className={`w-full bg-black/50 border rounded-xl p-3 text-sm focus:border-primary outline-none transition-colors ${form.teamId ? 'border-primary/50 ring-1 ring-primary/20' : 'border-white/10'}`}
+                                            placeholder="e.g. St. Louis Blues"
+                                        />
+                                        {form.teamId && (
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 transition-all text-emerald-400">
+                                                <ShieldCheck size={14} />
+                                                <span className="text-[10px] font-black uppercase tracking-tight">Hub Active</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {form.teamId && (
+                                        <div className="mt-2 p-3 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between group cursor-pointer hover:bg-primary/10 transition-all">
+                                            <div>
+                                                <h5 className="text-[10px] font-black uppercase text-primary tracking-widest leading-none mb-1">Team Hub Found</h5>
+                                                <p className="text-[9px] text-muted-foreground leading-tight">Your data will sync to the organization dashboard.</p>
+                                            </div>
+                                            <CheckCircle size={16} className="text-primary" />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </motion.div>

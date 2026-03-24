@@ -40,6 +40,20 @@ export default function Dashboard() {
     const { goalies, isLoading, error, fetchMyGoalies } = useParentData();
 
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    // Redirect if not authenticated
+    useEffect(() => {
+        if (!auth.loading && !auth.isAuthenticated && !isLoggingOut) {
+            router.push('/login');
+        }
+    }, [auth.loading, auth.isAuthenticated, isLoggingOut, router]);
+
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        await auth.logout();
+        router.push('/login');
+    };
 
     const handleRegisterGoalie = async () => {
         const goalieName = prompt("Enter Goalie Full Name:");
@@ -114,7 +128,7 @@ export default function Dashboard() {
                 notification={null}
                 notifications={[]}
                 onDismissNotification={() => {}}
-                onLogout={() => auth.logout()}
+                onLogout={handleLogout}
                 onRegister={handleRegisterGoalie}
                 onLogAction={() => fetchMyGoalies(false)}
                 onCoachUpdate={() => fetchMyGoalies(false)}

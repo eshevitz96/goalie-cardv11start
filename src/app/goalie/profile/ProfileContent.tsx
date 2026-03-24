@@ -64,6 +64,7 @@ export default function ProfileContent({ goalie }: ProfileContentProps) {
                 weight: formData.weight,
                 catch_hand: formData.catch_hand,
                 sport: formData.sport,
+                team_id: formData.teamId,
                 team_history: formData.team_history
             });
 

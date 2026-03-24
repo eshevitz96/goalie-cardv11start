@@ -614,6 +614,29 @@ export async function addAthleteToTeam(teamId: string, emailOrId: string) {
         return { success: false, error: err.message };
     }
 }
+
+export async function findTeamByName(name: string) {
+    if (!name || name.length < 3) return { success: false, team: null };
+    
+    try {
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabaseAdmin = createClient(url, key);
+
+        const { data: team, error } = await supabaseAdmin
+            .from('teams')
+            .select('id, name, organization')
+            .ilike('name', `%${name.trim()}%`)
+            .maybeSingle();
+
+        if (error) throw error;
+        return { success: true, team };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}
+
 export async function linkFilmToEvent(eventId: string, videoUrl: string) {
     if (!eventId || !videoUrl) return { success: false, error: "Missing data" };
 
@@ -628,6 +651,23 @@ export async function linkFilmToEvent(eventId: string, videoUrl: string) {
         return { success: true };
     } catch (err: any) {
         console.error("Link Film Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+
+export async function fetchShotEvents(eventId: string) {
+    if (!eventId || eventId.startsWith('m')) return { success: true, shots: [] };
+    
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        const { data: shots, error } = await supabaseAdmin
+            .from('shot_events')
+            .select('*')
+            .eq('event_id', eventId);
+
+        if (error) throw error;
+        return { success: true, shots };
+    } catch (err: any) {
         return { success: false, error: err.message };
     }
 }

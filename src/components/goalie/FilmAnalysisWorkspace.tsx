@@ -14,6 +14,8 @@ import { SupportedSport, ShotEvent, ShotResult, ShotType } from '@/types/goalie-
 import { Button } from '@/components/ui/Button';
 import { getSportTerms } from '@/utils/sport-language';
 import { BrandLogo } from '@/components/ui/BrandLogo';
+import { GameFilmUpload } from './GameFilmUpload';
+import { supabase } from '@/utils/supabase/client';
 
 interface Clip {
   id: string;
@@ -56,10 +58,17 @@ export function FilmAnalysisWorkspace({
   const [sessionType, setSessionType] = useState<'full_game' | 'clips' | null>('clips');
   const [opponentName, setOpponentName] = useState('Unknown Opponent');
   const [gameDate, setGameDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isAddingClip, setIsAddingClip] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const playbackTimerRef = useRef<NodeJS.Timeout | null>(null);
   const activeClip = activeClipIndex !== null ? clips[activeClipIndex] : null;
+
+  // Multi-clip support
+  const [videoUrls, setVideoUrls] = useState<string[]>(videoUrl.includes(',') ? videoUrl.split(',') : [videoUrl]);
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+  const currentVideoUrl = videoUrls[activeVideoIndex];
+
   const terms = getSportTerms(sport);
 
   const formatTime = (seconds: number) => {
@@ -67,6 +76,41 @@ export function FilmAnalysisWorkspace({
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Load existing data if resuming/appending
+  useEffect(() => {
+    if (associatedEventId && !associatedEventId.startsWith('m')) {
+        const loadExisting = async () => {
+            const { fetchShotEvents } = await import('@/app/actions');
+            const res = await fetchShotEvents(associatedEventId);
+            if (res.success && res.shots && res.shots.length > 0) {
+                // Map shot_events to Clip logic
+                const loadedClips: Clip[] = res.shots.map((s: any) => ({
+                    id: s.id.toString(),
+                    timestamp: s.clip_start || 0,
+                    type: s.result,
+                    status: 'plotted',
+                    plottedX: s.origin_x,
+                    plottedY: s.origin_y,
+                    netX: s.target_x,
+                    netY: s.target_y,
+                    period: s.period,
+                    shotType: s.shot_type,
+                    isExisting: true
+                }));
+                setClips(prev => {
+                    // Unique check to avoid duplication if initialClips also has them
+                    const merged = [...prev];
+                    loadedClips.forEach(c => {
+                        if (!merged.some(m => m.id === c.id)) merged.push(c);
+                    });
+                    return merged;
+                });
+            }
+        };
+        loadExisting();
+    }
+  }, [associatedEventId]);
 
   // Sync Opponent & Date from Event
   useEffect(() => {
@@ -280,6 +324,13 @@ export function FilmAnalysisWorkspace({
                 </select>
                 <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none group-hover:text-primary transition-colors" />
             </div>
+
+            <Button 
+                onClick={() => setIsAddingClip(true)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] h-10 px-6 rounded-xl flex items-center gap-2 shadow-xl hover:scale-[1.05] transition-all"
+            >
+                <Plus size={14} /> Add Film
+            </Button>
         </div>
       </div>
 
@@ -291,12 +342,37 @@ export function FilmAnalysisWorkspace({
             <div className="relative aspect-video bg-black rounded-3xl overflow-hidden shadow-xl border border-border/50 bg-card group">
               <video 
                 ref={videoRef}
-                src={videoUrl} 
+                src={currentVideoUrl} 
                 className="w-full h-full object-contain"
                 onTimeUpdate={handleTimeUpdate}
                 onClick={() => setIsPlaying(!isPlaying)}
                 muted
               />
+
+              {/* Playlist Overlay Controls if multiple */}
+              {videoUrls.length > 1 && (
+                <div className="absolute top-6 right-6 flex items-center gap-3 z-50">
+                    <div className="px-4 py-2 bg-black/80 backdrop-blur-xl border border-white/10 rounded-full text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-3 shadow-2xl">
+                         <Film size={14} className="text-primary" /> CLIP {activeVideoIndex + 1} / {videoUrls.length}
+                    </div>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveVideoIndex(Math.max(0, activeVideoIndex - 1)); }}
+                            disabled={activeVideoIndex === 0}
+                            className="w-10 h-10 bg-black/80 hover:bg-primary hover:text-white rounded-full border border-white/10 text-white disabled:opacity-30 transition-all flex items-center justify-center shadow-2xl"
+                        >
+                            <ChevronLeft size={18} />
+                        </button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveVideoIndex(Math.min(videoUrls.length - 1, activeVideoIndex + 1)); }}
+                            disabled={activeVideoIndex === videoUrls.length - 1}
+                            className="w-10 h-10 bg-black/80 hover:bg-primary hover:text-white rounded-full border border-white/10 text-white disabled:opacity-30 transition-all flex items-center justify-center shadow-2xl"
+                        >
+                            <ChevronRight size={18} />
+                        </button>
+                    </div>
+                </div>
+              )}
 
               {/* Master Playback Controls */}
               <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-4">
@@ -580,6 +656,36 @@ export function FilmAnalysisWorkspace({
             </div>
         </div>
       </div>
+      {/* Add Clip Modal Overlay */}
+      <AnimatePresence>
+        {isAddingClip && (
+          <div className="fixed inset-0 z-[600] bg-background/90 backdrop-blur-2xl flex items-center justify-center p-4">
+            <div className="w-full max-w-lg relative animate-in zoom-in-95 duration-200">
+                <button 
+                  onClick={() => setIsAddingClip(false)}
+                  className="absolute -top-12 right-0 p-2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X size={24} />
+                </button>
+                <div className="p-1">
+                  <GameFilmUpload 
+                    rosterId={associatedEventId} // Using eventId as generic grouping
+                    title="Add More Game Film"
+                    onUploadComplete={(data) => {
+                        const newUrls = data.url.split(',');
+                        setVideoUrls(prev => {
+                          const updated = [...prev, ...newUrls];
+                          setActiveVideoIndex(prev.length);
+                          return updated;
+                        });
+                        setIsAddingClip(false);
+                    }}
+                  />
+                </div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

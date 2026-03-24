@@ -43,6 +43,7 @@ export async function updateProfile(rosterId: string, updates: {
     weight?: string;
     catch_hand?: string;
     sport?: string;
+    team_id?: string | null;
     team_history?: { team: string, years: string }[];
 }) {
     if (!rosterId) return { success: false, error: "Missing roster ID" };
