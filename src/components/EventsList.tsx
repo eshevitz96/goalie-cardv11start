@@ -120,16 +120,16 @@ export function EventsList({ events, onRegister, onUploadFilm, onEventAdded, spo
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {isPast && !event.video_id && (
-                                        <Button
+                                        <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 onUploadFilm?.(event.id);
                                             }}
-                                            className="h-8 px-4 bg-primary text-black font-black text-[10px] uppercase tracking-widest rounded-full hover:scale-105 transition-transform"
+                                            className="h-8 px-4 bg-white text-black border border-zinc-200 dark:border-transparent dark:bg-primary dark:text-primary-foreground font-black text-[10px] uppercase tracking-widest rounded-full hover:scale-105 transition-all flex items-center shadow-sm"
                                         >
                                             <Video size={10} className="mr-1.5" fill="currentColor" />
                                             Film
-                                        </Button>
+                                        </button>
                                     )}
                                     {isOwner && !isPast && (
                                         <Button
