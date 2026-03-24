@@ -21,7 +21,7 @@ export function NotificationBanner({ notification, onDismiss }: NotificationBann
         <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="md:col-span-2 mb-6 bg-gradient-to-r from-red-500/10 to-transparent border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3 backdrop-blur-sm"
+            className="col-span-full mb-6 bg-gradient-to-r from-red-500/10 to-transparent border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3 backdrop-blur-sm"
         >
             <div className="p-2 bg-red-500/20 rounded-full text-red-500">
                 <Bell size={16} />

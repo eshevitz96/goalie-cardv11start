@@ -36,6 +36,13 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events 
         setIsUploading(true);
         setUploadProgress(0);
 
+        const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+        if (selectedFile.size > MAX_FILE_SIZE) {
+            alert("File is too large. Maximum size is 500MB. Please use a shorter clip or compress the video.");
+            setIsUploading(false);
+            return;
+        }
+
         try {
             const fileExt = selectedFile.name.split('.').pop();
             const fileName = `${rosterId}_${Date.now()}.${fileExt}`;

@@ -204,7 +204,7 @@ export function GoalieDashboard({
 
     return (
         <main className="min-h-screen bg-background p-4 md:p-8 overflow-x-hidden selection:bg-primary selection:text-white">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
 
                 {/* Notification Banner */}
                 <NotificationBanner
@@ -219,7 +219,7 @@ export function GoalieDashboard({
                 />
 
                 {/* HERO ROW: Coach OS (2/3) | Profile (1/3) */}
-                <div className="md:col-span-2">
+                <div className="col-span-1 lg:col-span-2">
                     <AiCoachRecommendation
                         lastMood={activeGoalie.latestMood}
                         rosterId={activeGoalie.id}
@@ -240,7 +240,7 @@ export function GoalieDashboard({
                     />
                 </div>
 
-                <div className="md:col-span-1">
+                <div className="col-span-1 lg:col-span-1">
                     <motion.div
                         key={activeGoalie.id}
                         initial={{ opacity: 0, x: 20 }}
@@ -284,7 +284,7 @@ export function GoalieDashboard({
                 </div>
 
                 {/* WIDGET ROW: 3 Columns */}
-                <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                     {/* Column 1: Events */}
                     <div className="space-y-4">
                         <EventsList
@@ -496,7 +496,7 @@ export function GoalieDashboard({
                         </div>
                     </div>
 
-                    <div className="md:col-span-1 space-y-6">
+                    <div className="col-span-1 lg:col-span-1 space-y-6">
                         <CoachesCorner 
                             activeGoalie={activeGoalie} 
                             hasCoach={hasCoach} 

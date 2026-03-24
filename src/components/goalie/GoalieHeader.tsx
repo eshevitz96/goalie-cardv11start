@@ -21,7 +21,7 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
     const { theme } = useTheme();
 
     return (
-        <header className="flex justify-between items-center mb-12 col-span-full relative">
+        <header className="flex justify-between items-center mb-8 md:mb-12 col-span-full relative flex-nowrap gap-4">
             <GlobalSearch
                 isOpen={isSearchOpen}
                 onClose={() => setIsSearchOpen(false)}

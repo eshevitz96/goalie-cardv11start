@@ -309,7 +309,7 @@ export function AiCoachRecommendation({
                     <Brain size={14} className="text-foreground" />
                     <span className="text-[10px] font-black uppercase tracking-[.2em] text-foreground opacity-70">Coach OS</span>
                 </div>
-                <h1 className="text-5xl md:text-6xl font-black text-foreground tracking-tighter leading-tight mb-4">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-foreground tracking-tighter leading-tight mb-4 text-balance">
                     {currentGreeting}
                 </h1>
                 <p className="text-xl font-medium text-muted-foreground tracking-tight leading-relaxed max-w-2xl mb-8">
