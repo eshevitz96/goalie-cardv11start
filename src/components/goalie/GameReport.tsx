@@ -10,6 +10,7 @@ import { SupportedSport, ShotEvent, ShotResult } from '@/types/goalie-v11';
 import { Button } from '@/components/ui/Button';
 import { useTheme } from 'next-themes';
 import { getSportTerms } from '@/utils/sport-language';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 
 interface GameReportProps {
   sport: SupportedSport;
@@ -114,7 +115,7 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
                           <div className="bg-foreground/5 text-foreground/80 font-mono text-xs px-2 py-1.5 rounded-lg border border-border/5 text-center mb-1">
                              {formatTimestamp(shot.clipStart)}
                           </div>
-                          <div className={`text-[9px] font-black uppercase tracking-widest text-center ${shot.result === 'goal' ? 'text-red-500' : 'text-emerald-500'}`}>
+                          <div className={`text-[9px] font-black uppercase tracking-widest text-center ${shot.result === 'goal' ? 'text-red-500' : shot.result === 'clear' ? 'text-blue-500' : 'text-emerald-500'}`}>
                              {shot.result}
                           </div>
                        </div>
@@ -249,17 +250,8 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
       </div>
 
       {/* Footer */}
-      <div className="px-10 py-10 flex items-center justify-center gap-2 text-center text-[10px] text-zinc-600 font-bold uppercase tracking-[.5em] mb-4">
-        <img 
-            src="/flower-logo.png?v=5" 
-            alt="CIC Logo" 
-            width={16} 
-            height={16} 
-            draggable={false}
-            className="object-contain pointer-events-none select-none"
-            style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
-        />
-        Goalie Card — Precision Athletic Intelligence 
+      <div className="px-10 py-10 flex items-center justify-center mb-8">
+        <BrandLogo size={24} withText={true} textClassName="text-2xl font-medium tracking-tight" />
       </div>
     </div>
   );

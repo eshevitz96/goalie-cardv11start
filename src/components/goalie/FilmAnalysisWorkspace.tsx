@@ -6,7 +6,7 @@ import {
   Play, Pause, ChevronRight, ChevronLeft, MapPin, Target as TargetIcon, 
   CheckCircle, Clock, Video, Save, Brain, Info, AlertCircle, Activity,
   Maximize2, ArrowRight, Shield, Target, Plus, Zap, Repeat, Trash2, Camera,
-  MessageCircle, PlusCircle, LayoutList, Film, X
+  MessageCircle, PlusCircle, LayoutList, Film, X, ChevronDown, Calendar
 } from 'lucide-react';
 import { GameAnalysisSurface } from './GameAnalysisSurface';
 import { GameReport } from './GameReport';
@@ -18,7 +18,7 @@ import { BrandLogo } from '@/components/ui/BrandLogo';
 interface Clip {
   id: string;
   timestamp: number;
-  type: 'save' | 'goal' | 'clear' | 'miss' | 'shot_on_cage';
+  type: ShotResult;
   status: 'pending' | 'plotted';
   plottedX?: number;
   plottedY?: number;
@@ -53,7 +53,7 @@ export function FilmAnalysisWorkspace({
   const [currentTime, setCurrentTime] = useState(0);
   const [associatedEventId, setAssociatedEventId] = useState(initialEventId || (events.length > 0 ? events[0].id : ''));
   const [clipComments, setClipComments] = useState<Record<string, string>>({});
-  const [sessionType, setSessionType] = useState<'clips' | 'full_game' | null>(initialClips.length > 0 ? 'clips' : null);
+  const [sessionType, setSessionType] = useState<'full_game' | 'clips' | null>('clips');
   const [opponentName, setOpponentName] = useState('Unknown Opponent');
   const [gameDate, setGameDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -87,7 +87,7 @@ export function FilmAnalysisWorkspace({
     const newId = `manual-${Date.now()}`;
     const newClip: Clip = {
         id: newId,
-        timestamp: Math.round(currentTime),
+        timestamp: videoRef.current ? Math.round(videoRef.current.duration) : 0,
         type: 'save',
         status: 'pending'
     };
@@ -154,7 +154,13 @@ export function FilmAnalysisWorkspace({
   const toggleClipType = (index: number) => {
     const updatedClips = [...clips];
     const clip = updatedClips[index];
-    clip.type = clip.type === 'save' ? 'goal' : 'save';
+    const results: ShotResult[] = (sport === 'soccer' || sport.includes('lacrosse')) 
+      ? ['save', 'goal', 'clear'] 
+      : ['save', 'goal'];
+    
+    const currentIndex = results.indexOf(clip.type as ShotResult);
+    const nextIndex = (currentIndex + 1) % results.length;
+    clip.type = results[nextIndex];
     setClips(updatedClips);
   };
 
@@ -210,7 +216,7 @@ export function FilmAnalysisWorkspace({
             opponent={opponentName}
             date={gameDate}
             shots={clips.filter(c => c.status === 'plotted').map(c => ({
-                id: c.id, gameId: associatedEventId, sport, result: (c.type === 'goal' ? 'goal' : 'save') as ShotResult,
+                id: c.id, gameId: associatedEventId, sport, result: c.type,
                 shotType: (c.shotType || 'unspecified') as ShotType, originX: c.plottedX || 0, originY: c.plottedY || 0,
                 targetX: c.netX, targetY: c.netY || 0,
                 isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false,
@@ -240,35 +246,47 @@ export function FilmAnalysisWorkspace({
     <div className="flex flex-col gap-6 w-full bg-background pb-20 pt-6">
       
       {/* HEADER: Session Context */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
-        <div className="flex items-center gap-4">
-            <div className="bg-primary/20 text-primary border border-primary/30 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[.25em] flex items-center gap-2 shadow-2xl">
-                <Brain size={12} /> Coach OS Session Active
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1 mb-2">
+        <div className="flex items-center gap-6">
+            <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-[.25em] flex items-center gap-2 shadow-2xl text-muted-foreground whitespace-nowrap">
+                <Activity size={12} className="text-muted-foreground/50" /> Draft Session Active
             </div>
-            <div className="flex items-center gap-3">
+            
+            <div className="flex items-center gap-4">
                 <input 
                     value={opponentName}
                     onChange={(e) => setOpponentName(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xl font-black tracking-tighter text-foreground hover:bg-white/5 px-2 rounded-lg focus:bg-white/10 transition-colors w-auto min-w-[120px]"
+                    className="bg-transparent border-none outline-none text-2xl font-black tracking-tighter text-foreground hover:bg-white/5 px-2 rounded-lg focus:bg-white/10 transition-colors w-auto min-w-[100px] uppercase"
+                    placeholder="Opponent"
                 />
-                <input 
-                    type="date"
-                    value={gameDate}
-                    onChange={(e) => setGameDate(e.target.value)}
-                    className="bg-card/50 border border-border/40 rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground outline-none focus:ring-1 focus:ring-primary"
-                />
+                
+                <div className="bg-white/5 border border-white/5 px-4 py-2 rounded-xl text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <Calendar size={12} className="opacity-40" />
+                    <input 
+                        type="date"
+                        value={gameDate}
+                        onChange={(e) => setGameDate(e.target.value)}
+                        className="bg-transparent border-none outline-none text-muted-foreground focus:text-foreground transition-colors cursor-pointer"
+                    />
+                </div>
             </div>
         </div>
+        
         <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Link Event:</span>
-            <select 
-                value={associatedEventId}
-                onChange={(e) => setAssociatedEventId(e.target.value)}
-                className="bg-card/50 border border-border/40 rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-foreground focus:ring-1 focus:ring-primary outline-none"
-            >
-                <option value="">Create from Session</option>
-                {events.map((e: { id: string, name: string }) => <option key={e.id} value={e.id} className="bg-background">{e.name}</option>)}
-            </select>
+            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[.2em] whitespace-nowrap opacity-60">Link Event:</span>
+            <div className="relative group">
+                <select 
+                    value={associatedEventId}
+                    onChange={(e) => setAssociatedEventId(e.target.value)}
+                    className="bg-card/80 border border-border/50 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-foreground focus:ring-1 focus:ring-primary/30 outline-none hover:border-primary/50 transition-all appearance-none pr-10 cursor-pointer shadow-xl"
+                >
+                    <option value="">No linked event</option>
+                    {events.map((e: { id: string, name: string }) => (
+                        <option key={e.id} value={e.id} className="bg-card text-foreground">{e.name}</option>
+                    ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none group-hover:text-primary transition-colors" />
+            </div>
         </div>
       </div>
 
@@ -421,54 +439,79 @@ export function FilmAnalysisWorkspace({
                     </Button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {clips.map((clip, i) => (
-                        <div key={clip.id} className="flex flex-col gap-2 p-1">
+                        <div key={clip.id} className="space-y-3 p-1">
                             <button 
                                 onClick={() => jumpToClip(i)}
-                                className={`w-full rounded-2xl p-4 transition-all border text-left flex items-center gap-4 ${
-                                    activeClipIndex === i ? 'bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]' : clip.status === 'plotted' ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-white/5 border-border/40 text-foreground/80 hover:bg-white/10'
+                                className={`w-full rounded-2xl p-4 transition-all border text-left flex items-center justify-between group h-20 ${
+                                    activeClipIndex === i 
+                                        ? 'bg-foreground border-foreground text-background shadow-2xl scale-[1.02] z-10' 
+                                        : clip.status === 'plotted' 
+                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
+                                            : 'bg-muted/30 border-border/50 text-foreground/80 hover:border-primary/50'
                                 }`}
                             >
-                                <div className="flex flex-col flex-1 gap-1">
-                                    <div className="flex justify-between items-center w-full">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`text-[9px] font-bold uppercase tracking-widest ${activeClipIndex === i ? 'opacity-70' : 'text-muted-foreground'}`}>Clip {i + 1}</span>
-                                            <span className={`text-[9px] font-mono ${activeClipIndex === i ? 'opacity-70' : 'text-muted-foreground'}`}>0:{clip.timestamp.toString().padStart(2, '0')}</span>
-                                            {clip.status === 'plotted' && <CheckCircle size={10} className={activeClipIndex === i ? 'text-primary-foreground' : 'text-emerald-500'} />}
-                                        </div>
-                                        <button 
-                                            onClick={(e) => { 
-                                                e.stopPropagation(); 
-                                                setClips(clips.filter((_, idx) => idx !== i)); 
-                                                if(activeClipIndex === i) setActiveClipIndex(null); 
-                                            }}
-                                            className={`transition-colors p-1 rounded-full ${activeClipIndex === i ? 'text-primary-foreground hover:bg-black/20' : 'text-muted-foreground hover:bg-white/10 hover:text-white'}`}
-                                        >
-                                            <X size={12} />
-                                        </button>
+                                <div className="flex flex-col gap-1 overflow-hidden">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-[9px] font-black uppercase tracking-[.2em] ${activeClipIndex === i ? 'opacity-50' : 'text-muted-foreground'}`}>
+                                            Clip {i + 1}
+                                        </span>
+                                        <span className={`text-[10px] font-mono font-bold ${activeClipIndex === i ? 'opacity-50' : 'text-muted-foreground'}`}>
+                                            {formatTime(clip.timestamp)}
+                                        </span>
                                     </div>
-                                    <span className="text-xs font-black uppercase tracking-widest truncate">{clip.type}</span>
+                                    <div className="text-sm font-black uppercase tracking-tighter truncate leading-none">
+                                        {clip.type === 'save' ? 'Registered Save' : clip.type === 'goal' ? 'Goal Against' : clip.type === 'clear' ? 'Positional Clear' : 'Pending Detail'}
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                    {clip.status === 'plotted' && <CheckCircle size={16} className={activeClipIndex === i ? 'text-background' : 'text-emerald-500'} />}
+                                    <button 
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            setClips(clips.filter((_, idx) => idx !== i)); 
+                                            if(activeClipIndex === i) setActiveClipIndex(null); 
+                                        }}
+                                        className={`transition-all p-1.5 rounded-full hover:scale-110 ${activeClipIndex === i ? 'text-background/40 hover:text-background hover:bg-background-foreground/10' : 'text-muted-foreground hover:bg-white/10 hover:text-red-500'}`}
+                                    >
+                                        <X size={14} />
+                                    </button>
                                 </div>
                             </button>
                             
+                            {/* Integrated Controls Group */}
                             <div className="flex gap-2 px-1">
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); toggleClipType(i); }}
-                                    className={`flex-1 py-1 rounded-lg border text-[8px] font-bold uppercase tracking-widest transition-all ${
-                                        clip.type === 'save' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-500' : 'bg-muted border-border/20 text-muted-foreground'
-                                    }`}
-                                >
-                                    Save
-                                </button>
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); toggleClipType(i); }}
-                                    className={`flex-1 py-1 rounded-lg border text-[8px] font-bold uppercase tracking-widest transition-all ${
-                                        clip.type === 'goal' ? 'bg-red-500/20 border-red-500/30 text-red-500' : 'bg-muted border-border/20 text-muted-foreground'
-                                    }`}
-                                >
-                                    Goal
-                                </button>
+                                <div className="flex bg-muted/20 border border-border/50 rounded-xl p-1 flex-1">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); toggleClipType(i); }}
+                                        className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
+                                            clip.type === 'save' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        Save
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); toggleClipType(i); }}
+                                        className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
+                                            clip.type === 'goal' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        Goal
+                                    </button>
+                                    {(sport === 'soccer' || sport.includes('lacrosse')) && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); toggleClipType(i); }}
+                                            className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
+                                                clip.type === 'clear' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            Clear
+                                        </button>
+                                    )}
+                                </div>
+                                
                                 <select
                                     value={clip.period || 1}
                                     onChange={(e) => {
@@ -476,24 +519,21 @@ export function FilmAnalysisWorkspace({
                                         updated[i].period = parseInt(e.target.value);
                                         setClips(updated);
                                     }}
-                                    className="bg-secondary/50 border border-border/20 rounded-lg text-[8px] font-bold px-1"
+                                    className="bg-muted/30 border border-border/50 rounded-xl text-[9px] font-black uppercase tracking-tighter px-2 outline-none hover:border-primary/50 transition-colors"
                                 >
                                     {sport === 'soccer' ? (
-                                        <>
-                                            <option value="1">H1</option><option value="2">H2</option>
-                                            <option value="3">ET1</option><option value="4">ET2</option>
-                                            <option value="5">PKs</option>
-                                        </>
+                                        <><option value="1">H1</option><option value="2">H2</option><option value="3">ET1</option><option value="4">ET2</option><option value="5">PKs</option></>
                                     ) : (
                                         <>
-                                            <option value="1">{terms.period[0]}1</option>
-                                            <option value="2">{terms.period[0]}2</option>
-                                            <option value="3">{terms.period[0]}3</option>
-                                            {sport.includes('lacrosse') && <option value="4">{terms.period[0]}4</option>}
+                                            <option value="1">{terms.period.charAt(0)}1</option>
+                                            <option value="2">{terms.period.charAt(0)}2</option>
+                                            <option value="3">{terms.period.charAt(0)}3</option>
+                                            {sport.includes('lacrosse') && <option value="4">{terms.period.charAt(0)}4</option>}
                                             <option value="5">OT</option>
                                         </>
                                     )}
                                 </select>
+                                
                                 <select
                                     value={clip.shotType || 'standard'}
                                     onChange={(e) => {
@@ -501,24 +541,16 @@ export function FilmAnalysisWorkspace({
                                         updated[i].shotType = e.target.value;
                                         setClips(updated);
                                     }}
-                                    className="flex-1 bg-secondary/50 border border-border/20 rounded-lg text-[8px] font-bold px-1"
+                                    className="flex-1 bg-muted/30 border border-border/50 rounded-xl text-[9px] font-black uppercase tracking-tighter px-2 outline-none hover:border-primary/50 transition-colors"
                                 >
-                                    <option value="standard">Type</option>
+                                    <option value="standard">Shot Type</option>
                                     {sport.includes('hockey') ? (
                                         <>
-                                            <option value="wrist">Wrist</option>
-                                            <option value="slap">Slap</option>
-                                            <option value="snap">Snap</option>
-                                            <option value="backhand">Backhand</option>
-                                            <option value="tip">Tip</option>
+                                            <option value="wrist">Wrist</option><option value="slap">Slap</option><option value="snap">Snap</option><option value="backhand">Backhand</option><option value="tip">Tip</option><option value="deflection">Deflection</option>
                                         </>
                                     ) : (
                                         <>
-                                            <option value="overhand">Overhand</option>
-                                            <option value="sidearm">Sidearm</option>
-                                            <option value="underhand">Underhand</option>
-                                            <option value="bounce">Bounce</option>
-                                            <option value="behind-back">BTB</option>
+                                            <option value="overhand">Overhand</option><option value="sidearm">Sidearm</option><option value="underhand">Underhand</option><option value="bounce">Bounce</option><option value="behind-back">BTB</option><option value="shovel">Shovel</option>
                                         </>
                                     )}
                                 </select>
@@ -527,7 +559,7 @@ export function FilmAnalysisWorkspace({
                     ))}
                 </div>
 
-                <div className="p-6 border-t border-border/30 space-y-4">
+                <div className="p-6 border-t border-border/30">
                     <Button 
                         disabled={!clips.every(c => c.status === 'plotted')}
                         className={`w-full py-5 rounded-3xl font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] ${
@@ -537,12 +569,6 @@ export function FilmAnalysisWorkspace({
                     >
                         Confirm Analysis & Sync
                     </Button>
-                    <div className="flex flex-col items-center justify-center pt-2 opacity-40">
-                       <BrandLogo size={10} textClassName="text-[10px] font-black uppercase tracking-[0.4em]" />
-                       <div className="text-[8px] font-bold text-muted-foreground uppercase tracking-[0.2em] mt-1">
-                          Precision Athletic Intelligence
-                       </div>
-                    </div>
                 </div>
             </div>
 

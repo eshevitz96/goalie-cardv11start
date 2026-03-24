@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CheckCircle, QrCode } from "lucide-react";
+import { CheckCircle, QrCode, Settings2, Check } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "next-themes";
 import { twMerge } from "tailwind-merge";
@@ -63,9 +63,25 @@ export function GoalieCard({
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
 
+    // Local override state for custom season dates
+    const [isEditingSeason, setIsEditingSeason] = useState(false);
+    const [customStart, setCustomStart] = useState<string>("");
+    const [customEnd, setCustomEnd] = useState<string>("");
+
     // Use logic hook
-    const { seasonProgress: calculatedSeasonProgress, seasonLabel } = useSeasonTimeline(sport);
-    const finalSeasonProgress = seasonProgress ?? calculatedSeasonProgress;
+    const { seasonProgress: hookProgress, seasonLabel } = useSeasonTimeline(sport);
+    let finalSeasonProgress = seasonProgress ?? hookProgress;
+    
+    // Calculate dynamic progress if custom dates exist
+    if (customStart && customEnd) {
+        const startMs = new Date(customStart).getTime();
+        const endMs = new Date(customEnd).getTime();
+        const nowMs = new Date().getTime();
+        
+        if (startMs < endMs) {
+            finalSeasonProgress = Math.max(0, Math.min(100, ((nowMs - startMs) / (endMs - startMs)) * 100));
+        }
+    }
 
     if (pureIcon) {
         return (
@@ -194,9 +210,17 @@ export function GoalieCard({
                         <div className="space-y-4">
                             {/* Season Progress */}
                             <div className="space-y-1.5">
-                                <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 px-1">
-                                    <span>Season Timeline</span>
-                                    <span className="text-foreground/40">{Math.round(finalSeasonProgress)}%</span>
+                                <div className="flex justify-between items-center px-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Season Timeline</span>
+                                        <button 
+                                            onClick={() => setIsEditingSeason(!isEditingSeason)}
+                                            className="text-muted-foreground/40 hover:text-foreground transition-colors"
+                                        >
+                                            <Settings2 size={10} />
+                                        </button>
+                                    </div>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-foreground/40">{Math.round(finalSeasonProgress)}%</span>
                                 </div>
                                 <ProgressBar
                                     value={finalSeasonProgress}
@@ -205,32 +229,53 @@ export function GoalieCard({
                                     delay={0.4}
                                     className="rounded-full overflow-hidden bg-muted/20"
                                 />
+                                
+                                {isEditingSeason && (
+                                    <div className="flex items-center gap-2 mt-2 bg-foreground/5 p-2 rounded-lg border border-border/10">
+                                        <div className="flex-1 space-y-1">
+                                            <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 w-full block">1st Practice</label>
+                                            <input 
+                                                type="date" 
+                                                value={customStart}
+                                                onChange={(e) => setCustomStart(e.target.value)}
+                                                className="w-full bg-transparent text-[10px] font-bold text-foreground outline-none"
+                                            />
+                                        </div>
+                                        <div className="flex-1 space-y-1 border-l border-border/20 pl-2">
+                                            <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 w-full block">Championship</label>
+                                            <input 
+                                                type="date" 
+                                                value={customEnd}
+                                                onChange={(e) => setCustomEnd(e.target.value)}
+                                                className="w-full bg-transparent text-[10px] font-bold text-foreground outline-none"
+                                            />
+                                        </div>
+                                        <button 
+                                            onClick={() => setIsEditingSeason(false)}
+                                            className="w-6 h-6 rounded bg-primary/20 text-primary flex items-center justify-center shrink-0 hover:bg-primary/30"
+                                        >
+                                            <Check size={12} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Additional Volume Counts */}
-                            <div className="grid grid-cols-4 gap-1.5">
-                                <div className="bg-muted/30 border border-border/50 rounded-xl p-2 text-center">
-                                    <div className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/50 mb-0.5 whitespace-nowrap">Sess</div>
-                                    <div className="text-xs font-bold text-foreground">{session || 0}</div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-muted/20 border border-border/40 rounded-xl p-3 text-center flex flex-col items-center justify-center group hover:bg-muted/40 transition-colors">
+                                    <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/70 mb-0.5 whitespace-nowrap group-hover:text-foreground transition-colors">Games Played</div>
+                                    <div className="text-sm font-black text-foreground">{games || 0}</div>
                                 </div>
-                                <div className="bg-muted/30 border border-border/50 rounded-xl p-2 text-center">
-                                    <div className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/50 mb-0.5 whitespace-nowrap">Less</div>
-                                    <div className="text-xs font-bold text-foreground">{lesson || 0}</div>
-                                </div>
-                                <div className="bg-muted/30 border border-border/50 rounded-xl p-2 text-center">
-                                    <div className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/50 mb-0.5 whitespace-nowrap">Games</div>
-                                    <div className="text-xs font-bold text-foreground">{games || 0}</div>
-                                </div>
-                                <div className="bg-muted/30 border border-border/50 rounded-xl p-2 text-center">
-                                    <div className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/50 mb-0.5 whitespace-nowrap">Prac</div>
-                                    <div className="text-xs font-bold text-foreground">{practices || 0}</div>
+                                <div className="bg-muted/20 border border-border/40 rounded-xl p-3 text-center flex flex-col items-center justify-center group hover:bg-muted/40 transition-colors">
+                                    <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/70 mb-0.5 whitespace-nowrap group-hover:text-foreground transition-colors">Practices Logged</div>
+                                    <div className="text-sm font-black text-foreground">{practices || 0}</div>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {/* 2. CTA / Up-Sell Section (Only for non-pro) */}
-                    {!isPro && showProgress && (
+                    {!isPro && showProgress && (pendingPayment?.status === 'approved_pending_payment' || pendingPayment?.status === 'pending') && (
                         <div className="space-y-3">
                             {pendingPayment?.status === 'approved_pending_payment' ? (
                                 <Button
@@ -240,17 +285,10 @@ export function GoalieCard({
                                 >
                                     {isCheckingOut ? "Loading Checkout..." : "Complete Pro Upgrade ($300/mo)"}
                                 </Button>
-                            ) : pendingPayment?.status === 'pending' ? (
+                            ) : (
                                 <div className="w-full py-3 bg-muted border border-border text-muted-foreground rounded-xl font-black flex items-center justify-center gap-2 text-xs uppercase italic">
                                     <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Pending Approval
                                 </div>
-                            ) : (
-                                <Button
-                                    onClick={() => setShowRequestModal(true)}
-                                    className="w-full py-3.5 bg-foreground text-background hover:bg-foreground/90 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-foreground/5"
-                                >
-                                    Request Pro Coach
-                                </Button>
                             )}
                         </div>
                     )}
