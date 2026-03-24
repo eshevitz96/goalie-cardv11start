@@ -95,11 +95,7 @@ export function ActiveDrillTimer({ drillName, duration, onExit, onNext, isLastPh
                         </Button>
                     ) : (
                         <div className="flex flex-col gap-2 items-center">
-                            <p className="text-foreground/30 text-[10px] font-black uppercase tracking-widest">Training Direction</p>
-                            <p className="text-foreground/60 text-lg font-medium tracking-tight h-14 max-w-[280px] flex items-center justify-center leading-snug">
-                                {motivations[msgIndex]}
-                            </p>
-                            <p className="text-muted-foreground/40 text-[10px] italic mt-2">"{drillName}"</p>
+                            {/* Simple timer footer area - empty as requested */}
                         </div>
                     )}
                 </div>
