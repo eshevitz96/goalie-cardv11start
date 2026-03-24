@@ -88,6 +88,23 @@ function EventDetailsController() {
                         isUnlocked: true
                     });
                 } else {
+                    // Bypass UUID fetch errors when clicking dummy initial cards
+                    if (id.startsWith('m')) {
+                        setData({
+                            id: id,
+                            title: id === 'm1' ? "Game: vs Rangers" : "Practice: Skills",
+                            date: new Date().toISOString(),
+                            location: "Home Arena",
+                            description: "This is a demo event card for onboarding. Use the + Add Event button on the dashboard to create your own live tracking sessions.",
+                            status: id === 'm1' ? 'completed' : 'upcoming',
+                            isRegistered: false,
+                            isUnlocked: true,
+                            analytics: id === 'm1' ? { totalShots: 28, saves: 26, savePct: "92.8" } : undefined
+                        });
+                        setLoading(false);
+                        return;
+                    }
+
                     const { data: event, error: eventError } = await supabase
                         .from('events')
                         .select('*')
