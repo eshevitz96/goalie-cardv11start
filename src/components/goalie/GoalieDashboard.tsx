@@ -96,6 +96,13 @@ export function GoalieDashboard({
     const [selectedEventIdForAnalysis, setSelectedEventIdForAnalysis] = useState<string>('');
     const journalRef = useRef<HTMLDivElement>(null);
 
+    // Basic Click Tracking for Goalie Interactions
+    const trackGoalieAction = (actionName: string) => {
+        // Logging for immediate validation; this can be forwarded to PostHog/Amplitude directly
+        console.log(`[ANALYTICS CAPTURE] Action: ${actionName} | View: ${performanceView} | UI Context: GoalieDashboard`);
+        // e.g. supabase.from('goalie_analytics').insert({ action: actionName, goalie_id: id })
+    };
+
     // Sync from search param athleteId (if any)
     useEffect(() => {
         const targetId = searchParams.get('athleteId');
@@ -328,13 +335,19 @@ export function GoalieDashboard({
                         <div className="flex justify-between items-center mb-6">
                             <div className="flex items-center gap-1.5 p-1 bg-background/50 backdrop-blur-sm border border-border/40 rounded-full">
                                 <button 
-                                    onClick={() => setPerformanceView('game')}
+                                    onClick={() => {
+                                        trackGoalieAction("toggled_game_view");
+                                        setPerformanceView('game');
+                                    }}
                                     className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${performanceView === 'game' ? 'bg-foreground text-background shadow-lg scale-[1.05]' : 'text-muted-foreground hover:text-foreground'}`}
                                 >
                                     Current Game
                                 </button>
                                 <button 
-                                    onClick={() => setPerformanceView('season')}
+                                    onClick={() => {
+                                        trackGoalieAction("toggled_season_view");
+                                        setPerformanceView('season');
+                                    }}
                                     className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${performanceView === 'season' ? 'bg-foreground text-background shadow-lg scale-[1.05]' : 'text-muted-foreground hover:text-foreground'}`}
                                 >
                                     Season View
@@ -363,8 +376,11 @@ export function GoalieDashboard({
                                     </p>
                                 </div>
                                 <Button 
-                                    onClick={() => setIsAnalyzingFilm(true)}
-                                    className="bg-foreground text-background hover:bg-foreground/90 font-bold uppercase tracking-widest text-[10px] rounded-xl h-auto py-2 px-5 transition-all hover:scale-105"
+                                    onClick={() => {
+                                        trackGoalieAction("clicked_uncharted_banner");
+                                        setIsAnalyzingFilm(true);
+                                    }}
+                                    className="bg-foreground text-background hover:bg-foreground/90 font-bold uppercase tracking-widest text-[10px] rounded-xl h-auto py-2 px-5 transition-all hover:scale-105 shadow-xl"
                                 >
                                     Chart Now
                                 </Button>
@@ -385,13 +401,15 @@ export function GoalieDashboard({
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div className="space-y-6">
                                 <V11StatWidget 
-                                    score={v11Model.readinessScore}
+                                    score={performanceView === 'game' 
+                                        ? (shotEvents.length > 0 ? Math.round((shotEvents.filter(s => s.result === 'save' || s.result === 'clear').length / shotEvents.length) * 100) : 0)
+                                        : (activeGoalie.stats?.sv ? Math.round(parseFloat(activeGoalie.stats.sv) * 100) : v11Model.readinessScore)}
                                     sport={goalieContext.sport}
                                     label={performanceView === 'game' ? "Game Performance" : "Season Average"}
                                     stats={performanceView === 'game' ? [
                                         { 
                                             label: getSportTerms(goalieContext.sport).saveMetric, 
-                                            value: shotEvents.length > 0 ? `.${Math.round((shotEvents.filter(s => s.result === 'save').length / shotEvents.length) * 1000)}` : '.000' 
+                                            value: shotEvents.length > 0 ? (shotEvents.filter(s => s.result === 'save' || s.result === 'clear').length / shotEvents.length).toFixed(3).replace('0.', '.') : '.000' 
                                         },
                                         { 
                                             label: "Goals Against", 
@@ -410,25 +428,20 @@ export function GoalieDashboard({
                                         { label: 'Shutouts', value: '2' }
                                     ]}
                                 />
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Button 
-                                        onClick={() => setIsUploadingFilm(true)}
-                                        className="bg-card hover:bg-muted border border-border/50 text-foreground font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all h-auto uppercase tracking-widest text-[10px]"
-                                    >
-                                        <Film size={14} />
-                                        <span>Upload</span>
-                                    </Button>
-                                    <Button 
-                                        onClick={() => setIsAnalyzingFilm(true)}
-                                        className="bg-foreground text-background hover:bg-foreground/90 font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all h-auto uppercase tracking-widest text-[10px]"
-                                    >
-                                        <Repeat size={14} />
-                                        <span>Re-Analysis</span>
-                                    </Button>
-                                </div>
+                                <Button 
+                                    onClick={() => {
+                                        trackGoalieAction("main_upload_new_game");
+                                        setIsUploadingFilm(true);
+                                    }}
+                                    className="w-full bg-card hover:bg-muted border border-border/50 text-foreground font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all h-auto uppercase tracking-widest text-[10px] hover:border-primary/50 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]"
+                                >
+                                    <Film size={14} />
+                                    <span>Upload New Game Film</span>
+                                </Button>
                                 {shotEvents.length > 0 && (
                                     <Link 
                                         href="/clips"
+                                        onClick={() => trackGoalieAction("view_full_season_insights_link")}
                                         className="w-full text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center justify-center gap-2 py-4 rounded-2xl hover:bg-muted transition-all"
                                     >
                                         <TrendingUp size={12} /> View Full Season Insights <ChevronRight size={12} />
@@ -457,15 +470,15 @@ export function GoalieDashboard({
                                     <div className="grid grid-cols-2 gap-2 mt-2">
                                         <Button 
                                             variant="outline" 
-                                            onClick={() => router.push('/clips')}
-                                            className="h-9 text-[9px] font-black uppercase tracking-widest bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                                            onClick={() => { trackGoalieAction("review_game_clips"); router.push('/clips'); }}
+                                            className="h-9 text-[9px] font-black uppercase tracking-widest bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20 text-emerald-400 text-center"
                                         >
                                             Review Clips
                                         </Button>
                                         <Button 
                                             variant="outline" 
-                                            onClick={() => setShowGameReport(true)}
-                                            className="h-9 text-[9px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary"
+                                            onClick={() => { trackGoalieAction("view_game_report"); setShowGameReport(true); }}
+                                            className="h-9 text-[9px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary text-center"
                                         >
                                             Game Report
                                         </Button>
@@ -473,22 +486,17 @@ export function GoalieDashboard({
                                 )}
 
                                 {performanceView === 'season' && (
-                                    <div className="grid grid-cols-2 gap-3 mt-4">
+                                    <div className="w-full mt-4">
                                         <Button 
                                             variant="outline" 
-                                            onClick={() => router.push('/clips')}
-                                            className="h-12 text-[10px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary rounded-2xl flex items-center justify-center gap-3 transition-all"
-                                        >
-                                            <Video size={14} />
-                                            Open Season Database
-                                        </Button>
-                                        <Button 
-                                            variant="outline" 
-                                            onClick={() => router.push('/clips')}
-                                            className="h-12 text-[10px] font-black uppercase tracking-widest bg-foreground/5 hover:bg-foreground/10 border-foreground/10 text-foreground rounded-2xl flex items-center justify-center gap-3 transition-all"
+                                            onClick={() => {
+                                                trackGoalieAction("open_full_analytics");
+                                                router.push('/clips');
+                                            }}
+                                            className="w-full h-12 text-[10px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary/10 border-primary/20 hover:border-primary/40 text-primary rounded-2xl flex items-center justify-center gap-3 transition-all"
                                         >
                                             <BarChart3 size={14} />
-                                            Full Analytics
+                                            Open Full Analytics Database
                                         </Button>
                                     </div>
                                 )}
