@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
     Users, CreditCard, TrendingUp, History, 
     ChevronRight, Plus, Info, ShieldCheck, Zap,
-    ArrowUpRight, User as UserIcon, Activity
+    ArrowUpRight, User as UserIcon, Activity,
+    Copy, CheckCircle2
 } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { Button } from "@/components/ui/Button";
@@ -44,6 +45,7 @@ export default function TeamDashboardPage() {
     const [balance, setBalance] = useState(0);
     const [roster, setRoster] = useState<RosterMember[]>([]);
     const [history, setHistory] = useState<FundTransaction[]>([]);
+    const [copied, setCopied] = useState(false);
 
     // Team Creation
     const [isInitializing, setIsInitializing] = useState(false);
@@ -93,6 +95,15 @@ export default function TeamDashboardPage() {
 
             setTeam(teamsData);
 
+            // Fetch owner profile for sport
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('sport')
+                .eq('id', user.id)
+                .maybeSingle();
+            
+            const defaultSport = profile?.sport || 'Hockey';
+
             // 2. Fetch Balance
             const { data: fund } = await supabase
                 .from('team_credit_funds')
@@ -114,7 +125,7 @@ export default function TeamDashboardPage() {
                 athlete_name: m.goalie_name || m.parent_name || 'Anonymous Athlete',
                 is_active: true,
                 last_usage: '2 days ago',
-                sport: m.sport || 'Hockey'
+                sport: m.sport || defaultSport
             })) || []);
 
             // 4. Fetch History
@@ -331,6 +342,31 @@ export default function TeamDashboardPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Invite Link Card */}
+                        {balance > 0 && (
+                            <div className="bg-white/5 border border-white/10 rounded-3xl p-6 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[50px] pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-700" />
+                                <h4 className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-2 relative z-10">
+                                    <Users size={14} /> Special Invite Access
+                                </h4>
+                                <p className="text-[10px] text-zinc-400 leading-relaxed uppercase tracking-wider mb-4 relative z-10">
+                                    Share this secure link with your goalies to grant them immediate platform access.
+                                </p>
+                                <button 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(`${window.location.origin}/activate?team_invite=${team.id}`);
+                                        setCopied(true);
+                                        toast.success("Invite link copied to clipboard");
+                                        setTimeout(() => setCopied(false), 2000);
+                                    }}
+                                    className="w-full flex items-center justify-between gap-2 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black tracking-widest hover:border-indigo-500/50 transition-all relative z-10"
+                                >
+                                    <span className="text-zinc-500 truncate">.../activate?team_invite...</span>
+                                    {copied ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Copy size={16} className="text-indigo-400" />}
+                                </button>
+                            </div>
+                        )}
 
                         {/* Quick Action Info */}
                         <div className="bg-white/5 border border-white/10 rounded-3xl p-6">

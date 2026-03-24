@@ -160,16 +160,10 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
                                     {savePct.toFixed(1)}<span className="text-2xl text-primary">%</span>
                                 </div>
                             </div>
+                            
+                            <div className="flex-1" />
 
-                            <div>
-                                <div className="text-[10px] font-black text-zinc-400 tracking-widest mb-4">Organization Hub</div>
-                                <div className="flex items-end gap-2 mb-1">
-                                    <div className="text-6xl font-black text-white">{savePct.toFixed(1)}<span className="text-2xl text-primary">%</span></div>
-                                    <div className="text-xs font-black text-primary pb-2 tracking-widest">Active Seats</div>
-                                </div>
-                                <div className="text-[10px] font-bold text-zinc-500 tracking-widest leading-relaxed">
-                                    All-access performance tracking for {members.length} athletes
-                                </div>
+                            <div className="mt-8">
                                 <button className="w-full py-4 bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center gap-2 text-[10px] font-black tracking-widest hover:bg-white text-black transition-all group/btn">
                                     Export Tactical PDF <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
                                 </button>

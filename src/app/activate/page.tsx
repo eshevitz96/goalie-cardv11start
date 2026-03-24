@@ -152,7 +152,8 @@ function ActivateController() {
                 rosterData.id,
                 rosterData,
                 formData,
-                baselineAnswers
+                baselineAnswers,
+                searchParams.get('team_invite')
             );
 
             if (!result.success) throw new Error(result.error);

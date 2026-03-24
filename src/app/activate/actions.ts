@@ -158,7 +158,8 @@ export async function completeActivationWithPassword(
     rosterId: string,
     rosterData: any,
     formData: any,
-    baselineAnswers?: any[]
+    baselineAnswers?: any[],
+    teamInviteId?: string | null
 ) {
     if (!email || !password || !rosterId) {
         return { success: false, error: 'Missing required fields' };
@@ -228,6 +229,7 @@ export async function completeActivationWithPassword(
                 parent_phone: formData.phone,
                 grad_year: parseInt(formData.gradYear) || 0,
                 team: formData.team,
+                team_id: teamInviteId || null,
                 sport: formData.sport
             })
             .eq('id', rosterId);

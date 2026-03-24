@@ -167,7 +167,7 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
                        {/* 2. Zone View */}
                        <div className="col-span-4 flex flex-col gap-1 items-center">
                           <div className="text-[8px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Origin</div>
-                          <div className="w-full aspect-[4/3] rounded-xl overflow-hidden border border-border/10 bg-black relative">
+                          <div className="w-full aspect-[4/3] rounded-xl overflow-hidden border border-border/10 bg-muted/30 relative">
                              <GameAnalysisSurface 
                                 sport={sport}
                                 view="field"
@@ -180,7 +180,7 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
                        {/* 3. Net View */}
                        <div className="col-span-4 flex flex-col gap-1 items-center">
                           <div className="text-[8px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Target</div>
-                          <div className="w-full aspect-[4/3] rounded-xl overflow-hidden border border-border/10 bg-black relative">
+                          <div className="w-full aspect-[4/3] rounded-xl overflow-hidden border border-border/10 bg-muted/30 relative">
                              <GameAnalysisSurface 
                                 sport={sport}
                                 view="net"

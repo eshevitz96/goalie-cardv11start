@@ -17,56 +17,64 @@ interface GameFilmUploadProps {
 export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events = [], onUploadComplete }: GameFilmUploadProps) {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [analysisType, setAnalysisType] = useState<'shot' | 'play' | null>(null);
     const [associatedEventId, setAssociatedEventId] = useState(events.length > 0 ? events[0].id : '');
     const [showSuccess, setShowSuccess] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setSelectedFile(e.target.files[0]);
+        if (e.target.files && e.target.files.length > 0) {
+            setSelectedFiles(Array.from(e.target.files));
             setUploadProgress(0);
             setShowSuccess(false);
         }
     };
 
     const handleUpload = async () => {
-        if (!selectedFile || !analysisType) return;
+        if (selectedFiles.length === 0 || !analysisType) return;
         setIsUploading(true);
         setUploadProgress(0);
 
         const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (Free Supabase Limit)
-        if (selectedFile.size > MAX_FILE_SIZE) {
-            alert("File is too large. Free tier limit is 50MB. Please use a shorter clip or compress the video before uploading.");
+        const oversized = selectedFiles.find(f => f.size > MAX_FILE_SIZE);
+        if (oversized) {
+            alert(`File ${oversized.name} is too large. Free tier limit is 50MB per clip. Please trim it before uploading.`);
             setIsUploading(false);
             return;
         }
 
+        const publicUrls: string[] = [];
+
         try {
-            const fileExt = selectedFile.name.split('.').pop();
-            const fileName = `${rosterId}_${Date.now()}.${fileExt}`;
-            const filePath = `${fileName}`;
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${rosterId}_${Date.now()}_clip${i}.${fileExt}`;
+                
+                // Real Supabase Upload
+                const { error } = await supabase.storage
+                    .from('game-film')
+                    .upload(fileName, file, { cacheControl: '3600', upsert: false });
 
-            // Real Supabase Upload
-            const { data, error } = await supabase.storage
-                .from('game-film')
-                .upload(filePath, selectedFile, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
+                if (error) throw error;
 
-            if (error) throw error;
-
-            setUploadProgress(100);
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('game-film')
-                .getPublicUrl(filePath);
+                const { data: { publicUrl } } = supabase.storage
+                    .from('game-film')
+                    .getPublicUrl(fileName);
+                
+                publicUrls.push(publicUrl);
+                setUploadProgress(((i + 1) / selectedFiles.length) * 100);
+            }
 
             setIsUploading(false);
             setShowSuccess(true);
-            if (onUploadComplete) onUploadComplete({ file: selectedFile, type: analysisType, url: publicUrl, eventId: associatedEventId });
+            if (onUploadComplete) onUploadComplete({ 
+                file: selectedFiles[0], // pass the first one backwards compat
+                type: analysisType, 
+                url: publicUrls.join(','), 
+                eventId: associatedEventId 
+            });
             
         } catch (error: any) {
             console.error("Upload Error:", error);
@@ -87,13 +95,13 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events 
                 </div>
                 <div>
                     <h3 className="font-bold text-lg text-foreground leading-tight">{title}</h3>
-                    <p className="text-xs text-muted-foreground">Upload for Coach OS charting</p>
+                    <p className="text-xs text-muted-foreground">Upload sequence of clips for Coach OS charting</p>
                 </div>
             </div>
 
             <div className="space-y-6">
                 {/* 1. File Selection */}
-                {!selectedFile ? (
+                {selectedFiles.length === 0 ? (
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         className="w-full aspect-video rounded-2xl border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 hover:border-primary/50 transition-all flex flex-col items-center justify-center gap-3 group"
@@ -102,11 +110,12 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events 
                             <Upload size={24} />
                         </div>
                         <div className="text-center">
-                            <span className="text-sm font-bold block">Select Game Film</span>
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">MP4, MOV, WebM</span>
+                            <span className="text-sm font-bold block">Select Game Clips</span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">Hold Shift to select multiple</span>
                         </div>
                         <input
                             type="file"
+                            multiple
                             ref={fileInputRef}
                             onChange={handleFileSelect}
                             accept="video/*"
@@ -119,11 +128,11 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events 
                             <Film size={24} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold truncate">{selectedFile.name}</div>
-                            <div className="text-[10px] text-muted-foreground">{(selectedFile.size / (1024 * 1024)).toFixed(1)} MB</div>
+                            <div className="text-sm font-bold truncate">{selectedFiles.length} Clips Selected</div>
+                            <div className="text-[10px] text-muted-foreground">{(selectedFiles.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(1)} MB Total</div>
                         </div>
                         <button
-                            onClick={() => setSelectedFile(null)}
+                            onClick={() => setSelectedFiles([])}
                             className="p-2 text-muted-foreground hover:text-foreground transition-colors"
                         >
                             <X size={18} />
@@ -218,7 +227,7 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events 
                         ) : (
                             <Button
                                 onClick={handleUpload}
-                                disabled={!selectedFile || !analysisType}
+                                disabled={selectedFiles.length === 0 || !analysisType}
                                 className="w-full py-4 bg-foreground text-background font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-foreground/5 disabled:opacity-50"
                             >
                                 <Brain size={16} className="mr-2" /> Begin Charting
