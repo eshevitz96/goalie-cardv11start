@@ -87,7 +87,7 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events 
                 </div>
                 <div>
                     <h3 className="font-bold text-lg text-foreground leading-tight">{title}</h3>
-                    <p className="text-xs text-muted-foreground">Upload film for AI-powered technical breakdown</p>
+                    <p className="text-xs text-muted-foreground">Upload for Coach OS charting</p>
                 </div>
             </div>
 
@@ -208,7 +208,7 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events 
                                 disabled={!selectedFile || !analysisType}
                                 className="w-full py-4 bg-foreground text-background font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-foreground/5 disabled:opacity-50"
                             >
-                                <Brain size={16} className="mr-2" /> Start AI Analysis
+                                <Brain size={16} className="mr-2" /> Begin Charting
                             </Button>
                         )}
                     </AnimatePresence>
