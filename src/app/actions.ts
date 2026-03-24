@@ -441,6 +441,17 @@ export async function updateAssignedCoaches(rosterId: string, coachIds: string[]
             return { success: false, error: error.message };
         }
 
+        // 🚀 Notification 1: Pro Coach Assignment 🚀
+        const { data: roster } = await supabaseAdmin.from('roster_uploads').select('linked_user_id').eq('id', rosterId).single();
+        if (roster?.linked_user_id && coachIds.length > 0) {
+            await supabaseAdmin.from('notifications').insert({
+                user_id: roster.linked_user_id,
+                title: "Pro Coach Assigned 🤝",
+                message: "You've been officially added to a Pro Coach's Goalie Card roster. Request your baseline film review now.",
+                type: "alert"
+            });
+        }
+
         return { success: true };
     } catch (err: any) {
         console.error("updateAssignedCoaches Exception:", err);
@@ -495,6 +506,30 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
         // 4. Update Event Status if exists
         if (validEventId) {
             await supabaseAdmin.from('events').update({ is_charted: true }).eq('id', validEventId);
+        }
+
+        // 🚀 Notification 2 & 4: Film Processing & Milestone Checking 🚀
+        const saves = shots.filter(s => s.result === 'save' || s.result === 'clear').length;
+        const index = shots.length > 0 ? Math.round((saves / shots.length) * 100) : 0;
+        
+        if (shots.length >= 3) {
+            // Processing complete
+            await supabaseAdmin.from('notifications').insert({
+                user_id: roster.linked_user_id,
+                title: "Film Processing Complete 🎬",
+                message: `Your newest game film has finished processing. You logged a ${index} Performance Index. Check your updated Season Data.`,
+                type: "alert"
+            });
+
+            // Milestone Achieved
+            if (index >= 80) {
+                await supabaseAdmin.from('notifications').insert({
+                    user_id: roster.linked_user_id,
+                    title: "Milestone Met! 🏆",
+                    message: "You just logged an 80+ Performance Index rating. Keep building the foundation.",
+                    type: "alert"
+                });
+            }
         }
 
         return { success: true };
@@ -593,6 +628,32 @@ export async function linkFilmToEvent(eventId: string, videoUrl: string) {
         return { success: true };
     } catch (err: any) {
         console.error("Link Film Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+
+// 🚀 Notification 3: Monthly Credit Reload 🚀
+export async function reloadMonthlyCredits(rosterId: string, amountToReload: number = 4) {
+    if (!rosterId) return { success: false, error: "Missing Roster ID" };
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        const { data: roster, error } = await supabaseAdmin.from('roster_uploads').select('linked_user_id, credits').eq('id', rosterId).single();
+        if (error || !roster?.linked_user_id) throw new Error("Roster not found or linked.");
+
+        // Reload the credits locally in db
+        const newCredits = (roster.credits || 0) + amountToReload;
+        await supabaseAdmin.from('roster_uploads').update({ credits: newCredits }).eq('id', rosterId);
+
+        // Ping the Goalie
+        await supabaseAdmin.from('notifications').insert({
+            user_id: roster.linked_user_id,
+            title: "Credits Refreshed! 💳",
+            message: `Your account has been refreshed with ${amountToReload} more credits. Book your next private session now.`,
+            type: "alert"
+        });
+
+        return { success: true, newCredits };
+    } catch (err: any) {
         return { success: false, error: err.message };
     }
 }
