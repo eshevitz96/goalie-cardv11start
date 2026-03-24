@@ -211,7 +211,7 @@ export function GameAnalysisSurface({
 
   return (
     <div className={`relative w-full ${getAspectRatio()} flex flex-col items-center justify-center`}>
-      <div className="relative w-full h-full rounded-[2rem] border border-border/10 bg-black/5 p-8 flex items-center justify-center">
+      <div className="relative w-full h-full rounded-[2rem] border border-border/10 bg-secondary/5 dark:bg-black/5 p-8 flex items-center justify-center text-foreground">
         <svg 
           viewBox="0 0 100 100" 
           className="w-full h-full text-foreground/70 cursor-crosshair select-none overflow-visible"
@@ -258,21 +258,21 @@ export function GameAnalysisSurface({
         </svg>
 
         {/* Legend Position - Clean bottom center with more padding */}
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-4 pointer-events-none p-2 bg-background/90 backdrop-blur-md rounded-xl border border-border/40 shadow-xl z-20 w-fit">
+        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-4 pointer-events-none p-2 bg-card/90 backdrop-blur-md rounded-xl border border-border/40 shadow-xl z-20 w-fit">
            <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
-              <span className="text-[9px] font-black uppercase text-foreground/70 tracking-widest">Saves</span>
+              <span className="text-[9px] font-black uppercase text-foreground tracking-widest">Saves</span>
            </div>
            <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-              <span className="text-[9px] font-black uppercase text-foreground/70 tracking-widest">Goals</span>
+              <span className="text-[9px] font-black uppercase text-foreground tracking-widest">Goals</span>
            </div>
         </div>
 
         {view === 'net' && (
           <button 
             onClick={() => setShowHeatmap(!showHeatmap)}
-            className="absolute bottom-4 left-6 p-2 bg-background/90 backdrop-blur-md rounded-xl border border-border/40 pointer-events-auto shadow-xl z-20"
+            className="absolute bottom-4 left-6 p-2 bg-card/90 backdrop-blur-md rounded-xl border border-border/40 pointer-events-auto shadow-xl z-20"
           >
             <span className={`text-[9px] font-black uppercase tracking-widest transition-colors ${showHeatmap ? 'text-primary' : 'text-muted-foreground'}`}>
                Heatwave

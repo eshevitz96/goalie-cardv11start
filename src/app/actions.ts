@@ -632,7 +632,6 @@ export async function linkFilmToEvent(eventId: string, videoUrl: string) {
     }
 }
 
-// 🚀 Notification 3: Monthly Credit Reload 🚀
 export async function reloadMonthlyCredits(rosterId: string, amountToReload: number = 4) {
     if (!rosterId) return { success: false, error: "Missing Roster ID" };
     try {
@@ -655,5 +654,24 @@ export async function reloadMonthlyCredits(rosterId: string, amountToReload: num
         return { success: true, newCredits };
     } catch (err: any) {
         return { success: false, error: err.message };
+    }
+}
+
+export async function trackAnalytics(actionName: string, goalieId: string, metadata: any = {}) {
+    if (!actionName || !goalieId) return { success: false };
+    
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        const { error } = await supabaseAdmin.from('goalie_analytics').insert({
+            action_name: actionName,
+            goalie_id: goalieId,
+            metadata: metadata
+        });
+        
+        if (error) throw error;
+        return { success: true };
+    } catch (err: any) {
+        console.error("[ANALYTICS] Sync failed:", err.message);
+        return { success: false };
     }
 }

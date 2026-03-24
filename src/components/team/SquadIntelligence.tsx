@@ -51,7 +51,7 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
             <div className="flex flex-col gap-6">
                 
                 {/* 1. MASTER HEADER & TOGGLES */}
-                <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 pb-4 relative overflow-hidden group">
+                <div className="bg-card/40 backdrop-blur-md border border-border/10 rounded-[2.5rem] p-8 pb-4 relative overflow-hidden group">
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8 relative z-10">
                         <div>
                             <h3 className="text-xl font-black tracking-tighter flex items-center gap-3">
@@ -71,20 +71,20 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
                                 onClick={() => setCompareMode(!compareMode)}
                                 className={twMerge(
                                     "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border",
-                                    compareMode ? "bg-indigo-500 border-indigo-500 text-white" : "bg-black/40 border-white/10 text-zinc-400"
+                                    compareMode ? "bg-indigo-600 border-indigo-600 text-white" : "bg-secondary/40 border-border/10 text-muted-foreground"
                                 )}
                             >
                                 <Users size={14} /> Side-by-Side Mode
                             </button>
 
-                            <div className="flex bg-black/50 p-1 rounded-xl border border-white/5">
+                            <div className="flex bg-secondary/50 p-1 rounded-xl border border-border/5">
                                 <button 
                                     onClick={() => setView('net')}
-                                    className={twMerge("px-4 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all", view === 'net' ? "bg-white text-black" : "text-zinc-500 hover:text-white")}
+                                    className={twMerge("px-4 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all", view === 'net' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
                                 >Net View</button>
                                 <button 
                                     onClick={() => setView('field')}
-                                    className={twMerge("px-4 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all", view === 'field' ? "bg-white text-black" : "text-zinc-500 hover:text-white")}
+                                    className={twMerge("px-4 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all", view === 'field' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
                                 >Shot Origin</button>
                             </div>
                         </div>
@@ -94,7 +94,7 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
                     <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-4 scrollbar-hide z-10 relative">
                         <button 
                             onClick={() => toggleGoalie(null)}
-                            className={twMerge("whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border", selectedGoalieIds.length === 0 ? "bg-primary border-primary text-black" : "bg-black/40 border-white/10 text-zinc-400 hover:border-white/30")}
+                            className={twMerge("whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border", selectedGoalieIds.length === 0 ? "bg-primary border-primary text-primary-foreground" : "bg-secondary/40 border-border/10 text-muted-foreground hover:border-border/30")}
                         >Full Squad Baseline</button>
                         {members.map(m => (
                             <button 
@@ -102,7 +102,7 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
                                 onClick={() => toggleGoalie(m.id)}
                                 className={twMerge(
                                     "whitespace-nowrap px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border", 
-                                    selectedGoalieIds.includes(m.id) ? "bg-white border-white text-black" : "bg-black/40 border-white/10 text-zinc-400 hover:border-white/30"
+                                    selectedGoalieIds.includes(m.id) ? "bg-foreground text-background border-foreground" : "bg-secondary/40 border-border/10 text-muted-foreground hover:border-border/30"
                                 )}
                             >{m.athlete_name}</button>
                         ))}
@@ -117,9 +117,9 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
                         {isComparing ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {compareStats.map(goalie => (
-                                    <div key={goalie.id} className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 relative overflow-hidden group">
+                                    <div key={goalie.id} className="bg-card/40 backdrop-blur-md border border-border/10 rounded-[2.5rem] p-8 relative overflow-hidden group">
                                         <div className="flex items-center justify-between mb-6">
-                                            <h4 className="text-sm font-black uppercase tracking-widest italic">{goalie.name}</h4>
+                                            <h4 className="text-sm font-black uppercase tracking-widest italic text-foreground">{goalie.name}</h4>
                                             <div className="text-lg font-black text-primary italic">{goalie.stats.savePct.toFixed(1)}%</div>
                                         </div>
                                         <div className="relative aspect-square w-full">
@@ -134,7 +134,7 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
                                 ))}
                             </div>
                         ) : (
-                            <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 relative overflow-hidden group h-full">
+                            <div className="bg-card/40 backdrop-blur-md border border-border/10 rounded-[2.5rem] p-8 relative overflow-hidden group h-full">
                                 <div className="relative aspect-square md:aspect-video w-full max-h-[450px]">
                                     <GameAnalysisSurface 
                                         sport={teamSport} 
@@ -149,14 +149,14 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
 
                     {/* KPI CARDS (Only show if not in full-screen comparison) */}
                     {!isComparing && (
-                        <div className="lg:col-span-1 border border-white/10 bg-white/5 rounded-[2.5rem] p-8 relative overflow-hidden group flex flex-col justify-between">
-                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+                        <div className="lg:col-span-1 border border-border/10 bg-card/40 backdrop-blur-md rounded-[2.5rem] p-8 relative overflow-hidden group flex flex-col justify-between">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform text-foreground">
                                 <TrendingUp size={48} />
                             </div>
                             
                             <div>
                                 <div className="text-[10px] font-black text-primary tracking-[0.2em] mb-4">Selection Save %</div>
-                                <div className="text-7xl font-black tracking-tighter text-white leading-none">
+                                <div className="text-7xl font-black tracking-tighter text-foreground leading-none">
                                     {savePct.toFixed(1)}<span className="text-2xl text-primary">%</span>
                                 </div>
                             </div>
@@ -164,7 +164,7 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
                             <div className="flex-1" />
 
                             <div className="mt-8">
-                                <button className="w-full py-4 bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center gap-2 text-[10px] font-black tracking-widest hover:bg-white text-black transition-all group/btn">
+                                <button className="w-full py-4 bg-primary text-primary-foreground rounded-2xl flex items-center justify-center gap-2 text-[10px] font-black tracking-widest hover:bg-primary/90 transition-all group/btn">
                                     Export Tactical PDF <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
                                 </button>
                             </div>
@@ -176,25 +176,25 @@ export function SquadIntelligence({ teamId, members }: SquadIntelProps) {
 
             {/* 3. PERFORMANCE TRENDS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center gap-4">
+                <div className="bg-card/40 backdrop-blur-md border border-border/10 rounded-3xl p-6 flex items-center gap-4 text-foreground">
                     <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                         <Activity size={24} />
                     </div>
                     <div>
-                        <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Active Velocity</div>
+                        <div className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Active Velocity</div>
                         <div className="text-lg font-black italic">High Energy</div>
                     </div>
                 </div>
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center gap-4">
+                <div className="bg-card/40 backdrop-blur-md border border-border/10 rounded-3xl p-6 flex items-center gap-4 text-foreground">
                     <div className="h-12 w-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
                         <Users size={24} />
                     </div>
                     <div>
-                        <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Crease Utilization</div>
+                        <div className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Crease Utilization</div>
                         <div className="text-lg font-black italic">88% Capacity</div>
                     </div>
                 </div>
-                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center gap-4 border-emerald-500/20 bg-emerald-500/5">
+                <div className="bg-emerald-500/5 backdrop-blur-md border border-emerald-500/20 rounded-3xl p-6 flex items-center gap-4 border-emerald-500/20">
                     <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                         <ShieldCheck size={24} />
                     </div>

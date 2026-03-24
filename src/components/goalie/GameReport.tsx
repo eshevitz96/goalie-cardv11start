@@ -24,12 +24,14 @@ interface GameReportProps {
     goalsAgainst: number;
     savePercentage: string;
   };
+  location?: string;
+  sessionType?: string;
 }
 
-export function GameReport({ sport, opponent, date, shots, stats }: GameReportProps) {
+export function GameReport({ sport, opponent, date, shots, stats, location, sessionType }: GameReportProps) {
   const { theme } = useTheme();
   const terms = getSportTerms(sport);
-  const [locationName, setLocationName] = useState('Home Arena');
+  const [locationName, setLocationName] = useState(location || 'Home Arena');
   const [isEditingLocation, setIsEditingLocation] = useState(false);
 
   // Dynamically calculate zone stats directly from the tracked clip events
@@ -68,7 +70,7 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
       <div className="p-10 pb-6 flex justify-between items-start bg-foreground/[0.02] border-b border-border/5">
         <div>
           <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-[.25em] text-[10px] mb-3">
-            <TrendingUp size={16} /> Performance Analytics Report
+            <TrendingUp size={16} /> {sessionType || "Performance Analytics"} Report
           </div>
           <h2 className="text-5xl font-black tracking-tighter leading-none mb-4">
             vs {opponent}

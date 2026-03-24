@@ -39,8 +39,8 @@ export function AiCoachRecommendation({
 
         if (contextLoading) return;
 
-        // Check cache with mood-specificity
-        const cacheKey = `ai_plan_v3_${rosterId}_${activeMood}`;
+        // Check cache with mood & sport specificity
+        const cacheKey = `ai_plan_v4_${rosterId}_${activeMood}_${sport}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
             try {

@@ -129,7 +129,14 @@ export default function TeamDashboardPage() {
 
             setTeam(teamsData);
 
-            const defaultSport = profile?.sport || 'Hockey';
+            let defaultSport = profile?.sport || 'Hockey';
+            
+            // Team Name Fallback Sport Inference
+            if (teamsData.name?.toLowerCase().includes('lacrosse')) {
+                defaultSport = 'Lacrosse';
+            } else if (teamsData.name?.toLowerCase().includes('soccer')) {
+                defaultSport = 'Soccer';
+            }
 
             // 2. Fetch Balance
             const { data: fund } = await supabase
@@ -235,7 +242,7 @@ export default function TeamDashboardPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-black flex items-center justify-center text-white">
+            <div className="min-h-screen bg-background flex items-center justify-center text-foreground">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary"></div>
             </div>
         );
@@ -244,7 +251,7 @@ export default function TeamDashboardPage() {
     // Access Gate: Only activated users or admins can see the Team Hub
     if (!isActivated && userRole !== 'admin') {
         return (
-            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -253,23 +260,23 @@ export default function TeamDashboardPage() {
                     <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-6 mx-auto border border-red-500/20">
                         <ShieldCheck size={40} className="text-red-500" />
                     </div>
-                    <h1 className="text-2xl font-black text-white mb-3 uppercase tracking-tighter">Access Restricted</h1>
-                    <p className="text-zinc-400 text-sm mb-2 leading-relaxed">
+                    <h1 className="text-2xl font-black text-foreground mb-3 uppercase tracking-tighter">Access Restricted</h1>
+                    <p className="text-muted-foreground text-sm mb-2 leading-relaxed">
                         The Team Hub is only available to goalies with an activated Goalie Card.
                     </p>
-                    <p className="text-zinc-500 text-xs mb-8 leading-relaxed">
+                    <p className="text-muted-foreground/60 text-xs mb-8 leading-relaxed">
                         If your team has purchased a membership, ask your coach for the special invite link to activate your account.
                     </p>
                     <div className="flex flex-col gap-3">
                         <button 
                             onClick={() => router.push('/activate')}
-                            className="px-8 py-4 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                            className="px-8 py-4 bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs rounded-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all"
                         >
                             Activate Your Card
                         </button>
                         <button 
                             onClick={() => router.push('/dashboard')}
-                            className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors"
+                            className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest hover:text-foreground transition-colors"
                         >
                             Back to Dashboard
                         </button>
@@ -281,40 +288,40 @@ export default function TeamDashboardPage() {
 
     if (!team) {
         return (
-            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
                 <AnimatePresence>
                     {isInitializing ? (
                         <motion.div 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="w-full max-w-md bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] shadow-2xl"
+                            className="w-full max-w-md bg-card border border-border/40 p-8 rounded-[2.5rem] shadow-2xl"
                         >
-                            <h2 className="text-2xl font-black uppercase tracking-tighter mb-6">Initialize Organization</h2>
+                            <h2 className="text-2xl font-black uppercase tracking-tighter mb-6 text-foreground">Initialize Organization</h2>
                             <div className="space-y-4 text-left">
                                 <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 block">Team/Group Name</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">Team/Group Name</label>
                                     <input 
                                         type="text" value={newName} onChange={e => setNewName(e.target.value)}
                                         placeholder="e.g. Ironbound Elite"
-                                        className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm focus:border-primary outline-none"
+                                        className="w-full bg-background border border-border/40 rounded-xl p-4 text-sm focus:border-primary outline-none text-foreground"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 block">Organization (Optional)</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">Organization (Optional)</label>
                                     <input 
                                         type="text" value={newOrg} onChange={e => setNewOrg(e.target.value)}
                                         placeholder="e.g. NJ Youth Hockey"
-                                        className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm focus:border-primary outline-none"
+                                        className="w-full bg-background border border-border/40 rounded-xl p-4 text-sm focus:border-primary outline-none text-foreground"
                                     />
                                 </div>
                                 <button 
                                     onClick={handleCreateTeam}
                                     disabled={isSubmitting}
-                                    className="w-full py-4 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-xl mt-4"
+                                    className="w-full py-4 bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs rounded-xl mt-4"
                                 >
                                     {isSubmitting ? "Initializing..." : "Create Organization Hub"}
                                 </button>
-                                <button onClick={() => setIsInitializing(false)} className="w-full text-zinc-500 text-[10px] font-bold uppercase tracking-widest mt-2">Cancel</button>
+                                <button onClick={() => setIsInitializing(false)} className="w-full text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-2 hover:text-foreground transition-colors">Cancel</button>
                             </div>
                         </motion.div>
                     ) : (
@@ -322,13 +329,13 @@ export default function TeamDashboardPage() {
                             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 text-primary">
                                 <ShieldCheck size={40} />
                             </div>
-                            <h1 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">Team Hub Activation</h1>
-                            <p className="text-zinc-400 max-w-sm mb-8 leading-relaxed">
+                            <h1 className="text-3xl font-black text-foreground mb-2 uppercase tracking-tighter">Team Hub Activation</h1>
+                            <p className="text-muted-foreground max-w-sm mb-8 leading-relaxed">
                                 You haven't initialized a Team Fund yet. Create your organization to manage bulk credits and roster-wide intelligence.
                             </p>
                             <button 
                                 onClick={() => setIsInitializing(true)}
-                                className="px-8 py-4 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                                className="px-8 py-4 bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs rounded-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all"
                             >
                                 Initialize Team Fund
                             </button>
@@ -340,11 +347,11 @@ export default function TeamDashboardPage() {
     }
 
     return (
-        <main className="min-h-screen bg-[#050505] text-white pb-20">
+        <main className="min-h-screen bg-background text-foreground pb-20">
             {/* Header / Brand */}
             <div className="relative h-64 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-b from-indigo-900/20 to-black select-none pointer-events-none" />
-                <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+                <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent dark:from-indigo-900/20 dark:to-black select-none pointer-events-none" />
+                <div className="absolute inset-0 opacity-[0.03] dark:opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', backgroundSize: '24px 24px' }} />
                 
                 <div className="max-w-7xl mx-auto px-6 pt-12 relative z-10">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -359,7 +366,7 @@ export default function TeamDashboardPage() {
                         </div>
                         <button 
                             onClick={handleTopUp}
-                            className="group flex items-center gap-3 px-6 py-3 bg-white text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary transition-all shadow-xl shadow-white/5"
+                            className="group flex items-center gap-3 px-6 py-3 bg-foreground text-background font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary hover:text-primary-foreground transition-all shadow-xl shadow-foreground/5"
                         >
                             <Plus size={16} /> Activate Full Squad Access
                         </button>
@@ -377,27 +384,27 @@ export default function TeamDashboardPage() {
                         className="lg:col-span-1 space-y-4"
                     >
                         {/* THE WALLET CARD (Glassmorphism) */}
-                        <div className="relative group overflow-hidden bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 shadow-2xl">
+                        <div className="relative group overflow-hidden bg-card/60 backdrop-blur-xl border border-border/40 rounded-[2rem] p-8 shadow-2xl">
                             <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-[80px] pointer-events-none group-hover:bg-primary/30 transition-all duration-700" />
                             
                             <div className="relative z-10">
-                                <div className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4">Organization Hub</div>
+                                <div className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4">Organization Hub</div>
                                 <div className="flex items-end gap-2 mb-1">
-                                    <div className="text-6xl font-black text-white">{balance}</div>
+                                    <div className="text-6xl font-black text-foreground">{balance}</div>
                                     <div className="text-xs font-black text-primary uppercase pb-2 tracking-widest">Active Seats</div>
                                 </div>
-                                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
+                                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">
                                     All-access performance tracking for {roster.length} athletes
                                 </div>
                                 
-                                <hr className="my-6 border-white/5" />
+                                <hr className="my-6 border-border/10" />
                                 
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Squad Capacity</div>
-                                        <div className="text-sm font-black">{roster.length} / {Math.max(25, balance)}</div>
+                                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Squad Capacity</div>
+                                        <div className="text-sm font-black text-foreground">{roster.length} / {Math.max(25, balance)}</div>
                                     </div>
-                                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                    <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
                                         <motion.div 
                                             initial={{ width: 0 }}
                                             animate={{ width: `${(roster.length / Math.max(25, balance)) * 100}%` }}
@@ -410,12 +417,12 @@ export default function TeamDashboardPage() {
 
                         {/* Invite Link Card */}
                         {balance > 0 && (
-                            <div className="bg-white/5 border border-white/10 rounded-3xl p-6 relative overflow-hidden group">
+                            <div className="bg-card/60 backdrop-blur-md border border-border/40 rounded-3xl p-6 relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[50px] pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-700" />
-                                <h4 className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-2 relative z-10">
+                                <h4 className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-2 relative z-10">
                                     <Users size={14} /> Special Invite Access
                                 </h4>
-                                <p className="text-[10px] text-zinc-400 leading-relaxed uppercase tracking-wider mb-4 relative z-10">
+                                <p className="text-[10px] text-muted-foreground leading-relaxed uppercase tracking-wider mb-4 relative z-10">
                                     Share this secure link with your goalies to grant them immediate platform access.
                                 </p>
                                 <button 
@@ -425,20 +432,20 @@ export default function TeamDashboardPage() {
                                         toast.success("Invite link copied to clipboard");
                                         setTimeout(() => setCopied(false), 2000);
                                     }}
-                                    className="w-full flex items-center justify-between gap-2 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black tracking-widest hover:border-indigo-500/50 transition-all relative z-10"
+                                    className="w-full flex items-center justify-between gap-2 bg-background/50 border border-border/40 rounded-xl px-4 py-3 text-[10px] font-black tracking-widest hover:border-indigo-500/50 transition-all relative z-10"
                                 >
-                                    <span className="text-zinc-500 truncate">.../activate?team_invite...</span>
-                                    {copied ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Copy size={16} className="text-indigo-400" />}
+                                    <span className="text-muted-foreground truncate">.../activate?team_invite...</span>
+                                    {copied ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Copy size={16} className="text-indigo-600 dark:text-indigo-400" />}
                                 </button>
                             </div>
                         )}
 
                         {/* Quick Action Info */}
-                        <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
-                            <h4 className="flex items-center gap-2 text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-4">
+                        <div className="bg-card/60 backdrop-blur-md border border-border/40 rounded-3xl p-6 text-foreground">
+                            <h4 className="flex items-center gap-2 text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">
                                 <Info size={14} className="text-primary" /> Squad Policies
                             </h4>
-                            <p className="text-[10px] text-zinc-500 leading-relaxed uppercase tracking-wider">
+                            <p className="text-[10px] text-muted-foreground leading-relaxed uppercase tracking-wider">
                                 All verified squad members have all-access to high-fidelity analytics, game processing, and coaching reflections.
                             </p>
                         </div>
@@ -458,9 +465,9 @@ export default function TeamDashboardPage() {
                         />
 
                         {/* ROSTER TABLE (The Core) */}
-                        <div className="bg-white/5 border border-white/10 rounded-[2rem] overflow-hidden">
-                            <div className="p-8 border-b border-white/5 flex items-center justify-between">
-                                <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-3">
+                        <div className="bg-card/60 backdrop-blur-md border border-border/40 rounded-[2rem] overflow-hidden shadow-xl">
+                            <div className="p-8 border-b border-border/10 flex items-center justify-between">
+                                <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-3 text-foreground">
                                     <Users size={20} className="text-primary" /> Verified Performance Roster
                                 </h3>
                                 <div className="flex gap-2">
@@ -474,15 +481,15 @@ export default function TeamDashboardPage() {
                                                 <input 
                                                     type="text" value={athleteEmail} onChange={e => setAthleteEmail(e.target.value)}
                                                     placeholder="Athlete Email or ID"
-                                                    className="bg-black border border-white/10 rounded-lg px-4 py-1.5 text-[10px] w-48 outline-none focus:border-primary"
+                                                    className="bg-background border border-border/40 rounded-lg px-4 py-1.5 text-[10px] w-48 outline-none focus:border-primary text-foreground"
                                                 />
-                                                <button onClick={handleAddAthlete} className="bg-primary text-black px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest">Add</button>
-                                                <button onClick={() => setIsAddingAthlete(false)} className="text-zinc-500 px-2 uppercase text-[10px] font-black">X</button>
+                                                <button onClick={handleAddAthlete} className="bg-primary text-primary-foreground px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest">Add</button>
+                                                <button onClick={() => setIsAddingAthlete(false)} className="text-muted-foreground px-2 uppercase text-[10px] font-black">X</button>
                                             </motion.div>
                                         ) : (
                                             <button 
                                                 onClick={() => setIsAddingAthlete(true)}
-                                                className="px-4 py-1.5 bg-primary text-black rounded-lg text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+                                                className="px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all"
                                             >
                                                 Add Athlete
                                             </button>
@@ -494,36 +501,36 @@ export default function TeamDashboardPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left">
                                     <thead>
-                                        <tr className="bg-black/40">
-                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 tracking-widest">Athlete Name</th>
-                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 tracking-widest">Player ID</th>
-                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 tracking-widest">Position</th>
-                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 tracking-widest">Recent Usage</th>
-                                            <th className="px-8 py-4 text-[10px] font-black text-zinc-500 tracking-widest">Status</th>
+                                        <tr className="bg-secondary/40">
+                                            <th className="px-8 py-4 text-[10px] font-black text-muted-foreground tracking-widest">Athlete Name</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-muted-foreground tracking-widest">Player ID</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-muted-foreground tracking-widest">Position</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-muted-foreground tracking-widest">Recent Usage</th>
+                                            <th className="px-8 py-4 text-[10px] font-black text-muted-foreground tracking-widest">Status</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-white/5">
+                                    <tbody className="divide-y divide-border/10">
                                         {roster.map((member, idx) => (
                                             <tr 
                                                 key={member.id} 
                                                 onClick={() => router.push('/dashboard?athleteId=' + member.id)}
-                                                className="group hover:bg-white/[0.02] transition-colors cursor-pointer"
+                                                className="group hover:bg-primary/5 transition-colors cursor-pointer"
                                             >
                                                 <td className="px-8 py-5">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-zinc-800 to-black border border-white/10 flex items-center justify-center text-zinc-400 group-hover:border-primary/50 transition-all">
+                                                    <div className="flex items-center gap-4 text-foreground">
+                                                        <div className="w-10 h-10 rounded-full bg-secondary border border-border/40 flex items-center justify-center text-muted-foreground group-hover:border-primary/50 transition-all">
                                                             <UserIcon size={18} />
                                                         </div>
                                                         <div className="font-black text-sm uppercase tracking-tight">{member.athlete_name}</div>
                                                     </div>
                                                 </td>
-                                                <td className="px-8 py-5 text-xs font-bold text-zinc-500 uppercase tracking-tighter">#{member.id.split('-')[0].toUpperCase()}</td>
-                                                <td className="px-8 py-5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Goalie</td>
-                                                <td className="px-8 py-5 text-xs font-bold text-emerald-500/80 uppercase tracking-wider">{member.last_usage}</td>
-                                                <td className="px-8 py-5">
+                                                <td className="px-8 py-5 text-xs font-bold text-muted-foreground uppercase tracking-tighter">#{member.id.split('-')[0].toUpperCase()}</td>
+                                                <td className="px-8 py-5 text-xs font-bold text-muted-foreground uppercase tracking-widest">Goalie</td>
+                                                <td className="px-8 py-5 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">{member.last_usage}</td>
+                                                <td className="px-8 py-5 text-foreground">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                                                        <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Active</span>
+                                                        <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Active</span>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -533,28 +540,28 @@ export default function TeamDashboardPage() {
                             </div>
                         </div>
 
-                        <div className="bg-white/5 border border-white/10 rounded-[2rem] p-8">
-                            <h4 className="text-sm font-black uppercase tracking-tighter flex items-center gap-2 mb-6">
+                        <div className="bg-card/60 backdrop-blur-md border border-border/40 rounded-[2rem] p-8 shadow-xl">
+                            <h4 className="text-sm font-black uppercase tracking-tighter flex items-center gap-2 mb-6 text-foreground">
                                 <History size={16} className="text-primary" /> Membership Activity Log
                             </h4>
                             <div className="space-y-4">
                                 {history.length > 0 ? history.map(tx => (
-                                    <div key={tx.id} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
+                                    <div key={tx.id} className="flex items-center justify-between p-4 bg-secondary/20 rounded-2xl border border-border/10">
                                         <div className="flex items-center gap-4">
-                                            <div className={`p-2 rounded-lg ${tx.amount > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary/10 text-primary'}`}>
+                                            <div className={`p-2 rounded-lg ${tx.amount > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary'}`}>
                                                 {tx.amount > 0 ? <ArrowUpRight size={16} /> : <Zap size={16} />}
                                             </div>
                                             <div>
-                                                <div className="text-[10px] font-black uppercase tracking-tight">{tx.description}</div>
-                                                <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{new Date(tx.created_at).toLocaleString()}</div>
+                                                <div className="text-[10px] font-black uppercase tracking-tight text-foreground">{tx.description}</div>
+                                                <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{new Date(tx.created_at).toLocaleString()}</div>
                                             </div>
                                         </div>
-                                        <div className={`text-sm font-black ${tx.amount > 0 ? 'text-emerald-500' : 'text-white'}`}>
+                                        <div className={`text-sm font-black ${tx.amount > 0 ? 'text-emerald-600' : 'text-foreground'}`}>
                                             {tx.amount > 0 ? `+${tx.amount}` : tx.amount} Credits
                                         </div>
                                     </div>
                                 )) : (
-                                    <div className="text-center py-10 opacity-30 text-xs font-black uppercase tracking-widest">
+                                    <div className="text-center py-10 opacity-30 text-xs font-black uppercase tracking-widest text-foreground">
                                         No recent transactions recorded.
                                     </div>
                                 )}

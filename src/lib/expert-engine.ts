@@ -76,7 +76,8 @@ export function determineRecommendation(
         : (topMatch.reason || "Consistency is key today. Focus on your standard preparation.");
 
     // Dynamic Protocol Generator if specific rules lack hardcoded drills
-    const sportPrefix = sport.toLowerCase().includes('lacrosse') ? 'Lax' : 'Hockey';
+    const lowerSport = sport.toLowerCase();
+    const sportPrefix = lowerSport.includes('lacrosse') ? 'Lax' : lowerSport.includes('soccer') ? 'Soccer' : 'Hockey';
     
     const resolvedWarmup: DrillDef = topMatch.warmup || {
         name: `${sportPrefix} Dynamic Prep`,

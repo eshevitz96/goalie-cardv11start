@@ -90,6 +90,8 @@ export function GoalieDashboard({
     const [unchartedCount, setUnchartedCount] = useState(0);
     const [lastAnalyzedOpponent, setLastAnalyzedOpponent] = useState('');
     const [lastAnalyzedDate, setLastAnalyzedDate] = useState('');
+    const [lastAnalyzedLocation, setLastAnalyzedLocation] = useState('');
+    const [lastAnalyzedType, setLastAnalyzedType] = useState('');
     const [performanceView, setPerformanceView] = useState<'game' | 'season'>('game');
     const [hasCoach, setHasCoach] = useState(true);
     const [hasAnalyticsAccess, setHasAnalyticsAccess] = useState(true);
@@ -99,10 +101,19 @@ export function GoalieDashboard({
     const journalRef = useRef<HTMLDivElement>(null);
 
     // Basic Click Tracking for Goalie Interactions
-    const trackGoalieAction = (actionName: string) => {
-        // Logging for immediate validation; this can be forwarded to PostHog/Amplitude directly
-        console.log(`[ANALYTICS CAPTURE] Action: ${actionName} | View: ${performanceView} | UI Context: GoalieDashboard`);
-        // e.g. supabase.from('goalie_analytics').insert({ action: actionName, goalie_id: id })
+    // Persistent Analytics Tracking
+    const trackGoalieAction = async (actionName: string, metadata: any = {}) => {
+        // Local feedback
+        console.log(`[ANALYTICS] ${actionName}`, metadata);
+        
+        // Push to server
+        if (activeGoalie?.id) {
+            const { trackAnalytics } = await import('@/app/actions');
+            await trackAnalytics(actionName, activeGoalie.id, {
+                performanceView,
+                ...metadata
+            });
+        }
     };
 
     // Sync from search param athleteId (if any)
@@ -653,6 +664,10 @@ export function GoalieDashboard({
                                             const opponentFromEvent = linkedEvent ? linkedEvent.name.replace(/Game:\s*vs\s*/i, '').replace(/Practice:\s*/i, '') : 'Opponent';
                                             setLastAnalyzedOpponent(opponentFromEvent);
                                             setLastAnalyzedDate(new Date().toLocaleDateString());
+                                            setLastAnalyzedLocation(linkedEvent?.location || '');
+                                            setLastAnalyzedType(linkedEvent?.type === 'game' ? 'Game' : 'Training');
+
+                                            trackGoalieAction("film_analysis_complete", { eventId: data.associatedEventId, shotCount: newlyPlottedShots.length });
                                             setShowGameReport(true);
                                         } else {
                                             alert("Failed to sync analysis: " + result.error);
@@ -682,6 +697,8 @@ export function GoalieDashboard({
                                 sport={goalieContext.sport}
                                 opponent={lastAnalyzedOpponent || 'Unknown Opponent'}
                                 date={lastAnalyzedDate || new Date().toLocaleDateString()}
+                                location={lastAnalyzedLocation}
+                                sessionType={lastAnalyzedType}
                                 shots={shotEvents}
                                 stats={{
                                     totalShots: shotEvents.length,
