@@ -13,6 +13,7 @@ import { GameReport } from './GameReport';
 import { SupportedSport, ShotEvent, ShotResult, ShotType } from '@/types/goalie-v11';
 import { Button } from '@/components/ui/Button';
 import { getSportTerms } from '@/utils/sport-language';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 
 interface Clip {
   id: string;
@@ -526,16 +527,22 @@ export function FilmAnalysisWorkspace({
                     ))}
                 </div>
 
-                <div className="p-4 border-t border-border/30">
+                <div className="p-6 border-t border-border/30 space-y-4">
                     <Button 
                         disabled={!clips.every(c => c.status === 'plotted')}
-                        className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all ${
-                            clips.every(c => c.status === 'plotted') ? 'bg-foreground text-background' : 'bg-muted opacity-50'
+                        className={`w-full py-5 rounded-3xl font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                            clips.every(c => c.status === 'plotted') ? 'bg-primary text-black' : 'bg-muted opacity-50'
                         }`}
                         onClick={() => setShowReport(true)}
                     >
-                        View Game Report
+                        Confirm Analysis & Sync
                     </Button>
+                    <div className="flex flex-col items-center justify-center pt-2 opacity-40">
+                       <BrandLogo size={10} textClassName="text-[10px] font-black uppercase tracking-[0.4em]" />
+                       <div className="text-[8px] font-bold text-muted-foreground uppercase tracking-[0.2em] mt-1">
+                          Precision Athletic Intelligence
+                       </div>
+                    </div>
                 </div>
             </div>
 
