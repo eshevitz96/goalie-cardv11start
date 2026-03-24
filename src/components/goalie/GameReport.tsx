@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { 
   Download, Share2, TrendingUp, Target, 
-  BarChart3, MapPin, Shield, ChevronRight, Calendar 
+  BarChart3, MapPin, Shield, ChevronRight, Calendar, Film, Maximize2 
 } from 'lucide-react';
 import { GameAnalysisSurface } from './GameAnalysisSurface';
 import { SupportedSport, ShotEvent, ShotResult } from '@/types/goalie-v11';
@@ -158,7 +158,47 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
         </div>
       </div>
 
-      {/* 5. AI Coach OS Integration */}
+      {/* 5. Highlight Reel (If Clips Exist) */}
+      {shots.some(s => s.filmUrl) && (
+        <div className="px-10 py-12 border-t border-border/10">
+           <h3 className="text-sm font-black uppercase tracking-widest mb-8 flex items-center gap-3">
+              <Film size={20} className="text-primary" /> V11 Highlight Reel
+           </h3>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {shots.filter(s => s.filmUrl).map((shot, i) => (
+                <div key={shot.id} className="bg-card/40 border border-border/30 rounded-3xl overflow-hidden group">
+                   <div className="aspect-video bg-black relative">
+                      <video 
+                        className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                        src={`${shot.filmUrl}#t=${shot.clipStart || 0},${shot.clipEnd || 0}`}
+                        preload="metadata"
+                        muted
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-6">
+                         <div className="flex-1">
+                            <div className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">
+                               {shot.result} — {shot.shotType}
+                            </div>
+                            <div className="text-lg font-black uppercase tracking-tighter leading-none">
+                               High Performance Clip #{i + 1}
+                            </div>
+                         </div>
+                         <Button 
+                            variant="ghost" 
+                            className="bg-white/10 hover:bg-white/20 text-white rounded-full w-10 h-10 p-0"
+                            onClick={() => window.open(shot.filmUrl, '_blank')}
+                         >
+                            <Maximize2 size={16} />
+                         </Button>
+                      </div>
+                   </div>
+                </div>
+              ))}
+           </div>
+        </div>
+      )}
+
+      {/* 6. Coach OS Integration */}
       <div className="m-10 p-10 bg-primary/[0.03] border border-primary/20 rounded-[2.5rem] flex items-center gap-10 shadow-2xl shadow-primary/5 relative overflow-hidden group">
          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
             <TrendingUp size={120} />

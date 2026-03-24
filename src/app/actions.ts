@@ -479,6 +479,9 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
             origin_y: s.originY,
             target_x: s.targetX,
             target_y: s.targetY,
+            clip_start: s.clipStart,
+            clip_end: s.clipEnd,
+            film_url: s.filmUrl,
             created_at: new Date().toISOString()
         }));
 

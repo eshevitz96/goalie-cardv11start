@@ -59,6 +59,9 @@ export interface ShotEvent {
   isPowerPlay: boolean;
   hasTraffic: boolean;
   isOddManRush: boolean;
+  clipStart?: number;
+  clipEnd?: number;
+  filmUrl?: string;
 }
 
 export interface GameStatsLog {

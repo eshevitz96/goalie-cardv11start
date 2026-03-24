@@ -606,7 +606,10 @@ export function GoalieDashboard({
                                                 originX: c.plottedX,
                                                 originY: c.plottedY,
                                                 targetX: c.netX,
-                                                targetY: c.netY
+                                                targetY: c.netY,
+                                                clipStart: Math.max(0, c.timestamp - 6),
+                                                clipEnd: c.timestamp + 4,
+                                                filmUrl: videoUrlToAnalyze
                                             }))
                                         );
 
