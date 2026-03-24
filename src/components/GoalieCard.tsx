@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle, QrCode, Settings2, Check } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { twMerge } from "tailwind-merge";
 import { Button } from "@/components/ui/Button";
@@ -67,6 +67,26 @@ export function GoalieCard({
     const [isEditingSeason, setIsEditingSeason] = useState(false);
     const [customStart, setCustomStart] = useState<string>("");
     const [customEnd, setCustomEnd] = useState<string>("");
+
+    // Persist to local storage keyed by goalie ID
+    useEffect(() => {
+        if (id) {
+            const saved = localStorage.getItem(`season_dates_${id}`);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.start) setCustomStart(parsed.start);
+                    if (parsed.end) setCustomEnd(parsed.end);
+                } catch (e) {}
+            }
+        }
+    }, [id]);
+
+    useEffect(() => {
+        if (id && customStart && customEnd) {
+            localStorage.setItem(`season_dates_${id}`, JSON.stringify({ start: customStart, end: customEnd }));
+        }
+    }, [id, customStart, customEnd]);
 
     // Use logic hook
     const { seasonProgress: hookProgress, seasonLabel } = useSeasonTimeline(sport);

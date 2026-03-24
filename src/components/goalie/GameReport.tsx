@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from 'framer-motion';
+import { useState, useMemo } from 'react';
 import { 
   Download, Share2, TrendingUp, Target, 
-  BarChart3, MapPin, Shield, ChevronRight, Calendar, Film, Maximize2 
+  BarChart3, MapPin, Shield, ChevronRight, Calendar, Film, Maximize2, Edit2
 } from 'lucide-react';
 import { GameAnalysisSurface } from './GameAnalysisSurface';
 import { SupportedSport, ShotEvent, ShotResult } from '@/types/goalie-v11';
@@ -28,11 +29,38 @@ interface GameReportProps {
 export function GameReport({ sport, opponent, date, shots, stats }: GameReportProps) {
   const { theme } = useTheme();
   const terms = getSportTerms(sport);
-  const zoneStats = [
-    { label: 'Low Slot', saves: 12, goals: 1 },
-    { label: 'High Slot', saves: 8, goals: 0 },
-    { label: 'Outside Perimeter', saves: 5, goals: 2 },
-  ];
+  const [locationName, setLocationName] = useState('Home Arena');
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+
+  // Dynamically calculate zone stats directly from the tracked clip events
+  const displayZones = useMemo(() => {
+    const zones = {
+      'Low Slot': { saves: 0, goals: 0 },
+      'High Slot': { saves: 0, goals: 0 },
+      'Outside Perimeter': { saves: 0, goals: 0 },
+    };
+
+    shots.forEach(s => {
+      const successful = s.result === 'save' || s.result === 'clear';
+      const isGoal = s.result === 'goal';
+      const y = s.originY || 50;
+      
+      let key: keyof typeof zones = 'High Slot';
+      // Simple coordinate binning to simulate zones
+      if (y > 70) key = 'Outside Perimeter';
+      else if (y < 40) key = 'Low Slot';
+
+      if (successful) zones[key].saves++;
+      if (isGoal) zones[key].goals++;
+    });
+
+    // Only show zones that have data; if empty, fallback to defaults just to show the UI shell
+    const activeStats = Object.entries(zones).map(([label, counts]) => ({ label, ...counts })).filter(z => (z.saves + z.goals) > 0);
+    return activeStats.length > 0 ? activeStats : [
+        { label: 'Low Slot', saves: 0, goals: 0 },
+        { label: 'High Slot', saves: 0, goals: 0 }
+    ];
+  }, [shots]);
 
   return (
     <div className="max-w-4xl mx-auto bg-card text-foreground rounded-[2.2rem] shadow-2xl border border-border/10 overflow-hidden animate-in fade-in duration-700 backdrop-blur-3xl">
@@ -47,7 +75,23 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
           </h2>
           <div className="flex items-center gap-6 text-muted-foreground font-bold text-[10px] uppercase tracking-widest">
              <span className="flex items-center gap-2 text-foreground/80"><Calendar size={14} className="text-primary/60" /> {new Date(date).toLocaleDateString()}</span>
-             <span className="flex items-center gap-2 text-foreground/80"><MapPin size={14} className="text-primary/60" /> Shark Tank Arena</span>
+             <span className="flex items-center gap-2 text-foreground/80 group">
+                <MapPin size={14} className="text-primary/60" /> 
+                {isEditingLocation ? (
+                    <input 
+                        autoFocus
+                        value={locationName}
+                        onChange={(e) => setLocationName(e.target.value)}
+                        onBlur={() => setIsEditingLocation(false)}
+                        onKeyDown={(e) => e.key === 'Enter' && setIsEditingLocation(false)}
+                        className="bg-transparent border-b border-primary/30 outline-none text-[10px] uppercase font-bold w-32 tracking-widest text-primary"
+                    />
+                ) : (
+                    <span onClick={() => setIsEditingLocation(true)} className="cursor-pointer hover:text-primary transition-colors flex items-center gap-1">
+                        {locationName}
+                    </span>
+                )}
+             </span>
           </div>
         </div>
         <div className="flex gap-3">
@@ -170,7 +214,7 @@ export function GameReport({ sport, opponent, date, shots, stats }: GameReportPr
            <BarChart3 size={20} className="text-primary" /> Advanced Shot Origin Performance
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-8">
-          {zoneStats.map((zone) => {
+          {displayZones.map((zone) => {
             const perc = Math.round((zone.saves / (zone.saves + zone.goals)) * 100);
             return (
               <div key={zone.label} className="group">

@@ -151,16 +151,9 @@ export function FilmAnalysisWorkspace({
     setClips(updatedClips);
   };
 
-  const toggleClipType = (index: number) => {
+  const setClipType = (index: number, newType: ShotResult) => {
     const updatedClips = [...clips];
-    const clip = updatedClips[index];
-    const results: ShotResult[] = (sport === 'soccer' || sport.includes('lacrosse')) 
-      ? ['save', 'goal', 'clear'] 
-      : ['save', 'goal'];
-    
-    const currentIndex = results.indexOf(clip.type as ShotResult);
-    const nextIndex = (currentIndex + 1) % results.length;
-    clip.type = results[nextIndex];
+    updatedClips[index].type = newType;
     setClips(updatedClips);
   };
 
@@ -481,36 +474,33 @@ export function FilmAnalysisWorkspace({
                                 </div>
                             </button>
                             
-                            {/* Integrated Controls Group */}
                             <div className="flex gap-2 px-1">
-                                <div className="flex bg-muted/20 border border-border/50 rounded-xl p-1 flex-1">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setClipType(i, 'save'); }}
+                                    className={`flex-1 py-1 rounded-lg border text-[8px] font-bold uppercase tracking-widest transition-all ${
+                                        clip.type === 'save' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-muted border-border/20 text-muted-foreground hover:bg-white/5 hover:border-border/40 hover:text-foreground'
+                                    }`}
+                                >
+                                    Save
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setClipType(i, 'goal'); }}
+                                    className={`flex-1 py-1 rounded-lg border text-[8px] font-bold uppercase tracking-widest transition-all ${
+                                        clip.type === 'goal' ? 'bg-red-500/20 border-red-500/30 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'bg-muted border-border/20 text-muted-foreground hover:bg-white/5 hover:border-border/40 hover:text-foreground'
+                                    }`}
+                                >
+                                    Goal
+                                </button>
+                                {(sport === 'soccer' || sport.includes('lacrosse')) && (
                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); toggleClipType(i); }}
-                                        className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                            clip.type === 'save' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-muted-foreground hover:text-foreground'
+                                        onClick={(e) => { e.stopPropagation(); setClipType(i, 'clear'); }}
+                                        className={`flex-1 py-1 rounded-lg border text-[8px] font-bold uppercase tracking-widest transition-all ${
+                                            clip.type === 'clear' ? 'bg-blue-500/20 border-blue-500/30 text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'bg-muted border-border/20 text-muted-foreground hover:bg-white/5 hover:border-border/40 hover:text-foreground'
                                         }`}
                                     >
-                                        Save
+                                        Clear
                                     </button>
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); toggleClipType(i); }}
-                                        className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                            clip.type === 'goal' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'text-muted-foreground hover:text-foreground'
-                                        }`}
-                                    >
-                                        Goal
-                                    </button>
-                                    {(sport === 'soccer' || sport.includes('lacrosse')) && (
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); toggleClipType(i); }}
-                                            className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                                clip.type === 'clear' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-muted-foreground hover:text-foreground'
-                                            }`}
-                                        >
-                                            Clear
-                                        </button>
-                                    )}
-                                </div>
+                                )}
                                 
                                 <select
                                     value={clip.period || 1}

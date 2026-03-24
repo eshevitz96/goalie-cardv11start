@@ -124,12 +124,14 @@ export function AiCoachRecommendation({
     // UI state
     const [expandedArea, setExpandedArea] = useState<'warmup' | 'main' | 'mental' | null>(null);
     const [sessionActive, setSessionActive] = useState(false);
+    const [showProtocol, setShowProtocol] = useState(false);
+    const [isLiveLocal, setIsLiveLocal] = useState(false);
     const [isFolded, setIsFolded] = useState(true);
     const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0); // 0: warmup, 1: main, 2: mental
 
     // LIVE GAME MODE
-    if (isLive) {
-        return <LiveModeView onExit={onExit} onComplete={onComplete} />;
+    if (isLive || isLiveLocal) {
+        return <LiveModeView onExit={() => { setIsLiveLocal(false); if (onExit) onExit(); }} onComplete={onComplete} />;
     }
 
     const handleLogAndComplete = () => {
@@ -316,12 +318,23 @@ export function AiCoachRecommendation({
                     {customMessage || plan.reason}
                 </p>
                 <div className="flex flex-wrap gap-4 items-center">
-                    <Button
-                        onClick={() => handleStartSession(0)}
-                        className="bg-primary text-black font-black px-8 py-4 rounded-2xl hover:scale-105 transition-all text-sm flex items-center gap-2 h-auto shadow-xl shadow-primary/20"
-                    >
-                        <Zap size={16} fill="currentColor" /> Start Training
-                    </Button>
+                    {!isGameday ? (
+                        !showProtocol ? (
+                            <Button
+                                onClick={() => setShowProtocol(true)}
+                                className="bg-primary text-black font-black px-8 py-4 rounded-2xl hover:scale-105 transition-all text-sm flex items-center gap-2 h-auto shadow-xl shadow-primary/20"
+                            >
+                                <Zap size={16} fill="currentColor" /> Start Training
+                            </Button>
+                        ) : null
+                    ) : (
+                        <Button
+                            onClick={() => setIsLiveLocal(true)}
+                            className="bg-red-500 text-white font-black px-8 py-4 rounded-2xl hover:scale-105 transition-all text-sm flex items-center gap-2 h-auto shadow-xl shadow-red-500/20"
+                        >
+                            <Flame size={16} fill="currentColor" /> Enter Live Mode
+                        </Button>
+                    )}
                     <Button
                         onClick={() => handleLogAndComplete()}
                         className="bg-foreground text-background font-black px-8 py-4 rounded-2xl hover:scale-105 transition-all text-sm flex items-center gap-2 h-auto shadow-xl shadow-foreground/5"
@@ -331,8 +344,8 @@ export function AiCoachRecommendation({
                 </div>
 
                 {/* Training Protocol Cards Re-added */}
-                {!isGameday && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-8 border-t border-border/10">
+                {!isGameday && showProtocol && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-8 border-t border-border/10 animate-in fade-in slide-in-from-top-4 duration-500">
                         {plan.warmup && renderDrillCard('warmup', 0, "Warmup", plan.warmup, <Activity className="text-blue-500" />, "bg-blue-500/10 text-blue-500")}
                         {plan.main && renderDrillCard('main', 1, "Main Logic", plan.main, <Target className="text-primary" />, "bg-primary/10 text-primary")}
                         {plan.mental && renderDrillCard('mental', 2, "Mental Reset", plan.mental, <Brain className="text-purple-500" />, "bg-purple-500/10 text-purple-500")}
