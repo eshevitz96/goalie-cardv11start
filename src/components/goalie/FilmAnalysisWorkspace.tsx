@@ -99,6 +99,20 @@ export function FilmAnalysisWorkspace({
     if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
   };
 
+  // Sync Playback State
+  useEffect(() => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.play().catch(() => {
+          // Fallback if autoplay/play is blocked
+          setIsPlaying(false);
+        });
+      } else {
+        videoRef.current.pause();
+      }
+    }
+  }, [isPlaying]);
+
   const jumpToClip = (index: number) => {
     setActiveClipIndex(index);
     setPlotStep('field');
