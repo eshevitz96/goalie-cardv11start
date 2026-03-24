@@ -75,13 +75,37 @@ export function determineRecommendation(
         ? topMatch.reasons[Math.floor(Math.random() * topMatch.reasons.length)]
         : (topMatch.reason || "Consistency is key today. Focus on your standard preparation.");
 
-    // 3. Construct the practice plan (Simplified to Brief Direction)
+    // Dynamic Protocol Generator if specific rules lack hardcoded drills
+    const sportPrefix = sport.toLowerCase().includes('lacrosse') ? 'Lax' : 'Hockey';
+    
+    const resolvedWarmup: DrillDef = topMatch.warmup || {
+        name: `${sportPrefix} Dynamic Prep`,
+        duration: "5 mins",
+        type: "physical",
+        steps: ["Active dynamic stretching", "Hand-eye tracking series (wall ball or juggling)", "Light footwork & crease mobility"]
+    };
+
+    const resolvedDrill: DrillDef = topMatch.drill || {
+        name: `${topMatch.focus} Execution`,
+        duration: "10 mins",
+        type: "physical",
+        steps: ["Slow-motion shadow reps focusing strictly on form", `Live repetitions testing: ${topMatch.focus.toLowerCase()}`, "High-tempo game situation simulation"]
+    };
+
+    const resolvedMental: DrillDef = topMatch.mental || {
+        name: "Cognitive Lock-In",
+        duration: "3 mins",
+        type: "mental",
+        steps: ["Box breathing cycles (4-4-4-4)", `Visualize perfect execution of ${topMatch.focus.toLowerCase()}`, "Positive reaffirmation & reset"]
+    };
+
+    // 3. Construct the practice plan
     return {
         focus: topMatch.focus,
         reason: finalReason,
-        warmup: topMatch.warmup,
-        main: topMatch.drill,
-        mental: topMatch.mental,
+        warmup: resolvedWarmup,
+        main: resolvedDrill,
+        mental: resolvedMental,
         videoWait: topMatch.videoWait
     };
 }
