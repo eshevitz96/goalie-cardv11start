@@ -167,13 +167,26 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events 
                 {/* 2.5 Event Allocation */}
                 {events.length > 0 && (
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Allocate to Event</label>
+                        <div className="flex items-center justify-between px-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Allocate to Event</label>
+                            <button 
+                                onClick={() => {
+                                    // Trigger the parent dashboard's showEventModal if possible,
+                                    // or just allow "No specific event" and create from session.
+                                    // For now, we'll signal the user can create it.
+                                    alert("Session created without event can be linked later in the Workspace!");
+                                }}
+                                className="text-[9px] font-bold text-primary hover:underline"
+                            >
+                                + New Event
+                            </button>
+                        </div>
                         <select
                             value={associatedEventId}
                             onChange={(e) => setAssociatedEventId(e.target.value)}
                             className="w-full bg-card/50 border border-border rounded-xl px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
                         >
-                            <option value="">No specific event</option>
+                            <option value="">No specific event (Create New)</option>
                             {events.map((e) => (
                                 <option key={e.id} value={e.id}>
                                     {e.name}

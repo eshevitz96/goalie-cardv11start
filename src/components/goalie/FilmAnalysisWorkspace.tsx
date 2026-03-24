@@ -61,6 +61,12 @@ export function FilmAnalysisWorkspace({
   const activeClip = activeClipIndex !== null ? clips[activeClipIndex] : null;
   const terms = getSportTerms(sport);
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // Sync Opponent & Date from Event
   useEffect(() => {
     if (associatedEventId) {
@@ -222,13 +228,20 @@ export function FilmAnalysisWorkspace({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
         <div className="flex items-center gap-4">
             <div className="bg-primary/20 text-primary border border-primary/30 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[.25em] flex items-center gap-2 shadow-2xl">
-                <Brain size={12} /> Draft Session Active
+                <Brain size={12} /> Coach OS Session Active
             </div>
             <div className="flex items-center gap-3">
-                <h2 className="text-xl font-black uppercase tracking-tighter text-foreground">{opponentName}</h2>
-                <div className="bg-card/50 border border-border/40 rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    {new Date(gameDate).toLocaleDateString()}
-                </div>
+                <input 
+                    value={opponentName}
+                    onChange={(e) => setOpponentName(e.target.value)}
+                    className="bg-transparent border-none outline-none text-xl font-black uppercase tracking-tighter text-foreground hover:bg-white/5 px-2 rounded-lg focus:bg-white/10 transition-colors w-auto min-w-[120px]"
+                />
+                <input 
+                    type="date"
+                    value={gameDate}
+                    onChange={(e) => setGameDate(e.target.value)}
+                    className="bg-card/50 border border-border/40 rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground outline-none focus:ring-1 focus:ring-primary"
+                />
             </div>
         </div>
         <div className="flex items-center gap-3">
@@ -238,6 +251,7 @@ export function FilmAnalysisWorkspace({
                 onChange={(e) => setAssociatedEventId(e.target.value)}
                 className="bg-card/50 border border-border/40 rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-foreground focus:ring-1 focus:ring-primary outline-none"
             >
+                <option value="">Create from Session</option>
                 {events.map((e: { id: string, name: string }) => <option key={e.id} value={e.id} className="bg-background">{e.name}</option>)}
             </select>
         </div>
@@ -247,15 +261,44 @@ export function FilmAnalysisWorkspace({
         {/* LEFT: Video & Plotting Area */}
         <div className="lg:col-span-9 flex flex-col gap-6">
             
-            {/* VIDEO PLAYER */}
-            <div className="relative aspect-video bg-black rounded-3xl overflow-hidden shadow-xl border border-border/50 bg-card">
+            {/* VIDEO PLAYER with Controls */}
+            <div className="relative aspect-video bg-black rounded-3xl overflow-hidden shadow-xl border border-border/50 bg-card group">
               <video 
                 ref={videoRef}
                 src={videoUrl} 
                 className="w-full h-full object-contain"
                 onTimeUpdate={handleTimeUpdate}
+                onClick={() => setIsPlaying(!isPlaying)}
                 muted
               />
+
+              {/* Master Playback Controls */}
+              <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-4">
+                 <button 
+                   onClick={() => setIsPlaying(!isPlaying)}
+                   className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-black hover:scale-105 transition-transform"
+                 >
+                    {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} className="ml-0.5" fill="currentColor" />}
+                 </button>
+
+                 <div className="flex-1 flex items-center gap-4">
+                    <span className="text-[10px] font-mono font-bold text-white/50">{formatTime(currentTime)}</span>
+                    <input 
+                        type="range"
+                        min="0"
+                        max={videoRef.current?.duration || 100}
+                        step="0.1"
+                        value={currentTime}
+                        onChange={(e) => {
+                            const time = parseFloat(e.target.value);
+                            setCurrentTime(time);
+                            if (videoRef.current) videoRef.current.currentTime = time;
+                        }}
+                        className="flex-1 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-primary"
+                    />
+                    <span className="text-[10px] font-mono font-bold text-white/50">{formatTime(videoRef.current?.duration || 0)}</span>
+                 </div>
+              </div>
 
               <div className="absolute top-6 left-6 flex items-center gap-2">
                 <div className="bg-zinc-900/80 border border-white/10 text-white font-mono text-[10px] px-4 py-2 rounded-full tracking-widest shadow-2xl">
@@ -269,7 +312,7 @@ export function FilmAnalysisWorkspace({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/20 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-50 min-w-[240px]"
+                    className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/20 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-50 min-w-[240px]"
                   >
                     <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black">
                       {plotStep === 'field' ? <MapPin size={16} /> : <TargetIcon size={16} />}
