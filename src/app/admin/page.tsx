@@ -14,6 +14,7 @@ import { FeedbackTable } from '@/components/admin/FeedbackTable';
 import { BetaSurveyTable } from '@/components/admin/BetaSurveyTable';
 import { CreditManager } from '@/components/admin/CreditManager';
 import { DataIntegrityWidget } from '@/components/admin/DataIntegrityWidget';
+import { PrivateAccessSubmissions } from '@/components/admin/PrivateAccessSubmissions';
 import { supabase } from '@/utils/supabase/client';
 
 export default function AdminDashboard() {
@@ -32,7 +33,7 @@ export default function AdminDashboard() {
     } = useAdminData();
 
     // UI State
-    const [activeTab, setActiveTab] = useState<'roster' | 'insights' | 'sessions' | 'feedback' | 'survey' | 'credits'>('roster');
+    const [activeTab, setActiveTab] = useState<'roster' | 'insights' | 'sessions' | 'feedback' | 'survey' | 'credits' | 'private-access'>('roster');
     const [showManualAdd, setShowManualAdd] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingItem, setEditingItem] = useState<RosterItem | null>(null);
@@ -112,6 +113,8 @@ export default function AdminDashboard() {
                             }
                         </div>
                     </div>
+                ) : activeTab === 'private-access' ? (
+                    <PrivateAccessSubmissions />
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">

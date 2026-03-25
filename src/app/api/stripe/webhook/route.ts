@@ -125,6 +125,23 @@ export async function POST(req: Request) {
                     }
                 }
             }
+        } else if (session?.metadata?.productType === 'private training access') {
+            const submissionId = session.metadata.submissionId;
+            if (submissionId) {
+                const { error: subError } = await supabase
+                    .from('private_training_submissions')
+                    .update({
+                        payment_status: 'paid',
+                        status: 'paid',
+                        stripe_payment_intent_id: session.payment_intent as string,
+                        notes: `Stripe Session Completed: ${session.id}`
+                    })
+                    .eq('id', submissionId);
+
+                if (subError) {
+                    console.error("Private training submission sync error:", subError);
+                }
+            }
         } else {
             // Default: Activation Flow
             // SYNC: Update Roster Uploads so Admin Dashboard sees it

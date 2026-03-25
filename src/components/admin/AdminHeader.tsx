@@ -1,6 +1,6 @@
-import { Database, FileSpreadsheet, BarChart3, MessageSquare, CheckCircle2, CreditCard } from 'lucide-react';
+import { Database, FileSpreadsheet, BarChart3, MessageSquare, CheckCircle2, CreditCard, Lock } from 'lucide-react';
 
-type AdminTab = 'roster' | 'insights' | 'sessions' | 'feedback' | 'survey' | 'credits';
+type AdminTab = 'roster' | 'insights' | 'sessions' | 'feedback' | 'survey' | 'credits' | 'private-access';
 
 interface AdminHeaderProps {
     currentUser: any;
@@ -57,6 +57,12 @@ export function AdminHeader({ currentUser, activeTab, setActiveTab }: AdminHeade
                     className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'credits' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                     <CreditCard size={16} /> Credits
+                </button>
+                <button
+                    onClick={() => setActiveTab('private-access')}
+                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'private-access' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                    <Lock size={16} /> Private Access
                 </button>
                 <button
                     onClick={() => setActiveTab('insights')}

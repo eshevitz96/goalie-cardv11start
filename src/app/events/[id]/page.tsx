@@ -145,6 +145,7 @@ function EventDetailsController() {
 
                         if (ref) journalEntry = { title: ref.title, content: ref.content, mood: ref.mood };
 
+                        // Sync V11 Readiness from Journal Entry
                         const { data: shots } = await supabase
                             .from('shot_events')
                             .select('*')
@@ -444,6 +445,14 @@ function EventDetailsController() {
                                         className="w-full py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold uppercase tracking-widest transition-colors rounded-lg mb-2"
                                     >
                                         Edit Event Details
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            router.push(`/dashboard?upload=true&eventId=${id}`);
+                                        }}
+                                        className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-emerald-950 text-xs font-black uppercase tracking-widest transition-all rounded-xl mb-2 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                                    >
+                                        <Video size={16} /> Upload & Analyze Film
                                     </button>
                                     <button
                                         onClick={async () => {

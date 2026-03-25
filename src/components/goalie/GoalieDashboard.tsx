@@ -127,6 +127,24 @@ export function GoalieDashboard({
         }
     }, [searchParams, goalies]);
 
+    // 🚀 Handle Deep-Link Film Uploads 🚀
+    useEffect(() => {
+        const shouldUpload = searchParams.get('upload') === 'true';
+        const targetEventId = searchParams.get('eventId');
+        
+        if (shouldUpload) {
+            setIsUploadingFilm(true);
+            if (targetEventId) {
+                setSelectedEventIdForAnalysis(targetEventId);
+                // Clear the param to prevent re-opening on reload
+                const newParams = new URLSearchParams(searchParams.toString());
+                newParams.delete('upload');
+                newParams.delete('eventId');
+                router.replace(`/dashboard?${newParams.toString()}`, { scroll: false });
+            }
+        }
+    }, [searchParams, router]);
+
     // Sync V11 Readiness from Journal Entry
     useEffect(() => {
         const syncReadiness = () => {
