@@ -21,7 +21,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { Button } from "@/components/ui/Button";
-import { getSubmissionById } from "../actions";
+import { getSubmissionById, getReceiptUrl } from "../actions";
 import { PRIVATE_ACCESS_CONFIG } from "@/constants/privateAccess";
 
 export default function PrivateTrainingSuccessPage() {
@@ -57,51 +57,87 @@ function PrivateTrainingSuccessContent() {
     }, [submissionId]);
 
     const handleDownloadWaiver = () => {
-        const waiverText = `
-==================================================
-        THE GOALIE BRAND - TRAINING PACKET
-==================================================
-Athlete: ${submission?.athlete_name || 'N/A'}
-Date Signed: ${new Date(submission?.created_at).toLocaleDateString()}
-Electronic Signature: ${submission?.athlete_name?.toUpperCase()}
-Verification Status: SIGNED & SECURED
---------------------------------------------------
+        const waiverHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>THE GOALIE BRAND - Signed Training Waiver</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        .header { text-align: center; border-bottom: 3px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { margin: 0; text-transform: uppercase; letter-spacing: 2px; }
+        .meta { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .meta div b { display: block; font-size: 10px; text-transform: uppercase; color: #666; }
+        .section { margin-bottom: 40px; }
+        .section h2 { border-left: 4px solid #000; padding-left: 15px; font-size: 18px; text-transform: uppercase; }
+        .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #888; text-align: center; }
+        .signature { margin-top: 40px; padding: 20px; border: 2px dashed #ccc; border-radius: 8px; }
+        .signature-font { font-family: 'Brush Script MT', cursive, serif; font-size: 32px; color: #000; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>The Goalie Brand</h1>
+        <p>Official Enrollment & Liability Packet</p>
+    </div>
 
-1. MAIN LIABILITY RELEASE
---------------------------------------------------
-${PRIVATE_ACCESS_CONFIG.trainingTerms.mainWaiver}
+    <div class="meta">
+        <div><b>Athlete</b>${submission?.athlete_name || 'N/A'}</div>
+        <div><b>Date Signed</b>${new Date(submission?.created_at).toLocaleDateString()}</div>
+        <div><b>Verification</b>DIGITAL_SIGNATURE_VERIFIED</div>
+        <div><b>Contact</b>${submission?.email}</div>
+    </div>
 
-2. PAYMENT & REFUND POLICY
---------------------------------------------------
-${PRIVATE_ACCESS_CONFIG.trainingTerms.paymentPolicy}
+    <div class="section">
+        <h2>1. Main Liability Release</h2>
+        <p>${PRIVATE_ACCESS_CONFIG.trainingTerms.mainWaiver.replace(/\n/g, '<br>')}</p>
+    </div>
 
-3. ATHLETE CODE OF CONDUCT
---------------------------------------------------
-${PRIVATE_ACCESS_CONFIG.trainingTerms.codeOfConduct}
+    <div class="section">
+        <h2>2. Payment & Refund Policy</h2>
+        <p>${PRIVATE_ACCESS_CONFIG.trainingTerms.paymentPolicy.replace(/\n/g, '<br>')}</p>
+    </div>
 
-4. EXTENDED WAIVER OF LIABILITY
---------------------------------------------------
-${PRIVATE_ACCESS_CONFIG.trainingTerms.liabilityWaiver}
+    <div class="section">
+        <h2>3. Athlete Code of Conduct</h2>
+        <p>${PRIVATE_ACCESS_CONFIG.trainingTerms.codeOfConduct.replace(/\n/g, '<br>')}</p>
+    </div>
 
-==================================================
-ACKNOWLEDGMENT:
-Athlete/Parent confirmed acknowledgment of all terms on the enrollment portal.
-Digital footprint logged for security compliance.
-Contact: ${submission?.email}
-© 2026 THE GOALIE BRAND
-==================================================
-        `;
-        const blob = new Blob([waiverText], { type: 'text/plain' });
+    <div class="section">
+        <h2>4. Extended Waiver of Liability</h2>
+        <p>${PRIVATE_ACCESS_CONFIG.trainingTerms.liabilityWaiver.replace(/\n/g, '<br>')}</p>
+    </div>
+
+    <div class="signature">
+        <p><b>E-Signature</b></p>
+        <span class="signature-font">${submission?.athlete_name || 'Athlete'}</span>
+        <p style="font-size: 10px; color: #999;">Signed via The Goalie Brand Portal | IP Logged & Verified</p>
+    </div>
+
+    <div class="footer">
+        © 2026 THE GOALIE BRAND | PROTECTED LEGAL DOCUMENT
+    </div>
+</body>
+</html>`;
+
+        const blob = new Blob([waiverHtml], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `TGB_Waiver_${submission?.athlete_name?.replace(/ /g, '_') || 'Training'}.txt`;
+        a.download = `TGB_Waiver_${submission?.athlete_name?.replace(/ /g, '_') || 'Training'}.html`;
         a.click();
         URL.revokeObjectURL(url);
     };
 
-    const handlePrintReceipt = () => {
-        window.print();
+    const handleDownloadReceipt = async () => {
+        if (!sessionId) return;
+        const result = await getReceiptUrl(sessionId);
+        if (result.receiptUrl) {
+            window.open(result.receiptUrl, '_blank');
+        } else {
+            alert(result.error || "Receipt still processing. Please check your email.");
+        }
     };
 
     if (isLoading) {
@@ -115,9 +151,8 @@ Contact: ${submission?.email}
 
     return (
         <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
-            {/* Background Effects */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500/30 via-emerald-500/30 to-teal-500/30" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-green-500/5 rounded-full blur-[150px] pointer-events-none" />
+            {/* Background Effects - Clean/Minimal */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/30 via-primary/50 to-primary/30" />
 
             <div className="w-full max-w-lg relative z-10 transition-all duration-500">
                 <div className="text-center mb-8 flex flex-col items-center">
@@ -146,9 +181,6 @@ Contact: ${submission?.email}
 
                         {/* Summary Card */}
                         <div className="bg-secondary/40 border border-border/50 rounded-3xl p-8 space-y-6 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                                <BrandLogo size={120} />
-                            </div>
                             
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
@@ -186,13 +218,13 @@ Contact: ${submission?.email}
                         {/* Downloads Section */}
                         <div className="grid grid-cols-2 gap-4">
                             <button 
-                                onClick={handlePrintReceipt}
+                                onClick={handleDownloadReceipt}
                                 className="group flex flex-col items-center justify-center gap-3 p-6 bg-secondary/20 hover:bg-secondary/40 border border-border/40 rounded-3xl transition-all"
                             >
                                 <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                                     <Receipt size={18} />
                                 </div>
-                                <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/80">Print Receipt</span>
+                                <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/80">Get Receipt</span>
                             </button>
                             <button 
                                 onClick={handleDownloadWaiver}

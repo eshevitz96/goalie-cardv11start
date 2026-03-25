@@ -255,3 +255,26 @@ export async function getSubmissionById(id: string) {
     if (error) return null;
     return data;
 }
+
+/**
+ * Fetches the Stripe receipt URL for a given session.
+ */
+export async function getReceiptUrl(sessionId: string) {
+    try {
+        const stripe = getStripe();
+        const session = await stripe.checkout.sessions.retrieve(sessionId, {
+            expand: ['payment_intent'],
+        });
+        
+        const paymentIntent = session.payment_intent as any;
+        if (!paymentIntent || !paymentIntent.latest_charge) {
+            return { error: "Payment not yet finalized or charge not found." };
+        }
+
+        const charge = await stripe.charges.retrieve(paymentIntent.latest_charge);
+        return { receiptUrl: charge.receipt_url };
+    } catch (err: any) {
+        console.error("[RECEIPT_FETCH_ERROR]", err);
+        return { error: `Failed to fetch receipt: ${err.message}` };
+    }
+}
