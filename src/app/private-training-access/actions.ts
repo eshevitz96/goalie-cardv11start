@@ -187,7 +187,7 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
         const isSeason = planId === 'season';
         const isStandard = planId === 'standard';
         
-        const origin = "https://goalie-cardv11start.vercel.app";
+        const origin = "https://goaliecard.app";
         
         // Price logic based on plan
         let baseAmount = 160000;
