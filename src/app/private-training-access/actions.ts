@@ -1,9 +1,19 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient as createServerSupabase } from "@/utils/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
 import { PRIVATE_ACCESS_CONFIG } from "@/constants/privateAccess";
 import { headers } from "next/headers";
+
+function getSupabaseAdmin() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+        throw new Error(`Supabase Admin Configuration Missing: ${!url ? 'URL ' : ''}${!key ? 'KEY ' : ''}`);
+    }
+    return createClient(url, key);
+}
 
 /**
  * Validates the access code.
@@ -25,10 +35,10 @@ export async function createPrivateSubmission(data: {
     accessCode: string;
 }) {
     try {
-        const supabase = createClient();
+        const supabaseAdmin = getSupabaseAdmin();
         
         // 1. Check if a card already exists (check primary email, athlete email, and guardian email)
-        const { data: existingRoster, error: rosterCheckError } = await supabase
+        const { data: existingRoster, error: rosterCheckError } = await supabaseAdmin
             .from('roster_uploads')
             .select('id')
             .or(`email.ilike.${data.email.trim()},athlete_email.ilike.${data.email.trim()},guardian_email.ilike.${data.email.trim()}`)
@@ -39,7 +49,7 @@ export async function createPrivateSubmission(data: {
             return { error: "Roster scan failed. Please check your DB connection." };
         }
 
-        const { data: submission, error: insertError } = await supabase
+        const { data: submission, error: insertError } = await supabaseAdmin
             .from('private_training_submissions')
             .insert({
                 athlete_name: data.athleteName,
@@ -73,10 +83,10 @@ export async function createPrivateSubmission(data: {
  */
 export async function createConnectedCard(submissionId: string) {
     try {
-        const supabase = createClient();
+        const supabaseAdmin = getSupabaseAdmin();
         
         // 1. Get submission details
-        const { data: sub, error: subError } = await supabase
+        const { data: sub, error: subError } = await supabaseAdmin
             .from('private_training_submissions')
             .select('*')
             .eq('id', submissionId)
@@ -86,7 +96,7 @@ export async function createConnectedCard(submissionId: string) {
         
         // 2. Create roster entry
         const uniqueId = 'TGB-' + Math.floor(1000 + Math.random() * 9000);
-        const { data: roster, error: rosterError } = await supabase
+        const { data: roster, error: rosterError } = await supabaseAdmin
             .from('roster_uploads')
             .insert({
                 goalie_name: sub.athlete_name,
@@ -107,7 +117,7 @@ export async function createConnectedCard(submissionId: string) {
         }
         
         // 3. Link submission to the new roster entry
-        const { error: linkError } = await supabase
+        const { error: linkError } = await supabaseAdmin
             .from('private_training_submissions')
             .update({ roster_id: roster.id })
             .eq('id', submissionId);
@@ -127,14 +137,14 @@ export async function createConnectedCard(submissionId: string) {
 /**
  * Updates the waiver status of a submission.
  */
-export async function updateWaiverStatus(submissionId: string, completed: boolean) {
-    const supabase = createClient();
+export async function updateWaiverStatus(submissionId: string, confirmed: boolean) {
+    const supabaseAdmin = getSupabaseAdmin();
     
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
         .from('private_training_submissions')
         .update({
-            waiver_completed: completed,
-            status: completed ? 'ready for payment' : 'waiver pending'
+            waiver_completed: confirmed,
+            status: 'waiver pending'
         })
         .eq('id', submissionId);
     
@@ -150,10 +160,10 @@ export async function updateWaiverStatus(submissionId: string, completed: boolea
  * Creates a Stripe Checkout Session for the private training.
  */
 export async function createPrivateCheckoutSession(submissionId: string, isTestMode: boolean) {
-    const supabase = createClient();
+    const supabaseAdmin = getSupabaseAdmin();
     
     // 1. Fetch submission details
-    const { data: submission, error: subError } = await supabase
+    const { data: submission, error: subError } = await supabaseAdmin
         .from('private_training_submissions')
         .select('*')
         .eq('id', submissionId)
@@ -209,7 +219,7 @@ export async function createPrivateCheckoutSession(submissionId: string, isTestM
     });
     
     // 4. Update submission with session info
-    await supabase
+    await supabaseAdmin
         .from('private_training_submissions')
         .update({
             stripe_session_id: session.id,
@@ -224,8 +234,8 @@ export async function createPrivateCheckoutSession(submissionId: string, isTestM
  * Fetches submisison by ID for the success page.
  */
 export async function getSubmissionById(id: string) {
-    const supabase = createClient();
-    const { data, error } = await supabase
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data, error } = await supabaseAdmin
         .from('private_training_submissions')
         .select('*')
         .eq('id', id)
