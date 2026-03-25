@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { User, Briefcase, Settings, Plus, LogOut, Bell, Search } from 'lucide-react';
+import { User, Briefcase, Settings, Plus, LogOut, Bell, Search, Menu, X, Grid } from 'lucide-react';
 import { GoalieGuardLogo } from '@/components/ui/GoalieGuardLogo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
@@ -31,6 +31,7 @@ export function DashboardHeader({
     const [notificationsOpen, setNotificationsOpen] = React.useState(false);
     const [userMenuOpen, setUserMenuOpen] = React.useState(false);
     const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const { userId } = useAuth();
 
     // Close menus when clicking outside
@@ -62,7 +63,8 @@ export function DashboardHeader({
                     </h1>
                 </Link>
             </div>
-            <div className="flex items-center gap-4">
+            {/* DESKTOP NAV (Visible on md+) */}
+            <div className="hidden md:flex items-center gap-4">
                 {/* Search Trigger */}
                 <Button
                     variant="ghost"
@@ -188,6 +190,76 @@ export function DashboardHeader({
                             className="w-full justify-start text-red-500 hover:bg-red-500/10"
                         >
                             <LogOut size={16} /> Sign Out
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* MOBILE NAV (Consolidated) */}
+            <div className="md:hidden relative z-[100]">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-10 w-10 rounded-full border border-border p-0 transition-all ${isMobileMenuOpen ? 'bg-primary text-black border-primary scale-110 shadow-lg shadow-primary/20' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); setIsMobileMenuOpen(!isMobileMenuOpen); }}
+                >
+                    {isMobileMenuOpen ? <X size={18} /> : <Grid size={18} />}
+                </Button>
+
+                <div
+                    className={`absolute right-0 top-full mt-4 w-[280px] bg-card/95 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-[0_25px_60px_rgba(0,0,0,0.5)] p-4 transition-all transform origin-top-right ${isMobileMenuOpen ? 'opacity-100 visible translate-y-0 scale-100' : 'opacity-0 invisible translate-y-4 scale-95'}`}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                        {/* 4 Primary Mobile Actions in a 2x2 grid */}
+                        <button 
+                            onClick={() => { setIsSearchOpen(true); setIsMobileMenuOpen(false); }}
+                            className="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all active:scale-95"
+                        >
+                            <Search size={20} className="text-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Search</span>
+                        </button>
+
+                        <button 
+                            onClick={() => { setNotificationsOpen(true); setIsMobileMenuOpen(false); }}
+                            className="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all active:scale-95 relative"
+                        >
+                            <Bell size={20} className={notifications.length > 0 ? 'text-primary' : 'text-muted-foreground'} />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Alerts</span>
+                            {notifications.length > 0 && <span className="absolute top-3 right-5 w-2 h-2 bg-red-500 rounded-full" />}
+                        </button>
+
+                        <Link 
+                            href="/dashboard/profile"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all active:scale-95"
+                        >
+                            <Settings size={20} className="text-muted-foreground" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Setup</span>
+                        </Link>
+
+                        <button 
+                            onClick={() => { setUserMenuOpen(true); setIsMobileMenuOpen(false); }}
+                            className="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all active:scale-95"
+                        >
+                            <User size={20} className="text-muted-foreground" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Account</span>
+                        </button>
+                    </div>
+
+                    <div className="space-y-2">
+                        {userRole === 'admin' && (
+                            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="w-full flex items-center justify-center gap-2 py-3 bg-primary/10 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest border border-primary/20">
+                                <GoalieGuardLogo size={14} /> Admin Access
+                            </Link>
+                        )}
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => { onLogout(); setIsMobileMenuOpen(false); }}
+                            className="w-full py-3 text-red-500 hover:bg-red-500/10 text-[10px] font-black uppercase tracking-widest"
+                        >
+                            <LogOut size={14} className="mr-2" /> Sign Out
                         </Button>
                     </div>
                 </div>
