@@ -160,74 +160,73 @@ export async function updateWaiverStatus(submissionId: string, confirmed: boolea
  * Creates a Stripe Checkout Session for the private training.
  */
 export async function createPrivateCheckoutSession(submissionId: string, isTestMode: boolean) {
-    const supabaseAdmin = getSupabaseAdmin();
-    
-    // 1. Fetch submission details
-    const { data: submission, error: subError } = await supabaseAdmin
-        .from('private_training_submissions')
-        .select('*')
-        .eq('id', submissionId)
-        .single();
-    
-    if (subError || !submission) {
-        throw new Error("Submission not found.");
-    }
-    
-    if (!submission.waiver_completed) {
-        throw new Error("Waiver must be completed before payment.");
-    }
-    
-    // 2. Determine price ID
-    // Note: In a real scenario, these would be in Stripe. 
-    // Here we use the config or placeholders.
-    const priceId = isTestMode 
-        ? PRIVATE_ACCESS_CONFIG.stripe.testPriceId 
-        : PRIVATE_ACCESS_CONFIG.stripe.livePriceId;
-
-    const origin = headers().get("origin");
-    
-    // 3. Create Stripe session
-    const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: [
-            {
-                price_data: {
-                    currency: 'usd',
-                    product_data: {
-                        name: 'Private Training Access',
-                        description: `Invite-only training for ${submission.athlete_name}`,
-                    },
-                    unit_amount: isTestMode ? 100 : 160000, // $1 or $1600
-                },
-                quantity: 1,
-            },
-        ],
-        mode: 'payment',
-        customer_email: submission.email,
-        success_url: `${origin}/private-training-access/success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submissionId}`,
-        cancel_url: `${origin}/private-training-access?submission_id=${submissionId}`,
-        metadata: {
-            submissionId: submission.id,
-            athleteName: submission.athlete_name,
-            parentName: submission.parent_name || '',
-            email: submission.email,
-            accessCode: submission.access_code,
-            waiverCompleted: 'true',
-            productType: 'private training access',
-            isTestMode: String(isTestMode)
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        
+        // 1. Fetch submission details
+        const { data: submission, error: subError } = await supabaseAdmin
+            .from('private_training_submissions')
+            .select('*')
+            .eq('id', submissionId)
+            .single();
+        
+        if (subError || !submission) {
+            return { error: "Submission not found." };
         }
-    });
-    
-    // 4. Update submission with session info
-    await supabaseAdmin
-        .from('private_training_submissions')
-        .update({
-            stripe_session_id: session.id,
-            is_test_mode: isTestMode
-        })
-        .eq('id', submissionId);
-    
-    return { url: session.url };
+        
+        if (!submission.waiver_completed) {
+            return { error: "Waiver must be completed before payment." };
+        }
+        
+        // 2. Use stable origin
+        const origin = "https://goalie-cardv11start.vercel.app";
+        
+        // 3. Create Stripe session
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: 'Private Training Access',
+                            description: `Invite-only training for ${submission.athlete_name}`,
+                        },
+                        unit_amount: isTestMode ? 100 : 160000, // $1 or $1600
+                    },
+                    quantity: 1,
+                },
+            ],
+            mode: 'payment',
+            customer_email: submission.email,
+            success_url: `${origin}/private-training-access/success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submissionId}`,
+            cancel_url: `${origin}/private-training-access?submission_id=${submissionId}`,
+            metadata: {
+                submissionId: submission.id,
+                athleteName: submission.athlete_name,
+                parentName: submission.parent_name || '',
+                email: submission.email,
+                accessCode: submission.access_code,
+                waiverCompleted: 'true',
+                productType: 'private training access',
+                isTestMode: String(isTestMode)
+            }
+        });
+        
+        // 4. Update submission with session info
+        await supabaseAdmin
+            .from('private_training_submissions')
+            .update({
+                stripe_session_id: session.id,
+                is_test_mode: isTestMode
+            })
+            .eq('id', submissionId);
+        
+        return { url: session.url };
+    } catch (err: any) {
+        console.error("[STRIPE_SESSION_ERROR]", err);
+        return { error: `Payment Redirection Error: ${err.message}` };
+    }
 }
 
 /**
