@@ -1,18 +1,22 @@
 import Stripe from 'stripe';
 
-const getStripe = () => {
+let stripeInstance: Stripe | null = null;
+
+export const getStripe = () => {
+    if (stripeInstance) return stripeInstance;
+
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) {
-        // Return a mock or handle during build
-        return new Stripe('sk_test_placeholder_for_build', {
-            apiVersion: '2025-01-27.acacia' as any,
-            typescript: true,
-        });
+        throw new Error("Missing STRIPE_SECRET_KEY environment variable. Please check your Vercel Dashboard Settings.");
     }
-    return new Stripe(key, {
+
+    stripeInstance = new Stripe(key, {
         apiVersion: '2025-01-27.acacia' as any,
         typescript: true,
     });
+
+    return stripeInstance;
 };
 
-export const stripe = getStripe();
+// Exporting the function for actions to use
+export const stripe = null as any; // No longer the primary way to access stripe

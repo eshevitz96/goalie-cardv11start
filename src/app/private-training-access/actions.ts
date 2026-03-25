@@ -2,7 +2,7 @@
 
 import { createClient as createServerSupabase } from "@/utils/supabase/server";
 import { createClient } from "@supabase/supabase-js";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { PRIVATE_ACCESS_CONFIG } from "@/constants/privateAccess";
 import { headers } from "next/headers";
 
@@ -186,6 +186,7 @@ export async function createEmbeddedCheckoutSession(submissionId: string, isTest
         const origin = "https://goalie-cardv11start.vercel.app";
         
         // 2. Create Embedded Session
+        const stripe = getStripe();
         const session = await stripe.checkout.sessions.create({
             ui_mode: 'embedded',
             payment_method_types: ['card'],

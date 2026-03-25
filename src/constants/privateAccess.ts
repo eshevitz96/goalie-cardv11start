@@ -28,6 +28,6 @@ export const PRIVATE_ACCESS_CONFIG = {
         
         codeOfConduct: `I acknowledge that this Sports Training Session may carry with it the potential for death, serious injury, and personal loss. The risks may include, but are not limited to, those caused by terrain, facilities, temperature, weather, condition of participants, equipment, vehicular traffic, actions of other people including, but not limited to, participants, volunteers, spectators, coaches, and lack of hydration. I certify that I am physically fit and have not been advised NOT to participate by a qualified medical professional.`,
         
-        liabilityWaiver: `I WAIVE, RELEASE, AND DISCHARGE from any and all liability, including but not limited to, liability arising from the negligence or fault of the entities or persons released, for my death, disability, personal injury, property damage, property theft, or actions of any kind. This includes THE FOLLOWING ENTITIES OR PERSONS: The Goalie Brand, Common Intellectual Creators, Elliott Shevitz, and/or their coaches, agents, representatives or volunteers.`
+        liabilityWaiver: `I WAIVE, RELEASE, AND DISCHARGE from any and all liability, including but not limited to, liability arising from the negligence or fault of the entities or persons released, for my death, disability, personal injury, property damage, property theft, or actions of any kind. This includes THE FOLLOWING ENTITIES OR PERSONS: The Goalie Brand, Common Intellectual Creators, and/or their coaches, agents, representatives or volunteers.`
     }
 };
