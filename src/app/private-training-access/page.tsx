@@ -581,10 +581,7 @@ function PrivateTrainingAccessContent() {
                                     >
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className="font-bold text-lg">Legacy Member</h4>
-                                                    <span className="text-[8px] bg-primary text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-widest">Most Popular</span>
-                                                </div>
+                                                <h4 className="font-bold text-lg">Legacy Member</h4>
                                                 <p className="text-xs text-muted-foreground">Monthly automated access. Set it and forget it.</p>
                                             </div>
                                             <div className="text-right">
