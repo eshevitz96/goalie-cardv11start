@@ -24,38 +24,48 @@ export async function createPrivateSubmission(data: {
     phone: string;
     accessCode: string;
 }) {
-    const supabase = createClient();
-    
-    // 1. Check if a card already exists for this email
-    const { data: existingRoster } = await supabase
-        .from('roster_uploads')
-        .select('id')
-        .ilike('email', data.email.trim())
-        .maybeSingle();
+    try {
+        const supabase = createClient();
+        
+        // 1. Check if a card already exists for this email
+        const { data: existingRoster, error: rosterCheckError } = await supabase
+            .from('roster_uploads')
+            .select('id')
+            .ilike('email', data.email.trim())
+            .maybeSingle();
+        
+        if (rosterCheckError) {
+            console.error("[ROSTER_CHECK_ERROR]", rosterCheckError);
+            return { error: "Roster scan failed. Please check your DB connection." };
+        }
 
-    const { data: submission, error } = await supabase
-        .from('private_training_submissions')
-        .insert({
-            athlete_name: data.athleteName,
-            parent_name: data.parentName,
-            email: data.email,
-            phone: data.phone,
-            access_code: data.accessCode,
-            status: 'invited',
-            roster_id: existingRoster?.id // Link if exists
-        })
-        .select()
-        .single();
-    
-    if (error) {
-        console.error("[PRIVATE_SUBMISSION_CREATE_ERROR]", error);
-        throw new Error("Failed to create submission record.");
+        const { data: submission, error: insertError } = await supabase
+            .from('private_training_submissions')
+            .insert({
+                athlete_name: data.athleteName,
+                parent_name: data.parentName,
+                email: data.email,
+                phone: data.phone,
+                access_code: data.accessCode,
+                status: 'invited',
+                roster_id: existingRoster?.id // Link if exists
+            })
+            .select()
+            .single();
+        
+        if (insertError) {
+            console.error("[SUBMISSION_INSERT_ERROR]", insertError);
+            return { error: `Database Error: ${insertError.message}` };
+        }
+        
+        return { 
+            submissionId: submission.id, 
+            hasExistingCard: !!existingRoster 
+        };
+    } catch (err: any) {
+        console.error("[ACTION_EXCEPTION]", err);
+        return { error: `Internal Server Error: ${err.message}` };
     }
-    
-    return { 
-        submissionId: submission.id, 
-        hasExistingCard: !!existingRoster 
-    };
 }
 
 /**

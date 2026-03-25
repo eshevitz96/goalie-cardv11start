@@ -102,13 +102,20 @@ function PrivateTrainingAccessContent() {
         setError(null);
         
         try {
-            const { submissionId: id, hasExistingCard: exists } = await createPrivateSubmission({
+            const res = await createPrivateSubmission({
                 athleteName,
                 parentName,
                 email,
                 phone,
                 accessCode
             });
+            
+            if ('error' in res && res.error) {
+                setError(res.error);
+                return;
+            }
+            
+            const { submissionId: id, hasExistingCard: exists } = res as any;
             setSubmissionId(id);
             setHasExistingCard(exists);
             
