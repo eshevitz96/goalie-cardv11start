@@ -23,11 +23,12 @@ import {
     validateAccessCode, 
     createPrivateSubmission, 
     updateWaiverStatus, 
-    createPrivateCheckoutSession 
+    createPrivateCheckoutSession,
+    createConnectedCard 
 } from "./actions";
 import { PRIVATE_ACCESS_CONFIG } from "@/constants/privateAccess";
 
-type FlowStep = 'access-code' | 'info' | 'waiver' | 'payment-confirm';
+type FlowStep = 'access-code' | 'info' | 'card-prompt' | 'waiver' | 'payment-confirm';
 
 export default function PrivateTrainingAccessPage() {
     const router = useRouter();
@@ -45,6 +46,7 @@ export default function PrivateTrainingAccessPage() {
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [submissionId, setSubmissionId] = useState<string | null>(null);
+    const [hasExistingCard, setHasExistingCard] = useState(false);
     
     // Waiver State
     const [waiverConfirmed, setWaiverConfirmed] = useState(false);
@@ -88,7 +90,7 @@ export default function PrivateTrainingAccessPage() {
         setError(null);
         
         try {
-            const id = await createPrivateSubmission({
+            const { submissionId: id, hasExistingCard: exists } = await createPrivateSubmission({
                 athleteName,
                 parentName,
                 email,
@@ -96,9 +98,31 @@ export default function PrivateTrainingAccessPage() {
                 accessCode
             });
             setSubmissionId(id);
-            setStep('waiver');
+            setHasExistingCard(exists);
+            
+            if (!exists) {
+                setStep('card-prompt');
+            } else {
+                setStep('waiver');
+            }
         } catch (err: any) {
             setError(err.message || "Failed to save information.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCardPromptSubmit = async (confirmed: boolean) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            if (!submissionId) throw new Error("Missing submissionId");
+            if (confirmed) {
+                await createConnectedCard(submissionId);
+            }
+            setStep('waiver');
+        } catch (err: any) {
+            setError(err.message || "Failed to handle card registry.");
         } finally {
             setIsLoading(false);
         }
@@ -307,7 +331,45 @@ export default function PrivateTrainingAccessPage() {
                             </motion.div>
                         )}
 
-                        {/* STEP 3: WAIVER */}
+                        {/* STEP 3: CARD PROMPT */}
+                        {step === 'card-prompt' && (
+                            <motion.div
+                                key="card-prompt"
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="space-y-8 text-center"
+                            >
+                                <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-2 border border-primary/10">
+                                    <ShieldCheck size={40} className="text-primary opacity-60" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-semibold tracking-tight">Initialize Goalie Card</h2>
+                                    <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">
+                                        We couldn't find an existing Goalie Card for {email}. Initialize your profile now to sync your training data and stats.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col gap-4">
+                                    <Button
+                                        onClick={() => handleCardPromptSubmit(true)}
+                                        className="w-full py-6 rounded-2xl shadow-xl shadow-primary/10"
+                                        loading={isLoading}
+                                    >
+                                        Create Connected Card <ArrowRight size={18} />
+                                    </Button>
+                                    <button 
+                                        onClick={() => handleCardPromptSubmit(false)}
+                                        disabled={isLoading}
+                                        className="text-[10px] uppercase tracking-[0.25em] font-black text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors py-2"
+                                    >
+                                        Skip for now
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* STEP 4: WAIVER */}
                         {step === 'waiver' && (
                             <motion.div
                                 key="waiver"

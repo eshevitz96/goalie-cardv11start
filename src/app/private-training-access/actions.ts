@@ -26,6 +26,13 @@ export async function createPrivateSubmission(data: {
 }) {
     const supabase = createClient();
     
+    // 1. Check if a card already exists for this email
+    const { data: existingRoster } = await supabase
+        .from('roster_uploads')
+        .select('id')
+        .ilike('email', data.email.trim())
+        .maybeSingle();
+
     const { data: submission, error } = await supabase
         .from('private_training_submissions')
         .insert({
@@ -34,7 +41,8 @@ export async function createPrivateSubmission(data: {
             email: data.email,
             phone: data.phone,
             access_code: data.accessCode,
-            status: 'invited'
+            status: 'invited',
+            roster_id: existingRoster?.id // Link if exists
         })
         .select()
         .single();
@@ -44,7 +52,53 @@ export async function createPrivateSubmission(data: {
         throw new Error("Failed to create submission record.");
     }
     
-    return submission.id;
+    return { 
+        submissionId: submission.id, 
+        hasExistingCard: !!existingRoster 
+    };
+}
+
+/**
+ * Creates a linked Goalie Card for the submission.
+ */
+export async function createConnectedCard(submissionId: string) {
+    const supabase = createClient();
+    
+    // 1. Get submission details
+    const { data: sub } = await supabase
+        .from('private_training_submissions')
+        .select('*')
+        .eq('id', submissionId)
+        .single();
+    
+    if (!sub) throw new Error("Submission not found.");
+    
+    // 2. Create roster entry
+    const uniqueId = 'TGB-' + Math.floor(1000 + Math.random() * 9000);
+    const { data: roster, error: rosterError } = await supabase
+        .from('roster_uploads')
+        .insert({
+            goalie_name: sub.athlete_name,
+            parent_name: sub.parent_name,
+            email: sub.email.trim(),
+            athlete_phone: sub.phone,
+            assigned_unique_id: uniqueId,
+            sport: 'Hockey', // Defaulting for TGB
+            is_claimed: true,
+            status: 'active'
+        })
+        .select()
+        .single();
+    
+    if (rosterError) throw new Error(`Roster creation failed: ${rosterError.message}`);
+    
+    // 3. Link submission to the new roster entry
+    await supabase
+        .from('private_training_submissions')
+        .update({ roster_id: roster.id })
+        .eq('id', submissionId);
+    
+    return { rosterId: roster.id };
 }
 
 /**
