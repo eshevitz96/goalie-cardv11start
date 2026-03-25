@@ -58,25 +58,38 @@ function PrivateTrainingSuccessContent() {
 
     const handleDownloadWaiver = () => {
         const waiverText = `
---------------------------------------------------
-THE GOALIE BRAND - PRIVATE TRAINING WAIVER
---------------------------------------------------
+==================================================
+        THE GOALIE BRAND - TRAINING PACKET
+==================================================
 Athlete: ${submission?.athlete_name || 'N/A'}
 Date Signed: ${new Date(submission?.created_at).toLocaleDateString()}
-Status: Electronic Confirmation Verified
+Electronic Signature: ${submission?.athlete_name?.toUpperCase()}
+Verification Status: SIGNED & SECURED
+--------------------------------------------------
 
-TERMS & CONDITIONS:
-- ${PRIVATE_ACCESS_CONFIG.trainingTerms.availability}
-- ${PRIVATE_ACCESS_CONFIG.trainingTerms.limitations}
-- ${PRIVATE_ACCESS_CONFIG.trainingTerms.productType}
-- ${PRIVATE_ACCESS_CONFIG.trainingTerms.refundPolicy}
+1. MAIN LIABILITY RELEASE
+--------------------------------------------------
+${PRIVATE_ACCESS_CONFIG.trainingTerms.mainWaiver}
 
+2. PAYMENT & REFUND POLICY
+--------------------------------------------------
+${PRIVATE_ACCESS_CONFIG.trainingTerms.paymentPolicy}
+
+3. ATHLETE CODE OF CONDUCT
+--------------------------------------------------
+${PRIVATE_ACCESS_CONFIG.trainingTerms.codeOfConduct}
+
+4. EXTENDED WAIVER OF LIABILITY
+--------------------------------------------------
+${PRIVATE_ACCESS_CONFIG.trainingTerms.liabilityWaiver}
+
+==================================================
 ACKNOWLEDGMENT:
 Athlete/Parent confirmed acknowledgment of all terms on the enrollment portal.
-Scheduling coordinated via primary email: ${submission?.email}
-
+Digital footprint logged for security compliance.
+Contact: ${submission?.email}
 © 2026 THE GOALIE BRAND
---------------------------------------------------
+==================================================
         `;
         const blob = new Blob([waiverText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);

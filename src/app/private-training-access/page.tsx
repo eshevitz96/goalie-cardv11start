@@ -12,8 +12,12 @@ import {
     Mail, 
     Phone, 
     Users,
-    ChevronDown,
-    CheckCircle2
+    CheckCircle2,
+    X,
+    FileText,
+    Receipt,
+    ChevronRight,
+    ArrowLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrandLogo } from "@/components/ui/BrandLogo";
@@ -68,8 +72,13 @@ function PrivateTrainingAccessContent() {
     const [hasExistingCard, setHasExistingCard] = useState(false);
     
     // Waiver State
-    const [waiverConfirmed, setWaiverConfirmed] = useState(false);
-    const [termsAgreed, setTermsAgreed] = useState(false);
+    const [waiverChecks, setWaiverChecks] = useState({
+        main: false,
+        payment: false,
+        code: false,
+        liability: false
+    });
+    const [viewingWaiver, setViewingWaiver] = useState<string | null>(null);
     const [signature, setSignature] = useState("");
     const [signatureDate, setSignatureDate] = useState(new Date().toLocaleDateString());
     
@@ -165,8 +174,9 @@ function PrivateTrainingAccessContent() {
 
     const handleWaiverSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!waiverConfirmed || !termsAgreed || !signature) {
-            setError("Please fill out all signature fields.");
+        const allChecked = Object.values(waiverChecks).every(v => v);
+        if (!allChecked || !signature) {
+            setError("Please accept all waivers and provide your digital signature.");
             return;
         }
         
@@ -410,7 +420,7 @@ function PrivateTrainingAccessContent() {
                             </motion.div>
                         )}
 
-                        {/* STEP 4: WAIVER */}
+                        {/* STEP 3: WAIVER */}
                         {step === 'waiver' && (
                             <motion.div
                                 key="waiver"
@@ -419,95 +429,127 @@ function PrivateTrainingAccessContent() {
                                 exit={{ opacity: 0, x: -20 }}
                                 className="space-y-8"
                             >
-                                <div className="space-y-2 text-center">
+                                <div className="space-y-2 mb-8 text-center">
                                     <h2 className="text-2xl font-semibold tracking-tight">Waiver & Terms</h2>
-                                    <p className="text-muted-foreground text-sm leading-relaxed">
-                                        Please review and confirm the required training waivers.
+                                    <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
+                                        Please review and acknowledge each of the four training segments.
                                     </p>
                                 </div>
 
-                                <div className="space-y-6">
-                                    <div className="bg-secondary/40 border border-border/40 rounded-2xl p-6 text-xs text-muted-foreground leading-relaxed h-48 overflow-y-auto custom-scrollbar">
-                                        <h4 className="font-black text-foreground mb-3 text-[10px] uppercase tracking-widest">Training Terms & Conditions</h4>
-                                        <p className="mb-4">
-                                            {PRIVATE_ACCESS_CONFIG.trainingTerms.availability}
-                                        </p>
-                                        <p className="mb-4">
-                                            {PRIVATE_ACCESS_CONFIG.trainingTerms.limitations}
-                                        </p>
-                                        <p className="mb-4">
-                                            {PRIVATE_ACCESS_CONFIG.trainingTerms.productType}
-                                        </p>
-                                        <p>
-                                            {PRIVATE_ACCESS_CONFIG.trainingTerms.refundPolicy}
-                                        </p>
-                                        <div className="mt-6 pt-6 border-t border-border/40">
-                                            <p className="font-bold text-foreground mb-2">Waiver Handoff</p>
-                                            <p>If you haven't completed the physical waiver on LeagueApps, please do so before checking the box below. In-person training cannot commence without a signed liability release.</p>
+                                <div className="space-y-3">
+                                    {([
+                                        { id: 'main', label: 'Main Liability Release' },
+                                        { id: 'payment', label: 'Payment & Refund Policy' },
+                                        { id: 'code', label: 'Athlete Code of Conduct' },
+                                        { id: 'liability', label: 'Extended Waiver of Liability' }
+                                    ] as const).map((w) => (
+                                        <div key={w.id} className="flex items-center justify-between p-4 bg-secondary/10 hover:bg-secondary/20 border border-border/20 rounded-2xl transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={waiverChecks[w.id]}
+                                                    onChange={(e) => setWaiverChecks({ ...waiverChecks, [w.id]: e.target.checked })}
+                                                    className="w-5 h-5 rounded border-border bg-transparent text-primary focus:ring-primary"
+                                                />
+                                                <span className="text-xs font-bold text-muted-foreground">{w.label}</span>
+                                            </div>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setViewingWaiver(w.id)}
+                                                className="text-[9px] uppercase tracking-widest font-black text-primary/60 hover:text-primary transition-colors flex items-center gap-1 bg-primary/5 px-3 py-1.5 rounded-full"
+                                            >
+                                                View <ChevronRight size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Waiver Modal */}
+                                <AnimatePresence>
+                                    {viewingWaiver && (
+                                        <motion.div 
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/90 backdrop-blur-xl"
+                                            onClick={() => setViewingWaiver(null)}
+                                        >
+                                            <motion.div 
+                                                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                                                className="w-full max-w-lg bg-card border border-border/50 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_70px_rgba(0,0,0,0.4)] relative max-h-[85vh] flex flex-col"
+                                                onClick={e => e.stopPropagation()}
+                                            >
+                                                <div className="flex justify-between items-center mb-6">
+                                                    <h3 className="text-xs uppercase tracking-[0.3em] font-black text-primary">
+                                                        {viewingWaiver.toUpperCase()}
+                                                    </h3>
+                                                    <button 
+                                                        onClick={() => setViewingWaiver(null)} 
+                                                        className="w-8 h-8 rounded-full bg-secondary/30 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
+                                                <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar text-left">
+                                                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap font-serif italic opacity-80">
+                                                        {(PRIVATE_ACCESS_CONFIG.trainingTerms as any)[viewingWaiver + (viewingWaiver === 'payment' ? 'Policy' : 'Waiver')]}
+                                                    </p>
+                                                </div>
+                                                <Button 
+                                                    onClick={() => {
+                                                        setWaiverChecks({ ...waiverChecks, [viewingWaiver as keyof typeof waiverChecks]: true });
+                                                        setViewingWaiver(null);
+                                                    }}
+                                                    className="mt-8 w-full py-6 rounded-2xl shadow-lg shadow-primary/10"
+                                                >
+                                                    Acknowledge & Accept
+                                                </Button>
+                                            </motion.div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                <form onSubmit={handleWaiverSubmit} className="space-y-4 pt-6 border-t border-border/20">
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <div className="flex justify-between items-center ml-1">
+                                                <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Digital Signature (Full Name)</label>
+                                                <span className="text-[10px] text-primary/50 font-bold uppercase tracking-widest">Required</span>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={signature}
+                                                onChange={(e) => setSignature(e.target.value)}
+                                                className="w-full bg-secondary/30 border border-border/50 rounded-xl px-5 py-4 text-sm text-foreground focus:outline-none focus:border-primary/50 transition-all font-serif italic text-lg tracking-tight"
+                                                placeholder="Type full name..."
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 opacity-50">
+                                            <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 ml-1">Signing Date</label>
+                                            <div className="px-5 py-4 bg-secondary/20 border border-border/40 rounded-xl text-xs font-mono font-bold">
+                                                {signatureDate}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <form onSubmit={handleWaiverSubmit} className="space-y-4">
-                                        <label className="flex items-start gap-3 p-4 bg-secondary/20 hover:bg-secondary/30 border border-border/30 rounded-2xl cursor-pointer transition-colors">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={waiverConfirmed}
-                                                onChange={(e) => setWaiverConfirmed(e.target.checked)}
-                                                className="mt-1 w-4 h-4 rounded border-border bg-transparent text-primary focus:ring-primary"
-                                            />
-                                            <span className="text-xs text-muted-foreground leading-tight">
-                                                I confirm the required waiver has been completed on LeagueApps.
-                                            </span>
-                                        </label>
-
-                                        <label className="flex items-start gap-3 p-4 bg-secondary/20 hover:bg-secondary/30 border border-border/30 rounded-2xl cursor-pointer transition-colors">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={termsAgreed}
-                                                onChange={(e) => setTermsAgreed(e.target.checked)}
-                                                className="mt-1 w-4 h-4 rounded border-border bg-transparent text-primary focus:ring-primary"
-                                            />
-                                            <span className="text-xs text-muted-foreground leading-tight">
-                                                I agree to the training terms, availability schedule, and refund policy as stated above.
-                                            </span>
-                                        </label>
-
-                                        <div className="space-y-4 pt-4 border-t border-border/20">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 ml-1">Digital Signature (Full Name)</label>
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    value={signature}
-                                                    onChange={(e) => setSignature(e.target.value)}
-                                                    className="w-full bg-secondary/30 border border-border/50 rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/50 transition-all font-serif italic"
-                                                    placeholder="John Hancock"
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5 opacity-50">
-                                                <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 ml-1">Signing Date</label>
-                                                <div className="px-4 py-3 bg-secondary/20 border border-border/40 rounded-xl text-xs font-mono">
-                                                    {signatureDate}
-                                                </div>
-                                            </div>
+                                    {error && (
+                                        <div className="text-red-500 bg-red-500/5 border border-red-500/10 text-xs flex items-center justify-center gap-2 p-4 rounded-xl animate-pulse font-bold uppercase tracking-widest">
+                                            <AlertCircle size={14} /> {error}
                                         </div>
+                                    )}
 
-                                        {error && (
-                                            <div className="text-red-500 bg-red-500/5 border border-red-500/10 text-xs flex items-center justify-center gap-2 p-3 rounded-xl">
-                                                <AlertCircle size={14} /> {error}
-                                            </div>
-                                        )}
-
-                                        <Button
-                                            type="submit"
-                                            className="w-full py-6 rounded-2xl mt-4"
-                                            loading={isLoading}
-                                            disabled={!waiverConfirmed || !termsAgreed}
-                                        >
-                                            Review Payment <ArrowRight size={18} />
-                                        </Button>
-                                    </form>
-                                </div>
+                                    <Button
+                                        type="submit"
+                                        className="w-full py-7 rounded-2xl mt-4 text-md shadow-xl shadow-primary/10 group"
+                                        loading={isLoading}
+                                        disabled={!Object.values(waiverChecks).every(v => v) || !signature}
+                                    >
+                                        Review Payment <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                                    </Button>
+                                </form>
                             </motion.div>
                         )}
 
