@@ -661,7 +661,13 @@ function PrivateTrainingAccessContent() {
 
                                 <div className="bg-secondary/30 border border-border/40 rounded-3xl p-6 space-y-4 mb-2">
                                     <div className="flex justify-between items-center px-2">
-                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Training Fee</span>
+                                        <div className="text-left">
+                                            <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Training Fee</span>
+                                            <p className="text-[8px] text-primary/60 font-black uppercase tracking-[0.2em]">
+                                                {selectedPlan === 'monthly' ? 'Every Month' : 
+                                                 selectedPlan === 'season' ? 'Every 6 Months' : 'Every 4 Months'}
+                                            </p>
+                                        </div>
                                         <span className="text-sm font-bold">
                                             {selectedPlan === 'monthly' ? '$400.00' : 
                                              selectedPlan === 'season' ? '$2,400.00' : '$1,600.00'}
@@ -682,7 +688,7 @@ function PrivateTrainingAccessContent() {
                                         </span>
                                     </div>
                                 </div>
-                                {selectedPlan === 'monthly' && <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-4">RECURRING MONTHLY PAYMENT</p>}
+                                <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-4">RECURRING {selectedPlan === 'monthly' ? 'MONTHLY' : selectedPlan === 'season' ? '6-MONTH' : '4-MONTH'} PAYMENT</p>
                                 <p className="text-[9px] text-muted-foreground italic mb-6">Fee covers Stripe processing and secure platform handling.</p>
                                 
                                 {clientSecret && (
@@ -705,15 +711,27 @@ function PrivateTrainingAccessContent() {
                                     </Button>
                                 )}
                                 
-                                <button 
-                                    onClick={() => {
-                                        setIsTestMode(!isTestMode);
-                                        setClientSecret(null); // Reset to re-fetch with new price
-                                    }}
-                                    className="mt-8 text-[10px] uppercase tracking-[0.3em] font-black text-muted-foreground/30 hover:text-primary/50 transition-colors"
-                                >
-                                    Mode: {isTestMode ? 'INTERNAL TEST' : 'PRODUCTION LIVE'}
-                                </button>
+                                <div className="flex flex-col gap-2">
+                                    <button 
+                                        onClick={() => {
+                                            setStep('plan-selection');
+                                            setClientSecret(null);
+                                        }}
+                                        className="text-[10px] uppercase tracking-[0.2em] font-black text-primary/60 hover:text-primary transition-colors py-4 flex items-center justify-center gap-2 group"
+                                    >
+                                        <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" /> Change Plan
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={() => {
+                                            setIsTestMode(!isTestMode);
+                                            setClientSecret(null); 
+                                        }}
+                                        className="text-[8px] uppercase tracking-[0.3em] font-black text-muted-foreground/20 hover:text-primary/40 transition-colors py-2"
+                                    >
+                                        Mode: {isTestMode ? 'TEST' : 'LIVE'}
+                                    </button>
+                                </div>
 
                                 {error && (
                                     <div className="text-red-500 bg-red-500/5 border border-red-500/10 text-xs flex items-center justify-center gap-2 p-3 rounded-xl animate-pulse">

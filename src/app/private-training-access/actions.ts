@@ -184,21 +184,32 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
         }
         
         const isMonthly = planId === 'monthly';
+        const isSeason = planId === 'season';
+        const isStandard = planId === 'standard';
+        
         const origin = "https://goalie-cardv11start.vercel.app";
         
         // Price logic based on plan
         let baseAmount = 160000;
         let feeAmount = 4810;
-        let planName = 'Private Training Access (16 Lessons)';
+        let planName = 'Standard Block (16 Lessons)';
+        let intervalCount = 1;
         
         if (planId === 'season') {
             baseAmount = 240000;
             feeAmount = 7210;
-            planName = 'Season Commitment (6 Months)';
+            planName = 'Season Commitment (24 Lessons)';
+            intervalCount = 6;
         } else if (planId === 'monthly') {
             baseAmount = 40000;
             feeAmount = 1225;
             planName = 'Legacy Member (Monthly Sub)';
+            intervalCount = 1;
+        } else if (planId === 'standard') {
+            baseAmount = 160000;
+            feeAmount = 4810;
+            planName = 'Standard Block (16 Lessons)';
+            intervalCount = 4;
         }
 
         if (isTestMode) {
@@ -210,17 +221,18 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
         const stripe = getStripe();
         const session = await stripe.checkout.sessions.create({
             ui_mode: 'embedded',
-            mode: isMonthly ? 'subscription' : 'payment',
+            mode: 'subscription', // ALL plans are now recurring subscriptions
             line_items: [
                 {
                     price_data: {
                         currency: 'usd',
                         product_data: {
                             name: planName,
-                            description: isMonthly ? 'Recurring monthly training access.' : `Direct training block for ${submission.athlete_name}`,
+                            description: isMonthly ? 'Recurring monthly training access.' : 
+                                         isSeason ? '24 session blocks every 6 months.' : '16 session blocks every 4 months.',
                         },
                         unit_amount: baseAmount,
-                        recurring: isMonthly ? { interval: 'month' } : undefined,
+                        recurring: { interval: 'month', interval_count: intervalCount },
                     },
                     quantity: 1,
                 },
@@ -232,7 +244,7 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
                             description: 'Standard 2.9% + $0.30 transaction fee',
                         },
                         unit_amount: feeAmount,
-                        recurring: isMonthly ? { interval: 'month' } : undefined,
+                        recurring: { interval: 'month', interval_count: intervalCount },
                     },
                     quantity: 1,
                 }
