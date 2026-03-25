@@ -138,28 +138,33 @@ export async function createConnectedCard(submissionId: string) {
  * Updates the waiver status of a submission.
  */
 export async function updateWaiverStatus(submissionId: string, confirmed: boolean) {
-    const supabaseAdmin = getSupabaseAdmin();
-    
-    const { error } = await supabaseAdmin
-        .from('private_training_submissions')
-        .update({
-            waiver_completed: confirmed,
-            status: 'waiver pending'
-        })
-        .eq('id', submissionId);
-    
-    if (error) {
-        console.error("[PRIVATE_SUBMISSION_WAIVER_UPDATE_ERROR]", error);
-        throw new Error("Failed to update waiver status.");
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        
+        const { error } = await supabaseAdmin
+            .from('private_training_submissions')
+            .update({
+                waiver_completed: confirmed,
+                status: 'waiver pending'
+            })
+            .eq('id', submissionId);
+        
+        if (error) {
+            console.error("[WAIVER_UPDATE_ERROR]", error);
+            return { error: `Database Error: ${error.message}` };
+        }
+        
+        return { success: true };
+    } catch (err: any) {
+        console.error("[WAIVER_UPDATE_EXCEPTION]", err);
+        return { error: `Internal Server Error: ${err.message}` };
     }
-    
-    return { success: true };
 }
 
 /**
  * Creates a Stripe Checkout Session for the private training.
  */
-export async function createPrivateCheckoutSession(submissionId: string, isTestMode: boolean) {
+export async function createEmbeddedCheckoutSession(submissionId: string, isTestMode: boolean) {
     try {
         const supabaseAdmin = getSupabaseAdmin();
         
@@ -178,11 +183,11 @@ export async function createPrivateCheckoutSession(submissionId: string, isTestM
             return { error: "Waiver must be completed before payment." };
         }
         
-        // 2. Use stable origin
         const origin = "https://goalie-cardv11start.vercel.app";
         
-        // 3. Create Stripe session
+        // 2. Create Embedded Session
         const session = await stripe.checkout.sessions.create({
+            ui_mode: 'embedded',
             payment_method_types: ['card'],
             line_items: [
                 {
@@ -192,28 +197,23 @@ export async function createPrivateCheckoutSession(submissionId: string, isTestM
                             name: 'Private Training Access',
                             description: `Invite-only training for ${submission.athlete_name}`,
                         },
-                        unit_amount: isTestMode ? 100 : 160000, // $1 or $1600
+                        unit_amount: isTestMode ? 100 : 160000,
                     },
                     quantity: 1,
                 },
             ],
             mode: 'payment',
-            customer_email: submission.email,
-            success_url: `${origin}/private-training-access/success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submissionId}`,
-            cancel_url: `${origin}/private-training-access?submission_id=${submissionId}`,
+            return_url: `${origin}/private-training-access/success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submissionId}`,
             metadata: {
                 submissionId: submission.id,
                 athleteName: submission.athlete_name,
-                parentName: submission.parent_name || '',
                 email: submission.email,
-                accessCode: submission.access_code,
-                waiverCompleted: 'true',
                 productType: 'private training access',
                 isTestMode: String(isTestMode)
             }
         });
         
-        // 4. Update submission with session info
+        // 3. Update submission
         await supabaseAdmin
             .from('private_training_submissions')
             .update({
@@ -222,10 +222,10 @@ export async function createPrivateCheckoutSession(submissionId: string, isTestM
             })
             .eq('id', submissionId);
         
-        return { url: session.url };
+        return { clientSecret: session.client_secret };
     } catch (err: any) {
-        console.error("[STRIPE_SESSION_ERROR]", err);
-        return { error: `Payment Redirection Error: ${err.message}` };
+        console.error("[EMBEDDED_SESSION_ERROR]", err);
+        return { error: `Payment Setup Error: ${err.message}` };
     }
 }
 

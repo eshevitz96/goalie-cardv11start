@@ -17,6 +17,7 @@
     "@capacitor/cli": "^7.5.0",
     "@capacitor/core": "^8.1.0",
     "@capacitor/ios": "^8.1.0",
+    "@stripe/react-stripe-js": "^5.6.1",
     "@stripe/stripe-js": "^8.6.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.90.1",

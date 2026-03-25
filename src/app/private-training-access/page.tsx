@@ -23,10 +23,17 @@ import {
     validateAccessCode, 
     createPrivateSubmission, 
     updateWaiverStatus, 
-    createPrivateCheckoutSession,
+    createEmbeddedCheckoutSession,
     createConnectedCard 
 } from "./actions";
 import { PRIVATE_ACCESS_CONFIG } from "@/constants/privateAccess";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  EmbeddedCheckoutProvider,
+  EmbeddedCheckout
+} from '@stripe/react-stripe-js';
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 type FlowStep = 'access-code' | 'info' | 'card-prompt' | 'waiver' | 'payment-confirm';
 
@@ -63,6 +70,11 @@ function PrivateTrainingAccessContent() {
     // Waiver State
     const [waiverConfirmed, setWaiverConfirmed] = useState(false);
     const [termsAgreed, setTermsAgreed] = useState(false);
+    const [signature, setSignature] = useState("");
+    const [signatureDate, setSignatureDate] = useState(new Date().toLocaleDateString());
+    
+    // Payment State
+    const [clientSecret, setClientSecret] = useState<string | null>(null);
     
     // Mode State
     const [isTestMode, setIsTestMode] = useState(PRIVATE_ACCESS_CONFIG.stripe.isTestMode);
@@ -153,8 +165,8 @@ function PrivateTrainingAccessContent() {
 
     const handleWaiverSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!waiverConfirmed || !termsAgreed) {
-            setError("Please confirm waiver and agree to terms.");
+        if (!waiverConfirmed || !termsAgreed || !signature) {
+            setError("Please fill out all signature fields.");
             return;
         }
         
@@ -163,8 +175,25 @@ function PrivateTrainingAccessContent() {
         
         try {
             if (!submissionId) throw new Error("Missing submission ID.");
-            await updateWaiverStatus(submissionId, true);
-            setStep('payment-confirm');
+            const res = await updateWaiverStatus(submissionId, true);
+            if ('error' in res && res.error) {
+                setError(res.error);
+                return;
+            }
+            
+            // Immediately fetch client secret for embedded checkout
+            const checkoutRes = await createEmbeddedCheckoutSession(submissionId, isTestMode);
+            if ('error' in checkoutRes && checkoutRes.error) {
+                setError(checkoutRes.error);
+                return;
+            }
+            
+            if ('clientSecret' in checkoutRes && checkoutRes.clientSecret) {
+                setClientSecret(checkoutRes.clientSecret);
+                setStep('payment-confirm');
+            } else {
+                setError("Failed to initialize payment session.");
+            }
         } catch (err: any) {
             setError(err.message || "Failed to update waiver status.");
         } finally {
@@ -172,24 +201,6 @@ function PrivateTrainingAccessContent() {
         }
     };
 
-    const handlePaymentSubmit = async () => {
-        setIsLoading(true);
-        setError(null);
-        
-        try {
-            if (!submissionId) throw new Error("Missing submission ID.");
-            const { url } = await createPrivateCheckoutSession(submissionId, isTestMode);
-            if (url) {
-                window.location.href = url;
-            } else {
-                throw new Error("Failed to create payment session.");
-            }
-        } catch (err: any) {
-            setError(err.message || "Payment initiation failed.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     return (
         <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -461,6 +472,26 @@ function PrivateTrainingAccessContent() {
                                             </span>
                                         </label>
 
+                                        <div className="space-y-4 pt-4 border-t border-border/20">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 ml-1">Digital Signature (Full Name)</label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    value={signature}
+                                                    onChange={(e) => setSignature(e.target.value)}
+                                                    className="w-full bg-secondary/30 border border-border/50 rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/50 transition-all font-serif italic"
+                                                    placeholder="John Hancock"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5 opacity-50">
+                                                <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 ml-1">Signing Date</label>
+                                                <div className="px-4 py-3 bg-secondary/20 border border-border/40 rounded-xl text-xs font-mono">
+                                                    {signatureDate}
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         {error && (
                                             <div className="text-red-500 bg-red-500/5 border border-red-500/10 text-xs flex items-center justify-center gap-2 p-3 rounded-xl">
                                                 <AlertCircle size={14} /> {error}
@@ -500,33 +531,46 @@ function PrivateTrainingAccessContent() {
                                     </p>
                                 </div>
 
-                                <div className="bg-secondary/30 border border-border/40 rounded-3xl p-6 space-y-4">
+                                <div className="bg-secondary/30 border border-border/40 rounded-3xl p-6 space-y-4 mb-8">
                                     <div className="flex justify-between items-center px-2">
                                         <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Product</span>
                                         <span className="text-sm font-bold">Private Training</span>
                                     </div>
                                     <div className="flex justify-between items-center px-2 border-t border-border/30 pt-4">
                                         <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Amount</span>
-                                        <span className="text-2xl font-black">{isTestMode ? '$1.00' : '$1,600.00'}</span>
+                                        <span className="text-2xl font-black text-primary">{isTestMode ? '$1.00' : '$1,600.00'}</span>
                                     </div>
                                 </div>
                                 
-                                <div className="flex flex-col gap-4">
-                                    <Button
-                                        onClick={handlePaymentSubmit}
-                                        className="w-full py-7 text-lg rounded-2xl shadow-xl shadow-primary/10 group"
-                                        loading={isLoading}
+                                {clientSecret && (
+                                    <div className="mt-8 bg-white/5 rounded-3xl p-4 min-h-[400px]">
+                                        <EmbeddedCheckoutProvider
+                                            stripe={stripePromise}
+                                            options={{ clientSecret }}
+                                        >
+                                            <EmbeddedCheckout />
+                                        </EmbeddedCheckoutProvider>
+                                    </div>
+                                )}
+
+                                {!clientSecret && !isLoading && (
+                                    <Button 
+                                        onClick={(e) => handleWaiverSubmit(e as any)}
+                                        className="w-full py-6 rounded-2xl"
                                     >
-                                        {isTestMode ? 'Run Test Payment' : 'Secure Access'} <Lock size={16} className="ml-2 opacity-50" />
+                                        Re-initialize Checkout
                                     </Button>
-                                    
-                                    <button 
-                                        onClick={() => setIsTestMode(!isTestMode)}
-                                        className="text-[10px] uppercase tracking-[0.3em] font-black text-muted-foreground/30 hover:text-primary/50 transition-colors"
-                                    >
-                                        Mode: {isTestMode ? 'INTERNAL TEST' : 'PRODUCTION LIVE'}
-                                    </button>
-                                </div>
+                                )}
+                                
+                                <button 
+                                    onClick={() => {
+                                        setIsTestMode(!isTestMode);
+                                        setClientSecret(null); // Reset to re-fetch with new price
+                                    }}
+                                    className="mt-8 text-[10px] uppercase tracking-[0.3em] font-black text-muted-foreground/30 hover:text-primary/50 transition-colors"
+                                >
+                                    Mode: {isTestMode ? 'INTERNAL TEST' : 'PRODUCTION LIVE'}
+                                </button>
 
                                 {error && (
                                     <div className="text-red-500 bg-red-500/5 border border-red-500/10 text-xs flex items-center justify-center gap-2 p-3 rounded-xl animate-pulse">
