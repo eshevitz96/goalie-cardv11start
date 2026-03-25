@@ -39,7 +39,7 @@ import {
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-type FlowStep = 'access-code' | 'info' | 'card-prompt' | 'waiver' | 'payment-confirm';
+type FlowStep = 'access-code' | 'info' | 'card-prompt' | 'waiver' | 'plan-selection' | 'payment-confirm';
 
 export default function PrivateTrainingAccessPage() {
     return (
@@ -70,6 +70,7 @@ function PrivateTrainingAccessContent() {
     const [phone, setPhone] = useState("");
     const [submissionId, setSubmissionId] = useState<string | null>(null);
     const [hasExistingCard, setHasExistingCard] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<'standard' | 'season' | 'monthly'>('standard');
     
     // Waiver State
     const [waiverChecks, setWaiverChecks] = useState({
@@ -180,33 +181,22 @@ function PrivateTrainingAccessContent() {
             return;
         }
         
-        setIsLoading(true);
         setError(null);
+        setIsLoading(true);
         
         try {
-            if (!submissionId) throw new Error("Missing submission ID.");
-            const res = await updateWaiverStatus(submissionId, true);
-            if ('error' in res && res.error) {
+            // Update submission status in DB
+            const res = await updateWaiverStatus(submissionId!, true);
+            if (res.error) {
                 setError(res.error);
+                setIsLoading(false);
                 return;
             }
-            
-            // Immediately fetch client secret for embedded checkout
-            const checkoutRes = await createEmbeddedCheckoutSession(submissionId, isTestMode);
-            if ('error' in checkoutRes && checkoutRes.error) {
-                setError(checkoutRes.error);
-                return;
-            }
-            
-            if ('clientSecret' in checkoutRes && checkoutRes.clientSecret) {
-                setClientSecret(checkoutRes.clientSecret);
-                setStep('payment-confirm');
-            } else {
-                setError("Failed to initialize payment session.");
-            }
+
+            setStep('plan-selection');
+            setIsLoading(false);
         } catch (err: any) {
-            setError(err.message || "Failed to update waiver status.");
-        } finally {
+            setError(err.message);
             setIsLoading(false);
         }
     };
@@ -547,9 +537,105 @@ function PrivateTrainingAccessContent() {
                                         loading={isLoading}
                                         disabled={!Object.values(waiverChecks).every(v => v) || !signature}
                                     >
-                                        Review Payment <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                                        Choose Plan <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                                     </Button>
                                 </form>
+                            </motion.div>
+                        )}
+
+                        {/* STEP 4: PLAN SELECTION */}
+                        {step === 'plan-selection' && (
+                            <motion.div
+                                key="plan-selection"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-8"
+                            >
+                                <div className="space-y-2 mb-8 text-center">
+                                    <h2 className="text-2xl font-semibold tracking-tight">Select your Commitment</h2>
+                                    <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
+                                        Choose the training block that fits your schedule.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <button 
+                                        onClick={() => setSelectedPlan('monthly')}
+                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'monthly' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-bold text-lg">Legacy Member</h4>
+                                                    <span className="text-[8px] bg-primary text-black px-1.5 py-0.5 rounded-full font-black uppercase tracking-widest">Most Popular</span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">Monthly automated access. Set it and forget it.</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-black text-primary">$400.00</p>
+                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Per Month</p>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    <button 
+                                        onClick={() => setSelectedPlan('standard')}
+                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'standard' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h4 className="font-bold text-lg">Standard Block</h4>
+                                                <p className="text-xs text-muted-foreground">16 Lessons upfront. Traditional commitment.</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-black text-primary">$1,600.00</p>
+                                                <p className="text-[8px] text-muted-foreground uppercase font-black">One-Time</p>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    <button 
+                                        onClick={() => setSelectedPlan('season')}
+                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'season' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h4 className="font-bold text-lg">Season Commitment</h4>
+                                                <p className="text-xs text-muted-foreground">24 Sessions / 6 Months. Lock in your spots.</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-black text-primary">$2,400.00</p>
+                                                <p className="text-[8px] text-muted-foreground uppercase font-black">One-Time</p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                <Button
+                                    onClick={async () => {
+                                        setIsLoading(true);
+                                        const res = await createEmbeddedCheckoutSession(submissionId!, selectedPlan, isTestMode);
+                                        if (res.error) {
+                                            setError(res.error);
+                                            setIsLoading(false);
+                                        } else {
+                                            setClientSecret(res.clientSecret!);
+                                            setStep('payment-confirm');
+                                            setIsLoading(false);
+                                        }
+                                    }}
+                                    className="w-full py-7 rounded-2xl mt-4 text-md shadow-xl shadow-primary/10 group"
+                                    loading={isLoading}
+                                >
+                                    Review & Secure <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                                </Button>
+                                <button 
+                                    onClick={() => setStep('waiver')}
+                                    className="w-full text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors py-2"
+                                >
+                                    Back to Waiver
+                                </button>
                             </motion.div>
                         )}
 
@@ -576,17 +662,27 @@ function PrivateTrainingAccessContent() {
                                 <div className="bg-secondary/30 border border-border/40 rounded-3xl p-6 space-y-4 mb-2">
                                     <div className="flex justify-between items-center px-2">
                                         <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Training Fee</span>
-                                        <span className="text-sm font-bold">{isTestMode ? '$1.00' : '$1,600.00'}</span>
+                                        <span className="text-sm font-bold">
+                                            {selectedPlan === 'monthly' ? '$400.00' : 
+                                             selectedPlan === 'season' ? '$2,400.00' : '$1,600.00'}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between items-center px-2 pt-1">
                                         <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Processing Fee</span>
-                                        <span className="text-sm font-bold text-muted-foreground/80">{isTestMode ? '$0.34' : '$48.10'}</span>
+                                        <span className="text-sm font-bold text-muted-foreground/80">
+                                            {selectedPlan === 'monthly' ? '$12.25' : 
+                                             selectedPlan === 'season' ? '$72.10' : '$48.10'}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between items-center px-2 border-t border-border/30 pt-4 mt-2">
                                         <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Final Total</span>
-                                        <span className="text-2xl font-black text-primary">{isTestMode ? '$1.34' : '$1,648.10'}</span>
+                                        <span className="text-2xl font-black text-primary">
+                                            {selectedPlan === 'monthly' ? '$412.25' : 
+                                             selectedPlan === 'season' ? '$2,472.10' : '$1,648.10'}
+                                        </span>
                                     </div>
                                 </div>
+                                {selectedPlan === 'monthly' && <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-4">RECURRING MONTHLY PAYMENT</p>}
                                 <p className="text-[9px] text-muted-foreground italic mb-6">Fee covers Stripe processing and secure platform handling.</p>
                                 
                                 {clientSecret && (

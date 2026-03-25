@@ -164,7 +164,7 @@ export async function updateWaiverStatus(submissionId: string, confirmed: boolea
 /**
  * Creates a Stripe Checkout Session for the private training.
  */
-export async function createEmbeddedCheckoutSession(submissionId: string, isTestMode: boolean) {
+export async function createEmbeddedCheckoutSession(submissionId: string, planId: string, isTestMode: boolean) {
     try {
         const supabaseAdmin = getSupabaseAdmin();
         
@@ -183,21 +183,44 @@ export async function createEmbeddedCheckoutSession(submissionId: string, isTest
             return { error: "Waiver must be completed before payment." };
         }
         
+        const isMonthly = planId === 'monthly';
         const origin = "https://goalie-cardv11start.vercel.app";
         
+        // Price logic based on plan
+        let baseAmount = 160000;
+        let feeAmount = 4810;
+        let planName = 'Private Training Access (16 Lessons)';
+        
+        if (planId === 'season') {
+            baseAmount = 240000;
+            feeAmount = 7210;
+            planName = 'Season Commitment (6 Months)';
+        } else if (planId === 'monthly') {
+            baseAmount = 40000;
+            feeAmount = 1225;
+            planName = 'Legacy Member (Monthly Sub)';
+        }
+
+        if (isTestMode) {
+            baseAmount = 100;
+            feeAmount = 34;
+        }
+
         // 2. Create Embedded Session
         const stripe = getStripe();
         const session = await stripe.checkout.sessions.create({
             ui_mode: 'embedded',
+            mode: isMonthly ? 'subscription' : 'payment',
             line_items: [
                 {
                     price_data: {
                         currency: 'usd',
                         product_data: {
-                            name: 'Private Training Access',
-                            description: `Invite-only training for ${submission.athlete_name}`,
+                            name: planName,
+                            description: isMonthly ? 'Recurring monthly training access.' : `Direct training block for ${submission.athlete_name}`,
                         },
-                        unit_amount: isTestMode ? 100 : 160000,
+                        unit_amount: baseAmount,
+                        recurring: isMonthly ? { interval: 'month' } : undefined,
                     },
                     quantity: 1,
                 },
@@ -205,21 +228,22 @@ export async function createEmbeddedCheckoutSession(submissionId: string, isTest
                     price_data: {
                         currency: 'usd',
                         product_data: {
-                            name: 'Card Processing & Admin Fee',
+                            name: 'Processing & Admin Fee',
                             description: 'Standard 2.9% + $0.30 transaction fee',
                         },
-                        unit_amount: isTestMode ? 34 : 4810,
+                        unit_amount: feeAmount,
+                        recurring: isMonthly ? { interval: 'month' } : undefined,
                     },
                     quantity: 1,
                 }
             ],
-            mode: 'payment',
             return_url: `${origin}/private-training-access/success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submissionId}`,
             metadata: {
                 submissionId: submission.id,
                 athleteName: submission.athlete_name,
                 email: submission.email,
                 productType: 'private training access',
+                planSelected: planId,
                 isTestMode: String(isTestMode)
             }
         } as any);
