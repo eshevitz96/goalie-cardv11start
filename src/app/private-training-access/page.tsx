@@ -137,7 +137,11 @@ function PrivateTrainingAccessContent() {
         try {
             if (!submissionId) throw new Error("Missing submissionId");
             if (confirmed) {
-                await createConnectedCard(submissionId);
+                const res = await createConnectedCard(submissionId);
+                if ('error' in res && res.error) {
+                    setError(res.error);
+                    return;
+                }
             }
             setStep('waiver');
         } catch (err: any) {
@@ -385,6 +389,13 @@ function PrivateTrainingAccessContent() {
                                         Skip for now
                                     </button>
                                 </div>
+
+                                {error && (
+                                    <div className="mt-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium text-left flex items-start gap-3">
+                                        <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                                        <p>{error}</p>
+                                    </div>
+                                )}
                             </motion.div>
                         )}
 
