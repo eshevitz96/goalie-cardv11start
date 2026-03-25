@@ -617,7 +617,7 @@ function PrivateTrainingAccessContent() {
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <h4 className="font-bold text-lg">Season Commitment</h4>
-                                                <p className="text-xs text-muted-foreground">24 Sessions / 6 Months. Lock in your spots.</p>
+                                                <p className="text-xs text-muted-foreground">24 Lessons / 6 Months. Lock in your spots.</p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-xl font-black text-primary">$2,400.00</p>

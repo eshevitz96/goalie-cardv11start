@@ -229,7 +229,7 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
                         product_data: {
                             name: planName,
                             description: isMonthly ? 'Recurring monthly training access.' : 
-                                         isSeason ? '24 session blocks every 6 months.' : '16 session blocks every 4 months.',
+                                         isSeason ? '24 lesson blocks every 6 months.' : '16 lesson blocks every 4 months.',
                         },
                         unit_amount: baseAmount,
                         recurring: { interval: 'month', interval_count: intervalCount },
