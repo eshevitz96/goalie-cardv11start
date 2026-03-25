@@ -344,9 +344,9 @@ export default function PrivateTrainingAccessPage() {
                                     <ShieldCheck size={40} className="text-primary opacity-60" />
                                 </div>
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-semibold tracking-tight">Initialize Goalie Card</h2>
+                                    <h2 className="text-2xl font-semibold tracking-tight">Connect Goalie Card</h2>
                                     <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">
-                                        We couldn't find an existing Goalie Card for {email}. Initialize your profile now to sync your training data and stats.
+                                        We couldn't find an existing Goalie Card for {email}. Connect your profile now to sync your training data and stats.
                                     </p>
                                 </div>
 
@@ -356,7 +356,7 @@ export default function PrivateTrainingAccessPage() {
                                         className="w-full py-6 rounded-2xl shadow-xl shadow-primary/10"
                                         loading={isLoading}
                                     >
-                                        Create Connected Card <ArrowRight size={18} />
+                                        Connect Card <ArrowRight size={18} />
                                     </Button>
                                     <button 
                                         onClick={() => handleCardPromptSubmit(false)}
