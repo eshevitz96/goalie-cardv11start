@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { 
     CheckCircle2, 
@@ -21,6 +21,18 @@ import { Button } from "@/components/ui/Button";
 import { getSubmissionById } from "../actions";
 
 export default function PrivateTrainingSuccessPage() {
+    return (
+        <Suspense fallback={
+            <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
+                <Loader2 className="animate-spin text-primary opacity-50" size={40} />
+            </main>
+        }>
+            <PrivateTrainingSuccessContent />
+        </Suspense>
+    );
+}
+
+function PrivateTrainingSuccessContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const submissionId = searchParams.get('submission_id');

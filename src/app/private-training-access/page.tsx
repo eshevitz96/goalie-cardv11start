@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
     Loader2, 
@@ -31,6 +31,18 @@ import { PRIVATE_ACCESS_CONFIG } from "@/constants/privateAccess";
 type FlowStep = 'access-code' | 'info' | 'card-prompt' | 'waiver' | 'payment-confirm';
 
 export default function PrivateTrainingAccessPage() {
+    return (
+        <Suspense fallback={
+            <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
+                <Loader2 className="animate-spin text-primary opacity-50" size={40} />
+            </main>
+        }>
+            <PrivateTrainingAccessContent />
+        </Suspense>
+    );
+}
+
+function PrivateTrainingAccessContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     
