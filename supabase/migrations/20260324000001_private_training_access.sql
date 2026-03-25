@@ -21,10 +21,12 @@ CREATE TABLE IF NOT EXISTS public.private_training_submissions (
 ALTER TABLE public.private_training_submissions ENABLE ROW LEVEL SECURITY;
 
 -- Allow anyone to insert (since it's a gated signup flow, we validate with server actions)
+DROP POLICY IF EXISTS "Allow anyone to insert submissions" ON public.private_training_submissions;
 CREATE POLICY "Allow anyone to insert submissions" ON public.private_training_submissions
     FOR INSERT WITH CHECK (true);
 
 -- Allow authenticated admins to select all
+DROP POLICY IF EXISTS "Allow admins to select all submissions" ON public.private_training_submissions;
 CREATE POLICY "Allow admins to select all submissions" ON public.private_training_submissions
     FOR SELECT TO authenticated
     USING (
@@ -35,6 +37,7 @@ CREATE POLICY "Allow admins to select all submissions" ON public.private_trainin
     );
 
 -- Allow authenticated admins to update
+DROP POLICY IF EXISTS "Allow admins to update submissions" ON public.private_training_submissions;
 CREATE POLICY "Allow admins to update submissions" ON public.private_training_submissions
     FOR UPDATE TO authenticated
     USING (
