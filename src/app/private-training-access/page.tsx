@@ -221,6 +221,21 @@ function PrivateTrainingAccessContent() {
                 </div>
 
                 <div className="bg-card/20 backdrop-blur-2xl border border-border/40 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.15)] relative overflow-hidden">
+                    {/* Universal Back Button */}
+                    {step !== 'access-code' && !isLoading && !clientSecret && (
+                        <button
+                            onClick={() => {
+                                if (step === 'info') setStep('access-code');
+                                else if (step === 'card-prompt') setStep('info');
+                                else if (step === 'waiver') setStep('card-prompt');
+                                else if (step === 'plan-selection') setStep('waiver');
+                                else if (step === 'payment-confirm') setStep('plan-selection');
+                            }}
+                            className="absolute top-6 left-6 p-2 rounded-full bg-secondary/20 border border-border/30 hover:bg-secondary/40 text-muted-foreground transition-all z-20 group"
+                        >
+                            <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+                        </button>
+                    )}
                     <AnimatePresence mode="wait">
                         
                         {/* STEP 1: ACCESS CODE */}
@@ -590,7 +605,7 @@ function PrivateTrainingAccessContent() {
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-xl font-black text-primary">$1,600.00</p>
-                                                <p className="text-[8px] text-muted-foreground uppercase font-black">One-Time</p>
+                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Every 4 Months</p>
                                             </div>
                                         </div>
                                     </button>
@@ -606,7 +621,7 @@ function PrivateTrainingAccessContent() {
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-xl font-black text-primary">$2,400.00</p>
-                                                <p className="text-[8px] text-muted-foreground uppercase font-black">One-Time</p>
+                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Every 6 Months</p>
                                             </div>
                                         </div>
                                     </button>
