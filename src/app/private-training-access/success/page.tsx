@@ -13,12 +13,16 @@ import {
     Phone,
     Calendar,
     ChevronDown,
-    Loader2
+    Loader2,
+    FileText,
+    Receipt,
+    Download
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { Button } from "@/components/ui/Button";
 import { getSubmissionById } from "../actions";
+import { PRIVATE_ACCESS_CONFIG } from "@/constants/privateAccess";
 
 export default function PrivateTrainingSuccessPage() {
     return (
@@ -51,6 +55,41 @@ function PrivateTrainingSuccessContent() {
         };
         fetchSubmission();
     }, [submissionId]);
+
+    const handleDownloadWaiver = () => {
+        const waiverText = `
+--------------------------------------------------
+THE GOALIE BRAND - PRIVATE TRAINING WAIVER
+--------------------------------------------------
+Athlete: ${submission?.athlete_name || 'N/A'}
+Date Signed: ${new Date(submission?.created_at).toLocaleDateString()}
+Status: Electronic Confirmation Verified
+
+TERMS & CONDITIONS:
+- ${PRIVATE_ACCESS_CONFIG.trainingTerms.availability}
+- ${PRIVATE_ACCESS_CONFIG.trainingTerms.limitations}
+- ${PRIVATE_ACCESS_CONFIG.trainingTerms.productType}
+- ${PRIVATE_ACCESS_CONFIG.trainingTerms.refundPolicy}
+
+ACKNOWLEDGMENT:
+Athlete/Parent confirmed acknowledgment of all terms on the enrollment portal.
+Scheduling coordinated via primary email: ${submission?.email}
+
+© 2026 THE GOALIE BRAND
+--------------------------------------------------
+        `;
+        const blob = new Blob([waiverText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `TGB_Waiver_${submission?.athlete_name?.replace(/ /g, '_') || 'Training'}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handlePrintReceipt = () => {
+        window.print();
+    };
 
     if (isLoading) {
         return (
@@ -129,6 +168,28 @@ function PrivateTrainingSuccessContent() {
                                 </div>
                                 <p className="text-xs font-bold truncate">{submission?.email || 'N/A'}</p>
                             </div>
+                        </div>
+
+                        {/* Downloads Section */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <button 
+                                onClick={handlePrintReceipt}
+                                className="group flex flex-col items-center justify-center gap-3 p-6 bg-secondary/20 hover:bg-secondary/40 border border-border/40 rounded-3xl transition-all"
+                            >
+                                <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                    <Receipt size={18} />
+                                </div>
+                                <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/80">Print Receipt</span>
+                            </button>
+                            <button 
+                                onClick={handleDownloadWaiver}
+                                className="group flex flex-col items-center justify-center gap-3 p-6 bg-secondary/20 hover:bg-secondary/40 border border-border/40 rounded-3xl transition-all"
+                            >
+                                <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                    <FileText size={18} />
+                                </div>
+                                <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/80">Save Waiver</span>
+                            </button>
                         </div>
 
                         <div className="flex flex-col gap-4">
