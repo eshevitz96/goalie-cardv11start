@@ -189,7 +189,7 @@ export async function createEmbeddedCheckoutSession(submissionId: string, isTest
         const stripe = getStripe();
         const session = await stripe.checkout.sessions.create({
             ui_mode: 'embedded',
-            payment_method_types: ['card'],
+            automatic_payment_methods: { enabled: true },
             line_items: [
                 {
                     price_data: {
@@ -202,6 +202,17 @@ export async function createEmbeddedCheckoutSession(submissionId: string, isTest
                     },
                     quantity: 1,
                 },
+                {
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: 'Card Processing & Admin Fee',
+                            description: 'Standard 2.9% + $0.30 transaction fee',
+                        },
+                        unit_amount: isTestMode ? 34 : 4810,
+                    },
+                    quantity: 1,
+                }
             ],
             mode: 'payment',
             return_url: `${origin}/private-training-access/success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submissionId}`,
@@ -212,10 +223,11 @@ export async function createEmbeddedCheckoutSession(submissionId: string, isTest
                 productType: 'private training access',
                 isTestMode: String(isTestMode)
             }
-        });
+        } as any);
         
         // 3. Update submission
-        await supabaseAdmin
+        const supabase = getSupabaseAdmin();
+        await supabase
             .from('private_training_submissions')
             .update({
                 stripe_session_id: session.id,

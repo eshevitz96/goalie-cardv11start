@@ -573,16 +573,21 @@ function PrivateTrainingAccessContent() {
                                     </p>
                                 </div>
 
-                                <div className="bg-secondary/30 border border-border/40 rounded-3xl p-6 space-y-4 mb-8">
+                                <div className="bg-secondary/30 border border-border/40 rounded-3xl p-6 space-y-4 mb-2">
                                     <div className="flex justify-between items-center px-2">
-                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Product</span>
-                                        <span className="text-sm font-bold">Private Training</span>
+                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Training Fee</span>
+                                        <span className="text-sm font-bold">{isTestMode ? '$1.00' : '$1,600.00'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center px-2 border-t border-border/30 pt-4">
-                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Amount</span>
-                                        <span className="text-2xl font-black text-primary">{isTestMode ? '$1.00' : '$1,600.00'}</span>
+                                    <div className="flex justify-between items-center px-2 pt-1">
+                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Processing Fee</span>
+                                        <span className="text-sm font-bold text-muted-foreground/80">{isTestMode ? '$0.34' : '$48.10'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center px-2 border-t border-border/30 pt-4 mt-2">
+                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Final Total</span>
+                                        <span className="text-2xl font-black text-primary">{isTestMode ? '$1.34' : '$1,648.10'}</span>
                                     </div>
                                 </div>
+                                <p className="text-[9px] text-muted-foreground italic mb-6">Fee covers Stripe processing and secure platform handling.</p>
                                 
                                 {clientSecret && (
                                     <div className="mt-8 bg-white/5 rounded-3xl p-4 min-h-[400px]">
