@@ -189,7 +189,6 @@ export async function createEmbeddedCheckoutSession(submissionId: string, isTest
         const stripe = getStripe();
         const session = await stripe.checkout.sessions.create({
             ui_mode: 'embedded',
-            automatic_payment_methods: { enabled: true },
             line_items: [
                 {
                     price_data: {
