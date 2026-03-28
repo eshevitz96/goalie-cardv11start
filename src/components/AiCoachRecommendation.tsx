@@ -677,6 +677,81 @@ export function AiCoachRecommendation({
                         Align your physical readiness with your mental focus.
                     </p>
                 </div>
+ 
+                {/* 3. DAILY PROTOCOL SECTION */}
+                <div 
+                    onClick={() => openProtocolDetail({ 
+                        name: plan.main?.name || plan.focus || "CORE FUNDAMENTALS",
+                        goal: "Stabilize your gaze and heart rate to prepare for high-intensity tracking."
+                    })}
+                    className={`flex flex-col md:flex-row md:items-end justify-between gap-10 mb-14 relative z-10 px-1 cursor-pointer group/card`}
+                >
+                    <div className="flex-1">
+                        <h2 className="text-3xl md:text-[2.65rem] font-black tracking-[-0.03em] leading-none uppercase -ml-0.5 group-hover/card:text-primary transition-colors">
+                            {plan.main?.name || plan.focus || "CORE FUNDAMENTALS"}
+                        </h2>
+                    </div>
+                    <div className="w-20 h-20 md:w-24 md:h-24 bg-transparent border border-border rounded-full flex items-center justify-center group-hover/card:bg-foreground group-hover/card:text-background transition-all duration-700 hover:scale-105 shadow-xl shrink-0">
+                        <Play fill="currentColor" size={24} className="ml-1" />
+                    </div>
+                </div>
+ 
+                <div className="h-[1px] md:h-[1px] bg-border mb-12" />
+ 
+                {/* 4. FOOTER: Stages and Duration */}
+                <div className="flex items-start gap-24 relative z-10 font-bold mb-2 px-1">
+                    <div className="space-y-4">
+                        <span className="text-[9px] uppercase text-muted-foreground/40 tracking-[.45em]">Protocol Stages</span>
+                        <div className="flex gap-6 text-[11px] text-foreground uppercase tracking-[.1em] font-black">
+                            <span>Warmup</span>
+                            <span>Main</span>
+                            <span>Mental</span>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <span className="text-[9px] uppercase text-muted-foreground/40 tracking-[.45em]">Duration</span>
+                        <p className="text-[11px] text-foreground font-black uppercase tracking-widest">15 MIN</p>
+                    </div>
+                </div>
+            </div>
+ 
+            {/* Alternative Protocols Sections - Persistently Visible */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="w-full bg-transparent py-6 md:py-8 relative overflow-hidden rounded-none transition-all group">
+                    <div 
+                        onClick={() => openProtocolDetail({ 
+                            name: "Visual Gaze Tuning",
+                            goal: "Calibrate neural pathways for rapid cross-crease tracking."
+                        })}
+                        className="group cursor-pointer flex items-center justify-between gap-8 h-full"
+                    >
+                        <div className="flex flex-col gap-2">
+                            <span className="text-[8px] font-bold text-muted-foreground tracking-[.49em] uppercase leading-none">MENTAL WORK • 12 MIN</span>
+                            <h4 className="text-xl md:text-2xl font-black tracking-[-0.03em] uppercase leading-none transition-colors text-foreground">Visual Gaze Tuning</h4>
+                        </div>
+                        <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted-foreground transition-all group-hover:bg-foreground group-hover:text-background shrink-0">
+                            <ArrowRight size={16} />
+                        </div>
+                    </div>
+                </div>
+ 
+                <div className="w-full bg-transparent py-6 md:py-8 relative overflow-hidden rounded-none transition-all group">
+                    <div 
+                        onClick={() => openProtocolDetail({
+                            name: "Lower Body Excellence",
+                            goal: "Enhance explosive lateral power and structural stability."
+                        })}
+                        className="group cursor-pointer flex items-center justify-between gap-8 h-full"
+                    >
+                        <div className="flex flex-col gap-2">
+                            <span className="text-[8px] font-bold text-muted-foreground tracking-[.49em] uppercase leading-none">PHYSICAL PREP • 20 MIN</span>
+                            <h4 className="text-xl md:text-2xl font-black tracking-[-0.03em] uppercase leading-none transition-colors text-foreground">Lower Body Excellence</h4>
+                        </div>
+                        <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted-foreground transition-all group-hover:bg-foreground group-hover:text-background shrink-0">
+                            <ArrowRight size={16} />
+                        </div>
+                    </div>
+                </div>
             </div>
         </motion.div>
     );
