@@ -6,9 +6,10 @@ interface CoachesCornerProps {
     activeGoalie: any;
     hasCoach?: boolean;
     onPickCoach?: () => void;
+    onAddVideo?: () => void;
 }
 
-export function CoachesCorner({ activeGoalie, hasCoach, onPickCoach }: CoachesCornerProps) {
+export function CoachesCorner({ activeGoalie, hasCoach, onPickCoach, onAddVideo }: CoachesCornerProps) {
     const toast = useToast();
 
     const handleRequestAccess = () => {
@@ -62,6 +63,7 @@ export function CoachesCorner({ activeGoalie, hasCoach, onPickCoach }: CoachesCo
                     <div className="flex items-center justify-between">
                         <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[.2em]">Highlights</span>
                         <button 
+                            onClick={onAddVideo}
                             className="text-[9px] font-black text-blue-500 hover:bg-blue-500/5 transition-colors border border-blue-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5 whitespace-nowrap"
                         >
                             + Add Video

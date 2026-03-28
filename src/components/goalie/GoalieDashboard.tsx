@@ -25,6 +25,7 @@ import TrainingInsights from "@/components/TrainingInsights";
 import { GoalsWidget } from "@/components/GoalsWidget";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { FullAnalyticsLibrary } from "@/components/goalie/FullAnalyticsLibrary";
 
 // New Components
 import { GoalieHeader } from "@/components/goalie/GoalieHeader";
@@ -37,6 +38,7 @@ import { RequestSessionWidget } from "@/components/goalie/RequestSessionWidget";
 import { FilmAnalysisWorkspace } from "@/components/goalie/FilmAnalysisWorkspace";
 import { GameReport } from "@/components/goalie/GameReport";
 import { CoachRequestModal } from "@/components/goalie/card/CoachRequestModal";
+import { GoalieIndexBriefing } from "@/components/goalie/GoalieIndexBriefing";
 
 // V11 Algorithm & Components
 import { v11Engine } from "@/lib/v11-engine";
@@ -88,11 +90,15 @@ export function GoalieDashboard({
     const [isUploadingFilm, setIsUploadingFilm] = useState(false);
     const [isAnalyzingFilm, setIsAnalyzingFilm] = useState(false);
     const [showGameReport, setShowGameReport] = useState(false);
+    const [showIndexBriefing, setShowIndexBriefing] = useState(false);
+    const [showFullLibrary, setShowFullLibrary] = useState(false);
     const [unchartedCount, setUnchartedCount] = useState(0);
+
     const [lastAnalyzedOpponent, setLastAnalyzedOpponent] = useState('');
     const [lastAnalyzedDate, setLastAnalyzedDate] = useState('');
     const [lastAnalyzedLocation, setLastAnalyzedLocation] = useState('');
     const [lastAnalyzedType, setLastAnalyzedType] = useState('');
+
     const [performanceView, setPerformanceView] = useState<'game' | 'season'>('game');
     const [hasCoach, setHasCoach] = useState(true);
     const [hasAnalyticsAccess, setHasAnalyticsAccess] = useState(true);
@@ -249,12 +255,7 @@ export function GoalieDashboard({
     };
 
     // Events to show in both Dashboard list and Workspace dropdown
-    const dashboardEvents = (activeGoalie.events && activeGoalie.events.length > 0) 
-        ? activeGoalie.events 
-        : [
-            { id: 'm1', name: 'Game: vs Rangers', date: new Date(Date.now() - 86400000).toISOString(), location: 'Home', status: 'past', image: '' },
-            { id: 'm2', name: 'Practice: Skills', date: new Date(Date.now() + 86400000).toISOString(), location: 'Home', status: 'upcoming', image: '' }
-        ];
+    const dashboardEvents = activeGoalie.events || [];
 
     return (
         <main className="min-h-screen bg-background p-4 md:p-8 overflow-x-hidden selection:bg-primary selection:text-white">
@@ -434,47 +435,45 @@ export function GoalieDashboard({
                             </div>
                         )}
 
-                        <div className="flex items-center justify-between px-1">
-                            <span className="text-xs font-black uppercase tracking-widest text-foreground flex items-center gap-2">
-                                <Activity size={14} /> {v11Model.headerTitle}
-                            </span>
-                            {shotEvents.length > 0 && (
-                                <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-[9px] uppercase font-black px-3 py-1 bg-emerald-500/10 text-emerald-400 border-emerald-500/20">Analysis Complete</Badge>
-                                </div>
-                            )}
-                        </div>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div className="space-y-6">
-                                <V11StatWidget 
-                                    score={performanceView === 'game' 
-                                        ? (shotEvents.length > 0 ? Math.round((shotEvents.filter(s => s.result === 'save' || s.result === 'clear').length / shotEvents.length) * 100) : 0)
-                                        : (activeGoalie.stats?.sv ? Math.round(parseFloat(activeGoalie.stats.sv) * 100) : v11Model.readinessScore)}
-                                    sport={goalieContext.sport}
-                                    label={performanceView === 'game' ? "Game Performance" : "Season Average"}
-                                    stats={performanceView === 'game' ? [
-                                        { 
-                                            label: getSportTerms(goalieContext.sport).saveMetric, 
-                                            value: shotEvents.length > 0 ? (shotEvents.filter(s => s.result === 'save' || s.result === 'clear').length / shotEvents.length).toFixed(3).replace('0.', '.') : '.000' 
-                                        },
-                                        { 
-                                            label: "Goals Against", 
-                                            value: shotEvents.filter(s => s.result === 'goal').length.toString() 
-                                        },
-                                        { label: "Total Shots", value: shotEvents.length.toString() }
-                                    ] : [
-                                        { 
-                                            label: getSportTerms(goalieContext.sport).saveMetric, 
-                                            value: activeGoalie.stats?.sv ? activeGoalie.stats.sv.replace('0.', '.') : '.000' 
-                                        },
-                                        { 
-                                            label: getSportTerms(goalieContext.sport).averageMetric, 
-                                            value: activeGoalie.stats?.gaa || '0.00' 
-                                        },
-                                        { label: 'Shutouts', value: '2' }
-                                    ]}
-                                />
+                                <div 
+                                    onClick={() => {
+                                        trackGoalieAction("open_index_briefing");
+                                        setShowIndexBriefing(true);
+                                    }}
+                                    className="cursor-pointer group hover:scale-[1.01] transition-all"
+                                >
+                                    <V11StatWidget 
+                                        score={performanceView === 'game' 
+                                            ? (shotEvents.length > 0 ? Math.round((shotEvents.filter(s => s.result === 'save' || s.result === 'clear').length / shotEvents.length) * 100) : 0)
+                                            : (activeGoalie.stats?.sv ? Math.round(parseFloat(activeGoalie.stats.sv) * 100) : v11Model.readinessScore)}
+                                        sport={goalieContext.sport}
+                                        label={performanceView === 'game' ? "Game Performance" : "Season Average"}
+                                        stats={performanceView === 'game' ? [
+                                            { 
+                                                label: getSportTerms(goalieContext.sport).saveMetric, 
+                                                value: shotEvents.length > 0 ? (shotEvents.filter(s => s.result === 'save' || s.result === 'clear').length / shotEvents.length).toFixed(3).replace('0.', '.') : '.000' 
+                                            },
+                                            { 
+                                                label: "Goals Against", 
+                                                value: shotEvents.filter(s => s.result === 'goal').length.toString() 
+                                            },
+                                            { label: "Total Shots", value: shotEvents.length.toString() }
+                                        ] : [
+                                            { 
+                                                label: getSportTerms(goalieContext.sport).saveMetric, 
+                                                value: activeGoalie.stats?.sv ? activeGoalie.stats.sv.replace('0.', '.') : '.000' 
+                                            },
+                                            { 
+                                                label: getSportTerms(goalieContext.sport).averageMetric, 
+                                                value: activeGoalie.stats?.gaa || '0.00' 
+                                            },
+                                            { label: 'Shutouts', value: '2' }
+                                        ]}
+                                    />
+                                </div>
                                 <button 
                                     onClick={() => {
                                         trackGoalieAction("main_upload_new_game");
@@ -502,47 +501,29 @@ export function GoalieDashboard({
                                         {performanceView === 'game' ? 'Shot Location Tracker' : 'Season Map Distribution'}
                                     </span>
                                 </div>
-                                <GameAnalysisSurface 
-                        sport={goalieContext.sport} 
-                        shots={performanceView === 'game' ? shotEvents : [
-                            { id: 's1', gameId: 'g1', sport: goalieContext.sport, result: 'save', shotType: 'wrist', originX: 45, originY: 65, period: 1, isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false },
-                            { id: 's2', gameId: 'g1', sport: goalieContext.sport, result: 'goal', shotType: 'wrist', originX: 52, originY: 15, period: 1, isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false },
-                            { id: 's3', gameId: 'g2', sport: goalieContext.sport, result: 'save', shotType: 'wrist', originX: 25, originY: 45, period: 2, isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false },
-                            { id: 's4', gameId: 'g3', sport: goalieContext.sport, result: 'save', shotType: 'wrist', originX: 75, originY: 45, period: 3, isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false },
-                            { id: 's5', gameId: 'g4', sport: goalieContext.sport, result: 'goal', shotType: 'wrist', originX: 48, originY: 10, period: 1, isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false },
-                        ]}
-                                    interactive={false} 
-                                />
-                                {shotEvents.length > 0 && (
-                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                {performanceView === 'game' ? (
+                                    <GameAnalysisSurface 
+                                        sport={goalieContext.sport} 
+                                        shots={shotEvents}
+                                        interactive={false} 
+                                    />
+                                ) : (
+                                    <div className="space-y-4">
+                                        <GameAnalysisSurface 
+                                            sport={goalieContext.sport} 
+                                            shots={[
+                                                { id: 's1', gameId: 'g1', sport: goalieContext.sport, result: 'save', shotType: 'wrist', originX: 45, originY: 65, period: 1, isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false },
+                                                { id: 's2', gameId: 'g1', sport: goalieContext.sport, result: 'goal', shotType: 'wrist', originX: 52, originY: 15, period: 1, isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false },
+                                                { id: 's3', gameId: 'g2', sport: goalieContext.sport, result: 'save', shotType: 'wrist', originX: 25, originY: 45, period: 2, isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false },
+                                                { id: 's4', gameId: 'g3', sport: goalieContext.sport, result: 'save', shotType: 'wrist', originX: 75, originY: 45, period: 3, isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false },
+                                                { id: 's5', gameId: 'g4', sport: goalieContext.sport, result: 'goal', shotType: 'wrist', originX: 48, originY: 10, period: 1, isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false },
+                                            ]}
+                                            interactive={false} 
+                                        />
                                         <Button 
-                                            variant="outline" 
-                                            onClick={() => { trackGoalieAction("review_game_clips"); router.push('/clips'); }}
-                                            className="h-9 text-[9px] font-black uppercase tracking-widest bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20 text-emerald-400 text-center"
+                                            onClick={() => { trackGoalieAction("open_full_database_button"); setShowFullLibrary(true); }}
+                                            className="w-full bg-foreground text-background font-black uppercase tracking-widest text-[10px] py-4 rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
                                         >
-                                            Review Clips
-                                        </Button>
-                                        <Button 
-                                            variant="outline" 
-                                            onClick={() => { trackGoalieAction("view_game_report"); setShowGameReport(true); }}
-                                            className="h-9 text-[9px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary text-center"
-                                        >
-                                            Game Report
-                                        </Button>
-                                    </div>
-                                )}
-
-                                {performanceView === 'season' && (
-                                    <div className="w-full mt-4">
-                                        <Button 
-                                            variant="outline" 
-                                            onClick={() => {
-                                                trackGoalieAction("open_full_analytics");
-                                                router.push('/clips');
-                                            }}
-                                            className="w-full h-12 text-[10px] font-black uppercase tracking-widest bg-primary/5 hover:bg-primary/10 border-primary/20 hover:border-primary/40 text-primary rounded-2xl flex items-center justify-center gap-3 transition-all"
-                                        >
-                                            <BarChart3 size={14} />
                                             Open Full Analytics Database
                                         </Button>
                                     </div>
@@ -556,6 +537,7 @@ export function GoalieDashboard({
                             activeGoalie={activeGoalie} 
                             hasCoach={hasCoach} 
                             onPickCoach={() => setIsCoachRequestModalOpen(true)} 
+                            onAddVideo={() => setIsUploadingFilm(true)}
                         />
                         {hasCoach ? (
                             <RequestSessionWidget assignedCoach={activeGoalie.coach} />
@@ -600,6 +582,7 @@ export function GoalieDashboard({
                             </div>
                             <GameFilmUpload 
                                 rosterId={activeGoalie.id} 
+                                sport={goalieContext.sport}
                                 events={dashboardEvents}
                                 onUploadComplete={async (data) => {
                                     setVideoUrlToAnalyze(data.url);
@@ -763,6 +746,24 @@ export function GoalieDashboard({
 
             <BetaFeedback rosterId={activeGoalie.id} userId={userId || undefined} userRole="goalie" />
             <WhatsNewGuide />
+            <FullAnalyticsLibrary 
+                isOpen={showFullLibrary} 
+                onClose={() => setShowFullLibrary(false)}
+                rosterId={activeGoalie.id}
+                sport={goalieContext.sport}
+                onAddClips={(eventId) => {
+                    setSelectedEventIdForAnalysis(eventId);
+                    setIsUploadingFilm(true);
+                }}
+            />
+            <GoalieIndexBriefing 
+                isOpen={showIndexBriefing} 
+                onClose={() => setShowIndexBriefing(false)} 
+                score={performanceView === 'game' 
+                    ? (shotEvents.length > 0 ? Math.round((shotEvents.filter(s => s.result === 'save' || s.result === 'clear').length / shotEvents.length) * 100) : 0)
+                    : (activeGoalie.stats?.sv ? Math.round(parseFloat(activeGoalie.stats.sv) * 100) : v11Model.readinessScore)}
+                sport={goalieContext.sport}
+            />
             <AnimatePresence>
                 {isCoachRequestModalOpen && (
                     <CoachRequestModal 

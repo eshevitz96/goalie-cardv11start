@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export async function updateCoachProfile(formData: FormData) {
+export async function updateCoachProfile(data: { full_name: string; title: string; bio: string; philosophy: string; calendar_sync?: boolean }) {
     const supabase = createClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -11,11 +11,7 @@ export async function updateCoachProfile(formData: FormData) {
         return { error: "Unauthorized" };
     }
 
-    const fullName = formData.get("fullName") as string;
-    const title = formData.get("title") as string;
-    const bio = formData.get("bio") as string;
-    const philosophy = formData.get("philosophy") as string;
-    const calendarSync = formData.get("calendarSync") === "on"; // Checkbox/Switch handling
+    const { full_name: fullName, title, bio, philosophy, calendar_sync: calendarSync = false } = data;
 
     const settings = {
         calendar_sync: calendarSync

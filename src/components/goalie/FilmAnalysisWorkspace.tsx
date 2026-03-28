@@ -191,8 +191,27 @@ export function FilmAnalysisWorkspace({
     const updatedClips = [...clips];
     const clip = updatedClips[activeClipIndex];
     clip.netX = x; clip.netY = y;
+    setClips(updatedClips);
+    // Stay on net step until result is assigned
+  };
+
+  const handleResultAndNext = (newType: ShotResult) => {
+    if (activeClipIndex === null) return;
+    const updatedClips = [...clips];
+    const clip = updatedClips[activeClipIndex];
+    
+    // Assign Result
+    clip.type = newType;
     clip.status = 'plotted';
     setClips(updatedClips);
+    
+    // Auto Next
+    if (activeClipIndex < clips.length - 1) {
+        setTimeout(() => jumpToClip(activeClipIndex + 1), 300);
+    } else {
+        // All clips done, highlight the confirm button
+        setPlotStep('complete');
+    }
   };
 
   const setClipType = (index: number, newType: ShotResult) => {
@@ -201,48 +220,11 @@ export function FilmAnalysisWorkspace({
     setClips(updatedClips);
   };
 
-  // 1. Session Type Selection Screen
-  if (!sessionType) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-[600px] gap-8 p-12 bg-background border border-border/30 rounded-[3rem] text-center animate-in fade-in zoom-in-95 duration-700">
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Video size={40} className="text-primary" />
-            </div>
-            <div className="max-w-md">
-                <h2 className="text-3xl font-black text-foreground uppercase tracking-tighter mb-4">Select Session Type</h2>
-                <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest leading-relaxed">Choose how you want to breakdown this film today.</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl mt-8">
-                <button 
-                    onClick={() => setSessionType('full_game')}
-                    className="group bg-card/40 border border-border/30 rounded-[2.5rem] p-10 hover:border-primary/50 transition-all text-left flex flex-col gap-6"
-                >
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        <LayoutList size={24} />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-black uppercase tracking-tight text-foreground mb-2">Full Game Report</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-loose">Chart every shot and generate a seasonal aggregate report.</p>
-                    </div>
-                </button>
- 
-                <button 
-                    onClick={() => setSessionType('clips')}
-                    className="group bg-card/40 border border-border/30 rounded-[2.5rem] p-10 hover:border-primary/50 transition-all text-left flex flex-col gap-6"
-                >
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        <Film size={24} />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-black uppercase tracking-tight text-foreground mb-2">Individual Clips</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-loose">Annotate specific high-performance moments and highlights.</p>
-                    </div>
-                </button>
-            </div>
-        </div>
-    );
-  }
+  // 1. Session Type Selection - NOW INTEGRATED into Header to avoid "second page"
+  // Defaulting sessionType to 'clips' to start immediately
+  useEffect(() => {
+    if (!sessionType) setSessionType('clips');
+  }, [sessionType]);
 
   // 2. Final Report Screen
   if (showReport) {
@@ -447,44 +429,89 @@ export function FilmAnalysisWorkspace({
                 </div>
             )}
 
-            {/* PLOTTING MAPS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className={`bg-card/40 border border-border/30 rounded-[2.5rem] p-8 pb-8 transition-all duration-300 relative ${plotStep === 'field' ? 'ring-2 ring-primary/40 border-primary/40' : 'opacity-80'}`}>
-                    <div className="text-center mb-6">
-                        <span className={`text-[11px] font-black uppercase tracking-[.5em] ${plotStep === 'field' ? 'text-primary' : 'text-foreground/40'}`}>ZONE</span>
+            {/* UNIFIED PLOTTING COMMAND CENTER (Single Screen Interaction) */}
+            <div className={`bg-card/40 border-2 rounded-[3.5rem] p-4 transition-all duration-300 ${plotStep === 'complete' ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-border/30'}`}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 p-8">
+                    {/* Step 1: Shot Origin (Surface) */}
+                    <div className={`flex flex-col gap-6 transition-all ${plotStep === 'field' ? 'scale-105 active-ring' : 'opacity-60 scale-100'}`}>
+                        <div className="flex items-center justify-between px-4">
+                           <span className="text-[11px] font-black uppercase tracking-[.4em] text-white/50">1. Plot Origin</span>
+                           {activeClip?.plottedX !== undefined && <CheckCircle size={16} className="text-emerald-500" />}
+                        </div>
+                        <div className="bg-black/20 rounded-[2.5rem] p-12 border border-white/5 flex items-center justify-center">
+                            <GameAnalysisSurface 
+                                sport={sport}
+                                view="field"
+                                interactive={true}
+                                onPlotShot={handlePlotField}
+                                shots={activeClip?.plottedX ? [{
+                                    id: 't1', gameId: 't', sport, result: (activeClip.type === 'goal' ? 'goal' : 'save') as ShotResult, 
+                                    shotType: 'wrist', originX: activeClip.plottedX, originY: activeClip.plottedY || 0,
+                                    isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false, period: 1
+                                }] : []}
+                            />
+                        </div>
                     </div>
-                    <div className="w-full flex items-center justify-center">
-                        <GameAnalysisSurface 
-                            sport={sport}
-                            view="field"
-                            interactive={true}
-                            onPlotShot={handlePlotField}
-                            shots={activeClip?.plottedX ? [{
-                                id: 't1', gameId: 't', sport, result: (activeClip.type === 'goal' ? 'goal' : 'save') as ShotResult, 
-                                shotType: 'wrist', originX: activeClip.plottedX, originY: activeClip.plottedY || 0,
-                                isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false, period: 1
-                            }] : []}
-                        />
+
+                    {/* Step 2: Target (Net) */}
+                    <div className={`flex flex-col gap-6 transition-all ${plotStep === 'net' ? 'scale-105 active-ring' : 'opacity-60 scale-100'}`}>
+                        <div className="flex items-center justify-between px-4">
+                           <span className="text-[11px] font-black uppercase tracking-[.4em] text-white/50">2. Plot Target</span>
+                           {activeClip?.netX !== undefined && <CheckCircle size={16} className="text-emerald-500" />}
+                        </div>
+                        <div className="bg-black/20 rounded-[3rem] p-12 border border-white/5 flex items-center justify-center">
+                            <GameAnalysisSurface 
+                                sport={sport}
+                                view="net"
+                                interactive={true}
+                                onPlotShot={handlePlotNet}
+                                shots={activeClip?.netX ? [{
+                                    id: 't2', gameId: 't', sport, result: (activeClip.type === 'goal' ? 'goal' : 'save') as ShotResult,
+                                    shotType: 'wrist', originX: 0, originY: 0, targetX: activeClip.netX, targetY: activeClip.netY || 0,
+                                    isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false, period: 1
+                                }] : []}
+                            />
+                        </div>
                     </div>
                 </div>
 
-                <div className={`bg-card/40 border border-border/30 rounded-[2.5rem] p-8 pb-8 transition-all duration-300 relative ${plotStep === 'net' ? 'ring-2 ring-primary/40 border-primary/40' : 'opacity-80'}`}>
-                    <div className="text-center mb-6">
-                        <span className={`text-[11px] font-black uppercase tracking-[.5em] ${plotStep === 'net' ? 'text-primary' : 'text-foreground/40'}`}>NET</span>
-                    </div>
-                    <div className="w-full flex items-center justify-center">
-                        <GameAnalysisSurface 
-                            sport={sport}
-                            view="net"
-                            interactive={true}
-                            onPlotShot={handlePlotNet}
-                            shots={activeClip?.netX ? [{
-                                id: 't2', gameId: 't', sport, result: (activeClip.type === 'goal' ? 'goal' : 'save') as ShotResult,
-                                shotType: 'wrist', originX: 0, originY: 0, targetX: activeClip.netX, targetY: activeClip.netY || 0,
-                                isShorthanded: false, isPowerPlay: false, hasTraffic: false, isOddManRush: false, period: 1
-                            }] : []}
-                        />
-                    </div>
+                {/* Step 3: Result Selection (Action Bar) */}
+                <div className="px-8 pb-12 flex flex-col items-center gap-8">
+                     <div className="h-[1px] w-full bg-white/5" />
+                     <div className="w-full max-w-2xl">
+                        <div className="flex flex-col gap-6">
+                            <span className="text-[10px] font-black uppercase tracking-[.5em] text-center text-white/40 mb-2">3. Assign Match Event & Progress</span>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                <button 
+                                    onClick={() => handleResultAndNext('save')}
+                                    className={`py-6 md:py-10 rounded-[2.5rem] border-2 font-black uppercase tracking-[.2em] text-base transition-all flex flex-col items-center gap-4 active:scale-95 shadow-2xl ${
+                                        activeClip?.type === 'save' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-white/5 border-white/10 text-emerald-500 hover:bg-emerald-500/10'
+                                    }`}
+                                >
+                                    <Shield size={28} />
+                                    Save
+                                </button>
+                                <button 
+                                    onClick={() => handleResultAndNext('goal')}
+                                    className={`py-6 md:py-10 rounded-[2.5rem] border-2 font-black uppercase tracking-[.2em] text-base transition-all flex flex-col items-center gap-4 active:scale-95 shadow-2xl ${
+                                        activeClip?.type === 'goal' ? 'bg-red-500 text-white border-red-400' : 'bg-white/5 border-white/10 text-red-500 hover:bg-red-500/10'
+                                    }`}
+                                >
+                                    <Plus size={28} className="rotate-45" />
+                                    Goal
+                                </button>
+                                <button 
+                                    onClick={() => handleResultAndNext('clear')}
+                                    className={`col-span-2 md:col-span-1 py-6 md:py-10 rounded-[2.5rem] border-2 font-black uppercase tracking-[.2em] text-sm transition-all flex flex-col items-center gap-4 active:scale-95 shadow-2xl ${
+                                        activeClip?.type === 'clear' ? 'bg-white/20 text-white border-white/30' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <Repeat size={24} />
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                     </div>
                 </div>
             </div>
         </div>
@@ -550,87 +577,15 @@ export function FilmAnalysisWorkspace({
                                 </div>
                             </button>
                             
-                            <div className="flex gap-1.5 px-1 py-1 flex-wrap">
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setClipType(i, 'save'); }}
-                                    className={`px-3 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest transition-all ${
-                                        clip.type === 'save' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500' : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:text-foreground'
-                                    }`}
-                                >
-                                    Save
-                                </button>
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setClipType(i, 'goal'); }}
-                                    className={`px-3 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest transition-all ${
-                                        clip.type === 'goal' ? 'bg-red-500/10 border-red-500/50 text-red-500' : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:text-foreground'
-                                    }`}
-                                >
-                                    Goal
-                                </button>
-                                {(sport === 'soccer' || sport.includes('lacrosse')) && (
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); setClipType(i, 'clear'); }}
-                                        className={`px-3 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest transition-all ${
-                                            clip.type === 'clear' ? 'bg-white/10 border-white/30 text-white' : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:text-foreground'
-                                        }`}
-                                    >
-                                        Clear
-                                    </button>
-                                )}
-                                
-                                <select
-                                    value={clip.period || 1}
-                                    onChange={(e) => {
-                                        const updated = [...clips];
-                                        updated[i].period = parseInt(e.target.value);
-                                        setClips(updated);
-                                    }}
-                                    className="bg-white/5 border border-white/10 rounded-full text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 text-muted-foreground outline-none hover:border-primary/50 transition-colors cursor-pointer appearance-none text-center"
-                                >
-                                    {sport === 'soccer' ? (
-                                        <><option className="bg-card" value="1">H1</option><option className="bg-card" value="2">H2</option><option className="bg-card" value="3">ET1</option><option className="bg-card" value="4">ET2</option><option className="bg-card" value="5">PKs</option></>
-                                    ) : sport === 'hockey' ? (
-                                        <>
-                                            <option className="bg-card" value="1">P1</option>
-                                            <option className="bg-card" value="2">P2</option>
-                                            <option className="bg-card" value="3">P3</option>
-                                            <option className="bg-card" value="5">OT</option>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <option className="bg-card" value="1">Q1</option>
-                                            <option className="bg-card" value="2">Q2</option>
-                                            <option className="bg-card" value="3">Q3</option>
-                                            {sport.includes('lacrosse') && <option className="bg-card" value="4">Q4</option>}
-                                            <option className="bg-card" value="5">OT</option>
-                                        </>
-                                    )}
-                                </select>
-                                
-                                <select
-                                    value={clip.shotType || 'standard'}
-                                    onChange={(e) => {
-                                        const updated = [...clips];
-                                        updated[i].shotType = e.target.value;
-                                        setClips(updated);
-                                    }}
-                                    className="flex-1 bg-muted/30 border border-border/50 rounded-xl text-[9px] font-black uppercase tracking-tighter px-2 outline-none hover:border-primary/50 transition-colors"
-                                >
-                                    <option value="standard">Shot Type</option>
-                                    {sport.includes('hockey') ? (
-                                        <>
-                                            <option value="wrist">Wrist</option><option value="slap">Slap</option><option value="snap">Snap</option><option value="backhand">Backhand</option><option value="tip">Tip</option><option value="deflection">Deflection</option>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <option value="overhand">Overhand</option><option value="sidearm">Sidearm</option><option value="underhand">Underhand</option><option value="bounce">Bounce</option><option value="behind-back">BTB</option><option value="shovel">Shovel</option>
-                                        </>
-                                    )}
-                                </select>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                             {/* Compact Timeline Info - No redundant buttons here anymore */}
+                             <div className="flex gap-4 px-1 py-1 text-[9px] font-mono text-white/20 uppercase tracking-widest leading-none">
+                                 <span>{activeClipIndex === i ? 'EDITING' : clip.status === 'plotted' ? 'TAGGED' : 'PENDING'}</span>
+                                 <span>•</span>
+                                 <span>{clip.period ? `P${clip.period}` : 'PREP'}</span>
+                             </div>
+                         </div>
+                     ))}
+                 </div>
 
                 <div className="p-6 border-t border-border/30">
                     <Button 

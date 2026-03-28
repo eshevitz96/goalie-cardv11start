@@ -9,17 +9,21 @@ import { supabase } from "@/utils/supabase/client";
 
 interface GameFilmUploadProps {
     rosterId: string;
+    sport: string;
     title?: string;
     events?: { id: string; name: string }[];
     onUploadComplete?: (data: any) => void;
 }
 
-export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events = [], onUploadComplete }: GameFilmUploadProps) {
+export function GameFilmUpload({ rosterId, sport, title = "Game Film Analysis", events = [], onUploadComplete }: GameFilmUploadProps) {
+    const [stage, setStage] = useState<'event' | 'upload'>(events.length === 0 ? 'event' : 'event'); // Force event selection check
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [analysisType, setAnalysisType] = useState<'shot' | 'play' | null>(null);
     const [associatedEventId, setAssociatedEventId] = useState(events.length > 0 ? events[0].id : '');
+    const [isCreatingNewEvent, setIsCreatingNewEvent] = useState(events.length === 0);
+    const [newEventData, setNewEventData] = useState({ name: '', type: 'game' as const, date: new Date().toISOString().split('T')[0], location: '' });
     const [showSuccess, setShowSuccess] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,26 +37,40 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events 
 
     const handleUpload = async () => {
         if (selectedFiles.length === 0 || !analysisType) return;
+        
+        // 1. Determine Event ID (Create New if needed)
+        let targetEventId = associatedEventId;
+        
         setIsUploading(true);
         setUploadProgress(0);
 
-        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (Free Supabase Limit)
-        const oversized = selectedFiles.find(f => f.size > MAX_FILE_SIZE);
-        if (oversized) {
-            alert(`File ${oversized.name} is too large. Free tier limit is 50MB per clip. Please trim it before uploading.`);
-            setIsUploading(false);
-            return;
-        }
-
-        const publicUrls: string[] = [];
-
         try {
+            if (isCreatingNewEvent) {
+                const { createEvent } = await import("@/app/actions");
+                const res = await createEvent(rosterId, { 
+                    name: newEventData.name, 
+                    type: newEventData.type, 
+                    date: new Date(newEventData.date).toISOString(), 
+                    location: newEventData.location,
+                    sport: sport
+                });
+                if (!res.success) throw new Error(res.error);
+                targetEventId = res.event.id;
+            }
+
+            if (!targetEventId) throw new Error("No Event ID found. Please select or create an event.");
+
+            // 2. Upload Files
+            const MAX_FILE_SIZE = 50 * 1024 * 1024;
+            const oversized = selectedFiles.find(f => f.size > MAX_FILE_SIZE);
+            if (oversized) throw new Error(`File ${oversized.name} is too large (>50MB).`);
+
+            const publicUrls: string[] = [];
             for (let i = 0; i < selectedFiles.length; i++) {
                 const file = selectedFiles[i];
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${rosterId}_${Date.now()}_clip${i}.${fileExt}`;
                 
-                // Real Supabase Upload
                 const { error } = await supabase.storage
                     .from('game-film')
                     .upload(fileName, file, { cacheControl: '3600', upsert: false });
@@ -70,172 +88,206 @@ export function GameFilmUpload({ rosterId, title = "Game Film Analysis", events 
             setIsUploading(false);
             setShowSuccess(true);
             if (onUploadComplete) onUploadComplete({ 
-                file: selectedFiles[0], // pass the first one backwards compat
                 type: analysisType, 
                 url: publicUrls.join(','), 
-                eventId: associatedEventId 
+                eventId: targetEventId 
             });
             
         } catch (error: any) {
             console.error("Upload Error:", error);
-            alert("Upload failed: " + error.message);
+            alert("Workflow Error: " + error.message);
             setIsUploading(false);
         }
     };
 
     return (
-        <div className="glass rounded-3xl p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+        <div className="glass rounded-[2rem] p-8 border border-white/5 relative overflow-hidden bg-card/60">
+            <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
                 <Film size={84} className="text-foreground" />
             </div>
 
-            <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <Film size={20} />
+            <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                    <Film size={24} />
                 </div>
                 <div>
-                    <h3 className="font-bold text-lg text-foreground leading-tight">{title}</h3>
-                    <p className="text-xs text-muted-foreground">Upload sequence of clips for Coach OS charting</p>
+                    <h3 className="font-black text-xl text-foreground tracking-tight leading-none uppercase">{title}</h3>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 opacity-60">Step {stage === 'event' ? '1' : '2'}: {stage === 'event' ? 'Event Context' : 'File Pipeline'}</p>
                 </div>
             </div>
 
             <div className="space-y-6">
-                {/* 1. File Selection */}
-                {selectedFiles.length === 0 ? (
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full aspect-video rounded-2xl border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 hover:border-primary/50 transition-all flex flex-col items-center justify-center gap-3 group"
-                    >
-                        <div className="w-12 h-12 rounded-full bg-background flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
-                            <Upload size={24} />
+                {stage === 'event' ? (
+                    <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-6">
+                        <div className="bg-background/40 border border-white/5 rounded-2xl p-6 space-y-4">
+                            <div className="flex justify-between items-center mb-2 px-1">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Which session are we analyzing?</span>
+                                {events.length > 0 && !isCreatingNewEvent && (
+                                    <button 
+                                        onClick={() => setIsCreatingNewEvent(true)}
+                                        className="text-[9px] font-black text-primary hover:underline uppercase tracking-widest"
+                                    >
+                                        + Add New
+                                    </button>
+                                )}
+                            </div>
+                            
+                            {events.length > 0 && !isCreatingNewEvent ? (
+                                <div className="space-y-4">
+                                    <select
+                                        value={associatedEventId}
+                                        onChange={(e) => setAssociatedEventId(e.target.value)}
+                                        className="w-full bg-card/50 border border-white/10 rounded-xl px-4 py-4 text-xs font-bold uppercase tracking-widest text-foreground outline-none transition-all focus:ring-1 focus:ring-primary h-auto"
+                                    >
+                                        <option value="">Select Existing...</option>
+                                        {events.map((e) => (
+                                            <option key={e.id} value={e.id}>{e.name}</option>
+                                        ))}
+                                    </select>
+                                    <button 
+                                        onClick={() => setIsCreatingNewEvent(true)}
+                                        className="w-full py-4 border border-dashed border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-all"
+                                    >
+                                        Or Create New Game Entry
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <input 
+                                            placeholder="Opponent / Event Name (e. Ranger)"
+                                            value={newEventData.name}
+                                            onChange={(e) => setNewEventData(prev => ({ ...prev, name: e.target.value }))}
+                                            className="w-full bg-card/50 border border-white/10 rounded-xl px-4 py-3 placeholder:text-muted-foreground/30 text-xs font-bold uppercase tracking-widest outline-none transition-all focus:border-primary/50"
+                                        />
+                                        <select 
+                                            value={newEventData.type}
+                                            onChange={(e) => setNewEventData(prev => ({ ...prev, type: e.target.value as any }))}
+                                            className="w-full bg-card/50 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-widest outline-none transition-all focus:border-primary/50"
+                                        >
+                                            <option value="game">Game Session</option>
+                                            <option value="practice">Training / Practice</option>
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <input 
+                                            type="date"
+                                            value={newEventData.date}
+                                            onChange={(e) => setNewEventData(prev => ({ ...prev, date: e.target.value }))}
+                                            className="w-full bg-card/50 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-widest outline-none transition-all focus:border-primary/50"
+                                        />
+                                        <input 
+                                            placeholder="Location (Home/Away)"
+                                            value={newEventData.location}
+                                            onChange={(e) => setNewEventData(prev => ({ ...prev, location: e.target.value }))}
+                                            className="w-full bg-card/50 border border-white/10 rounded-xl px-4 py-3 placeholder:text-muted-foreground/30 text-xs font-bold uppercase tracking-widest outline-none transition-all focus:border-primary/50"
+                                        />
+                                    </div>
+                                    {events.length > 0 && (
+                                        <button 
+                                            onClick={() => setIsCreatingNewEvent(false)}
+                                            className="text-[9px] font-black text-muted-foreground uppercase tracking-widest hover:text-foreground"
+                                        >
+                                            ← Use Existing Event
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                        <div className="text-center">
-                            <span className="text-sm font-bold block">Select Game Clips</span>
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">Hold Shift to select multiple</span>
-                        </div>
-                        <input
-                            type="file"
-                            multiple
-                            ref={fileInputRef}
-                            onChange={handleFileSelect}
-                            accept="video/*"
-                            className="hidden"
-                        />
-                    </button>
-                ) : (
-                    <div className="relative rounded-2xl border border-border bg-muted/20 p-4 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-background flex items-center justify-center text-primary shadow-inner">
-                            <Film size={24} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold truncate">{selectedFiles.length} Clips Selected</div>
-                            <div className="text-[10px] text-muted-foreground">{(selectedFiles.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(1)} MB Total</div>
-                        </div>
-                        <button
-                            onClick={() => setSelectedFiles([])}
-                            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+
+                        <Button 
+                            disabled={!isCreatingNewEvent && !associatedEventId || (isCreatingNewEvent && !newEventData.name)}
+                            onClick={() => setStage('upload')}
+                            className="w-full py-6 bg-foreground text-background font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl hover:scale-[1.02] transition-all disabled:opacity-20"
                         >
-                            <X size={18} />
-                        </button>
-                    </div>
-                )}
-
-                {/* 2. Analysis Types */}
-                <div className="grid grid-cols-2 gap-3">
-                    <button
-                        onClick={() => setAnalysisType('shot')}
-                        disabled={isUploading}
-                        className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-2 ${analysisType === 'shot'
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border bg-card/50 hover:border-border-foreground/20'
-                            }`}
-                    >
-                        <BarChart2 size={18} className={analysisType === 'shot' ? 'text-primary' : 'text-muted-foreground'} />
-                        <div>
-                            <div className="text-sm font-bold">Shot Analysis</div>
-                            <div className="text-[10px] text-muted-foreground">Biometry + Tracking</div>
-                        </div>
-                    </button>
-
-                    <button
-                        onClick={() => setAnalysisType('play')}
-                        disabled={isUploading}
-                        className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-2 ${analysisType === 'play'
-                            ? 'border-blue-500 bg-blue-500/5'
-                            : 'border-border bg-card/50 hover:border-border-foreground/20'
-                            }`}
-                    >
-                        <Eye size={18} className={analysisType === 'play' ? 'text-blue-500' : 'text-muted-foreground'} />
-                        <div>
-                            <div className="text-sm font-bold">Play Analysis</div>
-                            <div className="text-[10px] text-muted-foreground">Tactical + Coach-Eye</div>
-                        </div>
-                    </button>
-                </div>
-
-                {/* 2.5 Event Allocation */}
-                {events.length > 0 && (
-                    <div className="space-y-2">
+                            Next: Upload Sequence <ArrowRight size={14} className="ml-2" />
+                        </Button>
+                    </motion.div>
+                ) : (
+                    <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-6">
                         <div className="flex items-center justify-between px-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Allocate to Event</label>
-                            <button 
-                                onClick={() => {
-                                    // Trigger the parent dashboard's showEventModal if possible,
-                                    // or just allow "No specific event" and create from session.
-                                    // For now, we'll signal the user can create it.
-                                    alert("Session created without event can be linked later in the Workspace!");
-                                }}
-                                className="text-[9px] font-bold text-primary hover:underline"
+                            <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Context: {isCreatingNewEvent ? newEventData.name || 'New Session' : events.find(e => e.id === associatedEventId)?.name}</span>
+                            <button onClick={() => setStage('event')} className="text-[9px] font-black text-muted-foreground hover:text-foreground uppercase tracking-widest">Edit Event</button>
+                        </div>
+
+                        {selectedFiles.length === 0 ? (
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-full aspect-video rounded-3xl border border-dashed border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-primary/40 transition-all flex flex-col items-center justify-center gap-4 group"
                             >
-                                + New Event
+                                <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center text-muted-foreground/30 group-hover:text-primary transition-all shadow-sm">
+                                    <Upload size={32} />
+                                </div>
+                                <div className="text-center">
+                                    <span className="text-xs font-black uppercase tracking-[0.3em] block">Select Clips</span>
+                                    <span className="text-[8px] text-muted-foreground/40 uppercase tracking-[0.4em] font-black mt-2">Hold Shift for batch</span>
+                                </div>
+                                <input type="file" multiple ref={fileInputRef} onChange={handleFileSelect} accept="video/*" className="hidden" />
+                            </button>
+                        ) : (
+                            <div className="bg-background/40 border border-white/5 rounded-2xl p-6 flex items-center gap-6">
+                                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                                    <Film size={24} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-xs font-black uppercase tracking-widest">{selectedFiles.length} Assets Staged</div>
+                                    <div className="text-[9px] font-bold text-muted-foreground uppercase mt-1">{(selectedFiles.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(1)} MB Payload</div>
+                                </div>
+                                <button onClick={() => setSelectedFiles([])} className="p-3 bg-white/5 rounded-xl text-muted-foreground hover:text-red-500 transition-colors">
+                                    <X size={18} />
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <button onClick={() => setAnalysisType('shot')} disabled={isUploading} className={`p-6 rounded-2xl border transition-all text-left flex flex-col gap-3 group ${analysisType === 'shot' ? 'border-primary bg-primary/5' : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.05]'}`}>
+                                <BarChart2 size={20} className={analysisType === 'shot' ? 'text-primary' : 'text-muted-foreground/40 group-hover:text-primary'} />
+                                <div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest">Shot Data</div>
+                                    <div className="text-[8px] font-bold text-muted-foreground uppercase opacity-40 mt-1">Biometry tracking</div>
+                                </div>
+                            </button>
+
+                            <button onClick={() => setAnalysisType('play')} disabled={isUploading} className={`p-6 rounded-2xl border transition-all text-left flex flex-col gap-3 group ${analysisType === 'play' ? 'border-blue-500 bg-blue-500/5' : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.05]'}`}>
+                                <Eye size={20} className={analysisType === 'play' ? 'text-blue-500' : 'text-muted-foreground/40 group-hover:text-blue-500'} />
+                                <div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest">Play Data</div>
+                                    <div className="text-[8px] font-bold text-muted-foreground uppercase opacity-40 mt-1">Tactical Analysis</div>
+                                </div>
                             </button>
                         </div>
-                        <select
-                            value={associatedEventId}
-                            onChange={(e) => setAssociatedEventId(e.target.value)}
-                            className="w-full bg-card/50 border border-border rounded-xl px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
-                        >
-                            <option value="">No specific event (Create New)</option>
-                            {events.map((e) => (
-                                <option key={e.id} value={e.id}>
-                                    {e.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                )}
 
-                {/* 3. Upload Action */}
-                <div className="pt-2">
-                    <AnimatePresence mode="wait">
-                        {showSuccess ? (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center justify-center gap-3 text-emerald-500 font-bold text-sm"
-                            >
-                                <CheckCircle size={18} /> Film Uploaded for Processing
-                            </motion.div>
-                        ) : isUploading ? (
-                            <div className="space-y-3">
-                                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    <span>Uploading...</span>
-                                    <span>{uploadProgress}%</span>
-                                </div>
-                                <ProgressBar value={uploadProgress} height="h-2" />
-                            </div>
-                        ) : (
-                            <Button
-                                onClick={handleUpload}
-                                disabled={selectedFiles.length === 0 || !analysisType}
-                                className="w-full py-4 bg-foreground text-background font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-foreground/5 disabled:opacity-50"
-                            >
-                                <Brain size={16} className="mr-2" /> Begin Charting
-                            </Button>
-                        )}
-                    </AnimatePresence>
-                </div>
+                        <div className="pt-4">
+                            <AnimatePresence mode="wait">
+                                {showSuccess ? (
+                                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 flex items-center justify-center gap-3 text-emerald-400 font-black text-[10px] uppercase tracking-widest">
+                                        <CheckCircle size={20} /> Film Synced for Processing
+                                    </motion.div>
+                                ) : isUploading ? (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                            <span>Processing...</span>
+                                            <span>{uploadProgress}%</span>
+                                        </div>
+                                        <ProgressBar value={uploadProgress} height="h-2" />
+                                    </div>
+                                ) : (
+                                    <Button onClick={handleUpload} disabled={selectedFiles.length === 0 || !analysisType} className="w-full py-6 bg-primary text-primary-foreground font-black uppercase tracking-widest text-[10px] rounded-3xl shadow-2xl hover:scale-[1.05] transition-all disabled:opacity-20">
+                                        <Brain size={18} className="mr-2" /> Initialize Advanced Charting
+                                    </Button>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </motion.div>
+                )}
             </div>
         </div>
     );
 }
+
+const ArrowRight = ({ size, className }: { size: number, className?: string }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M5 12h14" />
+        <path d="m12 5 7 7-7 7" />
+    </svg>
+);

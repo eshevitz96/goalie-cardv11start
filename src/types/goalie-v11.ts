@@ -37,6 +37,9 @@ export interface GoalieContext {
   lastCompleted: Record<ContentType, string>; // ISO string dates
   pendingCoachFeedbackCount: number;
   unchartedVideosCount: number;
+  seasonSavePercentage?: number;
+  historicalDiscipline?: number;
+  currentStreak?: number;
 }
 
 export type ShotResult = 'save' | 'goal' | 'miss' | 'blocked' | 'pipe' | 'penalty-shot' | 'empty-net' | 'clear';

@@ -213,6 +213,35 @@ export async function registerForEvent(rosterId: string, eventId: string) {
     }
 }
 
+export async function createEvent(rosterId: string, eventData: { name: string, type: 'game' | 'practice' | 'training', date: string, location: string, sport: string }) {
+    if (!rosterId || !eventData.name) return { success: false, error: "Missing required event data" };
+
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        
+        // Find user ID from roster first
+        const { data: roster } = await supabaseAdmin.from('roster_uploads').select('linked_user_id').eq('id', rosterId).single();
+        if (!roster?.linked_user_id) return { success: false, error: "Roster not linked to user" };
+
+        const { data, error } = await supabaseAdmin.from('events').insert({
+            name: eventData.name,
+            type: eventData.type,
+            date: eventData.date || new Date().toISOString(),
+            location: eventData.location || 'Local Rink',
+            sport: eventData.sport,
+            created_by: roster.linked_user_id,
+            roster_id: rosterId, // V11 anchor
+            status: 'upcoming'
+        }).select().single();
+
+        if (error) throw error;
+        return { success: true, event: data };
+    } catch (err: any) {
+        console.error("Create Event Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+
 export async function getReflections(rosterId: string) {
     if (!rosterId) return { success: false, error: "Missing Roster ID" };
 
@@ -713,5 +742,23 @@ export async function trackAnalytics(actionName: string, goalieId: string, metad
     } catch (err: any) {
         console.error("[ANALYTICS] Sync failed:", err.message);
         return { success: false };
+    }
+}
+
+export async function fetchRosterEvent(eventId: string) {
+    if (!eventId) return { success: false, error: "Missing event ID" };
+    try {
+        const supabase = getSupabaseAdmin();
+        const { data, error } = await supabase
+            .from('events')
+            .select('*')
+            .eq('id', eventId)
+            .single();
+
+        if (error) throw error;
+        return { success: true, event: data };
+    } catch (err: any) {
+        console.error("Error fetching event:", err);
+        return { success: false, error: err.message };
     }
 }

@@ -188,7 +188,6 @@ export const v11Engine = {
   },
 
   generateExploreGrid(context: GoalieContext): GoalieCardContent[] {
-    // Standard V11 Content Pool
     const pool: GoalieCardContent[] = [
       {
         id: 'film-1', title: 'Chart Recent Saves/Goals', type: 'film', category: 'Analysis',
@@ -217,6 +216,55 @@ export const v11Engine = {
     ];
 
     const scoredPool = this.calculateContentScores(pool, context);
-    return scoredPool.slice(0, 3); // Top 3 personalized items
+    return scoredPool.slice(0, 3);
+  },
+
+  /**
+   * Goalie Index Algorithm (V11 - Logarithmic Saturation)
+   * A non-linear scoring model designed for elite performance tracking.
+   * 
+   * DIMINISHING RETURNS LOGIC:
+   * As the goalie approaches 100, the "Raw Points" required for a +1 Index point 
+   * increases exponentially. This ensures 90+ is reserved for Elite performers,
+   * and 98-99 is statistically near-impossible.
+   * 
+   * Formula: FinalIndex = 100 * (RawWeightedTotal / 100)^1.8
+   */
+  calculateGoalieIndex(context: GoalieContext, isTrainingCompletedToday: boolean) {
+    // 1. Performance Segment (0-100 Raw)
+    // Based on save percentage relative to elite benchmarks
+    const svPct = context.seasonSavePercentage || 0.915;
+    const performanceRaw = Math.min(100, (svPct / 0.95) * 100); 
+
+    // 2. Discipline Segment (0-100 Raw)
+    // Based on session volume and ritual completion
+    const trainingTodayBoost = isTrainingCompletedToday ? 30 : 0;
+    const historicalDiscipline = context.historicalDiscipline || 65; 
+    const disciplineRaw = Math.min(100, historicalDiscipline + trainingTodayBoost);
+
+    // 3. Consistency Segment (0-100 Raw)
+    // Based on training streaks and schedule density
+    const activeStreak = context.currentStreak || 7; 
+    const consistencyRaw = Math.min(100, activeStreak * 12); 
+
+    // 4. Weighted Aggregate (Linear Raw Total)
+    const rawWeightedTotal = (performanceRaw * 0.5) + (disciplineRaw * 0.3) + (consistencyRaw * 0.2);
+
+    // 5. Apply Power-Law Saturation (The Difficulty Curve)
+    // Higher power (e.g., 1.8) = steeper climb at the top end.
+    const difficultyExponent = 1.8;
+    const total = 100 * Math.pow(rawWeightedTotal / 100, difficultyExponent);
+
+    return {
+      total: parseFloat(total.toFixed(0)), // Return rounded integer for the HUD
+      rawScore: rawWeightedTotal.toFixed(1),
+      breakdown: {
+        performance: performanceRaw.toFixed(1),
+        discipline: disciplineRaw.toFixed(1),
+        consistency: consistencyRaw.toFixed(1),
+        exponent: difficultyExponent,
+        status: total > 90 ? 'ELITE' : total > 70 ? 'ADVANCED' : 'DEVELOPING'
+      }
+    };
   }
 };
