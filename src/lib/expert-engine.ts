@@ -3,6 +3,7 @@ export interface DrillDef {
     duration: string;
     type: 'physical' | 'mental' | 'video';
     steps?: string[];
+    reason?: string;
 }
 
 export interface PracticePlan {
