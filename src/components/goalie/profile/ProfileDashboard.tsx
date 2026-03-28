@@ -137,15 +137,6 @@ export function ProfileDashboard({
                         </div>
                     </div>
 
-                    {/* Prominent Edit Button */}
-                    <div className="p-4 border-t border-border">
-                        <Button
-                            onClick={() => setShowEditModal(true)}
-                            className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <Edit2 size={16} /> Edit Profile
-                        </Button>
-                    </div>
                 </motion.div>
 
                 {/* Plan & Coach */}

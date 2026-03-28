@@ -625,6 +625,7 @@ export function FilmAnalysisWorkspace({
                 <div className="p-1">
                   <GameFilmUpload 
                     rosterId={associatedEventId} // Using eventId as generic grouping
+                    sport={sport}
                     title="Add More Game Film"
                     onUploadComplete={(data) => {
                         const newUrls = data.url.split(',');
