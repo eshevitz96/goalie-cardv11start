@@ -168,7 +168,7 @@ export function PrivateAccessSubmissions() {
                                                 <span className="text-[9px] font-black uppercase tracking-widest text-amber-500/60 border border-amber-500/20 px-1.5 py-0.5 rounded-md">Test</span>
                                             )}
                                             <span className={`text-[11px] font-bold ${s.payment_status === 'paid' ? 'text-emerald-500' : 'text-muted-foreground/60'}`}>
-                                                {s.payment_status === 'paid' ? '$1,600.00 Paid' : 'Pending'}
+                                                {s.payment_status === 'paid' ? 'Paid' : 'Pending'}
                                             </span>
                                         </div>
                                     </div>
