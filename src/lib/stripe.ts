@@ -1,11 +1,12 @@
 import Stripe from 'stripe';
 
+const key = process.env.STRIPE_SECRET_KEY;
+
 let stripeInstance: Stripe | null = null;
 
 export const getStripe = () => {
     if (stripeInstance) return stripeInstance;
 
-    const key = process.env.STRIPE_SECRET_KEY;
     if (!key) {
         throw new Error("Missing STRIPE_SECRET_KEY environment variable. Please check your Vercel Dashboard Settings.");
     }
@@ -18,5 +19,5 @@ export const getStripe = () => {
     return stripeInstance;
 };
 
-// Exporting the function for actions to use
-export const stripe = null as any; // No longer the primary way to access stripe
+// Exporting the instance for routes and actions to use
+export const stripe = getStripe();
