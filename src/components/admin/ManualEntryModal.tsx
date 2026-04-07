@@ -444,7 +444,8 @@ export function ManualEntryModal({ isOpen, onClose, editingId, initialData, dbDa
                         </button>
                     ) : (
                         <button
-                            onClick={(e) => handleManualSubmit(e as any)}
+                            type="submit"
+                            form="wizard-form"
                             className="px-6 py-2 bg-emerald-500 text-white hover:bg-emerald-600 rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
                         >
                             <CheckCircle size={14} /> Save to Roster

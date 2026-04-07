@@ -23,13 +23,13 @@ export function ActivateTermsStep({ termsAccepted, setTermsAccepted, onSubmit, e
                 </div>
                 <h1 className="text-3xl font-black text-foreground tracking-tighter uppercase mb-2">Legal Master Agreement</h1>
                 <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-                    By activating your V11 Hub, you agree to the following mandatory safety and data standards.
+                    By activating your Dashboard, you agree to the following mandatory safety and data standards.
                 </p>
             </div>
 
             <LegalAgreementModule 
                 showSubmit={true}
-                submitLabel="Activate My V11 Hub"
+                submitLabel="Activate My Hub"
                 isSubmitting={isLoading}
                 onAccepted={onSubmit}
                 error={error}

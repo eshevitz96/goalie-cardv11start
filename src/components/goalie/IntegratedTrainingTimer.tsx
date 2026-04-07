@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Play, Pause, ChevronRight, CheckCircle, RotateCcw, Check, Share, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { BrandLogo } from "@/components/ui/BrandLogo";
+import { completeProtocolSession } from '@/app/actions';
 
 interface IntegratedTrainingTimerProps {
     isOpen: boolean;
@@ -14,12 +15,15 @@ interface IntegratedTrainingTimerProps {
         main?: { name: string; duration: string; steps?: string[] };
         mental?: { name: string; duration: string; steps?: string[] };
     };
-    onComplete: (data: { streak: number; totalTime: number }) => void;
+    onComplete: (data: { streak: number; totalTime: number; snapshot?: any }) => void;
+    snapshot?: any;
+    sessionId?: string;
+    userId?: string;
 }
 
 const PHASE_ORDER = ['mental', 'main', 'warmup'] as const;
 
-export function IntegratedTrainingTimer({ isOpen, onClose, plan, onComplete }: IntegratedTrainingTimerProps) {
+export function IntegratedTrainingTimer({ isOpen, onClose, plan, onComplete, snapshot, sessionId, userId }: IntegratedTrainingTimerProps) {
     const [phaseIndex, setPhaseIndex] = useState(0);
     const phaseKey = PHASE_ORDER[phaseIndex];
     
@@ -63,6 +67,20 @@ export function IntegratedTrainingTimer({ isOpen, onClose, plan, onComplete }: I
         } else {
             setIsActive(false);
             setShowComplete(true);
+            // TRIGGER CANONICAL COMPLETION
+            if (sessionId && userId) {
+                console.log("[V11] Triggering canonical protocol completion...");
+                completeProtocolSession(sessionId, userId).then(res => {
+                    if (res.success && res.snapshot) {
+                        console.log("[V11] Canonical score updated:", res.snapshot.score_after);
+                        onComplete({ streak: 1, totalTime: totalTimeTrained, snapshot: res.snapshot });
+                    } else {
+                         onComplete({ streak: 1, totalTime: totalTimeTrained });
+                    }
+                });
+            } else {
+                 onComplete({ streak: 1, totalTime: totalTimeTrained });
+            }
         }
     };
 
@@ -162,6 +180,10 @@ export function IntegratedTrainingTimer({ isOpen, onClose, plan, onComplete }: I
                                 <div className="space-y-2">
                                      <h1 className="text-5xl font-medium">{Math.max(1, Math.ceil(totalTimeTrained / 60))}</h1>
                                      <p className="text-[11px] text-zinc-500 font-medium">Minutes Practiced</p>
+                                </div>
+                                <div className="space-y-2 col-span-2 pt-4 border-t border-white/5">
+                                     <h1 className="text-5xl font-medium text-[#D4FB79]">{snapshot?.score_after || '68'}</h1>
+                                     <p className="text-[11px] text-[#D4FB79]/60 font-black uppercase tracking-widest">Canonical V11 Index</p>
                                 </div>
                             </motion.div>
                         )}

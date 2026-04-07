@@ -40,12 +40,14 @@ import { GameReport } from "@/components/goalie/GameReport";
 import { CoachRequestModal } from "@/components/goalie/card/CoachRequestModal";
 import { GoalieIndexBriefing } from "@/components/goalie/GoalieIndexBriefing";
 
-// V11 Algorithm & Components
+// Algorithm & Components
 import { v11Engine } from "@/lib/v11-engine";
+import { startProtocolSession, completeGameSession } from '@/app/actions';
+import { getGoaliePerformanceStats } from "@/app/performance-actions";
 import { getSportTerms } from "@/utils/sport-language";
 import { GoalieContext, ShotEvent } from "@/types/goalie-v11";
 import { GameAnalysisSurface } from "@/components/goalie/GameAnalysisSurface";
-import { V11StatWidget } from "@/components/goalie/V11StatWidget";
+import { PerformanceStatWidget } from "@/components/goalie/PerformanceStatWidget";
 
 // Utils
 import { isPastSeniorSeason } from "@/utils/role-logic";
@@ -63,6 +65,7 @@ interface GoalieDashboardProps {
     onLogAction: (actionName: string) => void;
     journalPrefill: string | null;
     onCoachUpdate: () => void;
+    isDataLoading?: boolean;
 }
 
 export function GoalieDashboard({
@@ -77,7 +80,8 @@ export function GoalieDashboard({
     onRegister,
     onLogAction,
     journalPrefill,
-    onCoachUpdate
+    onCoachUpdate,
+    isDataLoading = false
 }: GoalieDashboardProps) {
 
     const { theme, setTheme } = useTheme();
@@ -98,6 +102,10 @@ export function GoalieDashboard({
     const [lastAnalyzedDate, setLastAnalyzedDate] = useState('');
     const [lastAnalyzedLocation, setLastAnalyzedLocation] = useState('');
     const [lastAnalyzedType, setLastAnalyzedType] = useState('');
+    const [performanceStats, setPerformanceStats] = useState({ streak: 0, games: 0, practices: 0 });
+    const [currentProtocolSessionId, setCurrentProtocolSessionId] = useState<string | null>(null);
+    const [currentGameSessionId, setCurrentGameSessionId] = useState<string | null>(null);
+    const [lastSyncedUserId, setLastSyncedUserId] = useState<string | null>(null);
 
     const [performanceView, setPerformanceView] = useState<'game' | 'season'>('game');
     const [hasCoach, setHasCoach] = useState(true);
@@ -106,7 +114,13 @@ export function GoalieDashboard({
     const [videoUrlToAnalyze, setVideoUrlToAnalyze] = useState<string | null>(null);
     const [selectedEventIdForAnalysis, setSelectedEventIdForAnalysis] = useState<string>('');
     const [isCoachRequestModalOpen, setIsCoachRequestModalOpen] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
     const journalRef = useRef<HTMLDivElement>(null);
+
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+    };
 
     // Basic Click Tracking for Goalie Interactions
     // Persistent Analytics Tracking
@@ -151,7 +165,7 @@ export function GoalieDashboard({
         }
     }, [searchParams, router]);
 
-    // Sync V11 Readiness from Journal Entry
+    // Sync Readiness from Journal Entry
     useEffect(() => {
         const syncReadiness = () => {
             const s = localStorage.getItem('demo_latest_soreness');
@@ -167,6 +181,27 @@ export function GoalieDashboard({
     }, []);
 
     const activeGoalie = goalies[currentIndex];
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            if (activeGoalie?.id && userId) {
+                const res = await getGoaliePerformanceStats(userId, activeGoalie.id);
+                if (res.success) {
+                    setPerformanceStats({
+                        streak: res.streak || 0,
+                        games: res.games || 0,
+                        practices: res.practices || 0
+                    });
+                }
+            }
+        };
+
+        fetchStats();
+        // Listen for internal completion events
+        const handleRefresh = () => fetchStats();
+        window.addEventListener('performance_refresh', handleRefresh);
+        return () => window.removeEventListener('performance_refresh', handleRefresh);
+    }, [activeGoalie?.id, userId]);
 
     // 🚀 Critical: Clear Session Data on Sport or Goalie Change 🚀
     useEffect(() => {
@@ -278,9 +313,11 @@ export function GoalieDashboard({
                     <AiCoachRecommendation
                         lastMood={activeGoalie.latestMood}
                         rosterId={activeGoalie.id}
+                        userId={userId}
                         sport={activeGoalie.sport}
                         onLogAction={(action) => {
                             onLogAction(action);
+                            onCoachUpdate(); // Logic for data refresh
                             if (action.includes('Log Training') || action.includes('Log Game Report')) {
                                 setExpandedBlock('journal');
                                 setTimeout(() => journalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
@@ -292,6 +329,8 @@ export function GoalieDashboard({
                         overrideText={journalPrefill || undefined} 
                         isGameday={goalieContext.schedule.nextEventType === 'game'}
                         variant="full"
+                        performanceSnapshot={activeGoalie.performanceSnapshot}
+                        streak={performanceStats.streak}
                     />
                 </div>
 
@@ -322,8 +361,8 @@ export function GoalieDashboard({
                             credits={activeGoalie.credits}
                             session={activeGoalie.session}
                             lesson={activeGoalie.lesson}
-                            games={activeGoalie.stats?.games}
-                            practices={activeGoalie.stats?.practices}
+                            games={performanceStats.games || activeGoalie.stats?.games}
+                            practices={performanceStats.practices || activeGoalie.stats?.practices}
                             sport={activeGoalie.sport}
                             id={activeGoalie.id}
                             className="w-full h-auto shadow-2xl"
@@ -445,12 +484,19 @@ export function GoalieDashboard({
                                     }}
                                     className="cursor-pointer group hover:scale-[1.01] transition-all"
                                 >
-                                    <V11StatWidget 
+                                    <PerformanceStatWidget 
                                         score={performanceView === 'game' 
                                             ? (shotEvents.length > 0 ? Math.round((shotEvents.filter(s => s.result === 'save' || s.result === 'clear').length / shotEvents.length) * 100) : 0)
-                                            : (activeGoalie.stats?.sv ? Math.round(parseFloat(activeGoalie.stats.sv) * 100) : v11Model.readinessScore)}
+                                            : (activeGoalie.performanceSnapshot ? activeGoalie.performanceSnapshot.score_after : (activeGoalie.stats?.sv ? Math.round(parseFloat(activeGoalie.stats.sv) * 100) : v11Model.readinessScore))}
                                         sport={goalieContext.sport}
                                         label={performanceView === 'game' ? "Game Performance" : "Season Average"}
+                                        isLoading={isDataLoading}
+                                        delta={performanceView === 'season' ? (activeGoalie.performanceSnapshot?.score_delta ?? null) : null}
+                                        snapshotLabel={performanceView === 'season' ? (activeGoalie.performanceSnapshot?.summary_label ?? null) : null}
+                                        onEmptyClick={() => {
+                                            trackGoalieAction("empty_state_cta");
+                                            setIsUploadingFilm(true);
+                                        }}
                                         stats={performanceView === 'game' ? [
                                             { 
                                                 label: getSportTerms(goalieContext.sport).saveMetric, 
@@ -463,14 +509,14 @@ export function GoalieDashboard({
                                             { label: "Total Shots", value: shotEvents.length.toString() }
                                         ] : [
                                             { 
-                                                label: getSportTerms(goalieContext.sport).saveMetric, 
-                                                value: activeGoalie.stats?.sv ? activeGoalie.stats.sv.replace('0.', '.') : '.000' 
+                                                label: "Stability", 
+                                                value: activeGoalie.performanceSnapshot?.stability_score || '0' 
                                             },
                                             { 
-                                                label: getSportTerms(goalieContext.sport).averageMetric, 
-                                                value: activeGoalie.stats?.gaa || '0.00' 
+                                                label: "Execution", 
+                                                value: activeGoalie.performanceSnapshot?.execution_score || '0' 
                                             },
-                                            { label: 'Shutouts', value: '2' }
+                                            { label: 'Readiness', value: activeGoalie.performanceSnapshot?.readiness_score || '0' }
                                         ]}
                                     />
                                 </div>
@@ -553,17 +599,7 @@ export function GoalieDashboard({
                     </div>
                 </div>
 
-                {/* Pro Insights / Admin Section */}
-                {(userRole === 'admin' || userRole === 'coach') && (
-                    <div className="md:col-span-2 mt-8 mb-8 border-t border-border/10 pt-12">
-                       {/* Global Training Analytics - Admin Only */}
-                {userRole === 'admin' && (
-                    <div className="col-span-full">
-                        <TrainingInsights />
-                    </div>
-                )}
-                    </div>
-                )}
+
 
             </div>
             
@@ -677,6 +713,10 @@ export function GoalieDashboard({
                                             setIsAnalyzingFilm(false);
                                             setUnchartedCount(0);
                                             
+                                            // Capture canonical game session ID for the confirm button
+                                            if (result.gameSessionId) setCurrentGameSessionId(result.gameSessionId);
+                                            if (result.userId) setLastSyncedUserId(result.userId);
+
                                             // Sync the local state so the dashboard/index updates instantly
                                             setShotEvents(allShotsForReport);
 
@@ -730,13 +770,38 @@ export function GoalieDashboard({
                             />
                             <div className="flex justify-center mt-12 mb-20">
                                 <Button 
-                                    onClick={() => {
+                                    onClick={async () => {
+                                        // CANONICAL: Complete Game Session → triggers scoring path
+                                        const gsId = currentGameSessionId;
+                                        const uid = lastSyncedUserId || userId;
+                                        if (gsId && uid) {
+                                            console.log('[PERFORMANCE] Closing game session:', gsId);
+                                            const result = await completeGameSession(gsId, uid);
+                                            if (result.success) {
+                                                window.dispatchEvent(new CustomEvent('performance_refresh'));
+                                                const snap = (result as any).snapshot;
+                                                if (snap?.score_before != null && snap?.score_after != null) {
+                                                    showToast(`${Math.round(snap.score_before)} → ${Math.round(snap.score_after)}`, 'success');
+                                                } else {
+                                                    showToast('Filed.', 'success');
+                                                }
+                                            } else {
+                                                showToast('Saved — index updates on next load.', 'error');
+                                            }
+                                        } else if (userId) {
+                                            // Fallback: no session ID — run sync directly with correct args
+                                            const { syncPerformanceIndex } = await import('@/app/actions');
+                                            await syncPerformanceIndex(userId, 'game_session', 'manual');
+                                            window.dispatchEvent(new CustomEvent('performance_refresh'));
+                                            showToast('Filed.', 'success');
+                                        }
+                                        setCurrentGameSessionId(null);
                                         setShowGameReport(false);
-                                        onCoachUpdate(); // Logic for data refresh
+                                        onCoachUpdate();
                                     }}
                                     className="w-full max-w-sm py-4 bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
                                 >
-                                    Confirm & Sync Season Stats
+                                    Confirm & Sync Stats
                                 </Button>
                             </div>
                         </div>
@@ -761,8 +826,9 @@ export function GoalieDashboard({
                 onClose={() => setShowIndexBriefing(false)} 
                 score={performanceView === 'game' 
                     ? (shotEvents.length > 0 ? Math.round((shotEvents.filter(s => s.result === 'save' || s.result === 'clear').length / shotEvents.length) * 100) : 0)
-                    : (activeGoalie.stats?.sv ? Math.round(parseFloat(activeGoalie.stats.sv) * 100) : v11Model.readinessScore)}
+                    : (activeGoalie.performanceSnapshot ? activeGoalie.performanceSnapshot.score_after : (activeGoalie.stats?.sv ? Math.round(parseFloat(activeGoalie.stats.sv) * 100) : v11Model.readinessScore))}
                 sport={goalieContext.sport}
+                userId={userId}
             />
             <AnimatePresence>
                 {isCoachRequestModalOpen && (
@@ -773,6 +839,30 @@ export function GoalieDashboard({
                         goalieName={activeGoalie.name}
                         goalieSport={activeGoalie.sport}
                     />
+                )}
+            </AnimatePresence>
+
+            {/* Global Toast — fixed position, auto-dismiss */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
+                        className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] px-6 py-3.5 rounded-2xl shadow-2xl border flex items-center gap-3 text-sm font-bold tracking-tight whitespace-nowrap ${
+                            toast.type === 'success' ? 'bg-card border-emerald-500/20 text-foreground' :
+                            toast.type === 'error' ? 'bg-card border-red-500/20 text-foreground' :
+                            'bg-card border-border text-foreground'
+                        }`}
+                    >
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${
+                            toast.type === 'success' ? 'bg-emerald-500' :
+                            toast.type === 'error' ? 'bg-red-500' :
+                            'bg-primary'
+                        }`} />
+                        {toast.message}
+                    </motion.div>
                 )}
             </AnimatePresence>
         </main>

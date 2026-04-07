@@ -389,7 +389,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                         exit={{ height: 0, opacity: 0 }}
                         className="mb-6 bg-muted/30 rounded-2xl p-4 border border-border overflow-hidden"
                     >
-                        {/* THE V11 READINESS INPUTS */}
+                        {/* THE READINESS INPUTS */}
                         <div className="grid grid-cols-2 gap-4 mb-6 pt-2">
                              <div className="space-y-2">
                                 <div className="flex justify-between items-center">

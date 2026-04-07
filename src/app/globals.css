@@ -150,3 +150,40 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--border);
 }
+/* ── Shimmer Skeleton ──────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    color-mix(in srgb, var(--muted), var(--foreground) 8%) 50%,
+    var(--muted) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+
+/* ── Loading Bar Sweep ─────────────────────────────────────────── */
+@keyframes loadbar {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+.loadbar-sweep {
+  animation: loadbar 1.8s ease-in-out infinite;
+}
+
+/* ── Flower Bloom ──────────────────────────────────────────────── */
+@keyframes flowerBloom {
+  0%   { opacity: 0; transform: scale(0.4) rotate(-30deg); filter: blur(4px); }
+  60%  { opacity: 1; transform: scale(1.08) rotate(4deg); filter: blur(0px); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); filter: blur(0px); }
+}
+
+.flower-bloom {
+  animation: flowerBloom 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}

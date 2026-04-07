@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Bell } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
 
 import { useParentData } from "@/hooks/useParentData";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +10,7 @@ import { useToast } from "@/context/ToastContext";
 import { useTheme } from "next-themes";
 import { supabase } from "@/utils/supabase/client";
 import { getUserType } from "@/utils/user-type";
-import { BrandLogo } from "@/components/ui/BrandLogo";
+import { SplashLoader, InlineLoader } from "@/components/ui/Loaders";
 
 import { PaymentList } from "@/components/PaymentList";
 import { ScheduleRequest } from "@/components/ScheduleRequest";
@@ -40,7 +38,14 @@ export default function Dashboard() {
     const { goalies, isLoading, error, fetchMyGoalies } = useParentData();
 
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const refreshData = async (showRefreshIndicator = true) => {
+        if (showRefreshIndicator) setIsRefreshing(true);
+        await fetchMyGoalies(false);
+        setIsRefreshing(false);
+    };
 
     // Redirect if not authenticated
     useEffect(() => {
@@ -78,48 +83,24 @@ export default function Dashboard() {
     // Fetch notifications on mount
     useEffect(() => {
         // Redirect admins to the admin portal if they land here
-        if (auth.userRole === 'admin') {
+        // Skip redirect if ?view=goalie is set (preview mode for admin)
+        const viewParam = typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('view')
+            : null;
+        if (auth.userRole === 'admin' && viewParam !== 'goalie') {
             router.replace('/admin');
             return;
         }
     }, [auth.userRole]);
 
-    // Loading state
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-8 transition-colors duration-500">
-                <BrandLogo textClassName="text-3xl font-medium tracking-tight" />
-                <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="animate-spin text-primary/30" size={32} />
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">Initializing V11 Hub</p>
-                </div>
-            </div>
-        );
-    }
+    // Full screen load
+    if (isLoading) return <SplashLoader />;
 
-    // Data loading or no goalies found
-    if (goalies.length === 0) {
-        return (
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-8 transition-colors duration-500">
-                <BrandLogo textClassName="text-3xl font-medium tracking-tight" />
-                <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="animate-spin text-primary/30" size={32} />
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">Syncing Active Profile</p>
-                </div>
-            </div>
-        );
-    }
+    // Profile still syncing
+    if (goalies.length === 0) return <SplashLoader />;
 
     return (
-        <Suspense fallback={
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground gap-8 transition-colors duration-500">
-                <BrandLogo textClassName="text-3xl font-medium tracking-tight" />
-                <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="animate-spin text-primary/30" size={32} />
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">Preparing Hub</p>
-                </div>
-            </div>
-        }>
+        <Suspense fallback={<SplashLoader />}>
             <GoalieDashboard 
                 goalies={goalies} 
                 userRole={auth.userRole || 'goalie'} 
@@ -130,10 +111,12 @@ export default function Dashboard() {
                 onDismissNotification={() => {}}
                 onLogout={handleLogout}
                 onRegister={handleRegisterGoalie}
-                onLogAction={() => fetchMyGoalies(false)}
-                onCoachUpdate={() => fetchMyGoalies(false)}
+                onLogAction={() => refreshData(false)}
+                onCoachUpdate={() => refreshData(true)}
                 journalPrefill={null}
+                isDataLoading={isLoading}
             />
+            <InlineLoader visible={isRefreshing} />
         </Suspense>
     );
 }

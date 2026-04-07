@@ -37,7 +37,7 @@ export function LandingHero() {
           </div>
           
           <p className="max-w-md text-xl md:text-2xl text-neutral-600 font-medium leading-relaxed">
-            The high-performance platform for elite goalies. 
+            The high-performance platform for goalies. 
             Precision charting, video analysis, and scouting in one editorial interface.
           </p>
 
@@ -61,7 +61,7 @@ export function LandingHero() {
 
           <div className="pt-8 border-t border-neutral-100 w-full">
             <p className="text-sm font-bold uppercase tracking-widest text-neutral-400">
-              Trusted by U+ Tier Goalies
+              Trusted by Top Tier Goalies
             </p>
           </div>
         </motion.div>
@@ -102,7 +102,7 @@ export function LandingHero() {
       {/* Footer / Editorial Fragment */}
       <footer className="absolute bottom-8 left-10 md:left-20 z-10">
         <p className="text-[10px] font-mono uppercase tracking-[0.4em] text-neutral-300">
-          GOALIE CARD V11 / REFINED PERFORMANCE / ©2026
+          GOALIE CARD / REFINED PERFORMANCE / ©2026
         </p>
       </footer>
     </div>

@@ -69,7 +69,7 @@ export default function AdminDashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-8 font-sans">
+        <div className="min-h-screen bg-background text-foreground px-4 py-6 font-sans">
             <AdminHeader
                 currentUser={currentUser}
                 activeTab={activeTab}

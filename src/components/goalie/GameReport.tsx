@@ -1,10 +1,10 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { 
   Download, Share2, TrendingUp, Target, 
-  BarChart3, MapPin, Shield, ChevronRight, Calendar, Film, Maximize2, Edit2
+  BarChart3, MapPin, Shield, ChevronRight, Calendar, Film, Maximize2, Edit2, X, Play
 } from 'lucide-react';
 import { GameAnalysisSurface } from './GameAnalysisSurface';
 import { SupportedSport, ShotEvent, ShotResult } from '@/types/goalie-v11';
@@ -33,6 +33,8 @@ export function GameReport({ sport, opponent, date, shots, stats, location, sess
   const terms = getSportTerms(sport);
   const [locationName, setLocationName] = useState(location || 'Home Arena');
   const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [activeClipShotId, setActiveClipShotId] = useState<string | null>(null);
+  const activeVideoRef = useRef<HTMLVideoElement>(null);
 
   // Dynamically calculate zone stats directly from the tracked clip events
   const displayZones = useMemo(() => {
@@ -96,9 +98,28 @@ export function GameReport({ sport, opponent, date, shots, stats, location, sess
              </span>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Button variant="ghost" className="bg-foreground/5 rounded-full w-12 h-12 p-0 text-foreground hover:bg-foreground/10 border border-border/5"><Share2 size={20} /></Button>
-          <Button variant="ghost" className="bg-foreground/5 rounded-full w-12 h-12 p-0 text-foreground hover:bg-foreground/10 border border-border/5"><Download size={20} /></Button>
+        <div className="flex gap-3 print:hidden">
+          <Button 
+            variant="ghost" 
+            className="bg-foreground/5 rounded-full w-12 h-12 p-0 text-foreground hover:bg-foreground/10 border border-border/5"
+            onClick={() => {
+                if (typeof window !== 'undefined') {
+                    // Quick share logic
+                    const url = window.location.href;
+                    navigator.clipboard.writeText(url);
+                    alert('Card Link Copied to Clipboard');
+                }
+            }}
+          >
+            <Share2 size={20} />
+          </Button>
+          <Button 
+            variant="ghost" 
+            className="bg-foreground/5 rounded-full w-12 h-12 p-0 text-foreground hover:bg-foreground/10 border border-border/5"
+            onClick={() => window.print()}
+          >
+            <Download size={20} />
+          </Button>
         </div>
       </div>
 
@@ -154,8 +175,22 @@ export function GameReport({ sport, opponent, date, shots, stats, location, sess
                     return `${mins}:${secs.toString().padStart(2, '0')}`;
                   };
 
+                  const isActive = activeClipShotId === shot.id;
                   return (
-                    <div key={shot.id} className="grid grid-cols-12 gap-4 items-center bg-card/30 hover:bg-card/50 border border-border/10 rounded-2xl p-4 transition-all">
+                    <div key={shot.id}>
+                      <div
+                        className={`grid grid-cols-12 gap-4 items-center border rounded-2xl p-4 transition-all ${
+                          shot.filmUrl ? 'cursor-pointer' : ''
+                        } ${
+                          isActive
+                            ? 'bg-card/70 border-primary/30'
+                            : 'bg-card/30 hover:bg-card/50 border-border/10'
+                        }`}
+                        onClick={() => {
+                          if (!shot.filmUrl) return;
+                          setActiveClipShotId(isActive ? null : shot.id);
+                        }}
+                      >
                        {/* 1. Time & Meta */}
                        <div className="col-span-2">
                           <div className="bg-foreground/5 text-foreground/80 font-mono text-xs px-2 py-1.5 rounded-lg border border-border/5 text-center mb-1">
@@ -192,15 +227,46 @@ export function GameReport({ sport, opponent, date, shots, stats, location, sess
                           </div>
                        </div>
 
-                       {/* 4. Action / Type */}
+                       {/* 4. Action / Type + Film indicator */}
                        <div className="col-span-2 flex flex-col items-end gap-2 pr-2">
                           <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">{shot.shotType}</span>
                           {shot.filmUrl && (
-                             <div className="w-6 h-6 rounded-lg bg-primary/20 text-primary flex items-center justify-center animate-pulse shadow-2xl">
-                                <Film size={12} />
+                             <div className={`w-6 h-6 rounded-lg flex items-center justify-center shadow-lg transition-all print:hidden ${
+                               isActive
+                                 ? 'bg-primary text-primary-foreground'
+                                 : 'bg-primary/20 text-primary animate-pulse'
+                             }`}>
+                                {isActive ? <X size={11} /> : <Play size={11} fill="currentColor" />}
                              </div>
                           )}
                        </div>
+                      </div>
+
+                      {/* Inline Video Player — expands below the row */}
+                      {isActive && shot.filmUrl && (
+                        <div className="mt-2 mb-3 rounded-2xl overflow-hidden border border-primary/20 bg-black shadow-2xl print:hidden">
+                          <video
+                            ref={activeVideoRef}
+                            key={shot.id}
+                            src={`${shot.filmUrl}#t=${shot.clipStart ?? 0},${shot.clipEnd ?? (shot.clipStart ?? 0) + 8}`}
+                            autoPlay
+                            controls
+                            className="w-full max-h-64 object-contain"
+                            onLoadedMetadata={(e) => {
+                              const vid = e.currentTarget;
+                              vid.currentTime = shot.clipStart ?? 0;
+                              vid.play().catch(() => {});
+                            }}
+                          />
+                          <div className="px-4 py-2 flex items-center gap-3 border-t border-white/5">
+                            <span className={`text-[9px] font-black uppercase tracking-widest ${
+                              shot.result === 'goal' ? 'text-red-400' : 'text-emerald-400'
+                            }`}>{shot.result}</span>
+                            <span className="text-[9px] text-white/30 font-mono">{formatTimestamp(shot.clipStart)}</span>
+                            <span className="text-[9px] text-white/30 uppercase tracking-widest">{shot.shotType}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -213,7 +279,7 @@ export function GameReport({ sport, opponent, date, shots, stats, location, sess
       {/* 4. Advanced Performance Metrics */}
       <div className="px-10 py-12 bg-foreground/[0.01] border-t border-border/10">
         <h3 className="text-sm font-black uppercase tracking-widest mb-10 flex items-center gap-3">
-           <BarChart3 size={20} className="text-primary" /> Advanced Shot Origin Performance
+           <BarChart3 size={20} className="text-primary" /> Advanced Shot Performance Analysis
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-8">
           {displayZones.map((zone) => {
@@ -238,9 +304,9 @@ export function GameReport({ sport, opponent, date, shots, stats, location, sess
 
       {/* 5. Highlight Reel (If Clips Exist) */}
       {shots.some(s => s.filmUrl) && (
-        <div className="px-10 py-12 border-t border-border/10">
+        <div className="px-10 py-12 border-t border-border/10 print:hidden">
            <h3 className="text-sm font-black uppercase tracking-widest mb-8 flex items-center gap-3">
-              <Film size={20} className="text-primary" /> V11 Highlight Reel
+              <Film size={20} className="text-primary" /> Elite Highlight Reel
            </h3>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {shots.filter(s => s.filmUrl).map((shot, i) => (
@@ -277,7 +343,7 @@ export function GameReport({ sport, opponent, date, shots, stats, location, sess
       )}
 
       {/* 6. Coach OS Integration */}
-      <div className="m-10 p-10 bg-primary/[0.03] border border-primary/20 rounded-[2.5rem] flex items-center gap-10 shadow-2xl shadow-primary/5 relative overflow-hidden group">
+      <div className="m-10 p-10 bg-primary/[0.03] border border-primary/20 rounded-[2.5rem] flex items-center gap-10 shadow-2xl shadow-primary/5 relative overflow-hidden group print:hidden">
          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
             <TrendingUp size={120} />
          </div>
@@ -287,7 +353,7 @@ export function GameReport({ sport, opponent, date, shots, stats, location, sess
          <div className="flex-1">
             <h4 className="text-3xl font-black tracking-tighter text-foreground mb-3">Coach OS Update</h4>
             <p className="text-base text-muted-foreground font-medium leading-relaxed max-w-2xl">
-              Based on the goals analyzed from the <strong className="text-foreground">Inside Arc</strong>, your next training protocol has been updated to include <strong className="text-foreground">Lateral Reaction</strong> and <strong className="text-foreground">High-to-Low Recovery</strong> progressions.
+              Based on the goals analyzed from the <strong className="text-foreground">Inside Arc</strong>, your next training protocol has been updated.
             </p>
          </div>
          <Button variant="ghost" className="text-primary hover:text-black hover:bg-primary rounded-full w-14 h-14 p-0 shadow-xl border border-primary/20 transition-all">

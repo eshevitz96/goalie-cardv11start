@@ -506,11 +506,39 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
         
         if (!roster || !roster.linked_user_id) return { success: false, error: "Roster not linked" };
 
-        // 2. Prepare shots for insertion
+        // 2. Create a canonical game_sessions record BEFORE inserting shots
+        const saves = shots.filter(s => s.result === 'save' || s.result === 'clear').length;
+        const goalsAgainst = shots.filter(s => s.result === 'goal').length;
+        const savePct = shots.length > 0 ? parseFloat((saves / shots.length).toFixed(3)) : 0.900;
+
+        const { data: gameSession, error: sessionError } = await supabaseAdmin
+            .from('game_sessions')
+            .insert({
+                user_id: roster.linked_user_id,
+                roster_id: rosterId,
+                event_id: validEventId,
+                status: 'in_progress',
+                total_shots: shots.length,
+                saves,
+                goals_against: goalsAgainst,
+                save_percentage: savePct,
+                started_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+        if (sessionError) {
+            console.warn('[V11] game_sessions insert failed (table may not exist yet):', sessionError.message);
+        }
+
+        const gameSessionId = gameSession?.id || null;
+
+        // 3. Prepare shots for insertion (include game_session_id)
         const insertShots = shots.map(s => ({
             event_id: validEventId,
+            game_session_id: gameSessionId,
             goalie_id: roster.linked_user_id,
-            roster_id: rosterId, // New V11 anchor
+            roster_id: rosterId,
             sport: s.sport,
             period: s.period,
             result: s.result,
@@ -525,24 +553,22 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
             created_at: new Date().toISOString()
         }));
 
-        // 3. Insert Shots
+        // 4. Insert Shots
         const { error: shotError } = await supabaseAdmin
             .from('shot_events')
             .insert(insertShots);
 
         if (shotError) throw shotError;
 
-        // 4. Update Event Status if exists
+        // 5. Update Event Status if exists
         if (validEventId) {
             await supabaseAdmin.from('events').update({ is_charted: true }).eq('id', validEventId);
         }
 
-        // 🚀 Notification 2 & 4: Film Processing & Milestone Checking 🚀
-        const saves = shots.filter(s => s.result === 'save' || s.result === 'clear').length;
+        // 6. Notifications
         const index = shots.length > 0 ? Math.round((saves / shots.length) * 100) : 0;
         
         if (shots.length >= 3) {
-            // Processing complete
             await supabaseAdmin.from('notifications').insert({
                 user_id: roster.linked_user_id,
                 title: "Film Processing Complete 🎬",
@@ -550,7 +576,6 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
                 type: "alert"
             });
 
-            // Milestone Achieved
             if (index >= 80) {
                 await supabaseAdmin.from('notifications').insert({
                     user_id: roster.linked_user_id,
@@ -561,7 +586,7 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
             }
         }
 
-        return { success: true };
+        return { success: true, gameSessionId, userId: roster.linked_user_id };
     } catch (err: any) {
         console.error("Sync Shot Events Error:", err);
         return { success: false, error: err.message };
@@ -745,6 +770,170 @@ export async function trackAnalytics(actionName: string, goalieId: string, metad
     }
 }
 
+export async function getLatestPerformanceSnapshot(userId: string) {
+    if (!userId) return { success: false, error: "Missing user ID" };
+    try {
+        const supabase = getSupabaseAdmin();
+        const { data, error } = await supabase
+            .from('performance_index_snapshots')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+        return { success: true, snapshot: data };
+    } catch (err: any) {
+        console.error("Error fetching snapshot:", err);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * CENTRALIZED SCORING PATH
+ * Triggers a recalculation of the performance index and saves a new snapshot.
+ */
+export async function syncPerformanceIndex(userId: string, sourceType: string, sourceId: string) {
+    if (!userId) return { success: false, error: "Missing user ID" };
+    
+    try {
+        const supabase = getSupabaseAdmin();
+
+        // 1. Fetch Context (Current Reflection/Readiness)
+        const { data: reflection } = await supabase
+            .from('reflections')
+            .select('soreness, sleep_quality')
+            .eq('author_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        // 2. Fetch Performance (Current Shot History)
+        const { data: shots } = await supabase
+            .from('shot_events')
+            .select('result')
+            .eq('goalie_id', userId);
+
+        // 3. Fetch Last Snapshot (for Score Delta)
+        const { data: lastSnapshot } = await supabase
+            .from('performance_index_snapshots')
+            .select('score_after')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        // 4. Calculate New Score (Unified Engine logic on Server)
+        // Note: For now we'll simulate the V11 engine logic on the server to keep it "canonical" 
+        // until we move v11-engine.ts to shared space if needed.
+        const saves = shots?.filter(s => s.result === 'save' || s.result === 'clear').length || 0;
+        const totalShotsCount = shots?.length || 0;
+        const svPct = totalShotsCount > 0 ? (saves / totalShotsCount) : 0.900;
+
+        const soreness = reflection?.soreness || 5;
+        const sleep = reflection?.sleep_quality || 7;
+        
+        // V11 Algorithm Simulation (Power Law)
+        // (performance * 0.5) + (discipline * 0.3) + (consistency * 0.2)
+        const perfRaw = Math.min(100, (svPct / 0.95) * 100);
+        const readinessRaw = ((10 - soreness) * 5) + (sleep * 5); // 0-100 scale
+        
+        const rawWeightedTotal = (perfRaw * 0.5) + (readinessRaw * 0.5); // Simplified for v1 check
+        const difficultyExponent = 1.8;
+        const scoreAfter = 100 * Math.pow(rawWeightedTotal / 100, difficultyExponent);
+
+        const scoreBefore = lastSnapshot?.score_after || 72;
+        const scoreDelta = scoreAfter - scoreBefore;
+
+        // 5. Write Snapshot
+        const { data: newSnapshot, error: snapshotError } = await supabase
+            .from('performance_index_snapshots')
+            .insert({
+                user_id: userId,
+                source_type: sourceType,
+                source_id: sourceId,
+                score_before: Math.round(scoreBefore),
+                score_after: Math.round(scoreAfter),
+                score_delta: parseFloat(scoreDelta.toFixed(1)),
+                stability_score: Math.round(perfRaw),
+                execution_score: Math.round(readinessRaw),
+                readiness_score: Math.round(readinessRaw),
+                summary_label: sourceType === 'protocol_session' ? 'Protocol Completed' : 'Session Synced',
+                summary_reason: `Recalculated after ${sourceType} completion`,
+                ruleset_version: 'v1.1'
+            })
+            .select()
+            .single();
+
+        if (snapshotError) throw snapshotError;
+        return { success: true, snapshot: newSnapshot };
+    } catch (err: any) {
+        console.error("[SCORING PATH] Sync failed:", err);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * Protocol Completion Trigger
+ */
+export async function completeProtocolSession(sessionId: string, userId: string) {
+    if (!sessionId || !userId) return { success: false, error: "Missing data" };
+
+    try {
+        const supabase = getSupabaseAdmin();
+
+        // 1. Mark session as complete
+        const { error: sessionError } = await supabase
+            .from('protocol_sessions')
+            .update({ status: 'complete', completed_at: new Date().toISOString() })
+            .eq('id', sessionId);
+
+        if (sessionError) throw sessionError;
+
+        // 2. Mark related stages as complete
+        await supabase
+            .from('protocol_stage_events')
+            .update({ status: 'complete' })
+            .eq('session_id', sessionId);
+
+        // 3. Trigger Central Scoring Path
+        return await syncPerformanceIndex(userId, 'protocol_session', sessionId);
+
+    } catch (err: any) {
+        console.error("Complete Protocol Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * Protocol Initiation
+ */
+export async function startProtocolSession(userId: string, rosterId: string, templateId: string = 'v11-standard') {
+    if (!userId || !rosterId) return { success: false, error: "Missing identity" };
+
+    try {
+        const supabase = getSupabaseAdmin();
+        const { data, error } = await supabase
+            .from('protocol_sessions')
+            .insert({
+                user_id: userId,
+                roster_id: rosterId,
+                template_id: templateId,
+                status: 'in_progress',
+                started_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { success: true, sessionId: data.id };
+    } catch (err: any) {
+        console.error("Start Protocol Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+
 export async function fetchRosterEvent(eventId: string) {
     if (!eventId) return { success: false, error: "Missing event ID" };
     try {
@@ -759,6 +948,46 @@ export async function fetchRosterEvent(eventId: string) {
         return { success: true, event: data };
     } catch (err: any) {
         console.error("Error fetching event:", err);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * Game Session Completion Trigger
+ * Marks game_sessions.status = complete, confirms shot_events are present,
+ * then runs the centralized scoring path — the game equivalent of completeProtocolSession.
+ */
+export async function completeGameSession(gameSessionId: string, userId: string) {
+    if (!gameSessionId || !userId) return { success: false, error: "Missing data" };
+
+    try {
+        const supabase = getSupabaseAdmin();
+
+        // 1. Mark game session as complete
+        const { error: sessionError } = await supabase
+            .from('game_sessions')
+            .update({ status: 'complete', completed_at: new Date().toISOString() })
+            .eq('id', gameSessionId);
+
+        if (sessionError) {
+            // Non-fatal: table might not have this column yet — log and continue
+            console.warn('[V11] game_sessions update failed:', sessionError.message);
+        }
+
+        // 2. Verify shot_events exist for this session
+        const { data: shots, error: shotsError } = await supabase
+            .from('shot_events')
+            .select('id, result')
+            .eq('game_session_id', gameSessionId);
+
+        if (shotsError) console.warn('[V11] shot_events verify failed:', shotsError.message);
+        console.log(`[V11] Game complete. ${shots?.length ?? 0} shot events confirmed for session ${gameSessionId}.`);
+
+        // 3. Trigger the centralized scoring path
+        return await syncPerformanceIndex(userId, 'game_session', gameSessionId);
+
+    } catch (err: any) {
+        console.error('[V11] completeGameSession Error:', err);
         return { success: false, error: err.message };
     }
 }

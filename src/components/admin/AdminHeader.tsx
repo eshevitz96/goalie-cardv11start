@@ -1,4 +1,5 @@
-import { Database, FileSpreadsheet, BarChart3, MessageSquare, CheckCircle2, CreditCard, Lock } from 'lucide-react';
+import Link from 'next/link';
+import { Database, FileSpreadsheet, BarChart3, MessageSquare, CheckCircle2, CreditCard, Lock, LayoutDashboard } from 'lucide-react';
 
 type AdminTab = 'roster' | 'insights' | 'sessions' | 'feedback' | 'survey' | 'credits' | 'private-access';
 
@@ -8,68 +9,54 @@ interface AdminHeaderProps {
     setActiveTab: (tab: AdminTab) => void;
 }
 
+const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'roster',         label: 'Roster',          icon: <Database size={15} /> },
+    { id: 'sessions',       label: 'Events',           icon: <FileSpreadsheet size={15} /> },
+    { id: 'feedback',       label: 'Feedback',         icon: <MessageSquare size={15} /> },
+    { id: 'survey',         label: 'Survey',           icon: <CheckCircle2 size={15} /> },
+    { id: 'credits',        label: 'Credits',          icon: <CreditCard size={15} /> },
+    { id: 'private-access', label: 'Access',           icon: <Lock size={15} /> },
+    { id: 'insights',       label: 'Insights',         icon: <BarChart3 size={15} /> },
+];
+
 export function AdminHeader({ currentUser, activeTab, setActiveTab }: AdminHeaderProps) {
     return (
-        <header className="max-w-7xl mx-auto mb-12 flex justify-between items-center glass p-6 rounded-2xl">
-            <div>
-                <h1 className="text-4xl font-black tracking-tight text-foreground">
-                    Admin Console
-                </h1>
-                <div className="flex items-center gap-2 mt-2">
-                    <p className="text-muted-foreground font-medium">Master Command Center</p>
+        <header className="max-w-7xl mx-auto mb-8">
+            {/* Top row: title + my card link */}
+            <div className="flex items-center justify-between mb-4 px-1">
+                <div>
+                    <h1 className="text-2xl font-black tracking-tight text-foreground">Admin</h1>
                     {currentUser && (
-                        <>
-                            <span className={`px-2 py-0.5 rounded text-xs uppercase font-bold ${currentUser.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-red-500/10 text-red-500'}`}>
-                                {currentUser.role}
-                            </span>
-                            <span className="text-xs text-muted-foreground">({currentUser.email})</span>
-                        </>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]">
+                            {currentUser.email}
+                        </p>
                     )}
                 </div>
+                <Link
+                    href="/dashboard?view=goalie"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted border border-border text-sm font-semibold text-foreground hover:bg-primary hover:text-primary-foreground transition-all"
+                >
+                    <LayoutDashboard size={14} />
+                    <span>My Card</span>
+                </Link>
             </div>
-            <div className="flex gap-2 bg-muted p-1 rounded-lg border border-border">
-                <button
-                    onClick={() => setActiveTab('roster')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'roster' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                    <Database size={16} /> Roster
-                </button>
-                <button
-                    onClick={() => setActiveTab('sessions')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'sessions' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                    <FileSpreadsheet size={16} /> Event Log
-                </button>
-                <button
-                    onClick={() => setActiveTab('feedback')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'feedback' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                    <MessageSquare size={16} /> Feedback
-                </button>
-                <button
-                    onClick={() => setActiveTab('survey')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'survey' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                    <CheckCircle2 size={16} /> Beta Survey
-                </button>
-                <button
-                    onClick={() => setActiveTab('credits')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'credits' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                    <CreditCard size={16} /> Credits
-                </button>
-                <button
-                    onClick={() => setActiveTab('private-access')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'private-access' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                    <Lock size={16} /> Private Access
-                </button>
-                <button
-                    onClick={() => setActiveTab('insights')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'insights' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                    <BarChart3 size={16} /> Training Dashboard
-                </button>
+
+            {/* Nav tabs — wrap on mobile */}
+            <div className="flex flex-wrap gap-1.5 bg-muted/50 border border-border rounded-xl p-1.5">
+                {TABS.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap
+                            ${activeTab === tab.id
+                                ? 'bg-foreground text-background shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                            }`}
+                    >
+                        {tab.icon}
+                        <span>{tab.label}</span>
+                    </button>
+                ))}
             </div>
         </header>
     );
