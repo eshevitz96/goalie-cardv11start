@@ -7,6 +7,7 @@ import { eventsService } from '@/services/events';
 import { sessionsService } from '@/services/sessions';
 import { coachesService } from '@/services/coaches';
 import { reflectionsService } from '@/services/reflections';
+import { performanceService } from '@/services/performance';
 import { isPastSeniorSeason } from "@/utils/role-logic";
 import { transformRosterToGoalie } from '@/utils/goalie-transform';
 import { DEMO_IDS, DEMO_COACH_ID, DEMO_ADMIN_EMAIL } from "@/utils/demo-utils";
@@ -100,7 +101,8 @@ export function useParentData() {
                 refData,
                 requestsDataRaw,
                 creditsData,
-                shotsDataRaw
+                shotsDataRaw,
+                snapshotData
             ] = await Promise.all([
                 eventsService.fetchUpcoming(),
                 auth.user ? eventsService.fetchRegistrations(auth.user.id) : Promise.resolve([]),
@@ -109,7 +111,8 @@ export function useParentData() {
                 rosterIds.length > 0 ? reflectionsService.fetchByRosterIds(rosterIds) : Promise.resolve([]),
                 rosterIds.length > 0 ? supabase.from('coach_requests').select('*').in('roster_id', rosterIds) : Promise.resolve({ data: [] }),
                 rosterIds.length > 0 ? supabase.from('credit_transactions').select('roster_id, amount').in('roster_id', rosterIds) : Promise.resolve({ data: [] }),
-                auth.userId ? supabase.from('shot_events').select('*').eq('goalie_id', auth.userId) : Promise.resolve({ data: [] })
+                auth.userId ? supabase.from('shot_events').select('*').eq('goalie_id', auth.userId) : Promise.resolve({ data: [] }),
+                auth.userId ? performanceService.fetchLatestSnapshot(supabase, auth.userId) : Promise.resolve(null)
             ]);
 
             const registeredIds = new Set(registeredIdsData?.map(r => r.event_id) || []);
@@ -155,7 +158,8 @@ export function useParentData() {
             const realGoalies = (rosterData || []).map(g =>
                 transformRosterToGoalie(
                     g, null, allEvents, registeredIds, auth.userId,
-                    coachMap, sessionsMap, reflectionsMap, reflectionsContentMap, creditsMap, pendingPaymentMap, shotsDataRaw?.data || []
+                    coachMap, sessionsMap, reflectionsMap, reflectionsContentMap, creditsMap, pendingPaymentMap, shotsDataRaw?.data || [],
+                    snapshotData
                 )
             );
 

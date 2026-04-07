@@ -43,17 +43,61 @@ export function determineRecommendation(
     coachNotes?: string,
     seasonStage?: string,
     careerStage?: string,
-    stats?: { gaa?: string, sv?: string, games?: number }
+    stats?: { gaa?: string, sv?: string, games?: number },
+    performance?: { stability?: number, execution?: number, readiness?: number }
 ): PracticePlan {
     const normalizeText = text.toLowerCase();
 
     // 1. Find all matching rules from the Coach OS Library
-    const matches = EXPERT_RULES.filter(rule => {
+    const matches = [...EXPERT_RULES].filter(rule => {
         const moodMatch = rule.moods.includes(mood as any);
         const keywordMatch = rule.keywords.length === 0 || rule.keywords.some(k => normalizeText.includes(k));
         const sportMatch = !rule.sports || rule.sports.includes(sport.toLowerCase());
         return moodMatch && keywordMatch && sportMatch;
     });
+
+    // 2. Data-Driven Injectors (Elite Engine)
+    if (performance) {
+        if (performance.stability && performance.stability < 70) {
+            matches.push({
+                id: 'low-stability-auto',
+                keywords: [],
+                moods: ['happy', 'neutral', 'frustrated'],
+                priority: 10,
+                recommendation: {
+                    focus: "Stability & Core Foundation",
+                    reason: "Your stability index is currently below threshold. We need to prioritize your base today.",
+                    videoWait: 0,
+                    drill: {
+                        name: "Steady Stance Series",
+                        duration: "10 mins",
+                        type: "physical",
+                        steps: ["Single leg balance (30s each)", "C-Cut stability holds", "Depth management transitions"]
+                    }
+                }
+            });
+        }
+        
+        if (performance.readiness && performance.readiness < 60) {
+            matches.push({
+                id: 'low-readiness-auto',
+                keywords: [],
+                moods: ['happy', 'neutral', 'frustrated'],
+                priority: 11,
+                recommendation: {
+                    focus: "Recovery & Neural Flow",
+                    reason: "Readiness is low. High-intensity is high-risk today. Let's focus on neural flow and mobility.",
+                    videoWait: 0,
+                    drill: {
+                        name: "Neural Reset Mobility",
+                        duration: "12 mins",
+                        type: "physical",
+                        steps: ["Box breathing (5 mins)", "Hip & Ankle active release", "Slow visual tracking (juggling or wall ball)"]
+                    }
+                }
+            });
+        }
+    }
 
     // Sort by priority (high to low)
     matches.sort((a, b) => b.priority - a.priority);

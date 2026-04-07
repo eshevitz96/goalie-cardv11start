@@ -29,6 +29,7 @@ export interface GoalieData {
     feedback: any[];
     latestMood: string;
     latestContent?: string;
+    performanceSnapshot?: any;
 }
 
 export function transformRosterToGoalie(
@@ -43,7 +44,8 @@ export function transformRosterToGoalie(
     reflectionsContentMap: Map<string, string>,
     creditsMap: Map<string, number>,
     pendingPaymentMap: Map<string, any> = new Map(),
-    allShots: any[] = []
+    allShots: any[] = [],
+    performanceSnapshot: any = null
 ): GoalieData {
     // 1. Filter Events
     const goalieSports = g.sport ? g.sport.split(',').map((s: string) => s.trim()) : [];
@@ -152,6 +154,7 @@ export function transformRosterToGoalie(
         events: goalieEvents,
         feedback: feedbackItems,
         latestMood: reflectionsMap.get(g.id) || 'neutral',
-        latestContent: reflectionsContentMap.get(g.id) || ""
+        latestContent: reflectionsContentMap.get(g.id) || "",
+        performanceSnapshot: performanceSnapshot
     };
 }

@@ -7,17 +7,23 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { v11Engine } from "@/lib/v11-engine";
 import { GoalieContext } from "@/types/goalie-v11";
-import { determineRecommendation, PracticePlan, DrillDef } from "@/lib/expert-engine";
+import { determineRecommendation, PracticePlan } from "@/lib/expert-engine";
 import { Button } from "@/components/ui/Button";
 import { useAiContext } from "@/hooks/useAiContext";
 import { LiveModeView } from "./goalie/LiveModeView";
-import { ActiveDrillTimer } from "./goalie/ActiveDrillTimer";
+import { IntegratedTrainingTimer } from "./goalie/IntegratedTrainingTimer";
+import { MentalResetModal } from "./goalie/MentalResetModal";
+import { startProtocolSession } from "@/app/actions";
+import { getRecommendedDrills } from "@/lib/data/drills";
+import { StreakTimeline } from "./goalie/protocol/StreakTimeline";
+import { ProtocolCard } from "./goalie/protocol/ProtocolCard";
+import { StreakDetailModal } from "./goalie/protocol/StreakDetailModal";
 
 export function AiCoachRecommendation({
-    lastMood, recentGames, rosterId, overrideText, sport, isLive, onExit, onComplete, onLogAction, onRecommendationReady, goalieName, isGameday, nextEvent, gradYear, stats,
-    v11Title, customMessage, variant = 'full'
+    lastMood, recentGames, rosterId, userId, overrideText, sport, isLive, onExit, onComplete, onLogAction, onRecommendationReady, goalieName, isGameday, nextEvent, gradYear, stats,
+    v11Title, customMessage, variant = 'full', performanceSnapshot, streak = 0
 }: {
-    lastMood?: string, recentGames?: any[], rosterId?: string, overrideText?: string, sport?: string, isLive?: boolean,
+    lastMood?: string, recentGames?: any[], rosterId?: string, userId?: string | null, overrideText?: string, sport?: string, isLive?: boolean,
     onExit?: () => void, onComplete?: (planFocus?: string) => void,
     onLogAction?: (actionName: string) => void,
     onRecommendationReady?: (rec: any) => void,
@@ -28,7 +34,9 @@ export function AiCoachRecommendation({
     stats?: { gaa?: string, sv?: string, games?: number },
     v11Title?: string,
     customMessage?: string,
-    variant?: 'full' | 'compact'
+    variant?: 'full' | 'compact',
+    performanceSnapshot?: any,
+    streak?: number
 }) {
     const router = useRouter();
     const [plan, setPlan] = useState<PracticePlan | null>(null);
@@ -68,7 +76,21 @@ export function AiCoachRecommendation({
                 : ["Let's work,", "Keep going,", "Stay dialed,", "Locked in,", "Ready,"];
             
             const selectedGreeting = `${options[Math.floor(Math.random() * options.length)]} ${name}`;
-            const generatedPlan = determineRecommendation(textContext, activeMood, sport, isGameday, "", "in-season", "high-school", stats);
+            const generatedPlan = determineRecommendation(
+                textContext, 
+                activeMood, 
+                sport, 
+                isGameday, 
+                "", 
+                "in-season", 
+                "high-school", 
+                stats,
+                performanceSnapshot ? {
+                    stability: performanceSnapshot.stability_score,
+                    execution: performanceSnapshot.execution_score,
+                    readiness: performanceSnapshot.readiness_score
+                 } : undefined
+            );
             
             setCurrentGreeting(selectedGreeting);
             setPlan(generatedPlan);
@@ -76,7 +98,7 @@ export function AiCoachRecommendation({
             localStorage.setItem(cacheKey, JSON.stringify({ plan: generatedPlan, greeting: selectedGreeting, timestamp: Date.now() }));
         }, 1200);
 
-    }, [contextLoading, textContext, activeMood, sport, isGameday, rosterId]);
+    }, [contextLoading, textContext, activeMood, sport, isGameday, rosterId, performanceSnapshot]);
 
     const [sessionActive, setSessionActive] = useState(false);
     const [showMentalModal, setShowMentalModal] = useState(false);
@@ -85,87 +107,39 @@ export function AiCoachRecommendation({
     const [trainingComplete, setTrainingComplete] = useState(false);
     const [isLiveLocal, setIsLiveLocal] = useState(false);
     const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0); 
-    const [breathSettings, setBreathSettings] = useState({ duration: '10 MIN', technique: '4-4-4' });
     const [showStreakModal, setShowStreakModal] = useState(false);
     const [showProtocolCompletion, setShowProtocolCompletion] = useState(false);
     const [completionSlide, setCompletionSlide] = useState(0);
+    const [protocolSessionId, setProtocolSessionId] = useState<string | null>(null);
+    const [latestSnapshot, setLatestSnapshot] = useState<any>(null);
 
-    const daysArr = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     const now = new Date("2026-03-28T14:25:39.000Z");
-    const todayIdx = (now.getDay() + 6) % 7;
-    
-    const currentWeekInfo = useMemo(() => {
-        const start = new Date(now);
-        const day = now.getDay(); // 0 is Sunday
-        // If today is Sunday (0), we want to go back 6 days to Monday.
-        // If today is Monday (1), we want to stay at 0 offset.
-        const diff = now.getDate() - (day === 0 ? 6 : day - 1);
-        start.setDate(diff);
-        
-        const end = new Date(start);
-        end.setDate(start.getDate() + 6);
-        
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const label = `${monthNames[start.getMonth()]} ${start.getDate()} - ${monthNames[end.getMonth()]} ${end.getDate()}`;
-        
-        const days = [];
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(start);
-            d.setDate(start.getDate() + i);
-            days.push({ 
-                day: daysArr[i], 
-                date: d.getDate(), 
-                isToday: d.toDateString() === now.toDateString(),
-                isPast: d < now && d.toDateString() !== now.toDateString()
-            });
-        }
-        return { label, days };
-    }, [now]);
-
-    const [classesTaken, setClassesTaken] = useState(0);
     const [lastTrainingDate, setLastTrainingDate] = useState<string | null>(null);
-    const [dayStreak, setDayStreak] = useState(2);
 
-    useEffect(() => {
-        const savedClasses = localStorage.getItem(`classes_${rosterId}`);
-        const savedLastDate = localStorage.getItem(`last_training_${rosterId}`);
-        if (savedClasses) setClassesTaken(parseInt(savedClasses));
-        if (savedLastDate) {
-            setLastTrainingDate(savedLastDate);
-            const last = new Date(savedLastDate);
-            const diffDays = Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
-            if (diffDays === 0) setTrainingComplete(true);
-            if (diffDays <= 1) setDayStreak(diffDays === 0 ? 2 : 1);
-            else setDayStreak(0);
-        }
-    }, [rosterId]);
+    // Derived Drills
+    const alternativeDrills = useMemo(() => getRecommendedDrills(2), []);
 
-    const handleLogAndComplete = () => {
-        const newClasses = classesTaken + 1;
-        setClassesTaken(newClasses);
+    const handleLogAndComplete = async (customSnapshot?: any) => {
+        if (customSnapshot) setLatestSnapshot(customSnapshot);
+        
         setLastTrainingDate(now.toISOString());
         setTrainingComplete(true);
-        localStorage.setItem(`classes_${rosterId}`, newClasses.toString());
-        localStorage.setItem(`last_training_${rosterId}`, now.toISOString());
+        
+        window.dispatchEvent(new CustomEvent('performance_refresh'));
+
         if (onLogAction) onLogAction('Complete Daily Protocol');
         if (onComplete) onComplete(plan?.focus);
     };
 
-    const handleStartSession = (startIndex: number = 0) => {
+    const handleStartSession = async (startIndex: number = 0) => {
+        if (rosterId) {
+            const res = await startProtocolSession(rosterId, rosterId, 'v11-standard-protocol');
+            if (res.success) setProtocolSessionId(res.sessionId);
+        }
+        
         setCurrentPhaseIndex(startIndex);
         setSessionActive(true);
         setShowProtocolDetail(false);
-    };
-
-    const handleNextPhase = () => {
-        if (currentPhaseIndex < 2) {
-            setCurrentPhaseIndex(prev => prev + 1);
-        } else {
-            setSessionActive(false);
-            setShowProtocolCompletion(true);
-            setCompletionSlide(0);
-            handleLogAndComplete();
-        }
     };
 
     const openProtocolDetail = (protocolData: any) => {
@@ -177,88 +151,6 @@ export function AiCoachRecommendation({
         return <LiveModeView onExit={() => { setIsLiveLocal(false); if (onExit) onExit(); }} onComplete={onComplete} />;
     }
 
-    if (showStreakModal) {
-        return (
-            <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-md flex items-center justify-center p-6 sm:p-12 overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] px-[env(safe-area-inset-left)]"
-            >
-                <div className="w-full max-w-sm bg-[#080808] border border-white/5 rounded-[3.25rem] p-8 flex flex-col gap-10 shadow-[0_20px_100px_rgba(0,0,0,0.8)] relative group">
-                    <button 
-                        onClick={() => setShowStreakModal(false)}
-                        className="absolute -top-12 right-0 md:-right-12 text-white/20 hover:text-white uppercase text-[8px] font-bold tracking-[.4em] transition-colors [-webkit-tap-highlight-color:transparent]"
-                    >
-                        Close [ESC]
-                    </button>
-
-                    {/* Week Navigation */}
-                    <div className="flex items-center justify-between px-2">
-                        <button className="text-white/30 hover:text-white transition-colors"><ChevronLeft size={18} /></button>
-                        <span className="text-[10px] font-medium text-white/50 uppercase tracking-[.45em]">{currentWeekInfo.label}</span>
-                        <button className="text-white/30 hover:text-white transition-colors"><ChevronRight size={18} /></button>
-                    </div>
-
-                    {/* Date Selector Row */}
-                    <div className="grid grid-cols-7 gap-2 text-center pb-2">
-                        {currentWeekInfo.days.map((d, i) => (
-                            <div key={i} className="flex flex-col gap-4 items-center">
-                                <span className="text-[10px] font-medium text-white/40 uppercase">{d.day}</span>
-                                <div className={`w-9 h-9 flex items-center justify-center rounded-xl text-[11px] font-bold transition-all ${
-                                    d.isToday ? 'bg-primary text-white scale-110 shadow-lg shadow-primary/20' : 
-                                    d.isPast ? 'bg-white/[0.08] text-white/90' : 
-                                    'text-white/20'
-                                }`}>
-                                    {d.date}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="h-[0.5px] bg-white/5 w-full -my-2" />
-
-                    {/* Main Performance Metrics */}
-                    <div className="flex gap-16 py-4">
-                        <div className="space-y-1">
-                            <h2 className="text-[5.5rem] font-medium tracking-tighter leading-none text-white">{dayStreak}</h2>
-                            <p className="text-[10px] font-bold uppercase tracking-[.35em] text-white/40">Day Streak</p>
-                        </div>
-                        <div className="space-y-1">
-                            <h2 className="text-[5.5rem] font-medium tracking-tighter leading-none text-white">1</h2>
-                            <p className="text-[10px] font-bold uppercase tracking-[.35em] text-white/40">Week Streak</p>
-                        </div>
-                    </div>
-
-                    <div className="h-[0.5px] bg-white/5 w-full -my-2" />
-
-                    {/* Performance Breakdown Grid */}
-                    <div className="grid grid-cols-4 gap-6 py-2">
-                        {[
-                            { val: dayStreak.toString(), label: "Best Day Streak" },
-                            { val: classesTaken.toString(), label: "Classes Taken" },
-                            { val: (classesTaken * 14).toString(), label: "Minutes Practiced" },
-                            { val: "1", label: "Best Week Streak" }
-                        ].map((stat, i) => (
-                            <div key={i} className="flex flex-col gap-2.5">
-                                <span className="text-2xl font-medium text-white leading-none">{stat.val}</span>
-                                <span className="text-[7.5px] font-bold uppercase tracking-[.15em] text-white/30 leading-tight">
-                                    {stat.label.split(' ').map((word, wi) => (
-                                        <span key={wi} className="block">{word}</span>
-                                    ))}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Secondary Navigation Hint */}
-                    <div className="flex justify-center pt-2">
-                        <ChevronUp className="text-white/10" size={20} />
-                    </div>
-                </div>
-            </motion.div>
-        );
-    }
-
     if (showProtocolCompletion) {
         return (
             <motion.div 
@@ -266,7 +158,6 @@ export function AiCoachRecommendation({
                 animate={{ opacity: 1 }} 
                 className="fixed inset-0 z-[120] bg-[#080808] text-white flex flex-col items-center justify-between p-8 pt-[env(safe-area-inset-top)] pb-[calc(env(safe-area-inset-bottom)+2rem)] overflow-hidden"
             >
-                {/* Protocol Header (Persistent) */}
                 <div className="w-full max-w-sm flex items-start justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 flex items-center justify-center">
@@ -285,7 +176,6 @@ export function AiCoachRecommendation({
                     </button>
                 </div>
 
-                {/* Progress Bar (Persistent) */}
                 <div className="w-full max-w-sm space-y-1 my-4">
                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/40">
                         <span>1/31</span>
@@ -299,7 +189,6 @@ export function AiCoachRecommendation({
                     </div>
                 </div>
 
-                {/* Main Slide Content */}
                 <AnimatePresence mode="wait">
                     {completionSlide === 0 && (
                         <motion.div 
@@ -315,8 +204,8 @@ export function AiCoachRecommendation({
                             </div>
                             
                             <div className="relative">
-                                <h2 className="text-[9.5rem] font-medium tracking-tighter leading-none text-white">{classesTaken}</h2>
-                                <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[.6em] text-white/20">Classes Taken</span>
+                                <h2 className="text-[9.5rem] font-medium tracking-tighter leading-none text-white">{streak}</h2>
+                                <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[.6em] text-white/20">Current Streak</span>
                             </div>
                         </motion.div>
                     )}
@@ -331,10 +220,10 @@ export function AiCoachRecommendation({
                         >
                             <div className="grid grid-cols-2 gap-x-12 gap-y-16 w-full px-4">
                                 {[
-                                    { val: dayStreak.toString(), label: "Day Streak" },
-                                    { val: classesTaken.toString(), label: "Sessions" },
+                                    { val: streak.toString(), label: "Day Streak" },
                                     { val: "1", label: "Best Streak" },
-                                    { val: (classesTaken * 14).toString(), label: "Minutes" }
+                                    { val: "...", label: "Stability" },
+                                    { val: "...", label: "Execution" }
                                 ].map((stat, i) => (
                                     <div key={i} className="flex flex-col items-center gap-1">
                                         <span className="text-6xl font-medium tracking-tighter text-white">{stat.val}</span>
@@ -379,7 +268,9 @@ export function AiCoachRecommendation({
                                         </div>
 
                                         <div className="flex flex-col items-center gap-2">
-                                            <span className="text-[9.5rem] font-medium text-white tracking-tighter leading-none tabular-nums">{idxData.total.toFixed(0)}</span>
+                                            <span className="text-[9.5rem] font-medium text-white tracking-tighter leading-none tabular-nums">
+                                                {latestSnapshot ? Math.round(latestSnapshot.score_after) : idxData.total.toFixed(0)}
+                                            </span>
                                             <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Current Rank</span>
                                         </div>
 
@@ -411,16 +302,13 @@ export function AiCoachRecommendation({
                     )}
                 </AnimatePresence>
 
-                {/* Footer Controls (Persistent) */}
                 <div className="w-full max-w-sm flex flex-col items-center gap-8">
-                    {/* Dots */}
                     <div className="flex gap-2">
                         {[0, 1, 2].map(i => (
                             <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${completionSlide === i ? 'bg-white w-4' : 'bg-white/20'}`} />
                         ))}
                     </div>
 
-                    {/* Actions */}
                     <div className="flex items-center gap-4 w-full">
                         <button className="flex-1 h-16 rounded-full border border-white/10 flex items-center justify-center gap-3 text-[11px] font-bold uppercase tracking-widest hover:bg-white/5">
                             Share
@@ -440,130 +328,26 @@ export function AiCoachRecommendation({
         );
     }
 
-    if (showMentalModal) {
+    if (showMentalModal && plan) {
         return (
-            <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                className="fixed inset-0 z-[110] bg-black text-white p-6 md:p-12 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto"
-            >
-                {/* Minimal Header HUD — REFINED INSTRUMENTAL */}
-                <div className="w-full flex justify-between items-start mb-12 md:mb-16">
-                    <div className="space-y-1">
-                        <h1 className="text-xl md:text-2xl font-black tracking-tight leading-none mb-1 text-white">
-                            {selectedProtocol?.name || "Mental Reset"}
-                        </h1>
-                        <span className="text-[12px] font-black tracking-[.2em] text-white/60">15 MIN</span>
-                    </div>
-                    <button 
-                        onClick={() => setShowMentalModal(false)}
-                        className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"
-                    >
-                        <X size={20} className="text-white/60" />
-                    </button>
-                </div>
-
-                <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col justify-center space-y-8 md:space-y-12 items-center text-center py-4">
-                    
-                    <div className="flex flex-col items-center gap-4 w-full">
-                        {/* Centered Eyebrow above Visuals */}
-                        <span className="text-[10px] font-black uppercase tracking-[.49em] text-white/40">Protocol Sequence</span>
-
-                        {/* Tactical Phase Grid — VISUAL + INSTRUCTIONAL */}
-                        <div className="grid grid-cols-3 gap-6 w-full py-6 border-y border-white/10">
-                        {/* 01: Visual Stillness */}
-                        <div className="flex flex-col items-center gap-6 px-4">
-                            <span className="text-[10px] font-black text-primary/40 tracking-[.5em]">01 VISUAL</span>
-                            <div className="w-16 h-16 rounded-full border border-white/5 flex items-center justify-center relative">
-                                <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)]" />
-                                <motion.div 
-                                    animate={{ scale: [1, 1.8, 1], opacity: [0.3, 0.1, 0.3] }}
-                                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                                    className="absolute inset-0 border border-white/20 rounded-full"
-                                />
-                            </div>
-                            <div className="space-y-2 text-center">
-                                <span className="text-xs font-black uppercase tracking-widest block text-white">Still Gaze</span>
-                                <p className="text-[7.5px] font-bold text-white/40 uppercase tracking-[.2em] leading-relaxed max-w-[100px] mx-auto">
-                                    Fixate on center. Still the optic nerve.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* 02: Breath (Technique-Aware Visual) */}
-                        <div className="flex flex-col items-center gap-6 px-4">
-                            <span className="text-[10px] font-black text-primary/40 tracking-[.5em]">02 BREATH</span>
-                            <div className="w-16 h-16 relative flex items-center justify-center">
-                                {plan?.focus?.toLowerCase().includes('box') ? (
-                                    <svg className="w-full h-full -rotate-90 overflow-visible" viewBox="0 0 100 100">
-                                        <rect x="10" y="10" width="80" height="80" fill="none" stroke="white" strokeWidth="1" strokeOpacity="0.05" />
-                                        <motion.rect
-                                            x="10" y="10" width="80" height="80"
-                                            fill="none" stroke="white" strokeWidth="2"
-                                            strokeDasharray="320"
-                                            animate={{ strokeDashoffset: [320, 0] }}
-                                            transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-                                        />
-                                    </svg>
-                                ) : (
-                                    <div className="relative w-full h-full flex items-center justify-center">
-                                        <motion.div 
-                                            animate={{ scale: [1, 1.6, 1], opacity: [0.6, 0.2, 0.6] }}
-                                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                                            className="w-10 h-10 rounded-full border border-white/40"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="space-y-2 text-center">
-                                <span className="text-xs font-black uppercase tracking-widest block text-white">Rhythm</span>
-                                <p className="text-[7.5px] font-bold text-white/40 uppercase tracking-[.2em] leading-relaxed max-w-[100px] mx-auto">
-                                    Controlled cycle. Optimal heart rate.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* 03: Lock In / Terminal */}
-                        <div className="flex flex-col items-center gap-6 px-4">
-                            <span className="text-[10px] font-black text-primary/40 tracking-[.5em]">03 LOCK IN</span>
-                            <div className="w-16 h-16 rounded-xl border border-white/5 flex items-center justify-center overflow-hidden bg-white/[0.02]">
-                                <motion.div 
-                                    animate={{ y: [-20, 20] }}
-                                    transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-                                    className="w-full h-[1px] bg-primary/40 shadow-[0_0_10px_var(--primary)]"
-                                />
-                            </div>
-                            <div className="space-y-2 text-center">
-                                <span className="text-xs font-black uppercase tracking-widest block text-white">Terminal</span>
-                                <p className="text-[7.5px] font-bold text-white/40 uppercase tracking-[.2em] leading-relaxed max-w-[100px] mx-auto">
-                                    Clear field. Prepare for tracking.
-                                </p>
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-
-                    {/* Primary Engagement Action — Spaced for Visibility */}
-                    <div className="flex flex-col items-center gap-6 pt-2 pb-6 md:pb-0">
-                        <button 
-                            onClick={() => { 
-                                setShowMentalModal(false); 
-                                handleStartSession(0);
-                                if (onLogAction) onLogAction(`Start Protocol: ${selectedProtocol?.name || 'Daily'}`); 
-                            }}
-                            className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-white text-black flex items-center justify-center group hover:scale-[1.08] transition-all shadow-[0_0_80px_rgba(255,255,255,0.15)] active:scale-95 duration-500"
-                        >
-                            <Play fill="currentColor" size={40} className="ml-2 group-hover:scale-110 transition-transform" />
-                        </button>
-
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-black uppercase tracking-[.6em]">Begin Protocol</p>
-                            <span className="text-[8px] text-white/20 uppercase tracking-[.4em] font-bold">Lvl. 1 Calibration</span>
-                        </div>
-                    </div>
-
-                </div>
-            </motion.div>
+            <MentalResetModal 
+                isOpen={showMentalModal}
+                onClose={() => setShowMentalModal(false)}
+                drill={selectedProtocol || { 
+                    name: "Neural Reset", 
+                    duration: "5 MIN", 
+                    type: "mental", 
+                    steps: ["Box Breathing", "Gaze Tuning", "Neural Reset"] 
+                }}
+                snapshot={latestSnapshot}
+                sessionId={protocolSessionId || undefined}
+                userId={userId || undefined}
+                onComplete={(snapshot) => {
+                    handleLogAndComplete(snapshot);
+                    setShowMentalModal(false);
+                    setShowProtocolCompletion(true);
+                }}
+            />
         );
     }
 
@@ -577,22 +361,25 @@ export function AiCoachRecommendation({
     }
 
     if (sessionActive && plan) {
-        const phases: DrillDef[] = [
-            { name: "Breathwork & Reset", duration: "5 MIN", type: "mental", steps: ["Deep nasal inhale", "Hold for 4", "Slow exhale"] },
-            plan.main || { name: "Performance Drill", duration: "10 MIN", type: "physical" },
-            plan.mental || { name: "Mental Review", duration: "5 MIN", type: "mental" }
-        ];
-        const activeDrill = phases[currentPhaseIndex];
+        const phases = {
+                warmup: plan.warmup || { name: "Breathwork & Reset", duration: "5 MIN", steps: ["Deep nasal inhale", "Hold for 4", "Slow exhale"] },
+                main: plan.main || { name: "Performance Drill", duration: "10 MIN" },
+                mental: plan.mental || { name: "Mental Review", duration: "5 MIN" }
+        };
 
         return (
-            <ActiveDrillTimer
-                drillName={activeDrill.name}
-                duration={activeDrill.duration || '5 MIN'}
-                onExit={() => setSessionActive(false)}
-                onNext={handleNextPhase}
-                isLastPhase={currentPhaseIndex === 2}
-                currentStep={currentPhaseIndex + 1}
-                totalSteps={3}
+            <IntegratedTrainingTimer 
+                isOpen={sessionActive}
+                onClose={() => setSessionActive(false)}
+                plan={phases}
+                onComplete={(data) => {
+                    handleLogAndComplete(data.snapshot);
+                    setSessionActive(false);
+                    setShowProtocolCompletion(true);
+                }}
+                snapshot={latestSnapshot}
+                sessionId={protocolSessionId || undefined}
+                userId={userId || undefined}
             />
         );
     }
@@ -635,123 +422,58 @@ export function AiCoachRecommendation({
             animate={{ opacity: 1 }}
             className="space-y-3"
         >
+            <StreakDetailModal 
+                isOpen={showStreakModal}
+                onClose={() => setShowStreakModal(false)}
+                streak={streak}
+                rosterId={rosterId}
+                performanceSnapshot={performanceSnapshot}
+            />
 
-            {/* Primary Protocol Block - COMPACT INSTRUMENTAL */}
             <div className="w-full bg-transparent text-foreground py-10 relative overflow-hidden rounded-none">
                 
-                {/* 1. TOP: Calendar Streak (Instrumental Alignment) */}
-                <div 
-                    onClick={() => setShowStreakModal(true)}
-                    className="flex items-center justify-between mb-10 relative z-10 font-bold uppercase tracking-[.45em] cursor-pointer group"
-                >
-                    <div className="flex items-center gap-2 text-muted-foreground/40 text-[9px] relative">
-                        {/* 
-                            Streak Range Pill - Highly Precise Alignment
-                            Day pitch = w-8 (2rem) + gap-2 (0.5rem) = 2.5rem.
-                        */}
-                        <div 
-                            className="absolute top-1/2 -translate-y-1/2 h-8 bg-foreground/[0.08] rounded-full z-0 transition-all duration-500" 
-                            style={{ 
-                                left: `calc(${todayIdx > 1 ? todayIdx - 2 : 0} * 2.5rem - 0.4rem)`,
-                                width: `calc(${(todayIdx > 1 ? 2 : 0)} * 2.5rem + 2.8rem)` 
-                            }}
-                        />
-                        
-                        {daysArr.map((day, i) => {
-                            const isToday = i === todayIdx;
-                            return (
-                                <div key={i} className="relative flex flex-col items-center w-8 text-center z-10 transition-colors">
-                                    <span className={`text-[11px] w-full block ${isToday ? 'text-foreground font-black' : 'text-foreground/30 font-bold'}`}>{day}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
+                <StreakTimeline 
+                    streak={streak} 
+                    onClick={() => setShowStreakModal(true)} 
+                    className="mb-10"
+                />
 
-                {/* 2. GREETING BLOCK */}
                 <div className="relative z-10 mb-10 px-1">
                     <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-2 leading-none">
-                        Hey, {goalieName?.split(' ')[0] || 'Elliott'}
+                        Hey, {goalieName?.split(' ')[0] || 'Goalie'}
                     </h1>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[.3em] mt-3">
                         Align your physical readiness with your mental focus.
                     </p>
                 </div>
  
-                {/* 3. DAILY PROTOCOL SECTION */}
-                <div 
+                <ProtocolCard 
+                    variant="hero"
+                    title={plan.main?.name || plan.focus || "CORE FUNDAMENTALS"}
+                    description={plan.reason}
+                    duration={plan.main?.duration || "15 MIN"}
+                    stages={["Warmup", "Main", "Mental"]}
                     onClick={() => openProtocolDetail({ 
                         name: plan.main?.name || plan.focus || "CORE FUNDAMENTALS",
-                        goal: "Stabilize your gaze and heart rate to prepare for high-intensity tracking."
+                        goal: plan.reason
                     })}
-                    className={`flex flex-col md:flex-row md:items-end justify-between gap-10 mb-14 relative z-10 px-1 cursor-pointer group/card`}
-                >
-                    <div className="flex-1">
-                        <h2 className="text-3xl md:text-[2.65rem] font-black tracking-[-0.03em] leading-none uppercase -ml-0.5 group-hover/card:text-primary transition-colors">
-                            {plan.main?.name || plan.focus || "CORE FUNDAMENTALS"}
-                        </h2>
-                    </div>
-                    <div className="w-20 h-20 md:w-24 md:h-24 bg-transparent border border-border rounded-full flex items-center justify-center group-hover/card:bg-foreground group-hover/card:text-background transition-all duration-700 hover:scale-105 shadow-xl shrink-0">
-                        <Play fill="currentColor" size={24} className="ml-1" />
-                    </div>
-                </div>
- 
-                <div className="h-[1px] md:h-[1px] bg-border mb-12" />
- 
-                {/* 4. FOOTER: Stages and Duration */}
-                <div className="flex items-start gap-24 relative z-10 font-bold mb-2 px-1">
-                    <div className="space-y-4">
-                        <span className="text-[9px] uppercase text-muted-foreground/40 tracking-[.45em]">Protocol Stages</span>
-                        <div className="flex gap-6 text-[11px] text-foreground uppercase tracking-[.1em] font-black">
-                            <span>Warmup</span>
-                            <span>Main</span>
-                            <span>Mental</span>
-                        </div>
-                    </div>
-                    <div className="space-y-4">
-                        <span className="text-[9px] uppercase text-muted-foreground/40 tracking-[.45em]">Duration</span>
-                        <p className="text-[11px] text-foreground font-black uppercase tracking-widest">15 MIN</p>
-                    </div>
-                </div>
+                />
             </div>
  
-            {/* Alternative Protocols Sections - Persistently Visible */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="w-full bg-transparent py-6 md:py-8 relative overflow-hidden rounded-none transition-all group">
-                    <div 
-                        onClick={() => openProtocolDetail({ 
-                            name: "Visual Gaze Tuning",
-                            goal: "Calibrate neural pathways for rapid cross-crease tracking."
-                        })}
-                        className="group cursor-pointer flex items-center justify-between gap-8 h-full"
-                    >
-                        <div className="flex flex-col gap-2">
-                            <span className="text-[8px] font-bold text-muted-foreground tracking-[.49em] uppercase leading-none">MENTAL WORK • 12 MIN</span>
-                            <h4 className="text-xl md:text-2xl font-black tracking-[-0.03em] uppercase leading-none transition-colors text-foreground">Visual Gaze Tuning</h4>
-                        </div>
-                        <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted-foreground transition-all group-hover:bg-foreground group-hover:text-background shrink-0">
-                            <ArrowRight size={16} />
-                        </div>
-                    </div>
-                </div>
- 
-                <div className="w-full bg-transparent py-6 md:py-8 relative overflow-hidden rounded-none transition-all group">
-                    <div 
+                {alternativeDrills.map(drill => (
+                    <ProtocolCard 
+                        key={drill.id}
+                        variant="minimal"
+                        title={drill.name}
+                        description={drill.category.toUpperCase()}
+                        duration={drill.duration}
                         onClick={() => openProtocolDetail({
-                            name: "Lower Body Excellence",
-                            goal: "Enhance explosive lateral power and structural stability."
+                            name: drill.name,
+                            goal: drill.description
                         })}
-                        className="group cursor-pointer flex items-center justify-between gap-8 h-full"
-                    >
-                        <div className="flex flex-col gap-2">
-                            <span className="text-[8px] font-bold text-muted-foreground tracking-[.49em] uppercase leading-none">PHYSICAL PREP • 20 MIN</span>
-                            <h4 className="text-xl md:text-2xl font-black tracking-[-0.03em] uppercase leading-none transition-colors text-foreground">Lower Body Excellence</h4>
-                        </div>
-                        <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted-foreground transition-all group-hover:bg-foreground group-hover:text-background shrink-0">
-                            <ArrowRight size={16} />
-                        </div>
-                    </div>
-                </div>
+                    />
+                ))}
             </div>
         </motion.div>
     );
