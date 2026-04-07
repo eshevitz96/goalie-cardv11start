@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from "@/utils/supabase/server";
 
 export async function getGoaliePerformanceStats(userId: string, rosterId: string) {
