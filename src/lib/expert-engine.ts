@@ -57,13 +57,14 @@ export function determineRecommendation(
     });
 
     // 2. Data-Driven Injectors (Elite Engine)
+    // These fire at priority 120–121 — above sport tactics (80–85), below safety/burnout (140–150).
     if (performance) {
         if (performance.stability && performance.stability < 70) {
             matches.push({
                 id: 'low-stability-auto',
                 keywords: [],
                 moods: ['happy', 'neutral', 'frustrated'],
-                priority: 10,
+                priority: 120,
                 recommendation: {
                     focus: "Stability & Core Foundation",
                     reason: "Your stability index is currently below threshold. We need to prioritize your base today.",
@@ -77,13 +78,13 @@ export function determineRecommendation(
                 }
             });
         }
-        
+
         if (performance.readiness && performance.readiness < 60) {
             matches.push({
                 id: 'low-readiness-auto',
                 keywords: [],
                 moods: ['happy', 'neutral', 'frustrated'],
-                priority: 11,
+                priority: 121,
                 recommendation: {
                     focus: "Recovery & Neural Flow",
                     reason: "Readiness is low. High-intensity is high-risk today. Let's focus on neural flow and mobility.",
@@ -99,10 +100,44 @@ export function determineRecommendation(
         }
     }
 
+    // 3. Stat-Driven Injectors — fires when tracked metrics are objectively poor
+    if (stats) {
+        const gaa = parseFloat(stats.gaa ?? '0');
+        const sv = parseFloat(stats.sv ?? '0');
+        const hasEnoughGames = (stats.games ?? 0) >= 3;
+
+        if (hasEnoughGames && (gaa > 3.5 || sv < 0.880)) {
+            const statLabel = gaa > 3.5
+                ? `GAA of ${gaa.toFixed(2)}`
+                : `SV% of ${(sv * 100).toFixed(1)}%`;
+            matches.push({
+                id: 'poor-stats-auto',
+                keywords: [],
+                moods: ['happy', 'neutral', 'frustrated'],
+                priority: 95,
+                recommendation: {
+                    focus: "Goal Prevention Fundamentals",
+                    reason: `Your ${statLabel} indicates a structural issue. Today we reset the foundation.`,
+                    videoWait: 0,
+                    drill: {
+                        name: "Positioning Reset",
+                        duration: "12 mins",
+                        type: "physical",
+                        steps: [
+                            "Angle play from 5 shot zones (no rush)",
+                            "Depth management check — challenge line vs. back of crease",
+                            "Lateral recovery to posts with controlled reset"
+                        ]
+                    }
+                }
+            });
+        }
+    }
+
     // Sort by priority (high to low)
     matches.sort((a, b) => b.priority - a.priority);
 
-    // 2. Select the top priority level and pick a random matching rule
+    // 4. Select the top priority level and pick a random matching rule from that tier
     const topPriority = matches.length > 0 ? matches[0].priority : 0;
     const topMatches = matches.filter(m => m.priority === topPriority);
 

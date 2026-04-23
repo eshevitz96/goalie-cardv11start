@@ -824,26 +824,57 @@ export async function syncPerformanceIndex(userId: string, sourceType: string, s
             .limit(1)
             .maybeSingle();
 
-        // 4. Calculate New Score (Unified Engine logic on Server)
-        // Note: For now we'll simulate the V11 engine logic on the server to keep it "canonical" 
-        // until we move v11-engine.ts to shared space if needed.
-        const saves = shots?.filter(s => s.result === 'save' || s.result === 'clear').length || 0;
+        // 4a. Fetch training history to derive discipline and streak (last 60 sessions)
+        const { data: recentSessions } = await supabase
+            .from('protocol_sessions')
+            .select('completed_at')
+            .eq('user_id', userId)
+            .eq('status', 'complete')
+            .not('completed_at', 'is', null)
+            .order('completed_at', { ascending: false })
+            .limit(60);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const sessionDays = new Set((recentSessions ?? []).map((s: { completed_at: string }) => {
+            const d = new Date(s.completed_at);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime();
+        }));
+
+        // Consecutive-day streak (start from yesterday so early-morning doesn't break it)
+        let activeStreak = 0;
+        for (let i = 1; i <= 60; i++) {
+            const checkDay = today.getTime() - i * 86400000;
+            if (sessionDays.has(checkDay)) { activeStreak++; } else { break; }
+        }
+
+        // Historical discipline: % of last 30 days with at least one session
+        const thirtyDaysAgo = today.getTime() - 30 * 86400000;
+        const activeDaysLast30 = Array.from(sessionDays as Set<number>).filter(d => d >= thirtyDaysAgo).length;
+        const historicalDiscipline = sessionDays.size > 0
+            ? Math.min(100, (activeDaysLast30 / 30) * 100)
+            : 50; // neutral default for new users
+
+        // 4b. Calculate New Score — mirrors v11-engine.ts calculateGoalieIndex exactly
+        const saves = shots?.filter((s: { result: string }) => s.result === 'save' || s.result === 'clear').length || 0;
         const totalShotsCount = shots?.length || 0;
-        const svPct = totalShotsCount > 0 ? (saves / totalShotsCount) : 0.900;
+        const svPct = totalShotsCount > 0 ? (saves / totalShotsCount) : 0;
 
         const soreness = reflection?.soreness || 5;
         const sleep = reflection?.sleep_quality || 7;
-        
-        // V11 Algorithm Simulation (Power Law)
-        // (performance * 0.5) + (discipline * 0.3) + (consistency * 0.2)
+
         const perfRaw = Math.min(100, (svPct / 0.95) * 100);
-        const readinessRaw = ((10 - soreness) * 5) + (sleep * 5); // 0-100 scale
-        
-        const rawWeightedTotal = (perfRaw * 0.5) + (readinessRaw * 0.5); // Simplified for v1 check
+        const readinessRaw = ((10 - soreness) * 5) + (sleep * 5);
+        const disciplineRaw = Math.min(100, historicalDiscipline + (sourceType === 'protocol_session' ? 15 : 0));
+        const consistencyRaw = Math.min(100, (Math.log(1 + activeStreak) / Math.log(31)) * 100);
+
+        const rawWeightedTotal = (perfRaw * 0.5) + (disciplineRaw * 0.3) + (consistencyRaw * 0.2);
         const difficultyExponent = 1.8;
         const scoreAfter = 100 * Math.pow(rawWeightedTotal / 100, difficultyExponent);
 
-        const scoreBefore = lastSnapshot?.score_after || 72;
+        const scoreBefore = lastSnapshot?.score_after || 0;
         const scoreDelta = scoreAfter - scoreBefore;
 
         // 5. Write Snapshot
@@ -857,7 +888,7 @@ export async function syncPerformanceIndex(userId: string, sourceType: string, s
                 score_after: Math.round(scoreAfter),
                 score_delta: parseFloat(scoreDelta.toFixed(1)),
                 stability_score: Math.round(perfRaw),
-                execution_score: Math.round(readinessRaw),
+                execution_score: Math.round(disciplineRaw),
                 readiness_score: Math.round(readinessRaw),
                 summary_label: sourceType === 'protocol_session' ? 'Protocol Completed' : 'Session Synced',
                 summary_reason: `Recalculated after ${sourceType} completion`,

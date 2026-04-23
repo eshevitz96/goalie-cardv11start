@@ -183,7 +183,7 @@ export const v11Engine = {
               score *= 3; // Critical priority to review coach feedback
           }
 
-          return { ...item, currentScore: score };
+          return { ...item, currentScore: Math.max(0, score) };
       }).sort((a, b) => (b.currentScore || 0) - (a.currentScore || 0));
   },
 
@@ -232,20 +232,22 @@ export const v11Engine = {
    */
   calculateGoalieIndex(context: GoalieContext, isTrainingCompletedToday: boolean) {
     // 1. Performance Segment (0-100 Raw)
-    // Based on save percentage relative to elite benchmarks
-    const svPct = context.seasonSavePercentage || 0.915;
-    const performanceRaw = Math.min(100, (svPct / 0.95) * 100); 
+    // Normalized against elite benchmark (0.95 SV%). No data = 0, not a default elite score.
+    const svPct = context.seasonSavePercentage ?? 0;
+    const performanceRaw = Math.min(100, (svPct / 0.95) * 100);
 
     // 2. Discipline Segment (0-100 Raw)
-    // Based on session volume and ritual completion
-    const trainingTodayBoost = isTrainingCompletedToday ? 30 : 0;
-    const historicalDiscipline = context.historicalDiscipline || 65; 
+    // Rolling historical discipline + modest same-day completion boost.
+    // Boost is capped at 15 to prevent a single session from swinging the index too hard.
+    const trainingTodayBoost = isTrainingCompletedToday ? 15 : 0;
+    const historicalDiscipline = context.historicalDiscipline ?? 50;
     const disciplineRaw = Math.min(100, historicalDiscipline + trainingTodayBoost);
 
-    // 3. Consistency Segment (0-100 Raw)
-    // Based on training streaks and schedule density
-    const activeStreak = context.currentStreak || 7; 
-    const consistencyRaw = Math.min(100, activeStreak * 12); 
+    // 2. Consistency Segment (0-100 Raw)
+    // Logarithmic curve: 30-day streak = 100 raw. Prevents the linear cap at ~8 days.
+    // 1 day ≈ 15, 7 days ≈ 44, 14 days ≈ 59, 21 days ≈ 68, 30 days = 100.
+    const activeStreak = context.currentStreak ?? 0;
+    const consistencyRaw = Math.min(100, (Math.log(1 + activeStreak) / Math.log(31)) * 100);
 
     // 4. Weighted Aggregate (Linear Raw Total)
     const rawWeightedTotal = (performanceRaw * 0.5) + (disciplineRaw * 0.3) + (consistencyRaw * 0.2);
@@ -256,7 +258,7 @@ export const v11Engine = {
     const total = 100 * Math.pow(rawWeightedTotal / 100, difficultyExponent);
 
     return {
-      total: parseFloat(total.toFixed(0)), // Return rounded integer for the HUD
+      total: parseFloat(total.toFixed(0)),
       rawScore: rawWeightedTotal.toFixed(1),
       breakdown: {
         performance: performanceRaw.toFixed(1),
