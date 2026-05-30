@@ -18,6 +18,13 @@ export default function Dashboard() {
     const [seasonName, setSeasonName] = useState("SEASON NOT SET");
     const [greeting, setGreeting] = useState("");
     const [subline, setSubline] = useState("Show up to the work.");
+    const [hasWeeklyIntention, setHasWeeklyIntention] = useState(false);
+    const [actionCard, setActionCard] = useState({
+        headline: "Set your intention for the week.",
+        subline: "Show up to the work today.",
+        btnText: "Begin",
+        navHref: "/calendar/week"
+    });
 
     useEffect(() => {
         if (!auth.loading && !auth.isAuthenticated) {
@@ -41,9 +48,16 @@ export default function Dashboard() {
                     });
                     setGreeting("Good afternoon, Dev.");
                     setSubline("Local development mode bypass active.");
-                    setGamesCount(0);
+                    setGamesCount(1);
                     setSeasonName("DEV SEASON");
-                    setActiveDays(new Set());
+                    setActiveDays(new Set([0, 2])); // Monday and Wednesday active
+                    setHasWeeklyIntention(true);
+                    setActionCard({
+                        headline: "Maintain high hands and explode on bounce shots.",
+                        subline: "Tap to adjust.",
+                        btnText: "Adjust Focus",
+                        navHref: "/calendar/week"
+                    });
                     setLoading(false);
                     return;
                 }
@@ -95,7 +109,7 @@ export default function Dashboard() {
                     }
                 }
 
-                // 3. Weekly Pulse (Touchpoints from reflections) + subline data
+                // 3. Weekly Intention, Pre-warmups, Post-events, and Pulse logic
                 if (publicUserId) {
                     const now = new Date();
                     const dayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon
@@ -104,95 +118,141 @@ export default function Dashboard() {
                     const mon = new Date(now);
                     mon.setDate(now.getDate() - daysSinceMon);
                     mon.setHours(0,0,0,0);
+                    const monStr = mon.toISOString().split("T")[0];
                     
                     const nextMon = new Date(mon);
                     nextMon.setDate(mon.getDate() + 7);
+                    const nextMonStr = nextMon.toISOString().split("T")[0];
 
-                    // Fetch ALL reflections for this user (for subline: "ever" check + weekly pulse + recent 5-day check)
-                    const { data: allRefRes } = await supabase
-                        .from('reflections')
-                        .select('created_at')
+                    const todayStr = now.toISOString().split("T")[0];
+
+                    // Fetch weekly intention for current week
+                    const { data: intentionRes } = await supabase
+                        .from('weekly_intentions')
+                        .select('intention_text')
                         .eq('user_id', publicUserId)
-                        .order('created_at', { ascending: false });
-                    
-                    // Weekly pulse calculation
-                    const active = new Set<number>();
-                    const weeklyRefs = (allRefRes || []).filter(r => {
-                        const d = new Date(r.created_at);
-                        return d >= mon && d < nextMon;
+                        .eq('week_start_date', monStr)
+                        .maybeSingle();
+
+                    const weeklyIntentionText = intentionRes?.intention_text || null;
+                    setHasWeeklyIntention(!!weeklyIntentionText);
+
+                    // Fetch daily sessions for this week
+                    const { data: weekSessions } = await supabase
+                        .from('daily_sessions')
+                        .select('id, session_date')
+                        .eq('user_id', uid)
+                        .gte('session_date', monStr)
+                        .lt('session_date', nextMonStr);
+
+                    const sessionMap = new Map<string, string>(); // session_id -> session_date
+                    const sessionIds: string[] = [];
+                    (weekSessions || []).forEach(s => {
+                        sessionMap.set(s.id, s.session_date);
+                        sessionIds.push(s.id);
                     });
-                    for (const r of weeklyRefs) {
-                        const d = new Date(r.created_at);
-                        let dayIdx = d.getDay() - 1;
-                        if (dayIdx === -1) dayIdx = 6;
-                        active.add(dayIdx);
+
+                    // Fetch prewarmups and post-events for these session IDs to populate the weekly pulse
+                    let active = new Set<number>();
+                    let todayHasPrep = false;
+                    let todayHasDebrief = false;
+
+                    if (sessionIds.length > 0) {
+                        const { data: prewarmups } = await supabase
+                            .from('daily_prewarmup_entries')
+                            .select('session_id')
+                            .in('session_id', sessionIds);
+
+                        const { data: postevents } = await supabase
+                            .from('daily_post_event_entries')
+                            .select('session_id')
+                            .in('session_id', sessionIds);
+
+                        (prewarmups || []).forEach(pw => {
+                            const dateStr = sessionMap.get(pw.session_id);
+                            if (dateStr) {
+                                const d = new Date(dateStr + "T00:00:00");
+                                let dayIdx = d.getDay() - 1;
+                                if (dayIdx === -1) dayIdx = 6;
+                                active.add(dayIdx);
+                                if (dateStr === todayStr) todayHasPrep = true;
+                            }
+                        });
+
+                        (postevents || []).forEach(pe => {
+                            const dateStr = sessionMap.get(pe.session_id);
+                            if (dateStr) {
+                                const d = new Date(dateStr + "T00:00:00");
+                                let dayIdx = d.getDay() - 1;
+                                if (dayIdx === -1) dayIdx = 6;
+                                active.add(dayIdx);
+                                if (dateStr === todayStr) todayHasDebrief = true;
+                            }
+                        });
                     }
                     setActiveDays(active);
 
-                    // Fetch today's game sessions
-                    const todayStart = new Date(now);
-                    todayStart.setHours(0,0,0,0);
-                    const todayEnd = new Date(now);
-                    todayEnd.setHours(23,59,59,999);
-
+                    // Fetch today's scheduled games
                     const { data: todayGames } = await supabase
                         .from('game_sessions')
-                        .select('created_at')
+                        .select('id, scheduled_time')
                         .eq('user_id', uid)
-                        .gte('created_at', todayStart.toISOString())
-                        .lte('created_at', todayEnd.toISOString());
+                        .eq('scheduled_date', todayStr);
 
-                    // Fetch this week's game sessions
-                    const { data: weekGames } = await supabase
-                        .from('game_sessions')
-                        .select('created_at')
-                        .eq('user_id', uid)
-                        .gte('created_at', mon.toISOString())
-                        .lt('created_at', nextMon.toISOString())
-                        .order('created_at', { ascending: false });
+                    let gameToday = todayGames && todayGames.length > 0;
+                    let isPregameWindow = false;
 
-                    // ── Subline logic (priority order) ──
+                    if (gameToday && todayGames && todayGames[0]?.scheduled_time) {
+                        const gameTimeStr = todayGames[0].scheduled_time; // HH:MM:SS
+                        const [gHour, gMin] = gameTimeStr.split(":").map(Number);
+                        
+                        const gameDateTime = new Date(now);
+                        gameDateTime.setHours(gHour, gMin, 0, 0);
+                        
+                        // Within 4 hours before the game
+                        const diffMs = gameDateTime.getTime() - now.getTime();
+                        const diffHours = diffMs / (1000 * 60 * 60);
+                        
+                        isPregameWindow = diffHours >= -1 && diffHours <= 4; // Allow prep starting 4 hours prior up to 1 hour post-start
+                    }
+
+                    // Today's Action Card properties calculation
+                    let headline = "Set your intention for the week.";
+                    let subHeadline = "Show up to the work today.";
+                    let btnText = "Begin";
+                    let navHref = "/calendar/week";
+
+                    if (gameToday) {
+                        if (isPregameWindow && !todayHasPrep) {
+                            headline = "Game today. Ready to prepare?";
+                            subHeadline = "Tune your focus before you step on the field.";
+                            btnText = "Prepare";
+                            navHref = `/calendar/pregame?date=${todayStr}`;
+                        } else if (!todayHasDebrief) {
+                            headline = "You played today. Reflect when you're ready.";
+                            subHeadline = "Log your post-game debrief.";
+                            btnText = "Reflect";
+                            navHref = `/calendar/postgame?date=${todayStr}`;
+                        } else if (weeklyIntentionText) {
+                            headline = weeklyIntentionText;
+                            subHeadline = "Tap to adjust.";
+                            btnText = "Adjust Focus";
+                            navHref = "/calendar/week";
+                        }
+                    } else if (weeklyIntentionText) {
+                        headline = weeklyIntentionText;
+                        subHeadline = "Tap to adjust.";
+                        btnText = "Adjust Focus";
+                        navHref = "/calendar/week";
+                    }
+
+                    setActionCard({ headline, subline: subHeadline, btnText, navHref });
+                    
                     let computedSubline = "Show up to the work.";
-                    const tenMinAgo = new Date(now.getTime() - 10 * 60 * 1000);
-                    const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
-                    const hasAnyReflections = allRefRes && allRefRes.length > 0;
-                    const hasTodayGame = todayGames && todayGames.length > 0;
-                    const hasWeekGame = weekGames && weekGames.length > 0;
-
-                    if (onboardingCompletedAt && new Date(onboardingCompletedAt) >= tenMinAgo) {
-                        computedSubline = "Welcome to Goalie Card.";
-                    } else if (!hasAnyReflections) {
+                    if (weeklyIntentionText) {
+                        computedSubline = "Intention active. Make it stick.";
+                    } else {
                         computedSubline = "Set the tone for this week.";
-                    } else if (hasTodayGame) {
-                        computedSubline = "Good game today. Reflect when you're ready.";
-                    } else if (hasWeekGame) {
-                        const mostRecentGame = new Date(weekGames![0].created_at);
-                        const mostRecentRef = allRefRes![0] ? new Date(allRefRes![0].created_at) : null;
-                        const hasRefSinceGame = mostRecentRef && mostRecentRef > mostRecentGame;
-                        if (!hasRefSinceGame) {
-                            const daysSinceGame = Math.floor((now.getTime() - mostRecentGame.getTime()) / (1000 * 60 * 60 * 24));
-                            if (daysSinceGame === 0) {
-                                computedSubline = "You played today. Worth a look.";
-                            } else if (daysSinceGame === 1) {
-                                computedSubline = "You played yesterday. Worth a look.";
-                            } else {
-                                computedSubline = `You played ${daysSinceGame} days ago. Worth a look.`;
-                            }
-                        } else {
-                            // Has reflection since game, check other conditions
-                            if (weeklyRefs.length > 0) {
-                                computedSubline = "The work is happening.";
-                            }
-                        }
-                    } else if (userCreatedAt) {
-                        const created = new Date(userCreatedAt);
-                        const daysSinceCreation = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
-                        const hasRecentReflection = allRefRes && allRefRes.some(r => new Date(r.created_at) >= fiveDaysAgo);
-                        if (daysSinceCreation > 5 && !hasRecentReflection) {
-                            computedSubline = "Good to have you back.";
-                        } else if (weeklyRefs.length > 0) {
-                            computedSubline = "The work is happening.";
-                        }
                     }
                     setSubline(computedSubline);
                 }
@@ -279,26 +339,28 @@ export default function Dashboard() {
                 {/* Left Column: Today's Action Card (spans full height of Right Column) */}
                 <div className="md:col-span-6 flex flex-col h-full">
                     {/* Section 2: Today's Action Card */}
-                    <div 
-                        className="transition-all flex flex-col justify-between flex-1"
-                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '24px', position: 'relative', overflow: 'hidden', padding: '28px' }}
-                    >
-                        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.15), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
-                        
-                        <div className="relative z-10">
-                            <p className="m-0 mb-2 text-[9px] font-black uppercase tracking-[0.3em] text-white/35">Today</p>
-                            <p className="m-0 mb-2 text-[20px] font-bold tracking-tight leading-tight text-[#f4f4f5]">Set your intention for the week.</p>
-                            <p className="m-0 mb-6 text-sm text-white/40 font-medium leading-relaxed">
-                                Show up to the work today.
-                            </p>
+                    <Link href={actionCard.navHref} className="flex flex-col justify-between flex-1 transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
+                        <div 
+                            className="flex flex-col justify-between flex-1 h-full"
+                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '24px', position: 'relative', overflow: 'hidden', padding: '28px' }}
+                        >
+                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.15), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
+                            
+                            <div className="relative z-10">
+                                <p className="m-0 mb-2 text-[9px] font-black uppercase tracking-[0.3em] text-white/35">Today</p>
+                                <p className="m-0 mb-2 text-[20px] font-bold tracking-tight leading-tight text-[#f4f4f5]">{actionCard.headline}</p>
+                                <p className="m-0 mb-6 text-sm text-white/40 font-medium leading-relaxed">
+                                    {actionCard.subline}
+                                </p>
+                            </div>
+                            <div className="relative z-10">
+                                <span className="bg-white text-[#09090B] rounded-full px-[18px] py-[10px] text-[10px] font-black uppercase tracking-[0.2em] inline-flex items-center gap-2">
+                                    <ArrowRight size={14} />
+                                    {actionCard.btnText}
+                                </span>
+                            </div>
                         </div>
-                        <div className="relative z-10">
-                            <button className="bg-white text-[#09090B] rounded-full px-[18px] py-[10px] text-[10px] font-black uppercase tracking-[0.2em] border-none inline-flex items-center gap-2 hover:scale-105 active:scale-95 transition-all cursor-pointer">
-                                <ArrowRight size={14} />
-                                Begin
-                            </button>
-                        </div>
-                    </div>
+                    </Link>
                 </div>
 
                 {/* Right Column: Module Tiles + Weekly Pulse */}
@@ -357,8 +419,12 @@ export default function Dashboard() {
                                             border: '1px solid rgba(0,103,71,0.4)',
                                             borderRadius: '12px'
                                         } : {
-                                            background: 'rgba(255,255,255,0.04)',
-                                            border: '0.5px solid rgba(255,255,255,0.07)',
+                                            background: isActive 
+                                                ? 'rgba(0,103,71,0.10)' 
+                                                : (hasWeeklyIntention ? 'rgba(0,103,71,0.03)' : 'rgba(255,255,255,0.04)'),
+                                            border: isActive 
+                                                ? '1px solid rgba(0,103,71,0.3)' 
+                                                : (hasWeeklyIntention ? '0.5px solid rgba(0,103,71,0.15)' : '0.5px solid rgba(255,255,255,0.07)'),
                                             borderRadius: '12px'
                                         }}
                                     >
@@ -367,7 +433,9 @@ export default function Dashboard() {
                                             style={{ 
                                                 color: isToday 
                                                     ? '#4ade80' 
-                                                    : (isActive ? '#006747' : 'rgba(235,235,245,0.25)')
+                                                    : (isActive 
+                                                        ? '#4ade80' 
+                                                        : (hasWeeklyIntention ? 'rgba(74, 222, 128, 0.40)' : 'rgba(235,235,245,0.25)'))
                                             }}
                                         >
                                             {dayLetter}

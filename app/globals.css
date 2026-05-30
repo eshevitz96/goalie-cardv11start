@@ -285,3 +285,97 @@ body {
 .film-workspace-root ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Scoped Calendar Theme variables & classes (daily-goaliecard V4 parity) */
+.calendar-root {
+  --canvas: #0a0a0a;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666666;
+  --accent: #00e676;
+  --border: #1a1a1a;
+  --border-subtle: #141414;
+  --border-focus: #2a2a2a;
+  --card: #121212;
+  --card-hover: #1c1c1c;
+
+  background-color: var(--canvas) !important;
+  color: var(--text-primary) !important;
+  font-family: "Outfit", -apple-system, BlinkMacSystemFont, sans-serif !important;
+  letter-spacing: -0.011em;
+  min-height: 100vh;
+}
+
+.calendar-root .bg-canvas { background-color: var(--canvas); }
+.calendar-root .bg-card { background-color: var(--card); }
+.calendar-root .bg-card-hover { background-color: var(--card-hover); }
+.calendar-root .hover\:bg-card-hover:hover { background-color: var(--card-hover); }
+.calendar-root .text-text-primary { color: var(--text-primary); }
+.calendar-root .text-text-secondary { color: var(--text-secondary); }
+.calendar-root .text-text-muted { color: var(--text-muted); }
+.calendar-root .text-accent { color: var(--accent); }
+.calendar-root .hover\:text-text-primary:hover { color: var(--text-primary); }
+.calendar-root .border-border-subtle { border-color: var(--border-subtle); }
+.calendar-root .border-border-focus { border-color: var(--border-focus); }
+.calendar-root .focus\:border-accent:focus { border-color: var(--accent); }
+.calendar-root .border-accent { border-color: var(--accent); }
+.calendar-root .bg-accent\/10 { background-color: rgba(0, 230, 118, 0.1); }
+.calendar-root .border-accent\/25 { border-color: rgba(0, 230, 118, 0.25); }
+.calendar-root .hover\:border-accent\/40:hover { border-color: rgba(0, 230, 118, 0.40); }
+
+/* Custom Font/Text scale mappings */
+.calendar-root .text-hero {
+  font-size: 56px;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+}
+.calendar-root .text-hero-sm {
+  font-size: 40px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+}
+.calendar-root .text-title {
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.calendar-root .text-body-lg {
+  font-size: 18px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+.calendar-root .text-body {
+  font-size: 16px;
+  line-height: 1.6;
+}
+.calendar-root .text-micro {
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.calendar-root .text-caption {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Animations */
+.calendar-root .animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.calendar-root .animate-fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.calendar-root .stagger-children > * {
+  opacity: 0;
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.calendar-root .stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.calendar-root .stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+.calendar-root .stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.calendar-root .stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
+.calendar-root .stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+
