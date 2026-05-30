@@ -33,6 +33,21 @@ export default function Dashboard() {
             try {
                 const uid = auth.userId;
 
+                if (uid === '00000000-0000-0000-0000-000000000000') {
+                    setUserData({
+                        initials: "DV",
+                        fullName: "Dev User",
+                        publicUserId: "00000000-0000-0000-0000-000000000000"
+                    });
+                    setGreeting("Good afternoon, Dev.");
+                    setSubline("Local development mode bypass active.");
+                    setGamesCount(0);
+                    setSeasonName("DEV SEASON");
+                    setActiveDays(new Set());
+                    setLoading(false);
+                    return;
+                }
+
                 // 1. Fetch user identity
                 const { data: userRes, error: userErr } = await supabase
                     .from('users')

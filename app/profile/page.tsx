@@ -29,6 +29,27 @@ export default function ProfilePage() {
             try {
                 const uid = auth.userId; // auth.uid()
 
+                if (uid === '00000000-0000-0000-0000-000000000000') {
+                    setUserData({
+                        initials: "DV",
+                        fullName: "Dev User",
+                        gcNumber: "GC-0000",
+                        positionClub: "Goalie | Lacrosse",
+                        height: "6'0\"",
+                        gradYear: "2026",
+                        handedness: "Right",
+                        primarySport: "Lacrosse",
+                        team: "Local Devs"
+                    });
+                    setStats({
+                        savePct: "92.4%",
+                        saves: "152",
+                        games: "12"
+                    });
+                    setLoading(false);
+                    return;
+                }
+
                 // 1. Fetch user identity (select specific columns to prevent column-level security RLS errors)
                 const { data: userRes, error: userErr } = await supabase
                     .from('users')

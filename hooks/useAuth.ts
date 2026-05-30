@@ -64,30 +64,44 @@ export function useAuth() {
             // Fetch user role and sport if authenticated
             let userRole: UserRole | null = null;
             let userSport: string | null = null;
-            if (user) {
+            let resolvedUser = user;
+
+            if (resolvedUser) {
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('role, sport')
-                    .eq('id', user.id)
+                    .eq('id', resolvedUser.id)
                     .single();
                 userRole = (profile?.role as UserRole) || null;
                 userSport = profile?.sport || null;
             }
 
+            // Local dev bypass — only active when NEXT_PUBLIC_DEV_BYPASS=true in .env.local
+            // This env var is never set in production and is gitignored
+            if (!user && process.env.NEXT_PUBLIC_DEV_BYPASS === 'true') {
+              // Use a fake dev user — not a real UUID, not a real email
+              resolvedUser = {
+                id: "00000000-0000-0000-0000-000000000000",
+                email: "dev@localhost"
+              } as any;
+              userRole = 'goalie';
+              userSport = 'Lacrosse';
+            }
+
             setAuthState({
-                user: user ? { 
-                    id: user.id, 
-                    email: user.email || '', 
+                user: resolvedUser ? { 
+                    id: resolvedUser.id, 
+                    email: resolvedUser.email || '', 
                     role: userRole || undefined,
                     sport: userSport || undefined
                 } : null,
-                userId: user?.id || null,
-                userEmail: user?.email || null,
+                userId: resolvedUser?.id || null,
+                userEmail: resolvedUser?.email || null,
                 userRole,
                 userSport,
                 userRoles: userRole ? [userRole] : [],
                 localId,
-                isAuthenticated: !!user || !!localId,
+                isAuthenticated: !!resolvedUser || !!localId,
             });
         } catch (error) {
             console.error('Auth load error:', error);
