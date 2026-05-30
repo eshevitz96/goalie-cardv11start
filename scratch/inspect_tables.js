@@ -11,7 +11,7 @@ async function inspect() {
         const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/?apikey=${process.env.SUPABASE_SERVICE_ROLE_KEY}`);
         const spec = await response.json();
         
-        const tables = ['game_reports', 'film_shots', 'film_clips', 'users', 'game_sessions', 'sessions'];
+        const tables = ['private_training_submissions', 'users'];
         tables.forEach(table => {
             const def = spec.definitions?.[table];
             if (def) {

@@ -31,6 +31,38 @@ export async function POST(req: Request) {
     if (event.type === "checkout.session.completed") {
         const metadata = session?.metadata || {};
         const userId = metadata.userId;
+        const customerId = session.customer as string;
+
+        // Capture customer ID and update private_training_submissions & users tables
+        if (customerId) {
+            try {
+                // 1. Update stripe_customer_id in private_training_submissions where stripe_session_id matches session.id
+                const { data: updatedSubs, error: subErr } = await supabase
+                    .from('private_training_submissions')
+                    .update({ stripe_customer_id: customerId })
+                    .eq('stripe_session_id', session.id)
+                    .select('email');
+
+                if (subErr) {
+                    console.error("Failed to update stripe_customer_id in private_training_submissions:", subErr);
+                }
+
+                // 2. Also write it to public.users.stripe_customer_id if a matching user record exists (match by email)
+                const email = (updatedSubs && updatedSubs[0]?.email) || session.customer_details?.email || metadata.email;
+                if (email) {
+                    const { error: userUpdateError } = await supabase
+                        .from('users')
+                        .update({ stripe_customer_id: customerId })
+                        .eq('email', email.toLowerCase());
+
+                    if (userUpdateError) {
+                        console.error("Failed to sync stripe_customer_id to public.users:", userUpdateError);
+                    }
+                }
+            } catch (err) {
+                console.error("Error processing customer ID sync in webhook:", err);
+            }
+        }
 
         // 1. Record General Payment (if possible)
         if (userId) {
@@ -95,6 +127,7 @@ export async function POST(req: Request) {
                     payment_status: 'paid',
                     status: 'paid',
                     stripe_payment_intent_id: session.payment_intent as string,
+                    stripe_customer_id: customerId,
                     notes: `Stripe Session Completed: ${session.id}`
                 }).eq('id', submissionId).select('athlete_name, email, digital_signature').single();
                 

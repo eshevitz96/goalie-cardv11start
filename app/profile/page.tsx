@@ -14,6 +14,9 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const [userData, setUserData] = useState<any>(null);
     const [stats, setStats] = useState({ savePct: "—", saves: "—", games: "—" });
+    const [subscriptionData, setSubscriptionData] = useState<any>(null);
+    const [portalLoading, setPortalLoading] = useState(false);
+    const [portalError, setPortalError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!auth.loading && !auth.isAuthenticated) {
@@ -45,6 +48,11 @@ export default function ProfilePage() {
                         savePct: "92.4%",
                         saves: "152",
                         games: "12"
+                    });
+                    setSubscriptionData({
+                        payment_status: 'paid',
+                        plan: 'Goalie Card Private Training',
+                        status: 'Active'
                     });
                     setLoading(false);
                     return;
@@ -117,13 +125,68 @@ export default function ProfilePage() {
                     setStats({ savePct: "0.0", saves: "0", games: "0" });
                 }
 
+                // 3. Fetch private_training_submissions to verify payment status and subscription existence
+                let userEmail = auth.userEmail;
+                if (uid === '00000000-0000-0000-0000-000000000000') {
+                    // For dev bypass, simulate paid subscription
+                    setSubscriptionData({
+                        payment_status: 'paid',
+                        plan: 'Goalie Card Private Training',
+                        status: 'Active'
+                    });
+                } else if (userEmail) {
+                    const { data: sub } = await supabase
+                        .from('private_training_submissions')
+                        .select('payment_status, status')
+                        .eq('email', userEmail.toLowerCase())
+                        .eq('payment_status', 'paid')
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (sub) {
+                        setSubscriptionData({
+                            payment_status: sub.payment_status,
+                            plan: 'Goalie Card Private Training',
+                            status: sub.status === 'canceled' ? 'Cancelled' : 'Active'
+                        });
+                    } else {
+                        setSubscriptionData(null);
+                    }
+                } else {
+                    setSubscriptionData(null);
+                }
+
             } catch (err) {
                 console.error("Profile fetch error:", err);
             }
             setLoading(false);
         };
         fetchData();
-    }, [auth.userId]);
+    }, [auth.userId, auth.userEmail]);
+
+    const handleManageSubscription = async () => {
+        setPortalLoading(true);
+        setPortalError(null);
+        try {
+            const res = await fetch('/api/stripe/portal', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                setPortalError(data.error || "Failed to load billing portal.");
+            }
+        } catch (err) {
+            console.error("Portal redirect error:", err);
+            setPortalError("An unexpected error occurred. Please try again.");
+        } finally {
+            setPortalLoading(false);
+        }
+    };
 
     if (auth.loading || loading) {
         return (
@@ -226,7 +289,7 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Recruiting Visibility */}
-                <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm">
+                <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">
                     <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-white/40">Recruiting visibility</p>
                     <div className="flex items-center justify-between mb-2">
                         <p className="m-0 text-sm font-bold">Public profile</p>
@@ -239,6 +302,41 @@ export default function ProfilePage() {
                         Turn on to allow verified college coaches to view your profile, save percentage, and approved highlight clips.
                     </p>
                 </div>
+
+                {/* Membership Card */}
+                {subscriptionData && (
+                    <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40 mb-1 font-bold">Membership</p>
+                                <p className="m-0 text-sm font-bold tracking-tight">{subscriptionData.plan}</p>
+                            </div>
+                            <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shrink-0 ${
+                                subscriptionData.status === 'Active' 
+                                    ? 'bg-[#006747] text-white shadow-lg' 
+                                    : 'bg-white/10 text-white/60'
+                            }`}>
+                                {subscriptionData.status}
+                            </span>
+                        </div>
+                        
+                        <button
+                            onClick={handleManageSubscription}
+                            disabled={portalLoading}
+                            className="w-full py-4 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white border border-white/10 rounded-2xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                            {portalLoading ? (
+                                <Loader2 className="animate-spin text-white/30" size={16} />
+                            ) : (
+                                "Manage subscription"
+                            )}
+                        </button>
+                        
+                        {portalError && (
+                            <p className="text-red-500 text-[11px] font-semibold mt-2 text-center">{portalError}</p>
+                        )}
+                    </div>
+                )}
 
             </div>
         </div>
