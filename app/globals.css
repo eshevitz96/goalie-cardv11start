@@ -1,0 +1,197 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Radius Standards (Apple/Film Room Parity) */
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-2xl: 40px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-serif: 'Times New Roman', Times, serif;
+}
+
+:root {
+  /* High-Fidelity Film Analysis Palette */
+  --background: #09090B;
+  --foreground: #FFFFFF;
+
+  --card: rgba(28, 28, 30, 0.5); /* Matching film-analysis-workspace exactly */
+  --card-foreground: #FFFFFF;
+
+  --popover: rgba(10, 10, 10, 0.95);
+  --popover-foreground: #FFFFFF;
+
+  --primary: #FFFFFF;
+  --primary-foreground: #000000;
+
+  --secondary: #1C1C1E;
+  --secondary-foreground: #FFFFFF;
+
+  --muted: #0F0F0F;
+  --muted-foreground: rgba(235, 235, 245, 0.4);
+
+  --accent: #FFFFFF; 
+  --accent-foreground: #000000;
+
+  --success: #006747; /* Elite Emerald green from reference */
+  --destructive: #FF3B30; /* Status Red */
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(255, 255, 255, 0.08); /* Slightly more visible but still ultra-thin */
+  --input: rgba(255, 255, 255, 0.05);
+  --ring: #FFFFFF;
+
+  /* Dashboard V1 Required Variables */
+  --color-background-primary: #18181B;
+  --color-background-secondary: #09090B;
+  --color-background-info: #27272A;
+  --color-background-success: #052e16;
+  --color-text-secondary: #A1A1AA;
+  --color-text-tertiary: #71717A;
+  --color-text-info: #FFFFFF;
+  --color-text-success: #34d399;
+  --color-border-tertiary: #27272A;
+  --border-radius-lg: 16px;
+  --border-radius-md: 12px;
+}
+
+html {
+  scroll-behavior: smooth;
+  height: 100%;
+  background-color: #09090B;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100%;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+@layer base {
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="password"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    min-height: 2.75rem;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0 1rem;
+    color: var(--foreground);
+    outline: none;
+    transition: all 0.2s ease;
+    font-weight: 500;
+  }
+
+  input:focus {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Hardened hierarchy: bold (700) instead of black (900) for structural elegance */
+  h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background-color: var(--card);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid var(--border);
+  }
+
+  /* Hardened Glass Panel Parity — Matching film-analysis-workspace Ground Truth */
+  .glass-panel {
+    background: rgba(28, 28, 30, 0.5);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  }
+
+  .font-motto {
+    font-family: var(--font-serif);
+    font-style: italic;
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #FFFFFF 0%, #A1A1AA 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Refined label weight */
+  .label-pro {
+     @apply text-[10px] font-bold uppercase tracking-[0.2em] text-white/40;
+  }
+}
+
+/* ── Custom Scrollbar (Film Room Style) ────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Status Accents ─────────────────────────────────────────── */
+.status-emerald {
+  @apply text-[#006747] bg-[#006747]/10 border-[#006747]/20;
+}
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
