@@ -247,7 +247,7 @@ function PostgameContent() {
                   </button>
                   <button 
                     onClick={() => setStep("unexpected")}
-                    className="px-8 py-3.5 bg-accent text-canvas font-semibold rounded-2xl text-body-lg cursor-pointer active:scale-[0.97] transition-all"
+                    className="px-8 py-3.5 bg-accent text-[#09090B] font-bold rounded-2xl text-body-lg cursor-pointer active:scale-[0.97] transition-all"
                   >
                     Next
                   </button>
@@ -278,7 +278,7 @@ function PostgameContent() {
               </button>
               <button 
                 onClick={() => setStep("next_time")}
-                className="px-8 py-3.5 bg-accent text-canvas font-semibold rounded-2xl text-body-lg cursor-pointer active:scale-[0.97] transition-all"
+                className="px-8 py-3.5 bg-accent text-[#09090B] font-bold rounded-2xl text-body-lg cursor-pointer active:scale-[0.97] transition-all"
               >
                 Next
               </button>
@@ -302,7 +302,7 @@ function PostgameContent() {
               <button 
                 onClick={savePostgameDebrief}
                 disabled={!oneThingNext.trim()}
-                className="px-8 py-3.5 bg-accent text-canvas font-semibold rounded-2xl text-body-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-all"
+                className="px-8 py-3.5 bg-accent text-[#09090B] font-bold rounded-2xl text-body-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-all"
               >
                 Done
               </button>

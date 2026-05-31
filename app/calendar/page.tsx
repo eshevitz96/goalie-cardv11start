@@ -16,7 +16,8 @@ import {
   MapPin, 
   FileText, 
   Video, 
-  Smile 
+  Smile,
+  Pencil
 } from "lucide-react";
 
 export default function CalendarPage() {
@@ -38,6 +39,7 @@ export default function CalendarPage() {
   const [seasonNameInput, setSeasonNameInput] = useState("");
   const [seasonStartInput, setSeasonStartInput] = useState("");
   const [seasonEndInput, setSeasonEndInput] = useState("");
+  const [seasonError, setSeasonError] = useState("");
 
   const [showGameModal, setShowGameModal] = useState(false);
   const [gameOpponent, setGameOpponent] = useState("");
@@ -195,13 +197,16 @@ export default function CalendarPage() {
   const handleCreateSeason = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!seasonNameInput || !seasonStartInput || !seasonEndInput) return;
+    setSeasonError("");
     setDbSaving(true);
     try {
       const uid = auth.userId;
       if (uid === "00000000-0000-0000-0000-000000000000") {
         setSeason({
-          id: "00000000-0000-0000-0000-000000000000",
+          id: "mock-season-1",
           name: seasonNameInput,
+          start_date: seasonStartInput,
+          end_date: seasonEndInput,
           is_active: true
         });
         setDbSaving(false);
@@ -216,7 +221,12 @@ export default function CalendarPage() {
         .single();
       
       const publicUserId = userRes?.id;
-      if (!publicUserId) throw new Error("Public user not found");
+      if (!publicUserId) {
+        const msg = "User profile not found. Please complete account setup first.";
+        console.error("Create season error:", msg);
+        setSeasonError(msg);
+        return;
+      }
 
       const { data, error } = await supabase
         .from("seasons")
@@ -231,12 +241,58 @@ export default function CalendarPage() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Create season Supabase error:", error);
+        setSeasonError(error.message || "Failed to save season. Please try again.");
+        return;
+      }
       setSeason(data);
       setShowSeasonModal(false);
       loadData();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Create season error:", err);
+      setSeasonError(err?.message || "An unexpected error occurred.");
+    } finally {
+      setDbSaving(false);
+    }
+  };
+
+  const handleUpdateSeason = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!season?.id || !seasonNameInput || !seasonStartInput || !seasonEndInput) return;
+    setSeasonError("");
+    setDbSaving(true);
+    try {
+      const uid = auth.userId;
+      if (uid === "00000000-0000-0000-0000-000000000000") {
+        setSeason({ ...season, name: seasonNameInput, start_date: seasonStartInput, end_date: seasonEndInput });
+        setDbSaving(false);
+        setShowSeasonModal(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("seasons")
+        .update({
+          name: seasonNameInput,
+          start_date: seasonStartInput,
+          end_date: seasonEndInput,
+        })
+        .eq("id", season.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Update season Supabase error:", error);
+        setSeasonError(error.message || "Failed to update season. Please try again.");
+        return;
+      }
+      setSeason(data);
+      setShowSeasonModal(false);
+      loadData();
+    } catch (err: any) {
+      console.error("Update season error:", err);
+      setSeasonError(err?.message || "An unexpected error occurred.");
     } finally {
       setDbSaving(false);
     }
@@ -378,7 +434,10 @@ export default function CalendarPage() {
   const weekEndLabel = weekDates[6]?.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-white font-sans py-8 px-4 md:px-8">
+    <div 
+      className="min-h-screen bg-[#09090B] text-white font-sans py-8 px-4 md:px-8"
+      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif' }}
+    >
       <div className="max-w-4xl mx-auto">
         
         {/* Header navigation */}
@@ -455,6 +514,9 @@ export default function CalendarPage() {
                 {dbSaving && <Loader2 size={16} className="animate-spin" />}
                 Initialize Season
               </button>
+              {seasonError && (
+                <p className="mt-3 text-xs text-red-400 font-medium text-center">{seasonError}</p>
+              )}
             </form>
           </div>
         ) : (
@@ -469,7 +531,23 @@ export default function CalendarPage() {
               </button>
               <div className="text-center">
                 <p className="m-0 text-sm font-bold tracking-tight">{weekStartLabel} — {weekEndLabel}</p>
-                <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40 mt-0.5">{season.name}</p>
+                <div className="flex items-center justify-center gap-1.5 mt-0.5">
+                  <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">{season.name}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSeasonNameInput(season.name || "");
+                      setSeasonStartInput(season.start_date || "");
+                      setSeasonEndInput(season.end_date || "");
+                      setSeasonError("");
+                      setShowSeasonModal(true);
+                    }}
+                    className="text-white/25 hover:text-white/60 transition-colors cursor-pointer"
+                    aria-label="Edit season"
+                  >
+                    <Pencil size={10} />
+                  </button>
+                </div>
               </div>
               <button 
                 onClick={() => setWeekOffset(weekOffset + 1)}
@@ -642,8 +720,13 @@ export default function CalendarPage() {
       {/* MODALS */}
       {/* Add Game Modal */}
       {showGameModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in">
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowGameModal(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+        >
+          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
             <h3 className="text-lg font-bold tracking-tight mb-4">Add Scheduled Game</h3>
             <form onSubmit={handleCreateGame} className="space-y-4">
               <div>
@@ -725,8 +808,13 @@ export default function CalendarPage() {
 
       {/* Add Practice Modal */}
       {showPracticeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in">
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowPracticeModal(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+        >
+          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
             <h3 className="text-lg font-bold tracking-tight mb-4">Add Practice Session</h3>
             <form onSubmit={handleCreatePractice} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -786,6 +874,79 @@ export default function CalendarPage() {
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Add Practice
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Season Modal — shown when a season already exists and pencil is clicked */}
+      {showSeasonModal && season && (
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowSeasonModal(false);
+              setSeasonError("");
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+        >
+          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+            <h3 className="text-lg font-bold tracking-tight mb-1">Edit Season</h3>
+            <p className="text-xs text-white/40 mb-5">Update your season name or dates.</p>
+            <form onSubmit={handleUpdateSeason} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Season Name</label>
+                <input
+                  type="text"
+                  value={seasonNameInput}
+                  onChange={(e) => setSeasonNameInput(e.target.value)}
+                  placeholder="e.g. Spring 2026"
+                  required
+                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Start Date</label>
+                  <input
+                    type="date"
+                    value={seasonStartInput}
+                    onChange={(e) => setSeasonStartInput(e.target.value)}
+                    required
+                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">End Date</label>
+                  <input
+                    type="date"
+                    value={seasonEndInput}
+                    onChange={(e) => setSeasonEndInput(e.target.value)}
+                    required
+                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  />
+                </div>
+              </div>
+              {seasonError && (
+                <p className="text-xs text-red-400 font-medium">{seasonError}</p>
+              )}
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => { setShowSeasonModal(false); setSeasonError(""); }}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={dbSaving}
+                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {dbSaving && <Loader2 size={12} className="animate-spin" />}
+                  Save Changes
                 </button>
               </div>
             </form>

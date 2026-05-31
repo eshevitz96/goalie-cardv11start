@@ -192,6 +192,17 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .anim-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
 }
@@ -322,6 +333,21 @@ body {
 .calendar-root .bg-accent\/10 { background-color: rgba(0, 230, 118, 0.1); }
 .calendar-root .border-accent\/25 { border-color: rgba(0, 230, 118, 0.25); }
 .calendar-root .hover\:border-accent\/40:hover { border-color: rgba(0, 230, 118, 0.40); }
+
+/* Icon colour reset — Lucide icons use currentColor.
+   Without this, a parent div with text-text-muted (#666) will bleed grey
+   into every child SVG via inheritance, regardless of what colour the icon
+   is supposed to show. This rule makes the SVG reset to the nearest ancestor
+   that sets color explicitly on the icon's own element, rather than inheriting
+   from a distant layout container. */
+.calendar-root svg {
+  color: inherit;
+}
+/* Explicit white icon helper — use class="calendar-icon-white" on any
+   Lucide icon that should always render white regardless of parent colour. */
+.calendar-root .calendar-icon-white {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
 
 /* Custom Font/Text scale mappings */
 .calendar-root .text-hero {

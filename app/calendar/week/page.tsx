@@ -224,7 +224,7 @@ export default function WeeklySetupPage() {
             
             {!hasEvents ? (
               <div className="bg-card border border-border-subtle rounded-2xl p-6 text-center mb-8">
-                <CalendarIcon size={32} className="mx-auto text-text-muted mb-4 animate-logo-pulse" />
+                <CalendarIcon size={32} className="mx-auto mb-4 animate-logo-pulse calendar-icon-white" />
                 <p className="m-0 text-body font-medium text-text-secondary">No games or practices scheduled.</p>
                 <p className="m-0 text-caption text-text-muted mt-1">You can add games and practices directly from the calendar later.</p>
               </div>
@@ -260,10 +260,22 @@ export default function WeeklySetupPage() {
               </div>
             )}
             
-            <div className="flex justify-end mt-8">
+            <div className="flex items-center justify-between mt-8">
+              {!hasEvents ? (
+                <button 
+                  onClick={() => router.push("/calendar")}
+                  type="button"
+                  className="text-body font-bold !text-[#006747] hover:underline bg-transparent border-none cursor-pointer flex items-center gap-1"
+                >
+                  Set up your season →
+                </button>
+              ) : (
+                <div />
+              )}
               <button 
                 onClick={handleNextStep}
-                className="px-8 py-3.5 bg-accent text-canvas font-semibold rounded-2xl text-body-lg cursor-pointer active:scale-[0.97] transition-all"
+                type="button"
+                className="px-8 py-3.5 bg-white text-[#09090B] font-extrabold rounded-2xl text-body-lg cursor-pointer active:scale-[0.97] transition-all"
               >
                 Confirm week
               </button>
@@ -302,9 +314,10 @@ export default function WeeklySetupPage() {
               <button 
                 onClick={saveWeeklyIntention}
                 disabled={saving || !focusText.trim()}
-                className="px-8 py-3.5 bg-accent text-canvas font-semibold rounded-2xl text-body-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-all flex items-center gap-2"
+                type="button"
+                className="px-8 py-3.5 bg-white text-[#09090B] font-extrabold rounded-2xl text-body-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-all flex items-center gap-2"
               >
-                {saving && <Loader2 size={16} className="animate-spin text-canvas" />}
+                {saving && <Loader2 size={16} className="animate-spin text-[#09090B]" />}
                 {saving ? "Saving..." : "Done"}
               </button>
             </div>
@@ -326,7 +339,8 @@ export default function WeeklySetupPage() {
             </p>
             <button 
               onClick={() => router.push("/calendar")}
-              className="w-full py-4 bg-accent text-canvas font-bold uppercase tracking-wider rounded-2xl cursor-pointer active:scale-[0.97] transition-all"
+              type="button"
+              className="w-full py-4 bg-white text-[#09090B] font-extrabold uppercase tracking-wider rounded-2xl cursor-pointer active:scale-[0.97] transition-all"
             >
               Back to Calendar
             </button>
