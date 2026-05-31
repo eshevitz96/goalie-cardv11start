@@ -773,6 +773,20 @@ export default function OnboardingPage() {
               </p>
             </div>
 
+            {profileTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 justify-center mb-8">
+                {profileTags.map((tag, idx) => (
+                  <span
+                    key={idx}
+                    style={{ background: 'rgba(0, 103, 71, 0.1)', color: '#006747', border: '1px solid rgba(0, 103, 71, 0.2)' }}
+                    className="px-3 py-1 rounded-full text-xs font-semibold"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
             {hasPrivateTrainingAccess && (
               <div className="mb-12 animate-fade-in">
                 <p style={{ color: '#006747' }} className="text-body font-bold">

@@ -42,10 +42,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    if (authUserId) {
+      setUserId(authUserId);
+    } else if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
       setUserId("14092722-0e2b-492b-866c-0f77e87469de"); // Localhost developer bypass
     } else {
-      setUserId(authUserId);
+      setUserId(null);
     }
   }, [authUserId]);
   
@@ -264,42 +266,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const saveReport = async () => {
-    if (!userId) return;
+    // Dynamically retrieve the authentic auth.uid() from the active Supabase session
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const authUid = user?.id || userId;
+
+    if (!authUid) {
+      const errorMsg = 'No authenticated user session found. Please log in to save reports.';
+      console.error(errorMsg, authError);
+      alert(errorMsg);
+      return;
+    }
 
     try {
       // 1. Upsert game report
-      const { error: reportError } = await supabase
+      const { data: insertedReport, error: reportError } = await supabase
         .from('game_reports')
         .upsert({
           id: reportId,
-          user_id: userId,
+          user_id: authUid,
           title: title || 'Untitled Session',
           date: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           sport,
           season: '2024-25',
           updated_at: new Date().toISOString()
-        });
+        })
+        .select('id')
+        .single();
 
       if (reportError) {
         console.error('game_reports save error:', reportError);
+        alert(`Failed to save game report: ${reportError.message}`);
         throw reportError;
       }
+
+      const savedReportId = insertedReport?.id || reportId;
 
       // 2. Sync clips (delete and insert)
       const { error: clipsDeleteError } = await supabase
         .from('film_clips')
         .delete()
-        .eq('report_id', reportId);
+        .eq('report_id', savedReportId);
 
       if (clipsDeleteError) {
         console.error('film_clips delete error:', clipsDeleteError);
+        alert(`Warning: Failed to clean up old clips: ${clipsDeleteError.message}`);
       }
 
       if (clips.length > 0) {
         const insertClips = clips.map(c => ({
           id: c.id,
-          report_id: reportId,
-          user_id: userId,
+          report_id: savedReportId,
+          user_id: authUid,
           name: c.name,
           url: c.url || null,
           size: c.size || 0
@@ -311,6 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (clipsError) {
           console.error('film_clips save error:', clipsError);
+          alert(`Failed to save film clips: ${clipsError.message}`);
           throw clipsError;
         }
       }
@@ -319,18 +337,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { error: shotsDeleteError } = await supabase
         .from('film_shots')
         .delete()
-        .eq('report_id', reportId);
+        .eq('report_id', savedReportId);
 
       if (shotsDeleteError) {
         console.error('film_shots delete error:', shotsDeleteError);
+        alert(`Warning: Failed to clean up old shots: ${shotsDeleteError.message}`);
       }
 
       if (shots.length > 0) {
         const insertShots = shots.map(s => ({
           id: s.id,
-          report_id: reportId,
+          report_id: savedReportId,
           clip_id: s.clipId,
-          user_id: userId,
+          user_id: authUid,
           period: s.period || '1st',
           shot_type: s.shotType || 'Wrist',
           is_deflected: s.isDeflected || false,
@@ -349,34 +368,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (shotsError) {
           console.error('film_shots save error:', shotsError);
+          alert(`Failed to save film shots: ${shotsError.message}`);
           throw shotsError;
         }
       }
 
       // 4. Sync aggregate stats to game_sessions (for Dashboard and Profile)
-      const totalShots = shots.length;
-      const totalSaves = shots.filter(s => s.isSave).length;
-      const goalsAllowed = totalShots - totalSaves;
-      const savePct = totalShots > 0 ? parseFloat((totalSaves / totalShots).toFixed(3)) : 0.0;
+      // Resolve the public.users.id mapped to this authUid (due to different identity contract on game_sessions)
+      const { data: pubUser, error: pubUserError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', authUid)
+        .maybeSingle();
 
-      const { error: sessionError } = await supabase
-        .from('game_sessions')
-        .upsert({
-          id: reportId, // 1:1 Parity
-          user_id: userId,
-          status: 'complete',
-          started_at: date || new Date().toISOString(),
-          completed_at: new Date().toISOString(),
-          shots_faced: totalShots,
-          saves: totalSaves,
-          goals_allowed: goalsAllowed,
-          save_pct: savePct,
-          notes_summary: title || 'Untitled Session',
-          updated_at: new Date().toISOString()
-        });
+      if (pubUserError) {
+        console.error('Failed to resolve public user ID for game_sessions sync:', pubUserError);
+      }
 
-      if (sessionError) {
-        console.error('game_sessions save error:', sessionError);
+      if (pubUser?.id) {
+        const totalShots = shots.length;
+        const totalSaves = shots.filter(s => s.isSave).length;
+        const goalsAllowed = totalShots - totalSaves;
+        const savePct = totalShots > 0 ? parseFloat((totalSaves / totalShots).toFixed(3)) : 0.0;
+
+        const { error: sessionError } = await supabase
+          .from('game_sessions')
+          .upsert({
+            id: savedReportId, // 1:1 Parity
+            user_id: pubUser.id, // Must be the public.users.id
+            status: 'complete',
+            started_at: date || new Date().toISOString(),
+            completed_at: new Date().toISOString(),
+            shots_faced: totalShots,
+            saves: totalSaves,
+            goals_allowed: goalsAllowed,
+            save_pct: savePct,
+            notes_summary: title || 'Untitled Session',
+            updated_at: new Date().toISOString()
+          });
+
+        if (sessionError) {
+          console.error('game_sessions save error (non-blocking):', sessionError);
+          alert(`Warning: Failed to sync game session stats: ${sessionError.message}`);
+        }
+      } else {
+        console.log('Skipping game_sessions sync: No matching public.users row found for auth user ID:', authUid);
       }
 
       // 5. Refresh Reports List
@@ -384,6 +420,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     } catch (err) {
       console.error('Failed to save report to Supabase:', err);
+      alert(`Error saving report: ${(err as any)?.message || err}`);
+      throw err; // Re-throw so callers like goToLibrary know it failed and keep the session active
     }
   };
 

@@ -61,9 +61,13 @@ export default function ProfilePage() {
                 // 1. Fetch user identity (select specific columns to prevent column-level security RLS errors)
                 const { data: userRes, error: userErr } = await supabase
                     .from('users')
-                    .select('id, first_name, last_name, display_name, gc_number, primary_sport, team, height, grad_year, handedness, catch_hand')
+                    .select('id, first_name, last_name, display_name, gc_number, primary_sport, teams, grad_year, handedness, profile_tags')
                     .eq('auth_user_id', uid)
                     .single();
+
+                if (userErr) {
+                    console.error("Profile page users SELECT query error:", userErr);
+                }
                 
                 let initials = "GC";
                 let fullName = "Goalie";
@@ -72,6 +76,7 @@ export default function ProfilePage() {
                 let height = "—";
                 let gradYear = "—";
                 let handedness = "—";
+                let profileTags: string[] = [];
                 
                 if (userRes && !userErr) {
                     const f = userRes.first_name || "";
@@ -85,16 +90,27 @@ export default function ProfilePage() {
                         gcNumber = 'GC-' + userRes.id.substring(0, 4).toUpperCase();
                     }
 
-                    const sport = userRes.primary_sport || "Lacrosse";
-                    const team = userRes.team || "";
-                    positionClub = team ? `${sport} · ${team}` : sport;
+                    let sport = userRes.primary_sport || "Lacrosse";
+                    if (sport === 'lacrosse_mens') sport = "Men's Lacrosse";
+                    else if (sport === 'lacrosse_womens') sport = "Women's Lacrosse";
+                    else if (sport.includes('_')) {
+                        sport = sport.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    } else {
+                        sport = sport.charAt(0).toUpperCase() + sport.slice(1);
+                    }
 
-                    if (userRes.height) height = userRes.height;
+                    const teamsArray = userRes.teams || [];
+                    const teamName = teamsArray.length > 0 ? teamsArray[0] : "";
+                    positionClub = teamName ? `${sport} · ${teamName}` : sport;
+
                     if (userRes.grad_year) gradYear = userRes.grad_year;
-                    if (userRes.catch_hand) handedness = userRes.catch_hand;
+                    if (userRes.handedness) {
+                        handedness = userRes.handedness.charAt(0).toUpperCase() + userRes.handedness.slice(1);
+                    }
+                    if (userRes.profile_tags) profileTags = userRes.profile_tags;
                 }
                 
-                setUserData({ initials, fullName, gcNumber, positionClub, height, gradYear, handedness });
+                setUserData({ initials, fullName, gcNumber, positionClub, height, gradYear, handedness, profileTags });
 
                 // 2. Fetch game sessions for stats
                 const { data: gamesRes } = await supabase
@@ -256,6 +272,23 @@ export default function ProfilePage() {
                             <p className="m-0 text-sm font-bold mt-1">{userData?.handedness}</p>
                         </div>
                     </div>
+
+                    {/* Custom Tags Section */}
+                    {userData?.profileTags && userData.profileTags.length > 0 && (
+                        <div className="mt-6 pt-6 border-t border-white/10 animate-fade-in">
+                            <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-white/40">Custom Tags</p>
+                            <div className="flex flex-wrap gap-2">
+                                {userData.profileTags.map((tag: string, idx: number) => (
+                                    <span
+                                        key={idx}
+                                        className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-semibold text-white/90"
+                                    >
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Events & Commitments Placeholder */}
