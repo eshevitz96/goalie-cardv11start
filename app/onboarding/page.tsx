@@ -70,6 +70,16 @@ export default function OnboardingPage() {
       return;
     }
 
+    // Dev Bypass Check: Skip Supabase lookup to avoid spinner lock and foreign key constraint errors
+    if (userId === '00000000-0000-0000-0000-000000000000') {
+      if (typeof window !== 'undefined' && localStorage.getItem('dev_onboarding_completed') === 'true') {
+        router.replace('/dashboard');
+      } else {
+        setCheckingProfile(false);
+      }
+      return;
+    }
+
     async function checkExistingOnboarding() {
       if (!userId) return;
       try {
@@ -213,6 +223,25 @@ export default function OnboardingPage() {
     if (!userId || !userEmail) return;
     setSaving(true);
     setSaveError(null);
+
+    // Dev Bypass Save: Mock success and save to localStorage to avoid database RLS / foreign key violations
+    if (userId === '00000000-0000-0000-0000-000000000000') {
+      try {
+        setGcNumber(9999);
+        setHasPrivateTrainingAccess(true);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('dev_onboarding_completed', 'true');
+          localStorage.setItem('dev_username', username);
+          localStorage.setItem('dev_primary_sport', sport || 'ice_hockey_mens');
+        }
+        setStep('commitment');
+      } catch (err: any) {
+        setSaveError(err.message);
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
 
     try {
       // 1. Upsert public.users
