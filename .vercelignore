@@ -1,0 +1,14 @@
+# Exclude all dev dependencies, local builds, and mobile folders from Vercel upload
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+ios
+android
+Goalie Card Dashboard
+out
+build
+temp
+*.tsbuildinfo
