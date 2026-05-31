@@ -61,13 +61,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [reports, setReports] = useState<GameReport[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load sport from localStorage if exists
+  // Helper mapper to translate user primary_sport to film SportType
+  function mapPrimarySportToSportType(sportKey: string | null | undefined): SportType {
+    if (!sportKey) return 'Mens Lacrosse';
+    switch (sportKey) {
+      case 'ice_hockey_mens':
+      case 'ice_hockey_womens':
+        return 'Hockey';
+      case 'soccer_mens':
+      case 'soccer_womens':
+        return 'Soccer';
+      case 'lacrosse_mens':
+        return 'Mens Lacrosse';
+      case 'lacrosse_womens':
+        return 'Womens Lacrosse';
+      case 'field_hockey':
+        return 'Field Hockey';
+      default:
+        return 'Mens Lacrosse';
+    }
+  }
+
+  // Load sport on initialization (respecting localStorage first, then Supabase user profile, then falling back)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('film-analysis-sport');
-      if (saved) setSport(saved as SportType);
+      if (saved) {
+        setSport(saved as SportType);
+        return;
+      }
     }
-  }, []);
+
+    async function loadUserPrimarySport() {
+      if (!userId) return;
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('primary_sport')
+          .eq('auth_user_id', userId)
+          .maybeSingle();
+
+        if (!error && data?.primary_sport) {
+          setSport(mapPrimarySportToSportType(data.primary_sport));
+        } else {
+          setSport('Mens Lacrosse');
+        }
+      } catch (err) {
+        console.error('Error fetching user primary sport:', err);
+        setSport('Mens Lacrosse');
+      }
+    }
+
+    loadUserPrimarySport();
+  }, [userId]);
 
   // Fetch reports from Supabase when userId is resolved
   const fetchReports = async () => {
