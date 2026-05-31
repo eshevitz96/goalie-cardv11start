@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { addEvent } from '@/app/events/actions';
+import { addEvent } from '@/app/actions/events';
 import { useToast } from '@/context/ToastContext';
 
 interface AddGlobalEventModalProps {

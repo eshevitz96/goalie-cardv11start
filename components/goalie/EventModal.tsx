@@ -83,7 +83,7 @@ export function EventModal({ isOpen, onClose, onAdded, defaultSport, goalieId, e
         const finalDate = new Date(manualEvent.date).toISOString();
 
         if (editEvent) {
-            const { updateEvent } = await import('@/app/events/actions');
+            const { updateEvent } = await import('@/app/actions/events');
             const result = await updateEvent(editEvent.id, {
                 name: finalName,
                 date: finalDate,
@@ -100,7 +100,7 @@ export function EventModal({ isOpen, onClose, onAdded, defaultSport, goalieId, e
                 error("Error updating event: " + result.error);
             }
         } else {
-            const { addEvent } = await import('@/app/events/actions');
+            const { addEvent } = await import('@/app/actions/events');
             const result = await addEvent({
                 name: finalName,
                 date: finalDate,

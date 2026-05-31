@@ -165,6 +165,7 @@ export async function deleteEvent(eventId: string) {
         return { success: false, error: err.message };
     }
 }
+
 export async function pruneEventVideo(eventId: string, videoUrl: string) {
     if (!eventId || !videoUrl) return { success: false, error: "Missing data" };
 

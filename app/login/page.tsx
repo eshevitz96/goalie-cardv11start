@@ -29,14 +29,17 @@ export default function LoginPage() {
         const checkSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', session.user.id)
-                    .single();
+                const { data: user } = await supabase
+                    .from('users')
+                    .select('onboarding_completed')
+                    .eq('auth_user_id', session.user.id)
+                    .maybeSingle();
 
-                if (profile?.role === 'admin') router.replace('/admin');
-                else router.replace('/dashboard');
+                if (!user || !user.onboarding_completed) {
+                    router.replace('/onboarding');
+                } else {
+                    router.replace('/dashboard');
+                }
             }
         };
         checkSession();
@@ -85,9 +88,17 @@ export default function LoginPage() {
             if (authError) throw authError;
 
             if (data.user) {
-                const role = userStatus?.profile?.role || 'goalie';
-                if (role === 'admin') router.push('/admin');
-                else router.push('/dashboard');
+                const { data: user } = await supabase
+                    .from('users')
+                    .select('onboarding_completed')
+                    .eq('auth_user_id', data.user.id)
+                    .maybeSingle();
+
+                if (!user || !user.onboarding_completed) {
+                    router.push('/onboarding');
+                } else {
+                    router.push('/dashboard');
+                }
             }
         } catch (err: any) {
             setError("Invalid password. Please try again.");

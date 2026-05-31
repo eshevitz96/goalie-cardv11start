@@ -38,7 +38,7 @@ export function AddCardModal({ isOpen, onClose, onCreated, userEmail, userName }
         setIsLoading(true);
         setError(null);
         try {
-            const { createAdditionalCard } = await import("@/app/goalie/actions");
+            const { createAdditionalCard } = await import("@/app/actions/goalie");
             const result = await createAdditionalCard({ sport, team, gradYear: gradYear ? parseInt(gradYear) : null, email: userEmail, name: userName });
             if (!result.success) throw new Error(result.error);
             setStep('success');
