@@ -46,7 +46,6 @@
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^8",
     "eslint-config-next": "^14.2.35",
-    "supabase": "^2.72.8",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^8.0.10"
