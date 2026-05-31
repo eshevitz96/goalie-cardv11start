@@ -242,7 +242,12 @@ export default function OnboardingPage() {
       setGcNumber(userProfile.gc_number);
 
       // 2. Insert public.seasons
-      const todayDate = formatLocalDate(new Date());
+      const today = new Date();
+      const nextYear = new Date(today);
+      nextYear.setFullYear(today.getFullYear() + 1);
+      const todayDate = formatLocalDate(today);
+      const endDate = formatLocalDate(nextYear);
+
       const { error: seasonErr } = await supabase
         .from('seasons')
         .insert({
@@ -250,8 +255,8 @@ export default function OnboardingPage() {
           name: "Season 1",
           sport: sport,
           start_date: todayDate,
+          end_date: endDate,
           is_active: true,
-          phase: 'regular',
         });
 
       if (seasonErr) throw seasonErr;
@@ -262,7 +267,6 @@ export default function OnboardingPage() {
         .upsert({
           id: userId,
           name: `${firstName.trim()} ${lastName.trim()}`,
-          username: username.toLowerCase().trim(),
           sport: sport,
         });
 
@@ -305,7 +309,7 @@ export default function OnboardingPage() {
           .insert({
             session_id: dailySession.id,
             intention: intention.trim(),
-            mood: null,
+            mood: 'solid',
             whats_bouncing: null,
           });
 
