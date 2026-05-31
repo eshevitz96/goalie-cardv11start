@@ -17,6 +17,7 @@ export default function Dashboard() {
     const [gamesCount, setGamesCount] = useState(0);
     const [seasonName, setSeasonName] = useState("SEASON NOT SET");
     const [greeting, setGreeting] = useState("");
+    const [trainingPb, setTrainingPb] = useState<number | null>(null);
     const [subline, setSubline] = useState("Show up to the work.");
     const [hasWeeklyIntention, setHasWeeklyIntention] = useState(false);
     const [actionCard, setActionCard] = useState({
@@ -58,6 +59,10 @@ export default function Dashboard() {
                         btnText: "Adjust Focus",
                         navHref: "/calendar/week"
                     });
+                    
+                    const localPb = localStorage.getItem('dev_raven_pb');
+                    setTrainingPb(localPb ? parseInt(localPb, 10) : null);
+                    
                     setLoading(false);
                     return;
                 }
@@ -284,6 +289,18 @@ export default function Dashboard() {
                 }
                 setSeasonName(activeSeason);
 
+                // 5. Fetch Raven personal best score
+                const { data: scoreRes } = await supabase
+                    .from('training_game_scores')
+                    .select('score')
+                    .eq('user_id', uid)
+                    .eq('game_type', 'raven')
+                    .order('score', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                setTrainingPb(scoreRes ? scoreRes.score : null);
+
             } catch (err) {
                 console.error("Dashboard fetch error:", err);
             }
@@ -393,7 +410,9 @@ export default function Dashboard() {
                         >
                             <Target size={28} className="text-white/80 mb-3" />
                             <p className="m-0 text-[11px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Training</p>
-                            <p className="m-0 text-[10px] text-white/35 mt-1">3 prompts</p>
+                            <p className="m-0 text-[10px] text-white/35 mt-1">
+                                {trainingPb !== null ? `PB: ${trainingPb}` : 'No runs yet'}
+                            </p>
                         </Link>
                     </div>
 
