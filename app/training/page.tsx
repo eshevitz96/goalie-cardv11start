@@ -84,31 +84,33 @@ export default function TrainingPage() {
 
     return (
         <div 
-            className="text-foreground font-sans flex flex-col justify-start w-full"
+            className="text-foreground font-sans flex flex-col justify-between w-full"
             style={{ 
-                minHeight: '100vh', 
+                height: '100vh', 
+                maxHeight: '100vh', 
                 background: '#09090B', 
-                paddingTop: '24px', 
-                paddingBottom: '80px', 
+                paddingTop: '20px', 
+                paddingBottom: '20px', 
                 paddingLeft: '16px', 
-                paddingRight: '16px' 
+                paddingRight: '16px',
+                overflow: 'hidden'
             }}
         >
-            <div className="max-w-[480px] mx-auto w-full">
+            <div className="max-w-[480px] mx-auto w-full flex flex-col justify-between h-full max-h-full overflow-hidden">
                 
-                {/* Back Navigation */}
-                <Link href="/dashboard" className="flex items-center gap-2 mb-6 opacity-70 hover:opacity-100 transition-opacity w-fit text-white">
-                    <ArrowLeft size={18} />
-                    <span className="text-xs font-medium">Back to dashboard</span>
-                </Link>
-
-                {/* Training Header - Micro label only, no H1 title */}
-                <div className="mb-6 px-1">
-                    <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">Training</p>
+                {/* Top Section: Navigation + Header */}
+                <div className="flex flex-col gap-3 shrink-0">
+                    <Link href="/dashboard" className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity w-fit text-white">
+                        <ArrowLeft size={16} />
+                        <span className="text-xs font-medium">Back to dashboard</span>
+                    </Link>
+                    <div className="px-1">
+                        <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">Training</p>
+                    </div>
                 </div>
 
-                {/* Game Canvas Container */}
-                <div className="flex justify-center w-full">
+                {/* Middle Section: Game Canvas Container */}
+                <div className="flex justify-center items-center flex-1 my-4 overflow-hidden min-h-0">
                     <RavenGame 
                         userId={activeUserId} 
                         personalBest={personalBest} 
@@ -116,16 +118,14 @@ export default function TrainingPage() {
                     />
                 </div>
 
-                {/* Personal Best Stat Tile - Matching Profile Page Styling */}
-                <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mt-6 w-full">
-                    <p className="m-0 mb-4 text-[10px] font-black uppercase tracking-widest text-white/40">Metrics</p>
-                    <div className="grid grid-cols-1 gap-3">
-                        <div className="rounded-[24px] p-4 bg-black/20 border border-white/5">
-                            <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">Personal Best</p>
-                            <p className="m-0 text-xl font-bold mt-2 text-white">
-                                {personalBest !== null ? `${personalBest} reactions` : '—'}
-                            </p>
-                        </div>
+                {/* Bottom Section: Stat Tile - Matching Profile Page Card Visual Language */}
+                <div className="rounded-[24px] p-5 bg-[#1C1C1E] border border-white/10 shadow-sm w-full shrink-0">
+                    <p className="m-0 mb-3 text-[9px] font-black uppercase tracking-widest text-white/40">Metrics</p>
+                    <div className="rounded-[16px] p-4 bg-black/20 border border-white/5">
+                        <p className="m-0 text-[9px] font-black uppercase tracking-widest text-white/40">Personal Best</p>
+                        <p className="m-0 text-lg font-bold mt-1 text-white">
+                            {personalBest !== null ? `${personalBest} reactions` : '—'}
+                        </p>
                     </div>
                 </div>
 

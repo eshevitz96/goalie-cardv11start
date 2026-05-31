@@ -373,8 +373,8 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                 e.preventDefault(); // Stop click emulation lag on touch
                 triggerJump();
             }}
-            className="relative w-full max-w-[480px] aspect-[4/5] bg-[#09090B] border border-white/10 rounded-[32px] overflow-hidden focus:outline-none select-none cursor-pointer shadow-2xl"
-            style={{ aspectRatio: '4/5' }}
+            className="relative w-full max-w-[480px] bg-[#09090B] border border-white/10 rounded-[32px] overflow-hidden focus:outline-none select-none cursor-pointer shadow-2xl"
+            style={{ aspectRatio: '4/5', maxHeight: '62vh' }}
             tabIndex={0}
         >
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" style={{ width: '100%', height: '100%' }} />
