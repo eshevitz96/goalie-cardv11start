@@ -54,6 +54,25 @@ export default function CalendarPage() {
   const [practiceLocation, setPracticeLocation] = useState("");
   const [practiceNotes, setPracticeNotes] = useState("");
 
+  // Edit Game Form States
+  const [editingGame, setEditingGame] = useState<any>(null);
+  const [editGameOpponent, setEditGameOpponent] = useState("");
+  const [editGameLocation, setEditGameLocation] = useState("");
+  const [editGameDate, setEditGameDate] = useState("");
+  const [editGameTime, setEditGameTime] = useState("");
+  const [editGameType, setEditGameType] = useState("game");
+  const [editGameError, setEditGameError] = useState("");
+  const [gameDeleteConfirm, setGameDeleteConfirm] = useState(false);
+
+  // Edit Practice Form States
+  const [editingPractice, setEditingPractice] = useState<any>(null);
+  const [editPracticeDate, setEditPracticeDate] = useState("");
+  const [editPracticeTime, setEditPracticeTime] = useState("");
+  const [editPracticeLocation, setEditPracticeLocation] = useState("");
+  const [editPracticeNotes, setEditPracticeNotes] = useState("");
+  const [editPracticeError, setEditPracticeError] = useState("");
+  const [practiceDeleteConfirm, setPracticeDeleteConfirm] = useState(false);
+
   const [dbSaving, setDbSaving] = useState(false);
 
   useEffect(() => {
@@ -404,6 +423,188 @@ export default function CalendarPage() {
     }
   };
 
+  const handleUpdateGame = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingGame || !editGameOpponent || !editGameDate || !editGameTime) return;
+    setEditGameError("");
+    setDbSaving(true);
+    try {
+      const uid = auth.userId;
+      const formattedTime = editGameTime.includes(":") && editGameTime.split(":").length === 2 ? editGameTime + ":00" : editGameTime;
+      
+      if (uid === "00000000-0000-0000-0000-000000000000") {
+        const updatedGames = games.map((g) =>
+          g.id === editingGame.id
+            ? {
+                ...g,
+                opponent: editGameOpponent,
+                location: editGameLocation || "TBD",
+                scheduled_date: editGameDate,
+                scheduled_time: formattedTime,
+                game_type: editGameType
+              }
+            : g
+        );
+        setGames(updatedGames);
+        setEditingGame(null);
+        setDbSaving(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("game_sessions")
+        .update({
+          opponent: editGameOpponent,
+          location: editGameLocation || "TBD",
+          scheduled_date: editGameDate,
+          scheduled_time: formattedTime,
+          game_type: editGameType
+        })
+        .eq("id", editingGame.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Update game Supabase error details:", error);
+        setEditGameError(error.message || "Failed to update game. Please try again.");
+        return;
+      }
+
+      const updatedGames = games.map((g) => (g.id === editingGame.id ? data : g));
+      setGames(updatedGames);
+      setEditingGame(null);
+    } catch (err: any) {
+      console.error("Update game unexpected error:", err);
+      setEditGameError(err?.message || "An unexpected error occurred.");
+    } finally {
+      setDbSaving(false);
+    }
+  };
+
+  const handleDeleteGame = async () => {
+    if (!editingGame) return;
+    setEditGameError("");
+    setDbSaving(true);
+    try {
+      const uid = auth.userId;
+      if (uid === "00000000-0000-0000-0000-000000000000") {
+        setGames(games.filter((g) => g.id !== editingGame.id));
+        setEditingGame(null);
+        setDbSaving(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from("game_sessions")
+        .delete()
+        .eq("id", editingGame.id);
+
+      if (error) {
+        console.error("Delete game Supabase error details:", error);
+        setEditGameError(error.message || "Failed to delete game. Please try again.");
+        return;
+      }
+
+      setGames(games.filter((g) => g.id !== editingGame.id));
+      setEditingGame(null);
+    } catch (err: any) {
+      console.error("Delete game unexpected error:", err);
+      setEditGameError(err?.message || "An unexpected error occurred.");
+    } finally {
+      setDbSaving(false);
+    }
+  };
+
+  const handleUpdatePractice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPractice || !editPracticeDate || !editPracticeTime) return;
+    setEditPracticeError("");
+    setDbSaving(true);
+    try {
+      const uid = auth.userId;
+      const formattedTime = editPracticeTime.includes(":") && editPracticeTime.split(":").length === 2 ? editPracticeTime + ":00" : editPracticeTime;
+
+      if (uid === "00000000-0000-0000-0000-000000000000") {
+        const updatedPractices = practices.map((p) =>
+          p.id === editingPractice.id
+            ? {
+                ...p,
+                scheduled_date: editPracticeDate,
+                scheduled_time: formattedTime,
+                location: editPracticeLocation || "TBD",
+                notes: editPracticeNotes || null
+              }
+            : p
+        );
+        setPractices(updatedPractices);
+        setEditingPractice(null);
+        setDbSaving(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("practices")
+        .update({
+          scheduled_date: editPracticeDate,
+          scheduled_time: formattedTime,
+          location: editPracticeLocation || "TBD",
+          notes: editPracticeNotes || null
+        })
+        .eq("id", editingPractice.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Update practice Supabase error details:", error);
+        setEditPracticeError(error.message || "Failed to update practice. Please try again.");
+        return;
+      }
+
+      const updatedPractices = practices.map((p) => (p.id === editingPractice.id ? data : p));
+      setPractices(updatedPractices);
+      setEditingPractice(null);
+    } catch (err: any) {
+      console.error("Update practice unexpected error:", err);
+      setEditPracticeError(err?.message || "An unexpected error occurred.");
+    } finally {
+      setDbSaving(false);
+    }
+  };
+
+  const handleDeletePractice = async () => {
+    if (!editingPractice) return;
+    setEditPracticeError("");
+    setDbSaving(true);
+    try {
+      const uid = auth.userId;
+      if (uid === "00000000-0000-0000-0000-000000000000") {
+        setPractices(practices.filter((p) => p.id !== editingPractice.id));
+        setEditingPractice(null);
+        setDbSaving(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from("practices")
+        .delete()
+        .eq("id", editingPractice.id);
+
+      if (error) {
+        console.error("Delete practice Supabase error details:", error);
+        setEditPracticeError(error.message || "Failed to delete practice. Please try again.");
+        return;
+      }
+
+      setPractices(practices.filter((p) => p.id !== editingPractice.id));
+      setEditingPractice(null);
+    } catch (err: any) {
+      console.error("Delete practice unexpected error:", err);
+      setEditPracticeError(err?.message || "An unexpected error occurred.");
+    } finally {
+      setDbSaving(false);
+    }
+  };
+
   const formatTime = (timeStr: string) => {
     if (!timeStr) return "—";
     const parts = timeStr.split(":");
@@ -643,7 +844,20 @@ export default function CalendarPage() {
                           const isGamePast = gameDateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate());
                           
                           return (
-                            <div key={gIdx} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-black/25 rounded-2xl border border-white/5">
+                            <div 
+                              key={gIdx} 
+                              onClick={() => {
+                                setEditingGame(game);
+                                setEditGameOpponent(game.opponent || "");
+                                setEditGameLocation(game.location || "");
+                                setEditGameDate(game.scheduled_date || "");
+                                setEditGameTime(game.scheduled_time ? game.scheduled_time.substring(0, 5) : "");
+                                setEditGameType(game.game_type || "game");
+                                setEditGameError("");
+                                setGameDeleteConfirm(false);
+                              }}
+                              className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-black/25 hover:bg-black/35 border border-white/5 rounded-2xl cursor-pointer transition-all"
+                            >
                               <div className="space-y-1.5">
                                 <div className="flex items-center gap-2">
                                   <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-[#006747] text-white rounded-full">
@@ -656,7 +870,7 @@ export default function CalendarPage() {
                                   <span className="flex items-center gap-1"><MapPin size={12} /> {game.location}</span>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 shrink-0">
+                              <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <Link 
                                   href="/film" 
                                   className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 transition-colors border border-white/10 rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
@@ -686,7 +900,19 @@ export default function CalendarPage() {
 
                         {/* Render Practices */}
                         {dayPractices.map((practice, pIdx) => (
-                          <div key={pIdx} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-black/10 rounded-2xl border border-white/5">
+                          <div 
+                            key={pIdx} 
+                            onClick={() => {
+                              setEditingPractice(practice);
+                              setEditPracticeDate(practice.scheduled_date || "");
+                              setEditPracticeTime(practice.scheduled_time ? practice.scheduled_time.substring(0, 5) : "");
+                              setEditPracticeLocation(practice.location || "");
+                              setEditPracticeNotes(practice.notes || "");
+                              setEditPracticeError("");
+                              setPracticeDeleteConfirm(false);
+                            }}
+                            className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-black/10 hover:bg-black/20 border border-white/5 rounded-2xl cursor-pointer transition-all"
+                          >
                             <div className="space-y-1.5">
                               <div className="flex items-center gap-2">
                                 <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-white/10 text-white/80 rounded-full">
@@ -875,6 +1101,245 @@ export default function CalendarPage() {
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Add Practice
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Game Modal */}
+      {editingGame && (
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditingGame(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+        >
+          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+            <h3 className="text-lg font-bold tracking-tight mb-4">Edit Scheduled Game</h3>
+            <form onSubmit={handleUpdateGame} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Opponent</label>
+                <input 
+                  type="text" 
+                  value={editGameOpponent}
+                  onChange={(e) => setEditGameOpponent(e.target.value)}
+                  placeholder="e.g. Crusaders Lacrosse"
+                  required
+                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Date</label>
+                  <input 
+                    type="date" 
+                    value={editGameDate}
+                    onChange={(e) => setEditGameDate(e.target.value)}
+                    required
+                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Time</label>
+                  <input 
+                    type="time" 
+                    value={editGameTime}
+                    onChange={(e) => setEditGameTime(e.target.value)}
+                    required
+                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Location</label>
+                <input 
+                  type="text" 
+                  value={editGameLocation}
+                  onChange={(e) => setEditGameLocation(e.target.value)}
+                  placeholder="e.g. Home Field or Away"
+                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Game Type</label>
+                <select
+                  value={editGameType}
+                  onChange={(e) => setEditGameType(e.target.value)}
+                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                >
+                  <option value="game">Regular Season Game</option>
+                  <option value="playoff">Playoff Game</option>
+                  <option value="scrimmage">Scrimmage</option>
+                </select>
+              </div>
+              {editGameError && (
+                <p className="text-xs text-red-400 font-medium">{editGameError}</p>
+              )}
+              <div className="flex gap-3 mt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setEditingGame(null)}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={dbSaving}
+                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {dbSaving && <Loader2 size={12} className="animate-spin" />}
+                  Save Changes
+                </button>
+              </div>
+
+              {/* Red double-tap Delete section */}
+              <div className="border-t border-white/5 pt-4 mt-4 text-center">
+                {!gameDeleteConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => setGameDeleteConfirm(true)}
+                    className="text-xs text-red-500 hover:text-red-400 font-semibold transition-colors cursor-pointer bg-transparent border-none outline-none"
+                  >
+                    Delete game
+                  </button>
+                ) : (
+                  <div className="space-y-3 animate-fade-in">
+                    <p className="m-0 text-xs text-white/60 font-medium">Are you sure? This cannot be undone.</p>
+                    <div className="flex justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setGameDeleteConfirm(false)}
+                        className="px-4 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                      >
+                        Nevermind
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeleteGame}
+                        disabled={dbSaving}
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        {dbSaving && <Loader2 size={10} className="animate-spin" />}
+                        Confirm Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Practice Modal */}
+      {editingPractice && (
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditingPractice(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+        >
+          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+            <h3 className="text-lg font-bold tracking-tight mb-4">Edit Practice Session</h3>
+            <form onSubmit={handleUpdatePractice} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Date</label>
+                  <input 
+                    type="date" 
+                    value={editPracticeDate}
+                    onChange={(e) => setEditPracticeDate(e.target.value)}
+                    required
+                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Time</label>
+                  <input 
+                    type="time" 
+                    value={editPracticeTime}
+                    onChange={(e) => setEditPracticeTime(e.target.value)}
+                    required
+                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Location</label>
+                <input 
+                  type="text" 
+                  value={editPracticeLocation}
+                  onChange={(e) => setEditPracticeLocation(e.target.value)}
+                  placeholder="e.g. Practice Turf 2"
+                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Practice Notes</label>
+                <input 
+                  type="text" 
+                  value={editPracticeNotes}
+                  onChange={(e) => setEditPracticeNotes(e.target.value)}
+                  placeholder="e.g. Extra focus on stick work"
+                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                />
+              </div>
+              {editPracticeError && (
+                <p className="text-xs text-red-400 font-medium">{editPracticeError}</p>
+              )}
+              <div className="flex gap-3 mt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setEditingPractice(null)}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={dbSaving}
+                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {dbSaving && <Loader2 size={12} className="animate-spin" />}
+                  Save Changes
+                </button>
+              </div>
+
+              {/* Red double-tap Delete section */}
+              <div className="border-t border-white/5 pt-4 mt-4 text-center">
+                {!practiceDeleteConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => setPracticeDeleteConfirm(true)}
+                    className="text-xs text-red-500 hover:text-red-400 font-semibold transition-colors cursor-pointer bg-transparent border-none outline-none"
+                  >
+                    Delete practice
+                  </button>
+                ) : (
+                  <div className="space-y-3 animate-fade-in">
+                    <p className="m-0 text-xs text-white/60 font-medium">Are you sure? This cannot be undone.</p>
+                    <div className="flex justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPracticeDeleteConfirm(false)}
+                        className="px-4 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                      >
+                        Nevermind
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeletePractice}
+                        disabled={dbSaving}
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        {dbSaving && <Loader2 size={10} className="animate-spin" />}
+                        Confirm Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </form>
           </div>
