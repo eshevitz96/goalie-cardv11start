@@ -63,7 +63,10 @@ export default function TrainingPage() {
     // Show loading spinner while loading session or user state
     if (auth.loading || (loading && auth.userId)) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#09090B] text-foreground">
+            <div 
+                className="flex items-center justify-center text-foreground w-full"
+                style={{ minHeight: '100vh', background: '#09090B' }}
+            >
                 <Loader2 className="animate-spin text-white/30" size={32} />
             </div>
         );
@@ -75,7 +78,17 @@ export default function TrainingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#09090B] text-foreground font-sans pt-6 pb-20 px-4 md:px-8 flex flex-col justify-start">
+        <div 
+            className="text-foreground font-sans flex flex-col justify-start w-full"
+            style={{ 
+                minHeight: '100vh', 
+                background: '#09090B', 
+                paddingTop: '24px', 
+                paddingBottom: '80px', 
+                paddingLeft: '16px', 
+                paddingRight: '16px' 
+            }}
+        >
             <div className="max-w-[480px] mx-auto w-full">
                 
                 {/* Back Navigation */}
