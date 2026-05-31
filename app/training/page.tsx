@@ -22,7 +22,7 @@ export default function TrainingPage() {
         }
     }, [auth.loading, auth.isAuthenticated, router]);
 
-    // Fetch personal best score on page load
+    // Fetch personal best score on page load (game_type = 'training')
     useEffect(() => {
         if (!auth.userId) return;
 
@@ -33,7 +33,7 @@ export default function TrainingPage() {
 
                 if (uid === '00000000-0000-0000-0000-000000000000') {
                     // Dev bypass mode
-                    const localPb = localStorage.getItem('dev_raven_pb');
+                    const localPb = localStorage.getItem('dev_training_pb');
                     setPersonalBest(localPb ? parseInt(localPb, 10) : null);
                 } else {
                     // Fetch real PB from Supabase
@@ -41,7 +41,7 @@ export default function TrainingPage() {
                         .from('training_game_scores')
                         .select('score')
                         .eq('user_id', uid)
-                        .eq('game_type', 'raven')
+                        .eq('game_type', 'training')
                         .order('score', { ascending: false })
                         .limit(1)
                         .maybeSingle();
@@ -97,13 +97,9 @@ export default function TrainingPage() {
                     <span className="text-xs font-medium">Back to dashboard</span>
                 </Link>
 
-                {/* Training Header */}
+                {/* Training Header - Micro label only, no H1 title */}
                 <div className="mb-6 px-1">
                     <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">Training</p>
-                    <h1 className="m-0 text-2xl font-bold tracking-tight text-[#f4f4f5] mt-1">Raven</h1>
-                    <p className="m-0 text-xs text-white/40 mt-1 font-medium leading-relaxed">
-                        Reflex and focus assessment
-                    </p>
                 </div>
 
                 {/* Game Canvas Container */}

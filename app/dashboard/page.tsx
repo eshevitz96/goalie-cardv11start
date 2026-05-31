@@ -60,7 +60,7 @@ export default function Dashboard() {
                         navHref: "/calendar/week"
                     });
                     
-                    const localPb = localStorage.getItem('dev_raven_pb');
+                    const localPb = localStorage.getItem('dev_training_pb');
                     setTrainingPb(localPb ? parseInt(localPb, 10) : null);
                     
                     setLoading(false);
@@ -289,12 +289,12 @@ export default function Dashboard() {
                 }
                 setSeasonName(activeSeason);
 
-                // 5. Fetch Raven personal best score
+                // 5. Fetch Reflex personal best score
                 const { data: scoreRes } = await supabase
                     .from('training_game_scores')
                     .select('score')
                     .eq('user_id', uid)
-                    .eq('game_type', 'raven')
+                    .eq('game_type', 'training')
                     .order('score', { ascending: false })
                     .limit(1)
                     .maybeSingle();

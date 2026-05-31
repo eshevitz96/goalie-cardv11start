@@ -99,11 +99,11 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
             onNewPb(finalScore);
         }
 
-        // Persist score to DB
+        // Persist score to DB (game_type = 'training')
         if (userId === '00000000-0000-0000-0000-000000000000') {
             // Dev bypass mode
             if (isPb) {
-                localStorage.setItem('dev_raven_pb', finalScore.toString());
+                localStorage.setItem('dev_training_pb', finalScore.toString());
             }
         } else if (userId) {
             try {
@@ -111,7 +111,7 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                     .from('training_game_scores')
                     .insert({
                         user_id: userId,
-                        game_type: 'raven',
+                        game_type: 'training',
                         score: finalScore
                     });
             } catch (err) {
@@ -141,18 +141,32 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [personalBest, userId]);
 
+    // Canvas resize handling
+    useEffect(() => {
+        const handleResize = () => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+        };
+
+        window.addEventListener('resize', handleResize);
+        handleResize();
+
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // Canvas render & update loop
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-
-        // Apply high-DPI scaling for ultra-sharp canvas rendering
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = CANVAS_WIDTH * dpr;
-        canvas.height = CANVAS_HEIGHT * dpr;
-        ctx.scale(dpr, dpr);
 
         let animationFrameId: number;
 
@@ -209,7 +223,7 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
 
                 const halfGap = gapHeight / 2;
                 const gapTop = gate.gapCenter - halfGap;
-                const gapBottom = gate.gapCenter + halfGap;
+                const gapBottom = gate.gapCenter + gapHeight / 2;
 
                 // Horizontal boundary overlap
                 if (markerX + radius >= gate.x && markerX - radius <= gate.x + gateWidth) {
@@ -249,6 +263,17 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
         };
 
         const drawGame = () => {
+            // Reset transform to identity
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+
+            // Dynamically scale context to map virtual (400x500) coordinate space onto physical device pixels
+            const scaleX = (rect.width * dpr) / CANVAS_WIDTH;
+            const scaleY = (rect.height * dpr) / CANVAS_HEIGHT;
+            ctx.scale(scaleX, scaleY);
+
             // Draw background
             ctx.fillStyle = '#09090B';
             ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -349,17 +374,20 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                 triggerJump();
             }}
             className="relative w-full max-w-[480px] aspect-[4/5] bg-[#09090B] border border-white/10 rounded-[32px] overflow-hidden focus:outline-none select-none cursor-pointer shadow-2xl"
+            style={{ aspectRatio: '4/5' }}
             tabIndex={0}
         >
-            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" />
+            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" style={{ width: '100%', height: '100%' }} />
 
-            {/* Start Screen Overlay */}
+            {/* Start Screen Overlay - Cleaned of Game Titles */}
             {gameState === 'idle' && (
                 <div className="absolute inset-0 bg-[#09090B]/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center select-none pointer-events-none">
-                    <p className="m-0 text-3xl font-bold tracking-widest text-[#f4f4f5] font-sans uppercase">Raven</p>
-                    <p className="m-0 text-xs tracking-wider text-white/40 uppercase mt-2">Reflex assessment</p>
                     <p className="m-0 text-[11px] font-black tracking-widest text-white/60 uppercase mt-12 animate-pulse">
                         Tap or Space to begin
+                    </p>
+                    
+                    <p className="m-0 text-[10px] text-white/40 mt-2 font-medium tracking-wide">
+                        Fly through the gaps. Don't hit the walls.
                     </p>
                     
                     {personalBest !== null && (
@@ -370,38 +398,33 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                 </div>
             )}
 
-            {/* Session End Screen Telemetry Overlay */}
+            {/* Session End Screen Telemetry Overlay (Simplified) */}
             {gameState === 'dead' && (
                 <div className="absolute inset-0 bg-[#09090B]/95 flex flex-col items-center justify-between p-10 select-none">
                     {/* Empty spacer to align center */}
                     <div />
 
-                    {/* F1 Telemetry Readouts */}
+                    {/* F1 Telemetry Readouts - Simplified to Reactions and Personal Best */}
                     <div className="w-full max-w-[260px] flex flex-col gap-4 font-mono">
                         <div className="flex items-center justify-between border-b border-white/5 pb-2">
                             <span className="text-[11px] font-bold tracking-wider text-white/40 uppercase">Reactions</span>
                             <span className="text-2xl font-bold text-white leading-none">{sessionMetrics.score}</span>
                         </div>
                         <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                            <span className="text-[11px] font-bold tracking-wider text-white/40 uppercase">Consistency</span>
-                            <span className="text-2xl font-bold text-white leading-none">{sessionMetrics.consistency}%</span>
-                        </div>
-                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                            <span className="text-[11px] font-bold tracking-wider text-white/40 uppercase">Peak Streak</span>
-                            <span className="text-2xl font-bold text-white leading-none">{sessionMetrics.peakStreak}</span>
+                            <span className="text-[11px] font-bold tracking-wider text-white/40 uppercase">Personal Best</span>
+                            <span className="text-2xl font-bold text-white leading-none">
+                                {personalBest !== null ? Math.max(personalBest, sessionMetrics.score) : sessionMetrics.score}
+                            </span>
                         </div>
                         
-                        {/* PB Muted Sub-text */}
-                        <div className="flex items-center justify-between pt-2">
-                            <span className="text-[10px] tracking-wider text-white/35">
-                                PB: {personalBest !== null ? Math.max(personalBest, sessionMetrics.score) : sessionMetrics.score} reactions
-                            </span>
-                            {isNewPb && (
+                        {/* New PB banner */}
+                        {isNewPb && (
+                            <div className="flex justify-center pt-2">
                                 <span className="text-[10px] font-bold tracking-widest text-[#006747] uppercase">
                                     New PB
                                 </span>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Bottom controls and seed string */}
