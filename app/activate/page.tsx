@@ -20,6 +20,29 @@ function ActivateController() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    // Redirect Check: send completed users to /dashboard, new users to /onboarding
+    useEffect(() => {
+        async function runRedirectCheck() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('onboarding_completed')
+                    .eq('auth_user_id', user.id)
+                    .maybeSingle();
+                
+                if (profile?.onboarding_completed) {
+                    router.replace('/dashboard');
+                } else {
+                    router.replace('/onboarding');
+                }
+            } else {
+                router.replace('/onboarding');
+            }
+        }
+        runRedirectCheck();
+    }, [router]);
+
     // State
     const [step, setStep] = useState<'email' | 'verify_review' | 'baseline' | 'security' | 'success'>('email');
     const [email, setEmail] = useState(searchParams.get('email') || "");

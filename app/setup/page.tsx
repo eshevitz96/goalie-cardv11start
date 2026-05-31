@@ -8,6 +8,30 @@ import { supabase } from "@/utils/supabase/client";
 
 export default function OnboardingPage() {
     const router = useRouter();
+
+    // Redirect Check: send completed users to /dashboard, new users to /onboarding
+    useEffect(() => {
+        async function runRedirectCheck() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('onboarding_completed')
+                    .eq('auth_user_id', user.id)
+                    .maybeSingle();
+                
+                if (profile?.onboarding_completed) {
+                    router.replace('/dashboard');
+                } else {
+                    router.replace('/onboarding');
+                }
+            } else {
+                router.replace('/onboarding');
+            }
+        }
+        runRedirectCheck();
+    }, [router]);
+
     const [step, setStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
 

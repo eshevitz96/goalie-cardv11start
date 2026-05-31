@@ -58,9 +58,9 @@ export async function GET(request: Request) {
                             .update({ linked_user_id: user.id, is_claimed: true })
                             .eq('id', card.id);
                     } else {
-                        // 5. No card found -> Redirect to Activate
-                        console.log(`[Auth Callback] No card found. Redirecting to activation wizard.`);
-                        next = '/activate';
+                        // 5. No card found -> Redirect to Onboarding
+                        console.log(`[Auth Callback] No card found. Redirecting to onboarding flow.`);
+                        next = '/onboarding';
                     }
                 }
             }

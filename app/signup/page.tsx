@@ -7,7 +7,7 @@ export default function SignupPage() {
     const router = useRouter();
 
     useEffect(() => {
-        router.replace('/activate');
+        router.replace('/onboarding');
     }, [router]);
 
     return null;
