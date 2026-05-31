@@ -141,26 +141,6 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [personalBest, userId]);
 
-    // Canvas resize handling
-    useEffect(() => {
-        const handleResize = () => {
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
-            
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-        };
-
-        window.addEventListener('resize', handleResize);
-        handleResize();
-
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
     // Canvas render & update loop
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -268,10 +248,18 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
 
             const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
+            
+            // Strictly synchronize physical backing store with the rendered CSS size in real-time
+            const targetWidth = Math.round(rect.width * dpr);
+            const targetHeight = Math.round(rect.height * dpr);
+            if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+            }
 
             // Dynamically scale context to map virtual (400x500) coordinate space onto physical device pixels
-            const scaleX = (rect.width * dpr) / CANVAS_WIDTH;
-            const scaleY = (rect.height * dpr) / CANVAS_HEIGHT;
+            const scaleX = canvas.width / CANVAS_WIDTH;
+            const scaleY = canvas.height / CANVAS_HEIGHT;
             ctx.scale(scaleX, scaleY);
 
             // Draw background

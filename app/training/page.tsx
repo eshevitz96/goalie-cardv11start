@@ -89,8 +89,8 @@ export default function TrainingPage() {
                 height: '100vh', 
                 maxHeight: '100vh', 
                 background: '#09090B', 
-                paddingTop: '20px', 
-                paddingBottom: '20px', 
+                paddingTop: '24px', 
+                paddingBottom: '24px', 
                 paddingLeft: '16px', 
                 paddingRight: '16px',
                 overflow: 'hidden'
@@ -118,16 +118,8 @@ export default function TrainingPage() {
                     />
                 </div>
 
-                {/* Bottom Section: Stat Tile - Matching Profile Page Card Visual Language */}
-                <div className="rounded-[24px] p-5 bg-[#1C1C1E] border border-white/10 shadow-sm w-full shrink-0">
-                    <p className="m-0 mb-3 text-[9px] font-black uppercase tracking-widest text-white/40">Metrics</p>
-                    <div className="rounded-[16px] p-4 bg-black/20 border border-white/5">
-                        <p className="m-0 text-[9px] font-black uppercase tracking-widest text-white/40">Personal Best</p>
-                        <p className="m-0 text-lg font-bold mt-1 text-white">
-                            {personalBest !== null ? `${personalBest} reactions` : '—'}
-                        </p>
-                    </div>
-                </div>
+                {/* Bottom Balance Spacer - matching top vertical padding */}
+                <div className="h-4 shrink-0" />
 
             </div>
         </div>
