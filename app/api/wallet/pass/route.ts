@@ -97,10 +97,9 @@ export async function GET(req: NextRequest) {
 
         // 7. Add Assets 
         // We'll need to point to existing logo images in the public folder
-        const logoPath = './public/flower-logo.png';
-        if (fs.existsSync(logoPath)) {
-            pass.addBuffer('logo.png', fs.readFileSync(logoPath));
-            pass.addBuffer('icon.png', fs.readFileSync(logoPath)); // Required
+        if (fs.existsSync('./public/flower-logo.png')) {
+            pass.addBuffer('logo.png', fs.readFileSync('./public/flower-logo.png'));
+            pass.addBuffer('icon.png', fs.readFileSync('./public/flower-logo.png')); // Required
         }
 
         // 8. Generate the buffer
