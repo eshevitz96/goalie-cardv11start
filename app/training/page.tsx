@@ -12,24 +12,29 @@ export default function TrainingPage() {
     const auth = useAuth();
     const router = useRouter();
 
+    const isDevBypass = process.env.NEXT_PUBLIC_DEV_BYPASS === 'true';
+    const activeUserId = isDevBypass ? "00000000-0000-0000-0000-000000000000" : auth.userId;
+    const activeIsAuthenticated = isDevBypass ? true : auth.isAuthenticated;
+    const activeAuthLoading = isDevBypass ? false : auth.loading;
+
     const [loading, setLoading] = useState(true);
     const [personalBest, setPersonalBest] = useState<number | null>(null);
 
     // Client-side authentication protection redirect
     useEffect(() => {
-        if (!auth.loading && !auth.isAuthenticated) {
+        if (!activeAuthLoading && !activeIsAuthenticated) {
             router.push('/login');
         }
-    }, [auth.loading, auth.isAuthenticated, router]);
+    }, [activeAuthLoading, activeIsAuthenticated, router]);
 
     // Fetch personal best score on page load (game_type = 'training')
     useEffect(() => {
-        if (!auth.userId) return;
+        if (!activeUserId) return;
 
         const fetchPersonalBest = async () => {
             setLoading(true);
             try {
-                const uid = auth.userId;
+                const uid = activeUserId;
 
                 if (uid === '00000000-0000-0000-0000-000000000000') {
                     // Dev bypass mode
@@ -58,10 +63,10 @@ export default function TrainingPage() {
         };
 
         fetchPersonalBest();
-    }, [auth.userId]);
+    }, [activeUserId]);
 
     // Show loading spinner while loading session or user state
-    if (auth.loading || (loading && auth.userId)) {
+    if (activeAuthLoading || (loading && activeUserId)) {
         return (
             <div 
                 className="flex items-center justify-center text-foreground w-full"
@@ -73,7 +78,7 @@ export default function TrainingPage() {
     }
 
     // Secure fallback block
-    if (!auth.isAuthenticated) {
+    if (!activeIsAuthenticated) {
         return null;
     }
 
@@ -105,7 +110,7 @@ export default function TrainingPage() {
                 {/* Game Canvas Container */}
                 <div className="flex justify-center w-full">
                     <RavenGame 
-                        userId={auth.userId} 
+                        userId={activeUserId} 
                         personalBest={personalBest} 
                         onNewPb={(newScore) => setPersonalBest(newScore)} 
                     />
