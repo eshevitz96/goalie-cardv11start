@@ -96,7 +96,7 @@ export function GameReportSummary({ onEditWorkspace, onSaveComplete, onSelectCli
               <h1 style={{ fontSize: '2.25rem', fontWeight: 700 }}>{title || 'Untitled Session'}</h1>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.4)', fontSize: '0.95rem' }}>
-              <Calendar size={14} />
+              <Calendar size={14} color="#FFFFFF" />
               <span>{formattedDate}</span>
               <span style={{ margin: '0 4px' }}>•</span>
               <span>{clips.length} Clips processed • {totalShots} Shots logged</span>
@@ -138,7 +138,7 @@ export function GameReportSummary({ onEditWorkspace, onSaveComplete, onSelectCli
         {/* Clip Roster */}
         <div style={{ marginBottom: '48px' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Film size={16} /> Game Film — {clips.length} Clips
+            <Film size={16} color="#FFFFFF" /> Game Film — {clips.length} Clips
           </h3>
           <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '12px' }}>
             {clips.map((clip, idx) => (

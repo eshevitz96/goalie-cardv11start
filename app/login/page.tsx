@@ -7,14 +7,12 @@ import { InstitutionalSpinner } from "@/components/ui/Loaders";
 import { Loader2, Mail, ArrowRight, AlertCircle, Lock, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { checkUserStatus } from "@/app/actions";
-import { useTheme } from "next-themes";
 import { GoalieHeader } from "@/components/goalie/GoalieHeader";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
 function LoginController() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { theme } = useTheme();
 
     // UI State
     const [step, setStep] = useState<'email' | 'continue-as' | 'password' | 'reset-sent'>('email');
@@ -139,14 +137,14 @@ function LoginController() {
 
     if (step === 'continue-as') {
         return (
-            <main className="min-h-screen bg-white dark:bg-background text-black dark:text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
                 <div className="w-full max-w-lg relative z-10 text-left">
                     <BrandLogo className="mb-8" />
-                    <div className="bg-black/[0.03] dark:bg-card/20 backdrop-blur-2xl border border-black/10 dark:border-border/40 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.05)] text-center">
+                    <div className="bg-card/20 backdrop-blur-2xl border border-border/40 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.15)] text-center">
                         <h2 className="text-2xl font-semibold mb-6">Welcome Back</h2>
                         <button
                             onClick={() => setStep('password')}
-                            className="w-full py-5 text-md font-bold uppercase tracking-widest rounded-2xl shadow-xl bg-black dark:bg-zinc-900 text-white border border-black dark:border-zinc-700 hover:bg-zinc-900 dark:hover:bg-zinc-800 hover:scale-[1.02] transition-transform flex justify-center items-center gap-2 mb-4"
+                            className="w-full py-5 text-md font-bold uppercase tracking-widest rounded-2xl shadow-xl bg-zinc-900 text-white border border-zinc-700 hover:bg-zinc-800 hover:scale-[1.02] transition-transform flex justify-center items-center gap-2 mb-4"
                         >
                             Continue as {userStatus?.profile?.goalie_name || 'Athlete'}
                         </button>
@@ -156,7 +154,7 @@ function LoginController() {
                                 setUserStatus(null);
                                 setEmail("");
                             }}
-                            className="text-xs text-black/60 dark:text-zinc-400 font-bold uppercase tracking-widest hover:text-black dark:hover:text-white transition-colors mx-auto block"
+                            className="text-xs text-zinc-400 font-bold uppercase tracking-widest hover:text-white transition-colors mx-auto block"
                         >
                             Not you? Log in as someone else
                         </button>
@@ -167,7 +165,7 @@ function LoginController() {
     }
 
     return (
-        <main className="min-h-screen bg-white dark:bg-background text-black dark:text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
             {/* Minimalist Background (Private Training Style) */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/30 via-slate-500/30 to-primary/30" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/3 rounded-full blur-[120px] pointer-events-none" />
@@ -177,12 +175,12 @@ function LoginController() {
                     <BrandLogo className="mb-2" />
                 </div>
 
-                <div className="bg-black/[0.03] dark:bg-card/20 backdrop-blur-2xl border border-black/10 dark:border-border/40 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.15)] relative overflow-hidden">
+                <div className="bg-card/20 backdrop-blur-2xl border border-border/40 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.15)] relative overflow-hidden">
                     
                     {step === 'password' && (
                         <button
                             onClick={() => { setStep('email'); setPassword(''); setError(null); }}
-                            className="absolute top-6 left-6 p-2 rounded-full bg-black/5 dark:bg-secondary/20 border border-black/10 dark:border-border/30 hover:bg-black/10 dark:hover:bg-secondary/40 text-black/60 dark:text-muted-foreground transition-all z-20 group"
+                            className="absolute top-6 left-6 p-2 rounded-full bg-secondary/20 border border-border/30 hover:bg-secondary/40 text-muted-foreground transition-all z-20 group"
                         >
                             <ArrowRight size={14} className="rotate-180 group-hover:-translate-x-0.5 transition-transform" />
                         </button>
@@ -198,8 +196,8 @@ function LoginController() {
                                 className="space-y-8"
                             >
                                 <div className="space-y-2 text-center">
-                                    <h2 className="text-2xl font-semibold tracking-tight text-black dark:text-white">Enter your email</h2>
-                                    <p className="text-black/60 dark:text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
+                                    <h2 className="text-2xl font-semibold tracking-tight text-white">Enter your email</h2>
+                                    <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
                                         Enter your email to sign in or create an account.
                                     </p>
                                 </div>
@@ -207,13 +205,13 @@ function LoginController() {
                                 <form onSubmit={handleEmailSubmit} className="space-y-6">
                                     <div className="space-y-2">
                                         <div className="relative">
-                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-black/40 dark:text-muted-foreground/60" size={18} />
+                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/60" size={18} />
                                             <input
                                                 type="email"
                                                 required
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
-                                                className="w-full bg-black/5 dark:bg-secondary/40 border border-black/10 dark:border-border/60 rounded-2xl pl-12 pr-5 py-4 text-black dark:text-foreground focus:outline-none focus:border-black/30 dark:focus:border-primary/50 transition-all placeholder:text-black/30 dark:placeholder:text-muted-foreground/30 font-bold"
+                                                className="w-full bg-secondary/40 border border-border/60 rounded-2xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary/50 transition-all placeholder:text-muted-foreground/30 font-bold"
                                                 placeholder="name@email.com"
                                                 autoFocus
                                             />
@@ -229,13 +227,13 @@ function LoginController() {
                                     <button
                                         type="submit"
                                         disabled={isLoading}
-                                        className="w-full py-5 text-md font-bold uppercase tracking-widest rounded-2xl shadow-xl bg-black text-white dark:bg-white dark:text-black hover:scale-[1.02] transition-transform active:scale-95 group flex justify-center items-center gap-2 disabled:opacity-50"
+                                        className="w-full py-5 text-md font-bold uppercase tracking-widest rounded-2xl shadow-xl bg-white text-black hover:scale-[1.02] transition-transform active:scale-95 group flex justify-center items-center gap-2 disabled:opacity-50"
                                     >
                                         {isLoading ? (
                                             <motion.div 
                                                 animate={{ opacity: [0.4, 1, 0.4] }}
                                                 transition={{ duration: 1.5, repeat: Infinity }}
-                                                className="w-5 h-5 bg-white dark:bg-black rounded-full" 
+                                                className="w-5 h-5 bg-black rounded-full" 
                                             />
                                         ) : (
                                             <>
@@ -254,24 +252,24 @@ function LoginController() {
                                 className="space-y-8"
                             >
                                 <div className="space-y-2 text-center pt-4">
-                                    <h2 className="text-2xl font-semibold tracking-tight text-black dark:text-white">Security Key</h2>
-                                    <p className="text-black/60 dark:text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
+                                    <h2 className="text-2xl font-semibold tracking-tight text-white">Security Key</h2>
+                                    <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
                                         Enter your password to unlock the dashboard.
                                     </p>
                                 </div>
 
-                                <div className="flex items-center gap-3 p-4 bg-black/5 dark:bg-white/[0.02] rounded-2xl border border-black/10 dark:border-white/5">
-                                    <div className="w-10 h-10 rounded-full bg-black/10 dark:bg-white/5 flex items-center justify-center text-black/60 dark:text-white/40 font-black text-lg">
+                                <div className="flex items-center gap-3 p-4 bg-white/[0.02] rounded-2xl border border-white/5">
+                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 font-black text-lg">
                                         {email[0].toUpperCase()}
                                     </div>
                                     <div className="flex-1 overflow-hidden">
-                                        <p className="font-black truncate text-xs uppercase tracking-tight text-black dark:text-white">{userStatus?.profile?.goalie_name || 'Athlete'}</p>
-                                        <p className="text-[10px] text-black/40 dark:text-white/30 truncate">{email}</p>
+                                        <p className="font-black truncate text-xs uppercase tracking-tight text-white">{userStatus?.profile?.goalie_name || 'Athlete'}</p>
+                                        <p className="text-[10px] text-white/30 truncate">{email}</p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={handleForgotPassword}
-                                        className="text-[9px] text-black/60 dark:text-white/40 font-black uppercase tracking-widest hover:text-black dark:hover:text-white px-2 py-1 bg-black/5 dark:bg-white/10 rounded-full"
+                                        className="text-[9px] text-white/40 font-black uppercase tracking-widest hover:text-white px-2 py-1 bg-white/10 rounded-full"
                                     >
                                         Reset
                                     </button>
@@ -280,13 +278,13 @@ function LoginController() {
                                 <form onSubmit={handleLoginSubmit} className="space-y-6">
                                     <div className="space-y-2">
                                         <div className="relative">
-                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-black/40 dark:text-muted-foreground/60" size={18} />
+                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/60" size={18} />
                                             <input
                                                 type="password"
                                                 required
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
-                                                className="w-full bg-black/5 dark:bg-secondary/40 border border-black/10 dark:border-border/60 rounded-2xl pl-12 pr-5 py-4 text-black dark:text-foreground focus:outline-none focus:border-black/30 dark:focus:border-primary/50 transition-all placeholder:text-black/30 dark:placeholder:text-muted-foreground/30 font-bold"
+                                                className="w-full bg-secondary/40 border border-border/60 rounded-2xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary/50 transition-all placeholder:text-muted-foreground/30 font-bold"
                                                 placeholder="••••••••"
                                                 autoFocus
                                             />
@@ -302,13 +300,13 @@ function LoginController() {
                                     <button
                                         type="submit"
                                         disabled={isLoading}
-                                        className="w-full py-5 text-md font-bold uppercase tracking-widest rounded-2xl shadow-xl bg-black text-white dark:bg-white dark:text-black hover:scale-[1.02] transition-transform active:scale-95 flex justify-center items-center gap-2 disabled:opacity-50"
+                                        className="w-full py-5 text-md font-bold uppercase tracking-widest rounded-2xl shadow-xl bg-white text-black hover:scale-[1.02] transition-transform active:scale-95 flex justify-center items-center gap-2 disabled:opacity-50"
                                     >
                                         {isLoading ? (
                                             <motion.div 
                                                 animate={{ opacity: [0.4, 1, 0.4] }}
                                                 transition={{ duration: 1.5, repeat: Infinity }}
-                                                className="w-5 h-5 bg-white dark:bg-black rounded-full" 
+                                                className="w-5 h-5 bg-black rounded-full" 
                                             />
                                         ) : "Access Dashboard"}
                                     </button>
@@ -324,14 +322,14 @@ function LoginController() {
                                 <div className="w-20 h-20 bg-[#006747]/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-[#006747]/20">
                                     <CheckCircle2 size={32} className="text-[#006747]" />
                                 </div>
-                                <h2 className="text-2xl font-black text-black dark:text-white tracking-tighter mb-3">Transmission Sent</h2>
-                                <p className="text-black/60 dark:text-white/40 text-xs mb-8 leading-relaxed max-w-[240px] mx-auto uppercase font-bold tracking-tight">
-                                    Security recovery protocols initiated for <span className="text-black dark:text-white">{email}</span>. Check your inbox.
+                                <h2 className="text-2xl font-black text-white tracking-tighter mb-3">Transmission Sent</h2>
+                                <p className="text-white/40 text-xs mb-8 leading-relaxed max-w-[240px] mx-auto uppercase font-bold tracking-tight">
+                                    Security recovery protocols initiated for <span className="text-white">{email}</span>. Check your inbox.
                                 </p>
                                 <button
                                     type="button"
                                     onClick={() => { setStep('email'); setPassword(''); setError(null); }}
-                                    className="w-full bg-black/5 dark:bg-white/[0.05] hover:bg-black/10 dark:hover:bg-white/10 text-black dark:text-white font-black uppercase tracking-widest py-4 rounded-2xl transition-all border border-black/10 dark:border-white/5"
+                                    className="w-full bg-white/[0.05] hover:bg-white/10 text-white font-black uppercase tracking-widest py-4 rounded-2xl transition-all border border-white/5"
                                 >
                                     Log In
                                 </button>

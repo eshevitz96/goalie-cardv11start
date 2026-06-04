@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+import React from 'react';
 import { twMerge } from 'tailwind-merge';
 
 interface BrandProps {
@@ -21,15 +20,6 @@ export function BrandLogo({
   withText = true,
   textClassName = "text-3xl md:text-4xl font-medium tracking-tight"
 }: BrandProps) {
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  
-  const isDark = mounted && resolvedTheme === 'dark';
-
   return (
     <div 
       className={twMerge("flex items-center gap-[0.4ch]", textClassName, className)}
@@ -42,11 +32,9 @@ export function BrandLogo({
           draggable={false}
           className="h-full w-full object-contain pointer-events-none select-none opacity-100 transition-all duration-300"
           style={{ 
-            filter: isDark ? 'invert(1)' : 'none',
-            display: mounted ? 'block' : 'none' 
+            filter: 'invert(1)'
           }}
         />
-        {!mounted && <div style={{ height: '1.0em', width: '1.0em' }} />}
       </div>
       {withText && (
         <span className="leading-none whitespace-nowrap">

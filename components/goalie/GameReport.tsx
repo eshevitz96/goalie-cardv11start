@@ -9,7 +9,6 @@ import {
 import { GameAnalysisSurface } from './GameAnalysisSurface';
 import { SupportedSport, ShotEvent, ShotResult } from '@/types/goalie-v11';
 import { Button } from '@/components/ui/Button';
-import { useTheme } from 'next-themes';
 import { getSportTerms } from '@/utils/sport-language';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 
@@ -29,7 +28,6 @@ interface GameReportProps {
 }
 
 export function GameReport({ sport, opponent, date, shots, stats, location, sessionType }: GameReportProps) {
-  const { theme } = useTheme();
   const terms = getSportTerms(sport);
   const [locationName, setLocationName] = useState(location || 'Home Arena');
   const [isEditingLocation, setIsEditingLocation] = useState(false);

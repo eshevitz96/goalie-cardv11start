@@ -7,7 +7,6 @@ import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { ActivateProfileWizard, type ProfilePayload } from "@/components/activate/ActivateProfileWizard";
 
 interface ProfileDashboardProps {
@@ -204,24 +203,7 @@ export function ProfileDashboard({
                     )}
                 </motion.div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-card border border-border rounded-3xl overflow-hidden backdrop-blur-md p-6"
-                >
-                    <div className="flex items-center gap-2 mb-4 text-muted-foreground">
-                        <Settings size={18} />
-                        <span className="text-xs font-bold uppercase tracking-wider">Preferences</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <h3 className="font-bold text-foreground">Appearance</h3>
-                            <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
-                        </div>
-                        <ThemeToggle />
-                    </div>
-                </motion.div>
+
 
                 {/* Security */}
                 <motion.div

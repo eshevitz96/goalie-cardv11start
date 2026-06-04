@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { CheckCircle, QrCode, Settings2, Check } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
 import { twMerge } from "tailwind-merge";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -56,7 +55,6 @@ export function GoalieCard({
     practices
 }: GoalieCardProps) {
     const safeName = name ?? "";
-    const { theme } = useTheme();
 
     const [showQR, setShowQR] = useState(false);
     const [showWalletPreview, setShowWalletPreview] = useState(false);
@@ -113,7 +111,7 @@ export function GoalieCard({
                     height={className?.includes('w-12') ? 22 : 34} 
                     draggable={false}
                     className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
-                    style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                    style={{ filter: 'invert(1)' }}
                 />
             </div>
         );
@@ -177,7 +175,7 @@ export function GoalieCard({
                             height={34} 
                             draggable={false}
                             className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
-                            style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                            style={{ filter: 'invert(1)' }}
                         />
                     </div>
                     <div className="flex flex-col justify-center min-w-0">

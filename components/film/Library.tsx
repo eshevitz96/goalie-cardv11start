@@ -131,18 +131,18 @@ export function Library({ onSelectReport, onCreateNew }: LibraryProps) {
               </div>
               <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px', letterSpacing: '-0.02em' }}>{report.title}</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem' }}>
-                <Calendar size={14} />
+                <Calendar size={14} color="#FFFFFF" />
                 {new Date(report.date).toLocaleDateString()}
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '20px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Film size={14} color="rgba(255,255,255,0.4)" />
+                  <Film size={14} color="#FFFFFF" />
                   <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{report.clips.length} Clips</span>
                </div>
                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Target size={14} color="rgba(255,255,255,0.4)" />
+                  <Target size={14} color="#FFFFFF" />
                   <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{report.shots.length} Shots</span>
                </div>
             </div>

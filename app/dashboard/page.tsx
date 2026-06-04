@@ -430,7 +430,7 @@ export default function Dashboard() {
                             className="flex flex-col items-center justify-center p-5 bg-[#1C1C1E] transition-transform hover:scale-[1.02] active:scale-95 shadow-sm text-center"
                             style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px' }}
                         >
-                            <Calendar size={28} className="text-white/80 mb-3" />
+                            <Calendar size={28} className="text-white mb-3" />
                             <p className="m-0 text-[11px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Calendar</p>
                             <p className="m-0 text-[10px] text-white/35 mt-1">This week</p>
                         </Link>
@@ -439,7 +439,7 @@ export default function Dashboard() {
                             className="flex flex-col items-center justify-center p-5 bg-[#1C1C1E] transition-transform hover:scale-[1.02] active:scale-95 shadow-sm text-center"
                             style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px' }}
                         >
-                            <Video size={28} className="text-white/80 mb-3" />
+                            <Video size={28} className="text-white mb-3" />
                             <p className="m-0 text-[11px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Film</p>
                             <p className="m-0 text-[10px] text-white/35 mt-1">{gamesCount > 0 ? `${gamesCount} games` : 'No games yet'}</p>
                         </Link>
@@ -448,7 +448,7 @@ export default function Dashboard() {
                             className="flex flex-col items-center justify-center p-5 bg-[#1C1C1E] transition-transform hover:scale-[1.02] active:scale-95 shadow-sm text-center"
                             style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px' }}
                         >
-                            <Target size={28} className="text-white/80 mb-3" />
+                            <Target size={28} className="text-white mb-3" />
                             <p className="m-0 text-[11px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Training</p>
                             <p className="m-0 text-[10px] text-white/35 mt-1">
                                 {trainingPb !== null ? `PB: ${trainingPb}` : 'No runs yet'}

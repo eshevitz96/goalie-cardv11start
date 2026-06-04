@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Loader2, Mail, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
 import { checkUserStatus } from "@/app/actions";
-import { useTheme } from "next-themes";
 import { supabase } from "@/utils/supabase/client";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
@@ -20,7 +19,6 @@ interface ActivateEmailStepProps {
 
 export function ActivateEmailStep({ email, setEmail, onNext, onError, isLoading, setIsLoading, autoChecked, error }: ActivateEmailStepProps) {
     const [localError, setLocalError] = useState<string | null>(null);
-    const { theme } = useTheme();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

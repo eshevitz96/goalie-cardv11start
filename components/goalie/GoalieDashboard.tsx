@@ -9,7 +9,6 @@ import {
   Video, Brain
 } from "lucide-react";
 import Link from "next/link";
-import { useTheme } from "next-themes";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Components
@@ -85,7 +84,6 @@ export function GoalieDashboard({
     isDataLoading = false
 }: GoalieDashboardProps) {
 
-    const { theme, setTheme } = useTheme();
     const router = useRouter();
     const searchParams = useSearchParams();
     const [currentIndex, setCurrentIndex] = useState(0);

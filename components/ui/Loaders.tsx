@@ -1,7 +1,4 @@
-"use client";
-
 import { motion } from "framer-motion";
-import { useTheme } from "next-themes";
 
 // ─── SplashLoader ───────────────────────────────────────────────────
 // Uses the actual flower-logo.png.
@@ -79,9 +76,6 @@ export function SplashLoader() {
 // Bold in-app refresh indicator. Theme-aware, full opacity.
 
 export function InlineLoader({ visible }: { visible: boolean }) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-
   if (!visible) return null;
 
   return (
@@ -113,7 +107,7 @@ export function InlineLoader({ visible }: { visible: boolean }) {
           width: 24,
           height: 24,
           objectFit: "contain",
-          filter: isDark ? "invert(1)" : "invert(0)",
+          filter: "invert(1)",
           display: "block",
         }}
       />
@@ -124,7 +118,7 @@ export function InlineLoader({ visible }: { visible: boolean }) {
           position: "relative",
           width: 56,
           height: 1.5,
-          background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)",
+          background: "rgba(255,255,255,0.12)",
           borderRadius: 999,
           overflow: "hidden",
         }}
@@ -137,9 +131,7 @@ export function InlineLoader({ visible }: { visible: boolean }) {
             inset: 0,
             width: "45%",
             borderRadius: 999,
-            background: isDark
-              ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent)"
-              : "linear-gradient(90deg, transparent, rgba(0,0,0,0.7), transparent)",
+            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent)",
           }}
         />
       </div>

@@ -211,7 +211,7 @@ export function GameAnalysisSurface({
 
   return (
     <div className={`relative w-full ${getAspectRatio()} flex flex-col items-center justify-center`}>
-      <div className="relative w-full h-full rounded-[2rem] border border-border/10 bg-secondary/5 dark:bg-black/5 p-8 flex items-center justify-center text-foreground">
+      <div className="relative w-full h-full rounded-[2rem] border border-border/10 bg-black/5 p-8 flex items-center justify-center text-foreground">
         <svg 
           viewBox="0 0 100 100" 
           className="w-full h-full text-foreground/70 cursor-crosshair select-none overflow-visible"

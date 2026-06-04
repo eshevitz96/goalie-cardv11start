@@ -1,9 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Shield, Settings, User, Briefcase, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ArrowLeft, Save, Shield, Settings, User, Briefcase, Loader2 } from "lucide-react";
 import { PaymentList } from "@/components/PaymentList";
 
 import { useState, useEffect } from "react";
@@ -327,22 +326,6 @@ export default function ParentProfile() {
                     {/* Billing / Payments Settings */}
                     <div className="bg-card border border-border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm mt-6">
                         <PaymentList rosterId={dbId?.toString()} />
-                    </div>
-
-                    {/* Account Settings */}
-                    <div className="bg-card border border-border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm mt-6">
-                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-                            <Settings size={18} />
-                            <span className="text-xs font-bold uppercase tracking-wider">Preferences</span>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                                <h3 className="font-bold text-foreground">Appearance</h3>
-                                <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
-                            </div>
-                            <ThemeToggle />
-                        </div>
                     </div>
 
                     {/* Security Settings */}

@@ -6,7 +6,6 @@ import { User, Settings, Plus, LogOut, Bell, Search, ShieldCheck, Users, LayoutD
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import Link from 'next/link';
 import Image from 'next/image';
-import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { GlobalSearch } from '@/components/shared/GlobalSearch';
@@ -26,7 +25,6 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [performanceScore, setPerformanceScore] = useState(0);
     const { userId, userRole } = useAuth();
-    const { theme } = useTheme();
 
     useEffect(() => {
         if (!userId) return;
