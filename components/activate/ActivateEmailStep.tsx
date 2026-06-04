@@ -5,18 +5,20 @@ import { Loader2, Mail, ArrowRight, AlertCircle, RefreshCw } from "lucide-react"
 import { checkUserStatus } from "@/app/actions";
 import { useTheme } from "next-themes";
 import { supabase } from "@/utils/supabase/client";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 interface ActivateEmailStepProps {
     email: string;
     setEmail: (email: string) => void;
     onNext: (status: any) => void;
-    onError: (msg: string) => void;
+    onError: (msg: string | React.ReactNode | null) => void;
     isLoading: boolean;
     setIsLoading: (isLoading: boolean) => void;
     autoChecked: boolean;
+    error?: string | React.ReactNode | null;
 }
 
-export function ActivateEmailStep({ email, setEmail, onNext, onError, isLoading, setIsLoading, autoChecked }: ActivateEmailStepProps) {
+export function ActivateEmailStep({ email, setEmail, onNext, onError, isLoading, setIsLoading, autoChecked, error }: ActivateEmailStepProps) {
     const [localError, setLocalError] = useState<string | null>(null);
     const { theme } = useTheme();
 
@@ -53,19 +55,8 @@ export function ActivateEmailStep({ email, setEmail, onNext, onError, isLoading,
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="text-center mb-8 flex justify-center">
-                <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter flex items-center gap-1.5">
-                    <img 
-                        src="/flower-logo.png?v=5" 
-                        alt="CIC Logo" 
-                        width={44} 
-                        height={44} 
-                        draggable={false}
-                        className="object-contain pointer-events-none select-none opacity-90 transition-all duration-300"
-                        style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
-                    />
-                    Goalie Card
-                </h1>
+            <div className="mb-8 flex justify-start">
+                <BrandLogo />
             </div>
 
             <div className="space-y-2">
@@ -80,6 +71,7 @@ export function ActivateEmailStep({ email, setEmail, onNext, onError, isLoading,
                         onChange={(e) => {
                             setEmail(e.target.value);
                             setLocalError(null);
+                            onError(null);
                         }}
                         className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50 text-lg"
                         placeholder="goalie@example.com"
@@ -87,9 +79,10 @@ export function ActivateEmailStep({ email, setEmail, onNext, onError, isLoading,
                 </div>
             </div>
 
-            {localError && (
-                <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
-                    <AlertCircle size={14} /> {localError}
+            {(localError || error) && (
+                <div className="text-red-500 text-sm flex items-start gap-2 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
+                    <AlertCircle className="shrink-0 mt-0.5" size={14} />
+                    <span className="flex-1 text-left">{localError || error}</span>
                 </div>
             )}
 

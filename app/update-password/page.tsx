@@ -1,67 +1,132 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
-import { Loader2, Lock, ArrowRight, AlertCircle, CheckCircle } from "lucide-react";
-import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2, Lock, ArrowRight, AlertCircle, CheckCircle, Eye, EyeOff } from "lucide-react";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 import { motion } from "framer-motion";
 
-export default function UpdatePasswordPage() {
+function UpdatePasswordForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const tokenHash = searchParams.get("token_hash");
+
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [checkingSession, setCheckingSession] = useState(true);
 
-    useEffect(() => {
-        // Supabase exchanges the hash token asynchronously.
-        // We must wait for the PASSWORD_RECOVERY event — not call getSession() immediately.
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'PASSWORD_RECOVERY') {
-                // Token exchanged — user is now in recovery session, show the form
-                setCheckingSession(false);
-            } else if (event === 'SIGNED_IN' && session) {
-                // Already signed in (e.g. came from a valid link click)
-                setCheckingSession(false);
-            } else if (!session && event !== 'INITIAL_SESSION') {
-                setError("No active reset session. Please request a new password reset link.");
-                setCheckingSession(false);
-            }
-        });
+    // Calculate password strength
+    const getPasswordStrength = (pw: string) => {
+        if (!pw) return { score: 0, label: "", color: "" };
+        if (pw.length < 8) return { score: 1, label: "Too Short (Min 8 characters)", color: "bg-red-500 w-1/3" };
+        
+        let strength = 2; // Starts at Weak (>= 8 chars)
+        const hasNumber = /\d/.test(pw);
+        const hasUpperOrSpecial = /[A-Z]/.test(pw) || /[!@#$%^&*(),.?":{}|<>]/.test(pw);
 
-        // Fallback: if no event fires within 3s (e.g. token already exchanged), check session directly
-        const timeout = setTimeout(async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
+        if (hasNumber) strength += 1;
+        if (hasUpperOrSpecial) strength += 1;
+
+        if (strength === 2) {
+            return { score: 2, label: "Weak Password", color: "bg-orange-500 w-1/3" };
+        } else if (strength === 3) {
+            return { score: 3, label: "Medium Password", color: "bg-yellow-500 w-2/3" };
+        } else {
+            return { score: 4, label: "Strong Password", color: "bg-emerald-500 w-full" };
+        }
+    };
+
+    const strength = getPasswordStrength(password);
+
+    useEffect(() => {
+        const handleVerification = async () => {
+            if (tokenHash) {
+                console.log("[Update Password] Found token_hash, verifying...");
+                const { error: verifyError } = await supabase.auth.verifyOtp({
+                    token_hash: tokenHash,
+                    type: 'recovery'
+                });
+
+                if (verifyError) {
+                    console.error("[Update Password] verifyOtp error:", verifyError.message);
+                    setError(verifyError.message || "Invalid or expired reset token.");
+                    setCheckingSession(false);
+                    return;
+                }
+
+                console.log("[Update Password] verifyOtp succeeded, session established.");
+                // Verify session
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    console.log("[Update Password] Verification Session App Metadata AMR:", JSON.stringify(session.user.app_metadata?.amr));
+                }
+
+                // ONLY after verification succeeds: clear URL search parameters to avoid re-verification on page refresh
+                router.replace('/update-password');
                 setCheckingSession(false);
             } else {
-                setError("Reset link expired or already used. Please request a new one.");
-                setCheckingSession(false);
-            }
-        }, 3000);
+                // Supabase exchanges the hash token asynchronously.
+                // We must wait for the PASSWORD_RECOVERY event — not call getSession() immediately.
+                const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+                    console.log(`[Update Password] onAuthStateChange event: ${event}, session present: ${!!session}`);
+                    if (session?.user) {
+                        console.log("[Update Password] App Metadata AMR:", JSON.stringify(session.user.app_metadata?.amr));
+                    }
+                    if (event === 'PASSWORD_RECOVERY') {
+                        // Token exchanged — user is now in recovery session, show the form
+                        setCheckingSession(false);
+                    } else if (event === 'SIGNED_IN' && session) {
+                        // Already signed in (e.g. came from a valid link click)
+                        setCheckingSession(false);
+                    } else if (!session && event !== 'INITIAL_SESSION') {
+                        setError("No active reset session. Please request a new password reset link.");
+                        setCheckingSession(false);
+                    }
+                });
 
-        return () => {
-            subscription.unsubscribe();
-            clearTimeout(timeout);
+                // Fallback: if no event fires within 3s (e.g. token already exchanged), check session directly
+                const timeout = setTimeout(async () => {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session) {
+                        if (session.user) {
+                            console.log("[Update Password Fallback] App Metadata AMR:", JSON.stringify(session.user.app_metadata?.amr));
+                        }
+                        setCheckingSession(false);
+                    } else {
+                        setError("Reset link expired or already used. Please request a new one.");
+                        setCheckingSession(false);
+                    }
+                }, 3000);
+
+                return () => {
+                    subscription.unsubscribe();
+                    clearTimeout(timeout);
+                };
+            }
         };
-    }, []);
+
+        handleVerification();
+    }, [tokenHash, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError(null);
 
-        if (password !== confirmPassword) {
-            setError("Passwords do not match.");
+        if (password.length < 8) {
+            setError("Password must be at least 8 characters.");
             setIsLoading(false);
             return;
         }
 
-        if (password.length < 6) {
-            setError("Password must be at least 6 characters.");
+        if (password !== confirmPassword) {
+            setError("Passwords do not match.");
             setIsLoading(false);
             return;
         }
@@ -72,10 +137,18 @@ export default function UpdatePasswordPage() {
             });
 
             if (updateError) throw updateError;
+            
+            // Refresh session to clear recovery AMR claim
+            console.log("[Update Password] Password updated successfully. Refreshing session...");
+            const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError) {
+                console.error("[Update Password] Session refresh failed:", refreshError.message);
+            } else if (refreshedSession?.user) {
+                console.log("[Update Password] Refreshed App Metadata AMR:", JSON.stringify(refreshedSession.user.app_metadata?.amr));
+            }
+
             setSuccess(true);
             setTimeout(() => {
-                // After successful update, user is typically logged in by Supabase.
-                // Redirecting to dashboard is better UX than sending them back to login.
                 router.push('/dashboard');
             }, 2000);
         } catch (err: any) {
@@ -91,8 +164,8 @@ export default function UpdatePasswordPage() {
 
             <div className="w-full max-w-md relative z-10">
                 <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/20">
-                        <GoalieGuardLogo size={36} className="text-primary" />
+                    <div className="flex justify-center mb-6">
+                        <BrandLogo />
                     </div>
                     <h1 className="text-2xl font-black italic tracking-tighter text-foreground mb-2">
                         UPDATE <span className="text-primary">PASSWORD</span>
@@ -116,7 +189,7 @@ export default function UpdatePasswordPage() {
                                 <CheckCircle size={24} />
                             </div>
                             <h2 className="font-bold text-lg">Password Updated!</h2>
-                            <p className="text-sm text-muted-foreground">Your password has been changed successfully. Redirecting you to login...</p>
+                            <p className="text-sm text-muted-foreground">Your password has been changed successfully. Redirecting to dashboard...</p>
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -131,14 +204,39 @@ export default function UpdatePasswordPage() {
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                                     <input
-                                        type="password"
+                                        type={showPassword ? "text" : "password"}
                                         required
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors"
+                                        className="w-full bg-secondary border border-border rounded-xl pl-12 pr-12 py-4 text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/30 text-lg"
                                         placeholder="••••••••"
+                                        minLength={8}
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    </button>
                                 </div>
+
+                                {/* Password Strength Indicator */}
+                                {password && (
+                                    <div className="mt-2 space-y-1 px-1">
+                                        <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                            <div className={`h-full transition-all duration-350 ${strength.color}`} />
+                                        </div>
+                                        <p className={`text-[10px] font-bold uppercase tracking-wider ${
+                                            strength.score === 1 ? "text-red-500" :
+                                            strength.score === 2 ? "text-orange-500" :
+                                            strength.score === 3 ? "text-yellow-500" :
+                                            "text-emerald-500"
+                                        }`}>
+                                            {strength.label}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -146,13 +244,21 @@ export default function UpdatePasswordPage() {
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                                     <input
-                                        type="password"
+                                        type={showConfirmPassword ? "text" : "password"}
                                         required
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors"
+                                        className="w-full bg-secondary border border-border rounded-xl pl-12 pr-12 py-4 text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/30 text-lg"
                                         placeholder="••••••••"
+                                        minLength={8}
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                        {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    </button>
                                 </div>
                             </div>
 
@@ -185,5 +291,17 @@ export default function UpdatePasswordPage() {
                 </motion.div>
             </div>
         </main>
+    );
+}
+
+export default function UpdatePasswordPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+                <Loader2 className="animate-spin text-primary" size={32} />
+            </div>
+        }>
+            <UpdatePasswordForm />
+        </Suspense>
     );
 }

@@ -20,51 +20,24 @@ function ActivateController() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // Redirect Check: send completed users to /dashboard, new users to /onboarding
+    // Redirect Check: send logged-in users straight to /dashboard
     useEffect(() => {
         async function runRedirectCheck() {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                const { data: profile } = await supabase
-                    .from('users')
-                    .select('onboarding_completed')
-                    .eq('auth_user_id', user.id)
-                    .maybeSingle();
-                
-                if (profile?.onboarding_completed) {
-                    router.replace('/dashboard');
-                } else {
-                    router.replace('/onboarding');
-                }
-            } else {
-                router.replace('/onboarding');
+                router.replace('/dashboard');
             }
         }
         runRedirectCheck();
     }, [router]);
 
     // State
-    const [step, setStep] = useState<'email' | 'verify_review' | 'baseline' | 'security' | 'success'>('email');
+    const [step, setStep] = useState<'email' | 'security' | 'success'>('email');
     const [email, setEmail] = useState(searchParams.get('email') || "");
     const [rosterData, setRosterData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [autoChecked, setAutoChecked] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    // Form Data
-    const [formData, setFormData] = useState({
-        goalieName: "", parentName: "", parentEmail: "", phone: "",
-        gradYear: "", height: "", weight: "", team: "", birthday: "", // YYYY-MM-DD
-        sport: "Hockey",
-        yearsOfExperience: "",
-        teamHistory: [] as string[]
-    });
-
-    const [baselineAnswers, setBaselineAnswers] = useState([
-        { id: 1, question: "Performance State", answer: "Derived from mood", mood: "neutral" },
-        { id: 2, question: "Physical State", answer: "Derived from mood", mood: "neutral" },
-        { id: 3, question: "Season Focus", answer: "Derived from mood", mood: "neutral" }
-    ]);
+    const [error, setError] = useState<string | React.ReactNode | null>(null);
 
     const [password, setPassword] = useState("");
     const [termsAccepted, setTermsAccepted] = useState(false);
@@ -73,107 +46,14 @@ function ActivateController() {
 
     const handleEmailNext = (status: { exists: boolean, rosterStatus: 'found' | 'not_found' | 'linked' | 'error', isClaimed?: boolean }) => {
         if (status.exists || status.rosterStatus === 'linked') {
-            router.push('/login?email=' + email);
-        } else if (status.rosterStatus === 'found') {
-            fetchRosterAndProceed();
+            setError(null);
+            router.push(`/login?email=${encodeURIComponent(email)}`);
         } else {
-            // New user - start with fresh form
-            setStep('verify_review');
+            // New user or roster found - proceed straight to security password step
+            setError(null);
+            setStep('security');
         }
     };
-
-    const fetchRosterAndProceed = async () => {
-        setIsLoading(true);
-        const { data } = await supabase
-            .from('roster_uploads')
-            .select('*')
-            .ilike('email', email)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-        if (data) {
-            setRosterData(data);
-            setFormData(prev => ({
-                ...prev,
-                goalieName: data.goalie_name || "",
-                parentName: data.parent_name || "",
-                phone: data.parent_phone || "",
-                gradYear: data.grad_year?.toString() || "",
-                team: data.team || "",
-            }));
-            setStep('verify_review');
-        } else {
-            setStep('verify_review');
-        }
-        setIsLoading(false);
-    };
-
-    const handleProfileWizardSubmit = async (profile: ProfilePayload) => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const height = profile.heightFt && profile.heightIn
-                ? `${profile.heightFt}'${profile.heightIn}"`
-                : profile.heightFt ? `${profile.heightFt}'0"` : '';
-
-            const currentTeam = profile.team || "";
-
-            const updates = {
-                goalie_name: profile.goalieName,
-                parent_name: profile.parentName,
-                parent_phone: profile.guardianPhone,
-                guardian_email: profile.guardianEmail,
-                guardian_phone: profile.guardianPhone,
-                athlete_email: profile.athleteEmail,
-                athlete_phone: profile.athletePhone,
-                grad_year: parseInt(profile.gradYear) || null,
-                height,
-                weight: profile.weight,
-                sport: profile.sport,
-                catch_hand: profile.catchHand,
-                birthday: profile.birthday,
-                team: currentTeam,
-                team_history: [] // Supabase handles JSON/JSONB automagically
-            };
-
-            // Update form state for downstream use
-            setFormData(prev => ({
-                ...prev,
-                goalieName: profile.goalieName,
-                parentName: profile.parentName,
-                phone: profile.guardianPhone,
-                gradYear: profile.gradYear,
-                height,
-                weight: profile.weight,
-                birthday: profile.birthday,
-                yearsOfExperience: "",
-                teamHistory: []
-            }));
-
-            console.log("[ProfileWizard] Submitting updates...", updates);
-
-            if (rosterData?.id) {
-                const { error: updateErr } = await supabase.from('roster_uploads').update(updates).eq('id', rosterData.id);
-                if (updateErr) throw updateErr;
-            } else {
-                console.log("[ProfileWizard] No roster record, creating initial profile for:", email);
-                const result = await createInitialProfile(email);
-                if (!result.success) throw new Error(result.error || "Failed to create profile record.");
-                setRosterData(result.data);
-                console.log("[ProfileWizard] Initial profile created:", result.data.id);
-            }
-
-            console.log("[ProfileWizard] Success, moving to baseline.");
-            setStep('baseline');
-        } catch (err: any) {
-            setError(err.message || 'Something went wrong. Please try again.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleBaselineSubmit = () => setStep('security');
 
     const handleFinalActivation = async () => {
         if (!password) return;
@@ -188,22 +68,29 @@ function ActivateController() {
             const trimmedEmail = email.toLowerCase().trim();
             const result = await completeActivationWithPassword(
                 trimmedEmail,
-                password,
-                rosterData?.id,
-                rosterData,
-                formData,
-                baselineAnswers,
-                searchParams.get('team_invite')
+                password
             );
 
             if (!result.success) throw new Error(result.error);
             window.location.href = '/dashboard';
         } catch (err: any) {
-            setError(err.message);
+            if (err.message && (err.message.includes('already registered') || err.message.includes('already exists') || err.message.includes('already in use'))) {
+                setError(
+                    <span>
+                        An account already exists with this email —{' '}
+                        <a href={`/login?email=${encodeURIComponent(email)}`} className="underline font-bold text-primary">
+                            log in instead
+                        </a>.
+                    </span>
+                );
+            } else {
+                setError(err.message || "Signup failed. Please try again.");
+            }
         } finally {
             setIsLoading(false);
         }
     };
+
     useEffect(() => {
         const initialEmail = searchParams.get('email');
         if (initialEmail && step === 'email') {
@@ -215,16 +102,6 @@ function ActivateController() {
         }
     }, [searchParams, step]);
 
-    const stepInfo = {
-        email: { index: 1, title: "Identity" },
-        verify_review: { index: 2, title: "Profile" },
-        baseline: { index: 3, title: "Baseline" },
-        security: { index: 4, title: "Security" },
-        success: { index: 4, title: "Ready" }
-    };
-
-    const currentStep = stepInfo[step];
-
     return (
         <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
             {/* Background */}
@@ -233,36 +110,16 @@ function ActivateController() {
 
             <div className="w-full max-w-md relative z-10">
 
-
                 {step === 'email' && (
                     <ActivateEmailStep
                         email={email}
                         setEmail={setEmail}
                         onNext={handleEmailNext}
-                        onError={setError}
+                        onError={(msg) => setError(msg)}
                         isLoading={isLoading}
                         setIsLoading={setIsLoading}
                         autoChecked={autoChecked}
-                    />
-                )}
-
-                {step === 'verify_review' && (
-                    <ActivateProfileWizard
-                        email={email}
-                        rosterData={rosterData}
-                        onSubmit={handleProfileWizardSubmit}
-                        onCancel={() => setStep('email')}
-                        isLoading={isLoading}
                         error={error}
-                    />
-                )}
-
-                {step === 'baseline' && (
-                    <ActivateBaselineStep
-                        answers={baselineAnswers}
-                        setAnswers={setBaselineAnswers}
-                        onSubmit={handleBaselineSubmit}
-                        isLoading={isLoading}
                     />
                 )}
 

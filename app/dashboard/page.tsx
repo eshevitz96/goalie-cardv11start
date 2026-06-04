@@ -6,6 +6,7 @@ import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { Loader2, Calendar, Video, Target, ArrowRight, User } from "lucide-react";
+import { PerformanceAvatar } from "@/components/ui/PerformanceAvatar";
 
 export default function Dashboard() {
     const auth = useAuth();
@@ -26,6 +27,8 @@ export default function Dashboard() {
         btnText: "Begin",
         navHref: "/calendar/week"
     });
+    const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(true);
+    const [performanceScore, setPerformanceScore] = useState(0);
 
     useEffect(() => {
         if (!auth.loading && !auth.isAuthenticated) {
@@ -70,7 +73,7 @@ export default function Dashboard() {
                 // 1. Fetch user identity
                 const { data: userRes, error: userErr } = await supabase
                     .from('users')
-                    .select('id, first_name, last_name, display_name, onboarding_completed_at, created_at')
+                    .select('id, first_name, last_name, display_name, onboarding_completed, onboarding_completed_at, created_at')
                     .eq('auth_user_id', uid)
                     .single();
                 
@@ -80,6 +83,7 @@ export default function Dashboard() {
                 let publicUserId = null;
                 let onboardingCompletedAt: string | null = null;
                 let userCreatedAt: string | null = null;
+                let onboarded = true;
                 
                 if (userRes && !userErr) {
                     publicUserId = userRes.id;
@@ -90,8 +94,25 @@ export default function Dashboard() {
                     firstName = userRes.first_name || userRes.display_name || "Goalie";
                     onboardingCompletedAt = userRes.onboarding_completed_at || null;
                     userCreatedAt = userRes.created_at || null;
+                    onboarded = userRes.onboarding_completed !== false; // False means incomplete
                 }
                 setUserData({ initials, fullName, publicUserId });
+                setIsOnboardingCompleted(onboarded);
+
+                // Fetch latest Performance Index score safely (handling empty result)
+                try {
+                    const { data: latestSnapshot } = await supabase
+                        .from('performance_index_snapshots')
+                        .select('score')
+                        .eq('user_id', uid)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    setPerformanceScore(latestSnapshot?.score ?? 0);
+                } catch (e) {
+                    console.warn("Failed to fetch performance baseline snapshots:", e);
+                    setPerformanceScore(0);
+                }
 
                 // Compute time-based greeting (client-side local time)
                 const hour = new Date().getHours();
@@ -338,11 +359,30 @@ export default function Dashboard() {
                             <p className="m-0 text-[10px] font-black uppercase tracking-[0.15em] text-white/40 mt-0.5">{seasonName}</p>
                         </div>
                     </div>
-                    <Link href="/profile" className="p-3 bg-white/5 border border-white/10 rounded-full transition-transform hover:scale-105 active:scale-95 shadow-lg">
-                        <User size={20} className="text-white" />
+                    <Link href="/profile" className="transition-transform hover:scale-105 active:scale-95">
+                        <PerformanceAvatar score={performanceScore} size={48}>
+                            <div className="w-full h-full bg-white/5 border border-white/10 flex items-center justify-center rounded-full text-white shadow-lg">
+                                <User size={20} className="text-white" />
+                            </div>
+                        </PerformanceAvatar>
                     </Link>
                 </div>
             </div>
+
+            {/* Complete Profile Banner */}
+            {!isOnboardingCompleted && (
+                <div className="max-w-xl md:max-w-[860px] mx-auto mb-6 w-full px-2">
+                    <div className="bg-[#006747]/10 border border-[#006747]/20 rounded-2xl p-4 flex items-center justify-between gap-4">
+                        <div>
+                            <p className="m-0 text-sm font-bold text-[#f4f4f5]">Complete your goalie profile</p>
+                            <p className="m-0 text-xs text-white/40 mt-1">Set up your birthday, username, teams, and tags to unlock your full Goalie Card.</p>
+                        </div>
+                        <Link href="/onboarding" className="bg-[#006747] text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-[#006747]/80 active:scale-95 transition-all whitespace-nowrap">
+                            Complete Setup
+                        </Link>
+                    </div>
+                </div>
+            )}
 
             {/* Context-Aware Greeting */}
             <div className="max-w-xl md:max-w-[860px] mx-auto mb-6 w-full px-2">

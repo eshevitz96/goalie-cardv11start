@@ -1,0 +1,42 @@
+// Refactored to client utility for Standalone Export
+import { supabase as clientSupabase } from "@/utils/supabase/client";
+
+export async function updateCoachProfile(data: { full_name: string; title: string; bio: string; philosophy: string; calendar_sync?: boolean }) {
+    const { data: { user }, error: authError } = await clientSupabase.auth.getUser();
+    
+    if (authError || !user) {
+        return { error: "Unauthorized" };
+    }
+
+    const { full_name: fullName, title, bio, philosophy, calendar_sync: calendarSync = false } = data;
+
+    const settings = {
+        calendar_sync: calendarSync
+    };
+
+    const updateData: any = {
+        title,
+        bio,
+        philosophy,
+        settings
+    };
+
+    // Only update full_name if provided (some flows might use goalie_name)
+    if (fullName) {
+        updateData.full_name = fullName;
+        updateData.goalie_name = fullName; // Sync both for consistency
+    }
+
+    const { error } = await clientSupabase
+        .from("profiles")
+        .update(updateData)
+        .eq("id", user.id);
+
+    if (error) {
+        console.error("Profile Update Error Details:", error);
+        return { error: `Failed to update profile: ${error.message}` };
+    }
+
+    // Static Export: revalidatePath is not supported/needed for local navigation
+    return { success: true };
+}

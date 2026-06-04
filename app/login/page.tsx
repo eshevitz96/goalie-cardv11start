@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { InstitutionalSpinner } from "@/components/ui/Loaders";
 import { Loader2, Mail, ArrowRight, AlertCircle, Lock, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { checkUserStatus } from "@/app/actions";
@@ -10,8 +11,9 @@ import { useTheme } from "next-themes";
 import { GoalieHeader } from "@/components/goalie/GoalieHeader";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
-export default function LoginPage() {
+function LoginController() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { theme } = useTheme();
 
     // UI State
@@ -20,26 +22,24 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null);
 
     // Data State
-    const [email, setEmail] = useState("");
+    const [email, setEmail] = useState(searchParams.get('email') || "");
     const [password, setPassword] = useState("");
     const [userStatus, setUserStatus] = useState<any>(null);
+
+    // If query email parameter changes, update state
+    useEffect(() => {
+        const urlEmail = searchParams.get('email');
+        if (urlEmail) {
+            setEmail(urlEmail);
+        }
+    }, [searchParams]);
 
     // Initial Session Check
     useEffect(() => {
         const checkSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-                const { data: user } = await supabase
-                    .from('users')
-                    .select('onboarding_completed')
-                    .eq('auth_user_id', session.user.id)
-                    .maybeSingle();
-
-                if (!user || !user.onboarding_completed) {
-                    router.replace('/onboarding');
-                } else {
-                    router.replace('/dashboard');
-                }
+                router.replace('/dashboard');
             }
         };
         checkSession();
@@ -88,17 +88,7 @@ export default function LoginPage() {
             if (authError) throw authError;
 
             if (data.user) {
-                const { data: user } = await supabase
-                    .from('users')
-                    .select('onboarding_completed')
-                    .eq('auth_user_id', data.user.id)
-                    .maybeSingle();
-
-                if (!user || !user.onboarding_completed) {
-                    router.push('/onboarding');
-                } else {
-                    router.push('/dashboard');
-                }
+                router.push('/dashboard');
             }
         } catch (err: any) {
             setError("Invalid password. Please try again.");
@@ -150,13 +140,13 @@ export default function LoginPage() {
     if (step === 'continue-as') {
         return (
             <main className="min-h-screen bg-white dark:bg-background text-black dark:text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
-                <div className="w-full max-w-lg relative z-10 text-center">
-                    <BrandLogo size={40} textClassName="text-3xl md:text-4xl font-medium tracking-tight mb-8 text-black dark:text-white" />
-                    <div className="bg-black/[0.03] dark:bg-card/20 backdrop-blur-2xl border border-black/10 dark:border-border/40 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.05)]">
+                <div className="w-full max-w-lg relative z-10 text-left">
+                    <BrandLogo className="mb-8" />
+                    <div className="bg-black/[0.03] dark:bg-card/20 backdrop-blur-2xl border border-black/10 dark:border-border/40 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.05)] text-center">
                         <h2 className="text-2xl font-semibold mb-6">Welcome Back</h2>
                         <button
                             onClick={() => setStep('password')}
-                            className="w-full py-5 text-md font-bold uppercase tracking-widest rounded-2xl shadow-xl bg-black text-white hover:scale-[1.02] transition-transform flex justify-center items-center gap-2 mb-4"
+                            className="w-full py-5 text-md font-bold uppercase tracking-widest rounded-2xl shadow-xl bg-black dark:bg-zinc-900 text-white border border-black dark:border-zinc-700 hover:bg-zinc-900 dark:hover:bg-zinc-800 hover:scale-[1.02] transition-transform flex justify-center items-center gap-2 mb-4"
                         >
                             Continue as {userStatus?.profile?.goalie_name || 'Athlete'}
                         </button>
@@ -166,7 +156,7 @@ export default function LoginPage() {
                                 setUserStatus(null);
                                 setEmail("");
                             }}
-                            className="text-xs text-black/60 font-bold uppercase tracking-widest hover:text-black"
+                            className="text-xs text-black/60 dark:text-zinc-400 font-bold uppercase tracking-widest hover:text-black dark:hover:text-white transition-colors mx-auto block"
                         >
                             Not you? Log in as someone else
                         </button>
@@ -183,8 +173,8 @@ export default function LoginPage() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/3 rounded-full blur-[120px] pointer-events-none" />
 
             <div className="w-full max-w-lg relative z-10 transition-all duration-500">
-                <div className="text-center mb-8 flex flex-col items-center">
-                    <BrandLogo size={40} textClassName="text-3xl md:text-4xl font-medium tracking-tight mb-2 text-black dark:text-white" />
+                <div className="mb-8 flex flex-col items-start">
+                    <BrandLogo className="mb-2" />
                 </div>
 
                 <div className="bg-black/[0.03] dark:bg-card/20 backdrop-blur-2xl border border-black/10 dark:border-border/40 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.15)] relative overflow-hidden">
@@ -208,9 +198,9 @@ export default function LoginPage() {
                                 className="space-y-8"
                             >
                                 <div className="space-y-2 text-center">
-                                    <h2 className="text-2xl font-semibold tracking-tight text-black dark:text-white">Verify Access</h2>
+                                    <h2 className="text-2xl font-semibold tracking-tight text-black dark:text-white">Enter your email</h2>
                                     <p className="text-black/60 dark:text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
-                                        Enter your registered email address to continue to your dashboard.
+                                        Enter your email to sign in or create an account.
                                     </p>
                                 </div>
 
@@ -351,5 +341,13 @@ export default function LoginPage() {
                 </div>
             </div>
         </main>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><InstitutionalSpinner size={40} /></div>}>
+            <LoginController />
+        </Suspense>
     );
 }

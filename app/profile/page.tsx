@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { ArrowLeft, Plus, Calendar, ToggleLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Calendar, ToggleLeft, Loader2, LogOut, Edit2 } from "lucide-react";
+import { PerformanceAvatar } from "@/components/ui/PerformanceAvatar";
 
 export default function ProfilePage() {
     const auth = useAuth();
@@ -17,6 +18,7 @@ export default function ProfilePage() {
     const [subscriptionData, setSubscriptionData] = useState<any>(null);
     const [portalLoading, setPortalLoading] = useState(false);
     const [portalError, setPortalError] = useState<string | null>(null);
+    const [performanceScore, setPerformanceScore] = useState(0);
 
     useEffect(() => {
         if (!auth.loading && !auth.isAuthenticated) {
@@ -39,7 +41,7 @@ export default function ProfilePage() {
                         gcNumber: "GC-0000",
                         positionClub: "Goalie | Lacrosse",
                         height: "6'0\"",
-                        gradYear: "2026",
+                        grad_year: "2026",
                         handedness: "Right",
                         primarySport: "Lacrosse",
                         team: "Local Devs"
@@ -61,12 +63,27 @@ export default function ProfilePage() {
                 // 1. Fetch user identity (select specific columns to prevent column-level security RLS errors)
                 const { data: userRes, error: userErr } = await supabase
                     .from('users')
-                    .select('id, first_name, last_name, display_name, gc_number, primary_sport, teams, grad_year, handedness, profile_tags')
+                    .select('id, first_name, last_name, display_name, gc_number, primary_sport, teams, grad_year, handedness, profile_tags, height, gpa')
                     .eq('auth_user_id', uid)
                     .single();
 
                 if (userErr) {
                     console.error("Profile page users SELECT query error:", userErr);
+                }
+
+                // Fetch latest Performance Index score safely (handling empty/no-snapshot result)
+                try {
+                    const { data: latestSnapshot } = await supabase
+                        .from('performance_index_snapshots')
+                        .select('score')
+                        .eq('user_id', uid)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    setPerformanceScore(latestSnapshot?.score ?? 0);
+                } catch (e) {
+                    console.warn("Failed to fetch performance baseline snapshots:", e);
+                    setPerformanceScore(0);
                 }
                 
                 let initials = "GC";
@@ -74,8 +91,9 @@ export default function ProfilePage() {
                 let gcNumber = "GC-XXXX";
                 let positionClub = "Goalie";
                 let height = "—";
-                let gradYear = "—";
+                let grad_year = "—";
                 let handedness = "—";
+                let gpaVal = "—";
                 let profileTags: string[] = [];
                 
                 if (userRes && !userErr) {
@@ -103,14 +121,16 @@ export default function ProfilePage() {
                     const teamName = teamsArray.length > 0 ? teamsArray[0] : "";
                     positionClub = teamName ? `${sport} · ${teamName}` : sport;
 
-                    if (userRes.grad_year) gradYear = userRes.grad_year;
+                    if (userRes.grad_year) grad_year = userRes.grad_year;
                     if (userRes.handedness) {
                         handedness = userRes.handedness.charAt(0).toUpperCase() + userRes.handedness.slice(1);
                     }
                     if (userRes.profile_tags) profileTags = userRes.profile_tags;
+                    if (userRes.height) height = userRes.height;
+                    if (userRes.gpa) gpaVal = userRes.gpa;
                 }
                 
-                setUserData({ initials, fullName, gcNumber, positionClub, height, gradYear, handedness, profileTags });
+                setUserData({ initials, fullName, gcNumber, positionClub, height, grad_year, handedness, profileTags, gpa: gpaVal });
 
                 // 2. Fetch game sessions for stats
                 const { data: gamesRes } = await supabase
@@ -224,15 +244,22 @@ export default function ProfilePage() {
 
                 {/* Identity Card */}
                 <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-start justify-between mb-6">
                         <div>
                             <p className="m-0 text-[11px] font-black uppercase tracking-widest text-white/40 mb-1">{userData?.gcNumber}</p>
-                            <p className="m-0 text-2xl font-bold tracking-tight">{userData?.fullName}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="m-0 text-2xl font-bold tracking-tight">{userData?.fullName}</p>
+                                <Link href="/onboarding?edit=true" className="p-1 hover:bg-white/10 rounded-lg transition-colors text-white/60 hover:text-white" title="Edit Profile">
+                                    <Edit2 size={16} />
+                                </Link>
+                            </div>
                             <p className="m-0 text-sm font-medium text-white/60 mt-1">{userData?.positionClub}</p>
                         </div>
-                        <div className="w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg bg-[#006747] text-white shadow-xl shrink-0">
-                            {userData?.initials}
-                        </div>
+                        <PerformanceAvatar score={performanceScore} size={56}>
+                            <div className="w-full h-full rounded-full flex items-center justify-center font-bold text-lg bg-[#006747] text-white shadow-xl shrink-0">
+                                {userData?.initials}
+                            </div>
+                        </PerformanceAvatar>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
@@ -261,11 +288,11 @@ export default function ProfilePage() {
                         </div>
                         <div>
                             <p className="m-0 text-[11px] font-black uppercase tracking-widest text-white/40">Class</p>
-                            <p className="m-0 text-sm font-bold mt-1">{userData?.gradYear}</p>
+                            <p className="m-0 text-sm font-bold mt-1">{userData?.grad_year}</p>
                         </div>
                         <div>
                             <p className="m-0 text-[11px] font-black uppercase tracking-widest text-white/40">GPA</p>
-                            <p className="m-0 text-sm font-bold mt-1">—</p>
+                            <p className="m-0 text-sm font-bold mt-1">{userData?.gpa}</p>
                         </div>
                         <div>
                             <p className="m-0 text-[11px] font-black uppercase tracking-widest text-white/40">Stick</p>
@@ -336,9 +363,20 @@ export default function ProfilePage() {
                     </p>
                 </div>
 
+                {/* Public Connections Placeholder */}
+                <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">
+                    <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-white/40">Public Connections</p>
+                    <div className="rounded-[24px] p-4 bg-black/20 border border-white/5 flex flex-col gap-2">
+                        <p className="m-0 text-sm font-bold text-white/90">Goalie Connections</p>
+                        <p className="m-0 text-xs text-white/40 leading-relaxed font-medium">
+                            Connect with other goalies, share cards, and build your network. (Coming Soon)
+                        </p>
+                    </div>
+                </div>
+
                 {/* Membership Card */}
                 {subscriptionData && (
-                    <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm">
+                    <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40 mb-1 font-bold">Membership</p>
@@ -370,6 +408,15 @@ export default function ProfilePage() {
                         )}
                     </div>
                 )}
+
+                {/* Log Out Button */}
+                <button
+                    onClick={() => auth.logout()}
+                    className="w-full mt-6 py-4 bg-red-950/20 hover:bg-red-950/40 text-red-400 border border-red-900/30 rounded-[24px] text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                    <LogOut size={16} />
+                    Log Out
+                </button>
 
             </div>
         </div>

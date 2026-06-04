@@ -94,109 +94,49 @@ export async function provisionSelfServiceUser(email: string, rosterId: string, 
 export async function completeActivationWithPassword(
     email: string,
     password: string,
-    rosterId: string,
-    rosterData: any,
-    formData: any,
+    rosterId?: string,
+    rosterData?: any,
+    formData?: any,
     baselineAnswers?: any[],
     teamInviteId?: string | null
 ) {
     try {
         const emailTrimmed = email.toLowerCase().trim();
-        // 1. Create the Auth User (or get existing if they somehow have one)
+        
+        // 1. Create the Auth User
         const { data: authData, error: authError } = await clientSupabase.auth.signUp({
             email: emailTrimmed,
-            password,
-            options: {
-                data: {
-                    display_name: formData.goalieName,
-                }
-            }
+            password
         });
 
-        if (authError && authError.message !== 'User already registered') {
+        if (authError) {
             throw authError;
         }
 
-        // If user already exists, we might need to sign in or just proceed if we have a session
         const userId = authData.user?.id;
 
-        // 2. Calculate Intelligence Index (0-100)
-        // Trajectory (50%), Readiness (30%), Phase (20% context)
-        let score = 75; // Default starting point
-        if (baselineAnswers) {
-            const trajectory = baselineAnswers.find(a => a.id === 1)?.mood;
-            const readiness = baselineAnswers.find(a => a.id === 2)?.mood;
-            const phase = baselineAnswers.find(a => a.id === 3)?.mood;
-
-            let scoreWeight = 0;
-            if (trajectory === 'good') scoreWeight += 40;
-            else if (trajectory === 'neutral') scoreWeight += 25;
-            else scoreWeight += 10;
-
-            if (readiness === 'good') scoreWeight += 30;
-            else if (readiness === 'neutral') scoreWeight += 20;
-            else scoreWeight += 5;
-
-            // Phase context - In-season starts with higher 'intensity' baseline
-            if (phase === 'bad') scoreWeight += 30; // In-season
-            else if (phase === 'neutral') scoreWeight += 20; // Tryouts
-            else scoreWeight += 15; // Off-season
-
-            score = scoreWeight;
-        }
-
-        // 3. Prepare Updates
-        const currentTeam = formData.teamHistory?.find((h: any) => h.isCurrent)?.team || formData.team || "";
-        
-        const updates: any = {
-            is_claimed: true,
-            goalie_name: formData.goalieName,
-            sport: formData.sport,
-            team: currentTeam,
-            grad_year: parseInt(formData.gradYear) || null,
-            height: formData.height,
-            weight: formData.weight,
-            catch_hand: formData.catchHand,
-            birthday: formData.birthday,
-            intelligence_index: score,
-            season_phase: baselineAnswers?.find(a => a.id === 3)?.mood || 'off-season',
-            linked_user_id: userId,
-            activation_date: new Date().toISOString(),
-            raw_data: {
-                ...(rosterData?.raw_data || {}),
-                baseline_answers: baselineAnswers,
-                setup_complete: true
-            }
-        };
-
-        // 4. Update Database
-        const { error: updateError } = await clientSupabase
-            .from('roster_uploads')
-            .update(updates)
-            .eq('id', rosterId);
-
-        if (updateError) throw updateError;
-
-        // 5. Create Profile & Initial Snapshot
+        // 2. Link existing roster records SILENTLY in the background using p_email argument
         if (userId) {
-            await clientSupabase.from('profiles').upsert({
-                id: userId,
-                email: email,
-                full_name: formData.goalieName,
-                role: 'goalie',
-                onboarding_complete: true
-            });
+            try {
+                const { data: matchedRosters, error: rpcError } = await clientSupabase.rpc(
+                    'find_roster_by_email',
+                    { p_email: emailTrimmed }
+                );
 
-            // Establish the Baseline in the Performance Index table
-            await clientSupabase.from('performance_index_snapshots').insert({
-                user_id: userId,
-                score: score,
-                label: 'Baseline Assessment',
-                created_at: new Date().toISOString()
-            });
+                if (!rpcError && matchedRosters && matchedRosters.length > 0) {
+                    for (const r of matchedRosters) {
+                        await clientSupabase
+                            .from('roster_uploads')
+                            .update({ linked_user_id: userId, is_claimed: true })
+                            .eq('id', r.id);
+                    }
+                }
+            } catch (rpcErr) {
+                console.warn("[Activation] Background silent roster matching failed:", rpcErr);
+            }
         }
 
-        return { success: true, userId, score };
+        return { success: true, userId };
     } catch (err: any) {
         console.error("[Activation] Critical Failure:", err);
         return { success: false, error: err.message };

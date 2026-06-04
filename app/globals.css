@@ -114,6 +114,16 @@ body {
     background: rgba(255, 255, 255, 0.08);
   }
 
+  /* Autofill styling overrides to prevent yellow flashing */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #121214 inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
   /* Hardened hierarchy: bold (700) instead of black (900) for structural elegance */
   h1, h2, h3, h4 {
     letter-spacing: -0.02em;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Lock, ArrowRight, AlertCircle, Check, Eye, EyeOff } from "lucide-react";
 import { clsx } from "clsx";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 interface ActivateSecurityStepProps {
     password: string;
@@ -11,7 +12,7 @@ interface ActivateSecurityStepProps {
     setTermsAccepted: (accepted: boolean) => void;
     onSubmit: () => void;
     isLoading: boolean;
-    error: string | null;
+    error: string | React.ReactNode | null;
 }
 
 export function ActivateSecurityStep({
@@ -27,12 +28,35 @@ export function ActivateSecurityStep({
     const [showPassword, setShowPassword] = useState(false);
     const [localError, setLocalError] = useState<string | null>(null);
 
+    // Calculate password strength
+    const getPasswordStrength = (pw: string) => {
+        if (!pw) return { score: 0, label: "", color: "" };
+        if (pw.length < 8) return { score: 1, label: "Too Short (Min 8 characters)", color: "bg-red-500 w-1/3" };
+        
+        let strength = 2; // Starts at Weak (>= 8 chars)
+        const hasNumber = /\d/.test(pw);
+        const hasUpperOrSpecial = /[A-Z]/.test(pw) || /[!@#$%^&*(),.?":{}|<>]/.test(pw);
+
+        if (hasNumber) strength += 1;
+        if (hasUpperOrSpecial) strength += 1;
+
+        if (strength === 2) {
+            return { score: 2, label: "Weak Password", color: "bg-orange-500 w-1/3" };
+        } else if (strength === 3) {
+            return { score: 3, label: "Medium Password", color: "bg-yellow-500 w-2/3" };
+        } else {
+            return { score: 4, label: "Strong Password", color: "bg-emerald-500 w-full" };
+        }
+    };
+
+    const strength = getPasswordStrength(password);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setLocalError(null);
 
-        if (password.length < 6) {
-            setLocalError("Password must be at least 6 characters.");
+        if (password.length < 8) {
+            setLocalError("Password must be at least 8 characters.");
             return;
         }
 
@@ -51,13 +75,11 @@ export function ActivateSecurityStep({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/20">
-                    <Lock className="text-primary" size={32} />
-                </div>
-                <h1 className="text-3xl font-black text-foreground tracking-tighter">
+            <div className="mb-6 flex flex-col items-start gap-4">
+                <BrandLogo />
+                <h2 className="text-xl font-bold text-foreground/80 tracking-tight">
                     Secure Your Account
-                </h1>
+                </h2>
             </div>
 
             <div className="space-y-4">
@@ -74,8 +96,8 @@ export function ActivateSecurityStep({
                                 setLocalError(null);
                             }}
                             className="w-full bg-secondary border border-border rounded-xl pl-12 pr-12 py-4 text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50 text-lg"
-                            placeholder="Password (min 6 chars)"
-                            minLength={6}
+                            placeholder="Password (min 8 chars)"
+                            minLength={8}
                         />
                         <button
                             type="button"
@@ -85,6 +107,23 @@ export function ActivateSecurityStep({
                             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                         </button>
                     </div>
+
+                    {/* Password Strength Indicator */}
+                    {password && (
+                        <div className="mt-2 space-y-1 px-1">
+                            <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                <div className={clsx("h-full transition-all duration-350", strength.color)} />
+                            </div>
+                            <p className={clsx("text-[10px] font-bold uppercase tracking-wider", {
+                                "text-red-500": strength.score === 1,
+                                "text-orange-500": strength.score === 2,
+                                "text-yellow-500": strength.score === 3,
+                                "text-emerald-500": strength.score === 4,
+                            })}>
+                                {strength.label}
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-2">
@@ -138,15 +177,16 @@ export function ActivateSecurityStep({
             </div>
 
             {(error || localError) && (
-                <div className="text-red-500 text-sm flex items-center gap-2 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
-                    <AlertCircle size={14} /> {error || localError}
+                <div className="text-red-500 text-sm flex items-start gap-2 bg-red-500/10 p-3 rounded-lg border border-red-500/20 font-medium">
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" /> 
+                    <div>{error || localError}</div>
                 </div>
             )}
 
             <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={isLoading || password.length < 8}
+                className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
             >
                 {isLoading ? <Loader2 className="animate-spin" /> : <>Activate Account <ArrowRight size={18} /></>}
             </button>

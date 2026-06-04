@@ -281,23 +281,42 @@ export async function checkUserStatus(email: string) {
         const supabaseAdmin = getSupabaseAdmin();
         const emailLower = email.toLowerCase().trim();
 
-        // 1. Check if Auth User / Profile exists
-        const { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('*') // Get full profile
+        // 1. Check if Auth User / User row exists in public.users (current source of truth)
+        const { data: userRow, error: userError } = await supabaseAdmin
+            .from('users')
+            .select('*')
             .eq('email', emailLower)
             .maybeSingle(); // Use maybeSingle to avoid error for no rows
 
-        if (profileError) {
-            console.error("Profile Check Failed:", profileError);
-            // Verify if it's just 'not found' or actual error. 
-            // maybeSingle handles 'not found' gracefully by returning null data.
-            // If error persists here, it's a real DB error.
-            throw new Error("DB Error checking profile");
+        if (userError) {
+            console.error("User Check Failed:", userError);
+            throw new Error("DB Error checking user record");
         }
 
-        if (profile) {
-            return { exists: true, role: profile.role, rosterStatus: 'linked', profile };
+        if (userRow) {
+            // Check if they have a linked roster row in roster_uploads
+            const { data: rosterCheck } = await supabaseAdmin
+                .from('roster_uploads')
+                .select('id')
+                .eq('linked_user_id', userRow.auth_user_id)
+                .limit(1)
+                .maybeSingle();
+
+            // Map public.users columns to mock profile properties for compatibility with continue-as UI displays
+            const mappedProfile = {
+                id: userRow.auth_user_id,
+                email: userRow.email,
+                role: userRow.role,
+                goalie_name: userRow.display_name || `${userRow.first_name || ''} ${userRow.last_name || ''}`.trim() || 'Athlete',
+                ...userRow
+            };
+
+            return { 
+                exists: true, 
+                role: userRow.role, 
+                rosterStatus: rosterCheck ? 'linked' : 'unlinked', 
+                profile: mappedProfile 
+            };
         }
 
         // 2. If no profile, check Roster Uploads

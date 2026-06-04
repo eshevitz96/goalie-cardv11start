@@ -42,6 +42,25 @@ export async function middleware(request: NextRequest) {
 
         const { data: { user } } = await supabase.auth.getUser()
 
+        if (user) {
+            const amr = user.app_metadata?.amr;
+            // Robust logging of AMR to confirm structure in development logs
+            console.log(`[Middleware] Auth AMR for user ${user.email || user.id}:`, JSON.stringify(amr));
+
+            const isRecovery = Array.isArray(amr) && amr.some((item: any) => {
+                if (typeof item === 'string') return item === 'recovery';
+                return item && typeof item === 'object' && item.method === 'recovery';
+            });
+
+            if (isRecovery && 
+                request.nextUrl.pathname !== '/update-password' && 
+                !request.nextUrl.pathname.startsWith('/api') && 
+                request.nextUrl.pathname !== '/auth/callback') {
+                console.log(`[Middleware] Recovery session detected. Forcing redirect to /update-password from ${request.nextUrl.pathname}`);
+                return NextResponse.redirect(new URL('/update-password', request.url));
+            }
+        }
+
         // Protected Routes
         if (request.nextUrl.pathname.startsWith('/coach') ||
             request.nextUrl.pathname.startsWith('/admin') ||

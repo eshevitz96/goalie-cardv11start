@@ -157,7 +157,7 @@ export function GlobalSearch({ isOpen, onClose, userId }: GlobalSearchProps) {
                         title: `Alert: ${n.title}`,
                         description: n.message || '',
                         date: new Date(n.created_at).toLocaleDateString(),
-                        url: n.type === 'event' ? `/events` : `/dashboard/profile` // Basic routing
+                        url: n.type === 'event' ? `/events` : `/profile` // Basic routing
                     }));
                     combinedResults = [...combinedResults, ...notifResults];
                 }

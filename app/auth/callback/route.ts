@@ -58,9 +58,11 @@ export async function GET(request: Request) {
                             .update({ linked_user_id: user.id, is_claimed: true })
                             .eq('id', card.id);
                     } else {
-                        // 5. No card found -> Redirect to Onboarding
-                        console.log(`[Auth Callback] No card found. Redirecting to onboarding flow.`);
-                        next = '/onboarding';
+                        // 5. No card found -> Redirect to Dashboard (unless recovery flow)
+                        console.log(`[Auth Callback] No card found. Redirecting to dashboard unless recovery flow.`);
+                        if (type !== "recovery" && next !== "/update-password") {
+                            next = '/dashboard';
+                        }
                     }
                 }
             }

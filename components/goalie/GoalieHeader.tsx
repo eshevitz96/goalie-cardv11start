@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Settings, Plus, LogOut, Bell, Search, ShieldCheck, Users, LayoutDashboard } from 'lucide-react';
 import { BrandLogo } from "@/components/ui/BrandLogo";
@@ -9,6 +11,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { GlobalSearch } from '@/components/shared/GlobalSearch';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/utils/supabase/client';
+import { PerformanceAvatar } from '@/components/ui/PerformanceAvatar';
 
 interface GoalieHeaderProps {
     activeGoalieName: string;
@@ -20,8 +24,31 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [performanceScore, setPerformanceScore] = useState(0);
     const { userId, userRole } = useAuth();
     const { theme } = useTheme();
+
+    useEffect(() => {
+        if (!userId) return;
+        
+        const fetchScore = async () => {
+            try {
+                const { data: latestSnapshot } = await supabase
+                    .from('performance_index_snapshots')
+                    .select('score')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                setPerformanceScore(latestSnapshot?.score ?? 0);
+            } catch (e) {
+                console.warn("Failed to fetch performance baseline snapshots in GoalieHeader:", e);
+                setPerformanceScore(0);
+            }
+        };
+        
+        fetchScore();
+    }, [userId]);
 
     // Robust menu-switching logic to prevent overlap
     const toggleUserMenu = () => {
@@ -84,14 +111,16 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
 
                 {/* User Menu - Fixed for Mobile Tap */}
                 <div className="relative z-50">
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={toggleUserMenu}
-                        className={`h-9 w-9 md:h-10 md:w-10 rounded-full border transition-all p-0 ${isUserMenuOpen ? 'border-primary ring-2 ring-primary/20' : 'border-border hover:border-primary'}`}
-                    >
-                        <User size={16} className={isUserMenuOpen ? 'text-primary' : 'text-muted-foreground'} />
-                    </Button>
+                    <PerformanceAvatar score={performanceScore} size={40}>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={toggleUserMenu}
+                            className={`h-full w-full rounded-full transition-all p-0 border-0 ${isUserMenuOpen ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`}
+                        >
+                            <User size={16} className={isUserMenuOpen ? 'text-primary' : 'text-muted-foreground'} />
+                        </Button>
+                    </PerformanceAvatar>
 
                     <AnimatePresence>
                         {isUserMenuOpen && (
@@ -108,7 +137,7 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                                         <div className="text-xs text-muted-foreground">{activeGoalieName}</div>
                                     </div>
 
-                                    <Link onClick={() => setIsUserMenuOpen(false)} href="/dashboard/profile" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
+                                    <Link onClick={() => setIsUserMenuOpen(false)} href="/profile" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                                         <Settings size={16} /> Account Settings
                                     </Link>
                                     

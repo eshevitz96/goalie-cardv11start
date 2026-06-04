@@ -160,7 +160,7 @@ export function DashboardHeader({
                             </Link>
                         )}
 
-                        <Link href="/dashboard/profile" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
+                        <Link href="/profile" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                             <Settings size={16} /> Account Settings
                         </Link>
                         <Link href="/activate" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
@@ -230,7 +230,7 @@ export function DashboardHeader({
                         </button>
 
                         <Link 
-                            href="/dashboard/profile"
+                            href="/profile"
                             onClick={() => setIsMobileMenuOpen(false)}
                             className="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all active:scale-95"
                         >
