@@ -8,6 +8,9 @@ interface BrandProps {
   size?: number;
   withText?: boolean;
   textClassName?: string;
+  text?: string;
+  flowerSize?: string;
+  gap?: string;
 }
 
 /**
@@ -18,14 +21,17 @@ export function BrandLogo({
   className, 
   size, 
   withText = true,
-  textClassName = "text-3xl md:text-4xl font-medium tracking-tight"
+  textClassName = "text-3xl md:text-4xl font-medium tracking-tight",
+  text = "Goalie Card",
+  flowerSize = "1.0em",
+  gap = "gap-[0.4ch]"
 }: BrandProps) {
   return (
     <div 
-      className={twMerge("flex items-center gap-[0.4ch]", textClassName, className)}
+      className={twMerge("flex items-center", gap, textClassName, className)}
       style={size ? { fontSize: `${size}px` } : undefined}
     >
-      <div className="relative flex items-center justify-center shrink-0" style={{ height: '1.0em', width: '1.0em' }}>
+      <div className="relative flex items-center justify-center shrink-0" style={{ height: flowerSize, width: flowerSize }}>
         <img
           src="/flower-logo.png?v=5"
           alt="Goalie Card Logo"
@@ -38,7 +44,7 @@ export function BrandLogo({
       </div>
       {withText && (
         <span className="leading-none whitespace-nowrap">
-          Goalie Card
+          {text}
         </span>
       )}
     </div>

@@ -5,8 +5,14 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { Loader2, Calendar, Video, Target, ArrowRight, User } from "lucide-react";
-import { PerformanceAvatar } from "@/components/ui/PerformanceAvatar";
+import { Loader2, Calendar, Video, Target, ArrowRight } from "lucide-react";
+import { isPastSeniorSeason } from "@/utils/role-logic";
+import { GoalieCard } from "@/components/GoalieCard";
+import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
+import { v11Engine } from "@/lib/v11-engine";
+import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
+import { BrandLogo } from "@/components/ui/BrandLogo";
+import { twMerge } from "tailwind-merge";
 
 export default function Dashboard() {
     const auth = useAuth();
@@ -14,8 +20,10 @@ export default function Dashboard() {
 
     const [loading, setLoading] = useState(true);
     const [userData, setUserData] = useState<any>(null);
+    const [rosterData, setRosterData] = useState<any>(null);
     const [activeDays, setActiveDays] = useState<Set<number>>(new Set());
     const [gamesCount, setGamesCount] = useState(0);
+    const [practicesCount, setPracticesCount] = useState(0);
     const [seasonName, setSeasonName] = useState("SEASON NOT SET");
     const [greeting, setGreeting] = useState("");
     const [trainingPb, setTrainingPb] = useState<number | null>(null);
@@ -28,7 +36,11 @@ export default function Dashboard() {
         navHref: "/calendar/week"
     });
     const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(true);
-    const [performanceScore, setPerformanceScore] = useState(0);
+    const [performanceScore, setPerformanceScore] = useState<number | string>(0);
+    const [isPro, setIsPro] = useState(false);
+    const [credits, setCredits] = useState(0);
+    const [showProgress, setShowProgress] = useState(true);
+    const { seasonLabel: hookSeasonLabel } = useSeasonTimeline(rosterData?.sport || 'Hockey');
 
     useEffect(() => {
         if (!auth.loading && !auth.isAuthenticated) {
@@ -48,11 +60,25 @@ export default function Dashboard() {
                     setUserData({
                         initials: "DV",
                         fullName: "Dev User",
-                        publicUserId: "00000000-0000-0000-0000-000000000000"
+                        publicUserId: "00000000-0000-0000-0000-000000000000",
+                        gcNumber: "GC-0001"
+                    });
+                    setRosterData({
+                        id: "00000000-0000-0000-0000-000000000000",
+                        goalie_name: "Dev User",
+                        team: "Arizona Coyotes",
+                        grad_year: 2024,
+                        height: "6-2",
+                        weight: "205",
+                        catch_hand: "Left",
+                        sport: "Hockey",
+                        session_count: 5,
+                        lesson_count: 2
                     });
                     setGreeting("Good afternoon, Dev.");
                     setSubline("Local development mode bypass active.");
-                    setGamesCount(1);
+                    setGamesCount(24);
+                    setPracticesCount(112);
                     setSeasonName("DEV SEASON");
                     setActiveDays(new Set([0, 2])); // Monday and Wednesday active
                     setHasWeeklyIntention(true);
@@ -62,6 +88,9 @@ export default function Dashboard() {
                         btnText: "Adjust Focus",
                         navHref: "/calendar/week"
                     });
+                    setIsPro(true);
+                    setCredits(3);
+                    setPerformanceScore(82);
                     
                     const localPb = localStorage.getItem('dev_training_pb');
                     setTrainingPb(localPb ? parseInt(localPb, 10) : null);
@@ -70,10 +99,10 @@ export default function Dashboard() {
                     return;
                 }
 
-                // 1. Fetch user identity
+                // 1. Fetch user identity from public.users using auth_user_id
                 const { data: userRes, error: userErr } = await supabase
                     .from('users')
-                    .select('id, first_name, last_name, display_name, onboarding_completed, onboarding_completed_at, created_at')
+                    .select('id, first_name, last_name, display_name, gc_number, onboarding_completed, onboarding_completed_at, created_at, teams, handedness')
                     .eq('auth_user_id', uid)
                     .single();
                 
@@ -84,6 +113,9 @@ export default function Dashboard() {
                 let onboardingCompletedAt: string | null = null;
                 let userCreatedAt: string | null = null;
                 let onboarded = true;
+                let teams: string[] | null = null;
+                let handedness: string | null = null;
+                let gcNumber = "GC-0000";
                 
                 if (userRes && !userErr) {
                     publicUserId = userRes.id;
@@ -95,23 +127,77 @@ export default function Dashboard() {
                     onboardingCompletedAt = userRes.onboarding_completed_at || null;
                     userCreatedAt = userRes.created_at || null;
                     onboarded = userRes.onboarding_completed !== false; // False means incomplete
+                    teams = userRes.teams || null;
+                    handedness = userRes.handedness || null;
+                    if (userRes.gc_number) {
+                        gcNumber = 'GC-' + String(userRes.gc_number).padStart(4, '0');
+                    }
                 }
-                setUserData({ initials, fullName, publicUserId });
+                setUserData({ initials, fullName, publicUserId, teams, handedness, gcNumber });
                 setIsOnboardingCompleted(onboarded);
 
-                // Fetch latest Performance Index score safely (handling empty result)
+                // 2. Fetch roster upload details using linked_user_id (matches auth.users.id)
+                const { data: rosterRes } = await supabase
+                    .from('roster_uploads')
+                    .select('*')
+                    .eq('linked_user_id', uid)
+                    .maybeSingle();
+
+                let isProVal = false;
+                let creditsVal = 0;
+                let practicesVal = 0;
+                let gamesVal = 0;
+
+                if (rosterRes) {
+                    setRosterData(rosterRes);
+                    const grad = rosterRes.grad_year;
+                    const isPastSenior = grad ? isPastSeniorSeason(grad) : false;
+                    isProVal = isPastSenior || !!(rosterRes.team && (rosterRes.team.toLowerCase().includes('blue') || rosterRes.team.toLowerCase().includes('pro')));
+                    
+                    // Fetch and sum credit balance
+                    const { data: creditsData } = await supabase
+                        .from('credit_transactions')
+                        .select('amount')
+                        .eq('roster_id', rosterRes.id);
+                    if (creditsData) {
+                        creditsVal = creditsData.reduce((sum, c) => sum + (c.amount || 0), 0);
+                    }
+
+                    // Fetch logged practices count from sessions
+                    const { count: sessionsCount, error: sessionsErr } = await supabase
+                        .from('sessions')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('roster_id', rosterRes.id);
+                    const loggedSessionsCount = (!sessionsErr && sessionsCount !== null) ? sessionsCount : 0;
+                    practicesVal = Math.max(Number(rosterRes.practice_count) || 0, loggedSessionsCount);
+
+                    // Base games count
+                    gamesVal = Number(rosterRes.games_count) || 0;
+                }
+
+                setIsPro(isProVal);
+                setCredits(creditsVal);
+                setPracticesCount(practicesVal);
+
+                // 3. Fetch latest Performance Index score (from performance_index_snapshots)
                 try {
+                    const targetUserId = publicUserId || uid;
                     const { data: latestSnapshot } = await supabase
                         .from('performance_index_snapshots')
-                        .select('score')
-                        .eq('user_id', uid)
+                        .select('score_after')
+                        .eq('user_id', targetUserId)
                         .order('created_at', { ascending: false })
                         .limit(1)
                         .maybeSingle();
-                    setPerformanceScore(latestSnapshot?.score ?? 0);
+                    
+                    if (latestSnapshot && latestSnapshot.score_after > 0) {
+                        setPerformanceScore(latestSnapshot.score_after);
+                    } else {
+                        setPerformanceScore("Baseline Pending");
+                    }
                 } catch (e) {
                     console.warn("Failed to fetch performance baseline snapshots:", e);
-                    setPerformanceScore(0);
+                    setPerformanceScore("Baseline Pending");
                 }
 
                 // Compute time-based greeting (client-side local time)
@@ -123,22 +209,22 @@ export default function Dashboard() {
                 else greetingText = `Late night, ${firstName}.`;
                 setGreeting(greetingText);
 
-                // 2. Game sessions count
-                if (publicUserId) {
-                    const { count, error: countErr } = await supabase
-                        .from('game_sessions')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('user_id', auth.userId); // original code used auth.userId
-                    
-                    if (!countErr && count !== null) {
-                        setGamesCount(count);
-                    }
+                // 4. Fetch complete game sessions count
+                let completedGamesCount = 0;
+                const { count: gameSessionsCount, error: countErr } = await supabase
+                    .from('game_sessions')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', uid);
+                
+                if (!countErr && gameSessionsCount !== null) {
+                    completedGamesCount = gameSessionsCount;
                 }
+                setGamesCount(Math.max(gamesVal, completedGamesCount));
 
-                // 3. Weekly Intention, Pre-warmups, Post-events, and Pulse logic
-                if (publicUserId) {
+                // 5. Weekly Intention, Pre-warmups, Post-events, and Pulse logic
+                if (publicUserId || rosterRes?.id) {
                     const now = new Date();
-                    const dayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon
+                    const dayOfWeek = now.getDay();
                     const daysSinceMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                     
                     const mon = new Date(now);
@@ -152,11 +238,13 @@ export default function Dashboard() {
 
                     const todayStr = now.toISOString().split("T")[0];
 
+                    const targetUserId = publicUserId || rosterRes?.id;
+
                     // Fetch weekly intention for current week
                     const { data: intentionRes } = await supabase
                         .from('weekly_intentions')
                         .select('intention_text')
-                        .eq('user_id', publicUserId)
+                        .eq('user_id', targetUserId)
                         .eq('week_start_date', monStr)
                         .maybeSingle();
 
@@ -171,14 +259,13 @@ export default function Dashboard() {
                         .gte('session_date', monStr)
                         .lt('session_date', nextMonStr);
 
-                    const sessionMap = new Map<string, string>(); // session_id -> session_date
+                    const sessionMap = new Map<string, string>();
                     const sessionIds: string[] = [];
                     (weekSessions || []).forEach(s => {
                         sessionMap.set(s.id, s.session_date);
                         sessionIds.push(s.id);
                     });
 
-                    // Fetch prewarmups and post-events for these session IDs to populate the weekly pulse
                     let active = new Set<number>();
                     let todayHasPrep = false;
                     let todayHasDebrief = false;
@@ -229,20 +316,18 @@ export default function Dashboard() {
                     let isPregameWindow = false;
 
                     if (gameToday && todayGames && todayGames[0]?.scheduled_time) {
-                        const gameTimeStr = todayGames[0].scheduled_time; // HH:MM:SS
+                        const gameTimeStr = todayGames[0].scheduled_time;
                         const [gHour, gMin] = gameTimeStr.split(":").map(Number);
                         
                         const gameDateTime = new Date(now);
                         gameDateTime.setHours(gHour, gMin, 0, 0);
                         
-                        // Within 4 hours before the game
                         const diffMs = gameDateTime.getTime() - now.getTime();
                         const diffHours = diffMs / (1000 * 60 * 60);
                         
-                        isPregameWindow = diffHours >= -1 && diffHours <= 4; // Allow prep starting 4 hours prior up to 1 hour post-start
+                        isPregameWindow = diffHours >= -1 && diffHours <= 4;
                     }
 
-                    // Today's Action Card properties calculation
                     let headline = "Set your intention for the week.";
                     let subHeadline = "Show up to the work today.";
                     let btnText = "Begin";
@@ -283,20 +368,20 @@ export default function Dashboard() {
                     setSubline(computedSubline);
                 }
 
-                // 4. Fetch Active Season
+                // 6. Fetch Active Season
                 let activeSeason = "SEASON NOT SET";
-                if (publicUserId) {
+                const targetRosterId = rosterRes?.id || publicUserId;
+                if (targetRosterId) {
                     const { data: sData } = await supabase
                         .from('seasons')
                         .select('name')
-                        .eq('user_id', publicUserId)
+                        .eq('user_id', targetRosterId)
                         .eq('is_active', true)
                         .maybeSingle();
                     
                     if (sData?.name) {
                         activeSeason = sData.name.toUpperCase();
                     } else {
-                        // Fallback check by auth user UUID
                         const { data: sDataAuth } = await supabase
                             .from('seasons')
                             .select('name')
@@ -310,7 +395,7 @@ export default function Dashboard() {
                 }
                 setSeasonName(activeSeason);
 
-                // 5. Fetch Reflex personal best score
+                // 7. Fetch Reflex PB score
                 const { data: scoreRes } = await supabase
                     .from('training_game_scores')
                     .select('score')
@@ -332,50 +417,48 @@ export default function Dashboard() {
 
     if (auth.loading || loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+            <div className="min-h-screen flex items-center justify-center bg-black text-foreground">
                 <Loader2 className="animate-spin text-white/30" size={32} />
             </div>
         );
     }
 
-    const todayDateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    const dayOfWeekStr = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const dateStrShort = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
     const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
     const dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
+ 
     return (
         <div 
-            className="text-foreground font-sans flex flex-col justify-start w-full"
-            style={{ minHeight: '100vh', background: '#09090B', padding: '32px 40px' }}
+            className="text-foreground font-sans flex flex-col justify-start w-full min-h-screen pb-[calc(120px+env(safe-area-inset-bottom))]"
+            style={{ background: '#09090B', padding: '32px 24px 140px 24px' }}
         >
-            {/* Section 1: Context Strip */}
+            {/* Section 1: Simplified Minimal Header */}
             <div className="max-w-xl md:max-w-[860px] mx-auto mb-6 w-full">
-                <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg bg-[#006747] text-white shadow-xl">
-                            {userData?.initials}
-                        </div>
-                        <div>
-                            <p className="m-0 text-lg font-bold tracking-tight">{todayDateStr}</p>
-                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.15em] text-white/40 mt-0.5">{seasonName}</p>
-                        </div>
+                <div className="flex items-center justify-between px-2 border-b border-white/5 pb-4">
+                    <div className="flex flex-col">
+                        <p className="m-0 text-lg font-bold tracking-tight text-white/90">
+                            {dayOfWeekStr}, {dateStrShort}
+                        </p>
+                        <p className="m-0 text-[9px] font-black uppercase tracking-[0.15em] text-[#006747] mt-1 leading-none">
+                            {(!seasonName || seasonName === "SEASON NOT SET") 
+                                ? `Season ${hookSeasonLabel}` 
+                                : (seasonName.toUpperCase().startsWith("SEASON") ? seasonName.toUpperCase() : `Season ${seasonName.toUpperCase()}`)}
+                        </p>
                     </div>
-                    <Link href="/profile" className="transition-transform hover:scale-105 active:scale-95">
-                        <PerformanceAvatar score={performanceScore} size={48}>
-                            <div className="w-full h-full bg-white/5 border border-white/10 flex items-center justify-center rounded-full text-white shadow-lg">
-                                <User size={20} className="text-white" />
-                            </div>
-                        </PerformanceAvatar>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        <BrandLogo textClassName="text-lg md:text-xl font-medium tracking-tight text-white/90 select-none pointer-events-none" />
+                    </div>
                 </div>
             </div>
 
-            {/* Complete Profile Banner */}
+            {/* Profile Setup Banner */}
             {!isOnboardingCompleted && (
                 <div className="max-w-xl md:max-w-[860px] mx-auto mb-6 w-full px-2">
                     <div className="bg-[#006747]/10 border border-[#006747]/20 rounded-2xl p-4 flex items-center justify-between gap-4">
-                        <div>
-                            <p className="m-0 text-sm font-bold text-[#f4f4f5]">Complete your goalie profile</p>
-                            <p className="m-0 text-xs text-white/40 mt-1">Set up your birthday, username, teams, and tags to unlock your full Goalie Card.</p>
+                        <div className="min-w-0">
+                            <p className="m-0 text-sm font-bold text-[#f4f4f5] truncate">Complete your goalie profile</p>
+                            <p className="m-0 text-xs text-white/40 mt-1 line-clamp-2">Set up your birthday, username, teams, and tags to unlock your full Goalie Card.</p>
                         </div>
                         <Link href="/onboarding" className="bg-[#006747] text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-[#006747]/80 active:scale-95 transition-all whitespace-nowrap">
                             Complete Setup
@@ -384,87 +467,111 @@ export default function Dashboard() {
                 </div>
             )}
 
-            {/* Context-Aware Greeting */}
-            <div className="max-w-xl md:max-w-[860px] mx-auto mb-6 w-full px-2">
-                <p className="m-0 text-3xl md:text-4xl font-bold tracking-tight text-[#f4f4f5]">{greeting}</p>
-                <p className="m-0 text-sm text-white/40 mt-1">{subline}</p>
-            </div>
-
-            {/* Main responsive grid layout */}
-            <div className="max-w-xl md:max-w-[860px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-[12px] items-stretch w-full">
+            {/* Main responsive card-first layout */}
+            <div className="max-w-xl md:max-w-[860px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-start w-full">
                 
-                {/* Left Column: Today's Action Card (spans full height of Right Column) */}
-                <div className="md:col-span-6 flex flex-col h-full">
-                    {/* Section 2: Today's Action Card */}
-                    <Link href={actionCard.navHref} className="flex flex-col justify-between flex-1 transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
+                {/* Left Column (or Top on Mobile): Athlete Card */}
+                <div className="col-span-1 md:col-span-5 w-full flex flex-col items-center">
+                    <GoalieCard
+                        name={rosterData?.goalie_name || userData?.fullName}
+                        team={rosterData?.team || (userData?.teams && userData.teams[0]) || "Unattached"}
+                        gradYear={rosterData?.grad_year}
+                        height={rosterData?.height || rosterData?.raw_data?.height}
+                        weight={rosterData?.weight || rosterData?.raw_data?.weight}
+                        catchHand={rosterData?.catch_hand || userData?.handedness}
+                        showProgress={showProgress}
+                        credits={credits}
+                        session={rosterData?.session_count || 0}
+                        lesson={rosterData?.lesson_count || 0}
+                        games={gamesCount}
+                        practices={practicesCount}
+                        sport={rosterData?.sport}
+                        id={rosterData?.id}
+                        isPro={isPro}
+                        performanceScore={performanceScore}
+                        initials={userData?.initials}
+                        gcNumber={userData?.gcNumber}
+                        className="w-full"
+                    />
+                    
+                    {/* Toggle counts button */}
+                    <button 
+                        onClick={() => setShowProgress(!showProgress)}
+                        className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors group cursor-pointer"
+                    >
+                        <div className={`w-1.5 h-1.5 rounded-full border transition-colors ${showProgress ? 'bg-[#006747] border-[#006747]' : 'border-muted-foreground'}`} />
+                        <span>{showProgress ? 'Hide' : 'Show'} Activity Counts</span>
+                    </button>
+                </div>
+
+                {/* Right Column (or Bottom on Mobile): Greeting + Actions + Tiles + Pulse */}
+                <div className="col-span-1 md:col-span-7 flex flex-col gap-6 w-full">
+                    
+                    {/* Context-Aware Greeting */}
+                    <div className="px-2">
+                        <p className="m-0 text-3xl font-bold tracking-tight text-[#f4f4f5]">{greeting}</p>
+                        <p className="m-0 text-sm text-white/40 mt-1">{subline}</p>
+                    </div>
+
+                    {/* Today's Action Card */}
+                    <Link href={actionCard.navHref} className="flex flex-col justify-between transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
                         <div 
-                            className="flex flex-col justify-between flex-1 h-full"
-                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '24px', position: 'relative', overflow: 'hidden', padding: '28px' }}
+                            className="flex flex-col justify-between p-6 h-48"
+                            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', position: 'relative', overflow: 'hidden' }}
                         >
-                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.15), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
+                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.12), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
                             
                             <div className="relative z-10">
-                                <p className="m-0 mb-2 text-[9px] font-black uppercase tracking-[0.3em] text-white/35">Today</p>
-                                <p className="m-0 mb-2 text-[20px] font-bold tracking-tight leading-tight text-[#f4f4f5]">{actionCard.headline}</p>
-                                <p className="m-0 mb-6 text-sm text-white/40 font-medium leading-relaxed">
+                                <p className="m-0 mb-1 text-[8px] font-black uppercase tracking-[0.3em] text-white/35">Today</p>
+                                <p className="m-0 mb-1.5 text-xl font-bold tracking-tight leading-tight text-[#f4f4f5]">{actionCard.headline}</p>
+                                <p className="m-0 text-xs text-white/40 font-medium leading-relaxed">
                                     {actionCard.subline}
                                 </p>
                             </div>
                             <div className="relative z-10">
-                                <span className="bg-white text-[#09090B] rounded-full px-[18px] py-[10px] text-[10px] font-black uppercase tracking-[0.2em] inline-flex items-center gap-2">
-                                    <ArrowRight size={14} />
+                                <span className="bg-white text-[#09090B] rounded-full px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] inline-flex items-center gap-2">
+                                    <ArrowRight size={12} />
                                     {actionCard.btnText}
                                 </span>
                             </div>
                         </div>
                     </Link>
-                </div>
 
-                {/* Right Column: Module Tiles + Weekly Pulse */}
-                <div className="md:col-span-6 flex flex-col gap-[12px] justify-between">
-                    
-                    {/* Section 3: Modules (3-Column Grid) */}
+                    {/* Module Tiles Grid (3-Column) */}
                     <div className="grid grid-cols-3 gap-3">
                         <Link 
                             href="/calendar" 
-                            className="flex flex-col items-center justify-center p-5 bg-[#1C1C1E] transition-transform hover:scale-[1.02] active:scale-95 shadow-sm text-center"
-                            style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px' }}
+                            className="flex flex-col items-center justify-center p-4 bg-[#1C1C1E] border border-white/5 transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl"
                         >
-                            <Calendar size={28} className="text-white mb-3" />
-                            <p className="m-0 text-[11px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Calendar</p>
-                            <p className="m-0 text-[10px] text-white/35 mt-1">This week</p>
+                            <Calendar size={24} className="text-white mb-2" />
+                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Calendar</p>
+                            <p className="m-0 text-[9px] text-white/35 mt-1">This week</p>
                         </Link>
                         <Link 
                             href="/film" 
-                            className="flex flex-col items-center justify-center p-5 bg-[#1C1C1E] transition-transform hover:scale-[1.02] active:scale-95 shadow-sm text-center"
-                            style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px' }}
+                            className="flex flex-col items-center justify-center p-4 bg-[#1C1C1E] border border-white/5 transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl"
                         >
-                            <Video size={28} className="text-white mb-3" />
-                            <p className="m-0 text-[11px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Film</p>
-                            <p className="m-0 text-[10px] text-white/35 mt-1">{gamesCount > 0 ? `${gamesCount} games` : 'No games yet'}</p>
+                            <Video size={24} className="text-white mb-2" />
+                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Film</p>
+                            <p className="m-0 text-[9px] text-white/35 mt-1">{gamesCount > 0 ? `${gamesCount} games` : 'No games'}</p>
                         </Link>
                         <Link 
                             href="/training" 
-                            className="flex flex-col items-center justify-center p-5 bg-[#1C1C1E] transition-transform hover:scale-[1.02] active:scale-95 shadow-sm text-center"
-                            style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px' }}
+                            className="flex flex-col items-center justify-center p-4 bg-[#1C1C1E] border border-white/5 transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl"
                         >
-                            <Target size={28} className="text-white mb-3" />
-                            <p className="m-0 text-[11px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Training</p>
-                            <p className="m-0 text-[10px] text-white/35 mt-1">
-                                {trainingPb !== null ? `PB: ${trainingPb}` : 'No runs yet'}
+                            <Target size={24} className="text-white mb-2" />
+                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Training</p>
+                            <p className="m-0 text-[9px] text-white/35 mt-1">
+                                {trainingPb !== null ? `PB: ${trainingPb}` : 'No runs'}
                             </p>
                         </Link>
                     </div>
 
-                    {/* Section 4: Weekly Pulse */}
+                    {/* Weekly Pulse */}
                     <div 
-                        className="p-6 bg-[#1C1C1E] shadow-sm flex flex-col justify-between"
-                        style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px' }}
+                        className="p-4 bg-[#1C1C1E] border border-white/5 rounded-2xl flex justify-between items-center"
                     >
-                        <div className="flex items-center justify-between mb-4">
-                            <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">This week's pulse</p>
-                        </div>
-                        <div className="flex gap-2 justify-between">
+                        <div className="flex gap-2 justify-between w-full px-1">
                             {dayLetters.map((dayLetter, dayIdx) => {
                                 const isActive = activeDays.has(dayIdx);
                                 const isToday = dayIdx === todayIndex;
@@ -472,36 +579,16 @@ export default function Dashboard() {
                                 return (
                                     <div 
                                         key={dayIdx} 
-                                        className="flex flex-col items-center justify-center py-3 flex-1 min-w-[36px] aspect-square relative transition-all duration-300"
-                                        style={isToday ? {
-                                            background: 'rgba(0,103,71,0.15)',
-                                            border: '1px solid rgba(0,103,71,0.4)',
-                                            borderRadius: '12px'
-                                        } : {
-                                            background: isActive 
-                                                ? 'rgba(0,103,71,0.10)' 
-                                                : (hasWeeklyIntention ? 'rgba(0,103,71,0.03)' : 'rgba(255,255,255,0.04)'),
-                                            border: isActive 
-                                                ? '1px solid rgba(0,103,71,0.3)' 
-                                                : (hasWeeklyIntention ? '0.5px solid rgba(0,103,71,0.15)' : '0.5px solid rgba(255,255,255,0.07)'),
-                                            borderRadius: '12px'
-                                        }}
-                                    >
-                                        <span 
-                                            className="text-[11px] font-black tracking-tight"
-                                            style={{ 
-                                                color: isToday 
-                                                    ? '#4ade80' 
-                                                    : (isActive 
-                                                        ? '#4ade80' 
-                                                        : (hasWeeklyIntention ? 'rgba(74, 222, 128, 0.40)' : 'rgba(235,235,245,0.25)'))
-                                            }}
-                                        >
-                                            {dayLetter}
-                                        </span>
-                                        {isToday && (
-                                            <div className="w-1 h-1 rounded-full bg-[#006747] mt-1" />
+                                        className={twMerge(
+                                            "w-9 h-9 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 shadow-md",
+                                            isToday
+                                                ? "bg-emerald-400 text-neutral-950 ring-2 ring-emerald-400/40 ring-offset-2 ring-offset-[#1C1C1E] scale-110"
+                                                : isActive
+                                                    ? "bg-[#006747] text-white"
+                                                    : "bg-white/5 text-white/30 border border-white/5"
                                         )}
+                                    >
+                                        {dayLetter}
                                     </div>
                                 );
                             })}
@@ -511,6 +598,9 @@ export default function Dashboard() {
                 </div>
 
             </div>
+
+            {/* Mobile Bottom Navigation */}
+            <MobileBottomNav />
         </div>
     );
 }

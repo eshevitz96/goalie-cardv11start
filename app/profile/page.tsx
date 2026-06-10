@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { ArrowLeft, Plus, Calendar, ToggleLeft, Loader2, LogOut, Edit2 } from "lucide-react";
 import { PerformanceAvatar } from "@/components/ui/PerformanceAvatar";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 export default function ProfilePage() {
     const auth = useAuth();
@@ -236,11 +237,14 @@ export default function ProfilePage() {
         <div className="min-h-screen bg-background text-foreground font-sans pt-6 pb-20 px-4 md:px-8">
             <div className="max-w-xl mx-auto">
                 
-                {/* Back Navigation */}
-                <Link href="/dashboard" className="flex items-center gap-2 mb-4 px-2 opacity-70 hover:opacity-100 transition-opacity w-fit">
-                    <ArrowLeft size={18} />
-                    <span className="text-xs font-medium">Back to dashboard</span>
-                </Link>
+                {/* Back Navigation & Brand Logo */}
+                <div className="flex items-center justify-between mb-4 px-2">
+                    <Link href="/dashboard" className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
+                        <ArrowLeft size={18} />
+                        <span className="text-xs font-medium">Back to dashboard</span>
+                    </Link>
+                    <BrandLogo textClassName="text-lg md:text-xl font-medium tracking-tight text-white/90 select-none pointer-events-none" />
+                </div>
 
                 {/* Identity Card */}
                 <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">

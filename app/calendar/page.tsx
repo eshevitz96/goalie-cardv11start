@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -636,7 +637,7 @@ export default function CalendarPage() {
 
   return (
     <div 
-      className="min-h-screen bg-[#09090B] text-white font-sans py-8 px-4 md:px-8"
+      className="min-h-screen bg-[#09090B] text-white font-sans py-8 px-4 md:px-8 pb-[calc(100px+env(safe-area-inset-bottom))]"
       style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif' }}
     >
       <div className="max-w-4xl mx-auto">
@@ -1418,6 +1419,7 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+      <MobileBottomNav />
     </div>
   );
 }

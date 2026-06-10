@@ -1,6 +1,7 @@
 export interface DrillDetails {
     steps: string[];
     points: string[];
+    duration?: number;
 }
 
 export const DRILL_LIBRARY: Record<string, DrillDetails> = {
@@ -12,7 +13,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "Track it all the way into your hand.",
             "Switch hands every 10 reps."
         ],
-        points: ["Eyes lead the hands", "Quiet head", "Soft hands"]
+        points: ["Eyes lead the hands", "Quiet head", "Soft hands"],
+        duration: 5
     },
     "Wall Ball (Alt Hands)": {
         steps: [
@@ -21,7 +23,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "Throw with left, catch with right.",
             "Increase speed as you get comfortable."
         ],
-        points: ["Crossing midline", "Track the ball", "Stay low"]
+        points: ["Crossing midline", "Track the ball", "Stay low"],
+        duration: 5
     },
     "Juggling & Wall Ball tracking": {
         steps: [
@@ -29,7 +32,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "Juggle for 1 minute intervals.",
             "Switch to wall ball tracking immediately after."
         ],
-        points: ["Peripheral vision", "Hand speed", "Focus"]
+        points: ["Peripheral vision", "Hand speed", "Focus"],
+        duration: 8
     },
     "Goal Area Movement": {
         steps: [
@@ -38,11 +42,12 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "Shuffle back to top.",
             "Repeat for both sides."
         ],
-        points: ["Sharp stops", "Head up", "Stick down"]
+        points: ["Sharp stops", "Head up", "Stick down"],
+        duration: 10
     },
-    "Low Save Mechanics": { // Mapped from "Wall Ball - Low Hops"? No, need to match name exact or use fuzzy.
-        // The expert engine uses "Wall Ball - Low Hops"
-        steps: [], points: []
+    "Low Save Mechanics": {
+        steps: [], points: [],
+        duration: 5
     },
     "Wall Ball - Low Hops": {
         steps: [
@@ -50,7 +55,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "React to the unpredictable bounce.",
             "stay in a low stance."
         ],
-        points: ["Visual attachment", "Reaction time", "Knee bend"]
+        points: ["Visual attachment", "Reaction time", "Knee bend"],
+        duration: 5
     },
     "Butterfly Slides & Stick Seal": {
         steps: [
@@ -59,7 +65,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "Rotate and slide/move to opposite post.",
             "Ensure stick leads the movement."
         ],
-        points: ["Seal the ground/ice", "Stick covers five-hole/gap", "Upright torso"]
+        points: ["Seal the ground/ice", "Stick covers five-hole/gap", "Upright torso"],
+        duration: 8
     },
     "Rebound Placement (Box Control)": {
         steps: [
@@ -67,7 +74,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "Make the save and direct rebound to the corner.",
             "Reset and repeat."
         ],
-        points: ["Soft pads", "Stick steering", "Control the outcome"]
+        points: ["Soft pads", "Stick steering", "Control the outcome"],
+        duration: 10
     },
     "Up-Downs / Recoveries": {
         steps: [
@@ -76,7 +84,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "Drop back down.",
             "Repeat for 30 seconds."
         ],
-        points: ["Explosive power", "Full recovery", "Ready hands"]
+        points: ["Explive power", "Full recovery", "Ready hands"],
+        duration: 5
     },
     "Post-to-Post Recoveries": {
         steps: [
@@ -85,11 +94,13 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "Set, then explode back.",
             "Focus on clean edges."
         ],
-        points: ["Lead with eyes", "Hard push", "Square arrival"]
+        points: ["Lead with eyes", "Hard push", "Square arrival"],
+        duration: 8
     },
     "Coach Assigned Specifics": {
         steps: ["Follow the instructions provided by your coach in the session notes."],
-        points: ["Listen to feedback", "Execute with precision"]
+        points: ["Listen to feedback", "Execute with precision"],
+        duration: 12
     },
 
     // --- Mental ---
@@ -100,7 +111,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "Exhale for 4 seconds.",
             "Hold for 4 seconds."
         ],
-        points: ["Regulate heart rate", "Clear mind", "Focus on breath"]
+        points: ["Regulate heart rate", "Clear mind", "Focus on breath"],
+        duration: 4
     },
     "Box Breathing & Basics": {
         steps: [
@@ -108,7 +120,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             " visualize your basic stance and movements.",
             "Feel the ice/turf under your feet."
         ],
-        points: ["Calmness", "Grounding", "Simplicity"]
+        points: ["Calmness", "Grounding", "Simplicity"],
+        duration: 5
     },
     "Disconnect & Walk": {
         steps: [
@@ -117,7 +130,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "No phones, no music.",
             "Observe your surroundings."
         ],
-        points: ["Mental reset", "Perspective", "Fresh air"]
+        points: ["Mental reset", "Perspective", "Fresh air"],
+        duration: 30
     },
     "Positive Visualization (Saves)": {
         steps: [
@@ -126,7 +140,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "Feel the puck/ball hitting you.",
             "Hear the crowd/teammates cheering."
         ],
-        points: ["Confidence", "Memory recall", "Positive emotion"]
+        points: ["Confidence", "Memory recall", "Positive emotion"],
+        duration: 5
     },
 
     // --- Video ---
@@ -137,7 +152,8 @@ export const DRILL_LIBRARY: Record<string, DrillDetails> = {
             "2. Watch your positioning.",
             "3. Watch your reaction/technique."
         ],
-        points: ["Objective analysis", "Learn, don't judge", "Identify patterns"]
+        points: ["Objective analysis", "Learn, don't judge", "Identify patterns"],
+        duration: 15
     }
 };
 

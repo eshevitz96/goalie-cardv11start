@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AppProvider } from '@/components/film/Store';
 import MainApp from '@/components/film/MainApp';
 import { Loader2 } from 'lucide-react';
+import { MobileBottomNav } from '@/components/shared/MobileBottomNav';
 
 export default function FilmPage() {
     const auth = useAuth();
@@ -32,8 +33,9 @@ export default function FilmPage() {
 
     return (
         <AppProvider>
-            <div className="film-workspace-root">
+            <div className="film-workspace-root pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-0 min-h-screen relative">
                 <MainApp />
+                <MobileBottomNav />
             </div>
         </AppProvider>
     );
