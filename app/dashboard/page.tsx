@@ -14,6 +14,19 @@ import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { twMerge } from "tailwind-merge";
 
+function normalizeSportDisplay(rawSport: string | null | undefined): string | null {
+    if (!rawSport) return null;
+    const sport = rawSport.toLowerCase();
+    if (sport === 'lacrosse_mens') return "Men's Lacrosse";
+    if (sport === 'lacrosse_womens') return "Women's Lacrosse";
+    if (sport === 'soccer_mens') return "Men's Soccer";
+    if (sport === 'soccer_womens') return "Women's Soccer";
+    if (sport.includes('_')) {
+        return sport.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+    return rawSport.charAt(0).toUpperCase() + rawSport.slice(1);
+}
+
 export default function Dashboard() {
     const auth = useAuth();
     const router = useRouter();
@@ -40,7 +53,7 @@ export default function Dashboard() {
     const [isPro, setIsPro] = useState(false);
     const [credits, setCredits] = useState(0);
     const [showProgress, setShowProgress] = useState(true);
-    const { seasonLabel: hookSeasonLabel } = useSeasonTimeline(rosterData?.sport || 'Hockey');
+    const { seasonLabel: hookSeasonLabel } = useSeasonTimeline(userData?.sport || rosterData?.sport || null);
 
     useEffect(() => {
         if (!auth.loading && !auth.isAuthenticated) {
@@ -102,7 +115,7 @@ export default function Dashboard() {
                 // 1. Fetch user identity from public.users using auth_user_id
                 const { data: userRes, error: userErr } = await supabase
                     .from('users')
-                    .select('id, first_name, last_name, display_name, gc_number, onboarding_completed, onboarding_completed_at, created_at, teams, handedness')
+                    .select('id, first_name, last_name, display_name, gc_number, onboarding_completed, onboarding_completed_at, created_at, teams, handedness, primary_sport')
                     .eq('auth_user_id', uid)
                     .single();
                 
@@ -116,6 +129,7 @@ export default function Dashboard() {
                 let teams: string[] | null = null;
                 let handedness: string | null = null;
                 let gcNumber = "GC-0000";
+                let sport = null;
                 
                 if (userRes && !userErr) {
                     publicUserId = userRes.id;
@@ -129,11 +143,12 @@ export default function Dashboard() {
                     onboarded = userRes.onboarding_completed !== false; // False means incomplete
                     teams = userRes.teams || null;
                     handedness = userRes.handedness || null;
+                    sport = normalizeSportDisplay(userRes.primary_sport);
                     if (userRes.gc_number) {
                         gcNumber = 'GC-' + String(userRes.gc_number).padStart(4, '0');
                     }
                 }
-                setUserData({ initials, fullName, publicUserId, teams, handedness, gcNumber });
+                setUserData({ initials, fullName, publicUserId, teams, handedness, gcNumber, sport });
                 setIsOnboardingCompleted(onboarded);
 
                 // 2. Fetch roster upload details using linked_user_id (matches auth.users.id)
@@ -181,17 +196,20 @@ export default function Dashboard() {
 
                 // 3. Fetch latest Performance Index score (from performance_index_snapshots)
                 try {
-                    const targetUserId = publicUserId || uid;
-                    const { data: latestSnapshot } = await supabase
-                        .from('performance_index_snapshots')
-                        .select('score_after')
-                        .eq('user_id', targetUserId)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-                    
-                    if (latestSnapshot && latestSnapshot.score_after > 0) {
-                        setPerformanceScore(latestSnapshot.score_after);
+                    if (publicUserId) {
+                        const { data: latestSnapshot } = await supabase
+                            .from('performance_index_snapshots')
+                            .select('score_after')
+                            .eq('user_id', publicUserId)
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+                        
+                        if (latestSnapshot && latestSnapshot.score_after > 0) {
+                            setPerformanceScore(latestSnapshot.score_after);
+                        } else {
+                            setPerformanceScore("Baseline Pending");
+                        }
                     } else {
                         setPerformanceScore("Baseline Pending");
                     }
@@ -211,13 +229,15 @@ export default function Dashboard() {
 
                 // 4. Fetch complete game sessions count
                 let completedGamesCount = 0;
-                const { count: gameSessionsCount, error: countErr } = await supabase
-                    .from('game_sessions')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', uid);
-                
-                if (!countErr && gameSessionsCount !== null) {
-                    completedGamesCount = gameSessionsCount;
+                if (publicUserId) {
+                    const { count: gameSessionsCount, error: countErr } = await supabase
+                        .from('game_sessions')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', publicUserId);
+                    
+                    if (!countErr && gameSessionsCount !== null) {
+                        completedGamesCount = gameSessionsCount;
+                    }
                 }
                 setGamesCount(Math.max(gamesVal, completedGamesCount));
 
@@ -306,12 +326,16 @@ export default function Dashboard() {
                     setActiveDays(active);
 
                     // Fetch today's scheduled games
-                    const { data: todayGames } = await supabase
-                        .from('game_sessions')
-                        .select('id, scheduled_time')
-                        .eq('user_id', uid)
-                        .eq('scheduled_date', todayStr);
-
+                    let todayGames: any[] = [];
+                    if (publicUserId) {
+                        const { data } = await supabase
+                            .from('game_sessions')
+                            .select('id, scheduled_time')
+                            .eq('user_id', publicUserId)
+                            .eq('scheduled_date', todayStr);
+                        if (data) todayGames = data;
+                    }
+ 
                     let gameToday = todayGames && todayGames.length > 0;
                     let isPregameWindow = false;
 
@@ -370,12 +394,12 @@ export default function Dashboard() {
 
                 // 6. Fetch Active Season
                 let activeSeason = "SEASON NOT SET";
-                const targetRosterId = rosterRes?.id || publicUserId;
-                if (targetRosterId) {
+                const targetSeasonUserId = publicUserId || uid;
+                if (targetSeasonUserId) {
                     const { data: sData } = await supabase
                         .from('seasons')
                         .select('name')
-                        .eq('user_id', targetRosterId)
+                        .eq('user_id', targetSeasonUserId)
                         .eq('is_active', true)
                         .maybeSingle();
                     
@@ -485,7 +509,7 @@ export default function Dashboard() {
                         lesson={rosterData?.lesson_count || 0}
                         games={gamesCount}
                         practices={practicesCount}
-                        sport={rosterData?.sport}
+                        sport={userData?.sport || rosterData?.sport || null}
                         id={rosterData?.id}
                         isPro={isPro}
                         performanceScore={performanceScore}

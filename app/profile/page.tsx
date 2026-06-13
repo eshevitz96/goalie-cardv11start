@@ -134,32 +134,36 @@ export default function ProfilePage() {
                 setUserData({ initials, fullName, gcNumber, positionClub, height, grad_year, handedness, profileTags, gpa: gpaVal });
 
                 // 2. Fetch game sessions for stats
-                const { data: gamesRes } = await supabase
-                    .from('game_sessions')
-                    .select('saves, shots_faced')
-                    .eq('user_id', uid); // Or public user id? The dashboard used auth.userId. Let's use auth.userId since it works there.
-
-                if (gamesRes && gamesRes.length > 0) {
-                    const gamesCount = gamesRes.length;
-                    let totalSaves = 0;
-                    let totalShots = 0;
-                    gamesRes.forEach(g => {
-                        totalSaves += (g.saves || 0);
-                        totalShots += (g.shots_faced || 0);
-                    });
-
-                    let savePct = "—";
-                    if (totalShots > 0) {
-                        savePct = ((totalSaves / totalShots) * 100).toFixed(1);
-                    }
-
-                    setStats({
-                        savePct,
-                        saves: totalSaves.toString(),
-                        games: gamesCount.toString()
-                    });
+                if (!userRes?.id) {
+                    setStats({ savePct: "—", saves: "—", games: "—" });
                 } else {
-                    setStats({ savePct: "0.0", saves: "0", games: "0" });
+                    const { data: gamesRes } = await supabase
+                        .from('game_sessions')
+                        .select('saves, shots_faced')
+                        .eq('user_id', userRes.id);
+
+                    if (gamesRes && gamesRes.length > 0) {
+                        const gamesCount = gamesRes.length;
+                        let totalSaves = 0;
+                        let totalShots = 0;
+                        gamesRes.forEach(g => {
+                            totalSaves += (g.saves || 0);
+                            totalShots += (g.shots_faced || 0);
+                        });
+
+                        let savePct = "—";
+                        if (totalShots > 0) {
+                            savePct = ((totalSaves / totalShots) * 100).toFixed(1);
+                        }
+
+                        setStats({
+                            savePct,
+                            saves: totalSaves.toString(),
+                            games: gamesCount.toString()
+                        });
+                    } else {
+                        setStats({ savePct: "0.0", saves: "0", games: "0" });
+                    }
                 }
 
                 // 3. Fetch private_training_submissions to verify payment status and subscription existence

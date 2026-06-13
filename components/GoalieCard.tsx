@@ -228,29 +228,41 @@ export function GoalieCard({
                     <div className="space-y-4">
                         {/* Season Progress */}
                         <div className="space-y-1.5">
-                            <div className="flex justify-between items-center px-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Season Timeline</span>
-                                    <button 
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setIsEditingSeason(!isEditingSeason);
-                                        }}
-                                        className="text-muted-foreground/40 hover:text-foreground transition-colors cursor-pointer"
-                                    >
-                                        <Settings2 size={10} />
-                                    </button>
+                            {finalSeasonProgress === null ? (
+                                <div className="bg-muted/10 border border-border/20 rounded-xl p-3 flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Season Timeline</span>
+                                        <span className="text-[11px] font-bold text-foreground/70 mt-1 uppercase tracking-wider">{seasonLabel || "Off-season"}</span>
+                                    </div>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">Goalie Card</span>
                                 </div>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-foreground/40">{Math.round(finalSeasonProgress)}%</span>
-                            </div>
-                            <ProgressBar
-                                value={finalSeasonProgress}
-                                height="h-2"
-                                barClassName="bg-muted-foreground/60"
-                                delay={0.4}
-                                className="rounded-full overflow-hidden bg-muted/20"
-                            />
+                            ) : (
+                                <>
+                                    <div className="flex justify-between items-center px-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Season Timeline</span>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setIsEditingSeason(!isEditingSeason);
+                                                }}
+                                                className="text-muted-foreground/40 hover:text-foreground transition-colors cursor-pointer"
+                                            >
+                                                <Settings2 size={10} />
+                                            </button>
+                                        </div>
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-foreground/40">{Math.round(finalSeasonProgress)}%</span>
+                                    </div>
+                                    <ProgressBar
+                                        value={finalSeasonProgress}
+                                        height="h-2"
+                                        barClassName="bg-muted-foreground/60"
+                                        delay={0.4}
+                                        className="rounded-full overflow-hidden bg-muted/20"
+                                    />
+                                </>
+                            )}
                             
                             {isEditingSeason && (
                                 <div 
