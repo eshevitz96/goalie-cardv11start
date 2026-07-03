@@ -71,7 +71,7 @@ function PrivateTrainingAccessContent() {
     const [phone, setPhone] = useState("");
     const [submissionId, setSubmissionId] = useState<string | null>(null);
     const [hasExistingCard, setHasExistingCard] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<'standard' | 'season' | 'monthly'>('standard');
+    const [selectedPlan, setSelectedPlan] = useState<'block4' | 'block8'>('block4');
     
     // Waiver State
     const [waiverChecks, setWaiverChecks] = useState({
@@ -907,57 +907,41 @@ function PrivateTrainingAccessContent() {
                                 className="space-y-8"
                             >
                                 <div className="space-y-2 mb-8 text-center">
-                                    <h2 className="text-2xl font-semibold tracking-tight">Select your Commitment</h2>
+                                    <h2 className="text-2xl font-semibold tracking-tight">Select Your Session Block</h2>
                                     <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
-                                        Choose the training block that fits your schedule.
+                                        One-time payment. No recurring commitment.
                                     </p>
                                 </div>
 
                                 <div className="space-y-3">
                                     <button 
-                                        onClick={() => setSelectedPlan('monthly')}
-                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'monthly' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
+                                        onClick={() => setSelectedPlan('block4')}
+                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'block4' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
                                     >
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <h4 className="font-bold text-lg">Legacy Member</h4>
-                                                <p className="text-xs text-muted-foreground">Monthly automated access. Set it and forget it.</p>
+                                                <h4 className="font-bold text-lg">4 Session Block</h4>
+                                                <p className="text-xs text-muted-foreground">4 private sessions — $125 per session.</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-xl font-black text-primary">$400.00</p>
-                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Per Month</p>
+                                                <p className="text-xl font-black text-primary">$500</p>
+                                                <p className="text-[8px] text-muted-foreground uppercase font-black">One-Time</p>
                                             </div>
                                         </div>
                                     </button>
 
                                     <button 
-                                        onClick={() => setSelectedPlan('standard')}
-                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'standard' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
+                                        onClick={() => setSelectedPlan('block8')}
+                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'block8' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
                                     >
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <h4 className="font-bold text-lg">Standard Block</h4>
-                                                <p className="text-xs text-muted-foreground">16 Lessons upfront. Traditional commitment.</p>
+                                                <h4 className="font-bold text-lg">8 Session Block</h4>
+                                                <p className="text-xs text-muted-foreground">8 private sessions — $115 per session. Best value.</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-xl font-black text-primary">$1,600.00</p>
-                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Every 4 Months</p>
-                                            </div>
-                                        </div>
-                                    </button>
-
-                                    <button 
-                                        onClick={() => setSelectedPlan('season')}
-                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'season' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
-                                    >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h4 className="font-bold text-lg">Season Commitment</h4>
-                                                <p className="text-xs text-muted-foreground">24 Lessons / 6 Months. Lock in your spots.</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xl font-black text-primary">$2,400.00</p>
-                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Every 6 Months</p>
+                                                <p className="text-xl font-black text-primary">$920</p>
+                                                <p className="text-[8px] text-muted-foreground uppercase font-black">One-Time</p>
                                             </div>
                                         </div>
                                     </button>
@@ -1013,34 +997,24 @@ function PrivateTrainingAccessContent() {
                                 <div className="bg-secondary/30 border border-border/40 rounded-3xl p-6 space-y-4 mb-2">
                                     <div className="flex justify-between items-center px-2">
                                         <div className="text-left">
-                                            <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Training Fee</span>
+                                            <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Training Block</span>
                                             <p className="text-[8px] text-primary/60 font-black uppercase tracking-[0.2em]">
-                                                {selectedPlan === 'monthly' ? 'Every Month' : 
-                                                 selectedPlan === 'season' ? 'Every 6 Months' : 'Every 4 Months'}
+                                                {selectedPlan === 'block4' ? '4 Sessions · $125/session' : '8 Sessions · $115/session'}
                                             </p>
                                         </div>
                                         <span className="text-sm font-bold">
-                                            {selectedPlan === 'monthly' ? '$400.00' : 
-                                             selectedPlan === 'season' ? '$2,400.00' : '$1,600.00'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center px-2 pt-1">
-                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Processing Fee</span>
-                                        <span className="text-sm font-bold text-muted-foreground/80">
-                                            {selectedPlan === 'monthly' ? '$12.25' : 
-                                             selectedPlan === 'season' ? '$72.10' : '$48.10'}
+                                            {selectedPlan === 'block4' ? '$500.00' : '$920.00'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center px-2 border-t border-border/30 pt-4 mt-2">
-                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Final Total</span>
+                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Total Due Today</span>
                                         <span className="text-2xl font-black text-primary">
-                                            {selectedPlan === 'monthly' ? '$412.25' : 
-                                             selectedPlan === 'season' ? '$2,472.10' : '$1,648.10'}
+                                            {selectedPlan === 'block4' ? '$500.00' : '$920.00'}
                                         </span>
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-4">RECURRING {selectedPlan === 'monthly' ? 'MONTHLY' : selectedPlan === 'season' ? '6-MONTH' : '4-MONTH'} PAYMENT</p>
-                                <p className="text-[9px] text-muted-foreground italic mb-6">Fee covers Stripe processing and secure platform handling.</p>
+                                <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-4">ONE-TIME PAYMENT — NO RECURRING CHARGES</p>
+                                <p className="text-[9px] text-muted-foreground italic mb-6">Sessions are scheduled directly with your coach after payment.</p>
                                 
                                 {clientSecret && (
                                     <div className="mt-8 bg-white/5 rounded-3xl p-4 min-h-[400px]">

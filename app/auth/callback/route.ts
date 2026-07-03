@@ -31,16 +31,16 @@ export async function GET(request: Request) {
                     .maybeSingle();
 
                 if (!profile) {
-                    console.log(`[Auth Callback] No profile found for ${user.email}. Checking card registry...`);
-                    // 2. Check for card in roster_uploads
-                    const { data: card } = await supabase
-                        .from('roster_uploads')
-                        .select('*')
-                        .ilike('email', user.email)
-                        .maybeSingle();
+                    console.log(`[Auth Callback] No profile found for ${user.email}. Checking card registry via RPC...`);
+                    // 2. Check for card in roster_uploads using RPC
+                    const { data: matchedRosters, error: rpcError } = await supabase.rpc(
+                        'find_roster_by_email',
+                        { p_email: user.email }
+                    );
 
-                    if (card) {
-                        console.log(`[Auth Callback] Card found! Auto-provisioning profile for ${card.goalie_name}`);
+                    if (!rpcError && matchedRosters && matchedRosters.length === 1) {
+                        const card = matchedRosters[0];
+                        console.log(`[Auth Callback] Single card found! Auto-provisioning profile for ${card.goalie_name}`);
                         // 3. Auto-provision profile from card data
                         await supabase
                             .from('profiles')
@@ -57,6 +57,9 @@ export async function GET(request: Request) {
                             .from('roster_uploads')
                             .update({ linked_user_id: user.id, is_claimed: true })
                             .eq('id', card.id);
+                    } else if (matchedRosters && matchedRosters.length > 1) {
+                        console.log(`[Auth Callback] Multiple cards found (${matchedRosters.length}) for ${user.email}. Redirecting to /activate for goalie selection.`);
+                        next = '/activate';
                     } else {
                         // 5. No card found -> Redirect to Dashboard (unless recovery flow)
                         console.log(`[Auth Callback] No card found. Redirecting to dashboard unless recovery flow.`);

@@ -202,6 +202,22 @@ export default function TrainingPage() {
                 <BrandLogo textClassName="text-lg font-medium tracking-tight text-white/90 select-none pointer-events-none" />
             </div>
 
+            {/* Active Mission Card Link */}
+            <div className="max-w-[480px] mx-auto w-full mb-6 no-print">
+                <Link 
+                    href="/workout"
+                    className="flex items-center justify-between p-4 bg-[#1C1C1E] border border-white/5 rounded-2xl hover:border-white/10 hover:scale-[1.01] active:scale-[0.99] transition-all group"
+                >
+                    <div>
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-1">Today's Mission</span>
+                        <h4 className="text-xs font-black uppercase text-white tracking-wider mt-0.5">Daily Coach Engine Card</h4>
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-[#006747]/10 border border-[#006747]/20 text-[#006747] px-2.5 py-1.5 rounded-xl group-hover:bg-[#006747] group-hover:text-white transition-all">
+                        View Card
+                    </span>
+                </Link>
+            </div>
+
             {/* Segmented Control Selector Tabs */}
             <div className="max-w-[480px] mx-auto w-full mb-8 grid grid-cols-3 p-1 bg-white/[0.03] border border-white/5 rounded-2xl gap-1 shrink-0">
                 <button

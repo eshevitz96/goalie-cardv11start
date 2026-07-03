@@ -32,6 +32,7 @@ export interface GoalieCardProps {
     games?: number;
     practices?: number;
     gcNumber?: string;
+    isIncomplete?: boolean;
 }
 
 export function GoalieCard({
@@ -56,7 +57,8 @@ export function GoalieCard({
     pureIcon,
     games,
     practices,
-    gcNumber
+    gcNumber,
+    isIncomplete
 }: GoalieCardProps) {
     const safeName = name ?? "";
     const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -99,6 +101,34 @@ export function GoalieCard({
         if (startMs < endMs) {
             finalSeasonProgress = Math.max(0, Math.min(100, ((nowMs - startMs) / (endMs - startMs)) * 100));
         }
+    }
+
+    if (isIncomplete) {
+        return (
+            <Link 
+                href="/onboarding"
+                className={twMerge(
+                    "glass rounded-3xl p-6 shadow-2xl flex flex-col relative overflow-hidden group hover:border-white/20 transition-all duration-300 min-h-[480px] select-none block cursor-pointer",
+                    className
+                )}
+            >
+                {/* Ambient glows */}
+                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-foreground/5 blur-3xl" />
+                <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-40 w-40 rounded-full bg-foreground/5 blur-3xl opacity-50" />
+
+                <div className="relative z-10 flex flex-col items-center justify-center flex-1 text-center space-y-4 h-full my-auto">
+                    <div className="w-16 h-16 bg-[#006747]/10 text-[#006747] rounded-full flex items-center justify-center border border-[#006747]/20 group-hover:bg-[#006747]/20 transition-colors">
+                        <Settings2 size={28} />
+                    </div>
+                    <div className="space-y-2 max-w-xs">
+                        <h3 className="text-xl font-bold text-foreground group-hover:text-white transition-colors uppercase tracking-tight">Complete your card</h3>
+                        <p className="text-xs text-muted-foreground leading-normal">
+                            Tap here to set up your name, sport, and grad year to activate your card.
+                        </p>
+                    </div>
+                </div>
+            </Link>
+        );
     }
 
     if (pureIcon) {

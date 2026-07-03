@@ -319,24 +319,38 @@ export async function checkUserStatus(email: string) {
             };
         }
 
-        // 2. If no profile, check Roster Uploads
-        const { data: roster, error: rosterError } = await supabaseAdmin
-            .from('roster_uploads')
-            .select('id, is_claimed, goalie_name')
-            .ilike('email', emailLower)
-            .maybeSingle();
+        // 2. If no profile, check Roster Uploads using RPC (all three email fields)
+        const { data: matchedRosters, error: rosterError } = await supabaseAdmin.rpc(
+            'find_roster_by_email',
+            { p_email: emailLower }
+        );
 
         if (rosterError) {
             throw new Error(`Roster Check Failed: ${rosterError.message}`);
         }
 
-        if (roster) {
-            return {
-                exists: false,
-                rosterStatus: 'found',
-                isClaimed: roster.is_claimed,
-                goalieName: roster.goalie_name
-            };
+        if (matchedRosters && matchedRosters.length > 0) {
+            if (matchedRosters.length === 1) {
+                const roster = matchedRosters[0];
+                return {
+                    exists: false,
+                    rosterStatus: 'found',
+                    isClaimed: roster.is_claimed,
+                    goalieName: roster.goalie_name,
+                    rosterId: roster.id
+                };
+            } else {
+                return {
+                    exists: false,
+                    rosterStatus: 'multiple_found',
+                    rosters: matchedRosters.map((r: any) => ({
+                        id: r.id,
+                        goalie_name: r.goalie_name,
+                        sport: r.sport,
+                        is_claimed: r.is_claimed
+                    }))
+                };
+            }
         }
 
         return { exists: false, rosterStatus: 'not_found' };

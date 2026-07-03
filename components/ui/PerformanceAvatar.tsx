@@ -9,8 +9,8 @@ interface PerformanceAvatarProps {
 }
 
 export function PerformanceAvatar({ score, size = 48, children }: PerformanceAvatarProps) {
-    const strokeWidth = 2.5;
-    const padding = 3; // Space between ring and inner content
+    const strokeWidth = 3;
+    const padding = 0; // Space between ring and inner content
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
     const validatedScore = Math.min(Math.max(score, 0), 100);
@@ -22,7 +22,7 @@ export function PerformanceAvatar({ score, size = 48, children }: PerformanceAva
             <svg className="absolute transform -rotate-90 pointer-events-none select-none" width={size} height={size}>
                 {/* Background track (greyed-out) */}
                 <circle
-                    className="text-zinc-800"
+                    className="text-zinc-800/80"
                     stroke="currentColor"
                     fill="transparent"
                     strokeWidth={strokeWidth}
@@ -33,7 +33,7 @@ export function PerformanceAvatar({ score, size = 48, children }: PerformanceAva
                 {/* Active progress track */}
                 {validatedScore > 0 && (
                     <circle
-                        className="text-[#006747] transition-all duration-700 ease-out"
+                        className="text-emerald-400 transition-all duration-700 ease-out"
                         stroke="currentColor"
                         fill="transparent"
                         strokeWidth={strokeWidth}

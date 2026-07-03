@@ -50,9 +50,35 @@ async function testRlsQuery() {
         .single();
 
     if (userErr) {
-        console.error("SELECT query failed with error:", userErr);
+        console.error("SELECT users query failed with error:", userErr);
     } else {
-        console.log("SELECT query succeeded! Result:", userRes);
+        console.log("SELECT users query succeeded! Result:", userRes);
+        const publicUserId = userRes.id;
+
+        console.log("\n=== Querying game_sessions table as Authenticated User via RLS ===");
+        const { data: gamesRes, error: gamesErr } = await supabase
+            .from('game_sessions')
+            .select('*')
+            .eq('user_id', publicUserId);
+        console.log("game_sessions count returned:", gamesRes ? gamesRes.length : 0, gamesErr || "");
+        if (gamesRes) {
+            gamesRes.forEach(g => console.log(` - game_session id: ${g.id}, user_id: ${g.user_id}, opponent: ${g.opponent}`));
+        }
+
+        const { count: gameSessionsCount, error: countErr } = await supabase
+            .from('game_sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', publicUserId);
+        console.log("gameSessionsCount with head:true returned:", gameSessionsCount, countErr || "");
+
+        console.log("\n=== Querying seasons table as Authenticated User via RLS ===");
+        const { data: seasonsRes, error: seasonsErr } = await supabase
+            .from('seasons')
+            .select('*');
+        console.log("seasons count returned:", seasonsRes ? seasonsRes.length : 0, seasonsErr || "");
+        if (seasonsRes) {
+            seasonsRes.forEach(s => console.log(` - season id: ${s.id}, user_id: ${s.user_id}, name: ${s.name}, sport: ${s.sport}`));
+        }
     }
 }
 

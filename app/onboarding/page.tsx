@@ -66,19 +66,33 @@ function OnboardingContent() {
 
     async function loadUserProfile() {
       if (!userId || userId === '00000000-0000-0000-0000-000000000000') {
+        if (userId === '00000000-0000-0000-0000-000000000000' && !isEditMode) {
+          const devOnboarding = localStorage.getItem('dev_onboarding_completed');
+          if (devOnboarding !== 'true') {
+            setStep(1);
+          }
+        }
         setLoadingData(false);
         return;
       }
 
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('first_name, last_name, username, date_of_birth, primary_sport, teams, profile_tags, onboarding_completed, grad_year, handedness, height, gpa')
-          .eq('auth_user_id', userId)
-          .maybeSingle();
+        const [userRes, profileRes] = await Promise.all([
+          supabase
+            .from('users')
+            .select('first_name, last_name, username, date_of_birth, primary_sport, teams, profile_tags, onboarding_completed, grad_year, handedness, height, gpa')
+            .eq('auth_user_id', userId)
+            .maybeSingle(),
+          supabase
+            .from('profiles')
+            .select('goalie_name, sport, grad_year')
+            .eq('id', userId)
+            .maybeSingle()
+        ]);
 
-        if (error) throw error;
+        if (userRes.error) throw userRes.error;
 
+        const data = userRes.data;
         if (data) {
           setFirstName(data.first_name || '');
           setLastName(data.last_name || '');
@@ -92,6 +106,24 @@ function OnboardingContent() {
           setHeight(data.height || '');
           setGpa(data.gpa || '');
         }
+
+        // Auto-advance to first empty field step if not in edit mode
+        if (!isEditMode) {
+          const profile = profileRes?.data;
+          const goalieNameVal = (profile?.goalie_name || '').trim();
+          const sportVal = profile?.sport;
+          const gradYearVal = profile?.grad_year;
+
+          if (!goalieNameVal) {
+            setStep(1);
+          } else if (!sportVal) {
+            setStep(2);
+          } else if (gradYearVal === null || gradYearVal === undefined) {
+            setStep(3);
+          } else {
+            setStep(1);
+          }
+        }
       } catch (err) {
         console.error('Error fetching user profile:', err);
       } finally {
@@ -100,7 +132,7 @@ function OnboardingContent() {
     }
 
     loadUserProfile();
-  }, [userId, isAuthenticated, authLoading, router]);
+  }, [userId, isAuthenticated, authLoading, router, isEditMode]);
 
   // Debounced Username check
   useEffect(() => {
@@ -173,10 +205,14 @@ function OnboardingContent() {
     setSaving(true);
     setSaveError(null);
 
+    const goalieNameVal = `${firstName.trim()} ${lastName.trim()}`.trim();
+    const gradYearNum = gradYear.trim() && !isNaN(Number(gradYear.trim())) ? parseInt(gradYear.trim(), 10) : null;
+    const isComplete = goalieNameVal !== '' && sport !== null && sport !== '' && gradYearNum !== null;
+
     // Dev bypass mode
     if (userId === '00000000-0000-0000-0000-000000000000') {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('dev_onboarding_completed', 'true');
+        localStorage.setItem('dev_onboarding_completed', isComplete ? 'true' : 'false');
         localStorage.setItem('dev_username', username);
       }
       setSaving(false);
@@ -196,18 +232,33 @@ function OnboardingContent() {
           primary_sport: sport || null,
           teams: teams.length > 0 ? teams : null,
           profile_tags: profileTags.length > 0 ? profileTags : null,
-          grad_year: gradYear.trim() && !isNaN(Number(gradYear.trim())) ? parseInt(gradYear.trim(), 10) : null,
+          grad_year: gradYearNum,
           handedness: handedness || null,
           height: height.trim() || null,
           gpa: gpa.trim() || null,
-          onboarding_completed: true,
-          onboarding_completed_at: new Date().toISOString()
+          onboarding_completed: isComplete,
+          onboarding_completed_at: isComplete ? new Date().toISOString() : null
         })
         .eq('auth_user_id', userId);
 
       if (userErr) throw userErr;
 
-      // 2. If completing baseline questionnaire, calculate & save performance index baseline snapshot
+      // 2. Update profiles table
+      const { error: profileErr } = await supabase
+        .from('profiles')
+        .update({
+          goalie_name: goalieNameVal || null,
+          sport: sport || null,
+          grad_year: gradYearNum
+        })
+        .eq('id', userId);
+
+      if (profileErr) {
+        console.error("Failed to update profile record:", profileErr);
+        throw profileErr;
+      }
+
+      // 3. If completing baseline questionnaire, calculate & save performance index baseline snapshot
       if (isWizardFinished && step === 4) {
         let score = 75; // Default starting point
         const { trajectory, readiness, focus } = baselineAnswers;
@@ -246,6 +297,10 @@ function OnboardingContent() {
   };
 
   const handleNextStep = () => {
+    if (step === 2 && !sport) {
+      alert("Please select a sport to continue.");
+      return;
+    }
     if (step < 4) {
       setStep(step + 1);
     } else {
@@ -265,17 +320,8 @@ function OnboardingContent() {
     if (!userId) return;
     setSaving(true);
     try {
-      // Mark onboarding completed and redirect
-      if (userId !== '00000000-0000-0000-0000-000000000000') {
-        await supabase
-          .from('users')
-          .update({
-            onboarding_completed: true,
-            onboarding_completed_at: new Date().toISOString()
-          })
-          .eq('auth_user_id', userId);
-      } else {
-        localStorage.setItem('dev_onboarding_completed', 'true');
+      if (userId === '00000000-0000-0000-0000-000000000000') {
+        localStorage.setItem('dev_onboarding_completed', 'false');
       }
       router.replace('/dashboard');
     } catch (err) {
@@ -516,7 +562,7 @@ function OnboardingContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block">Class (Grad Year)</label>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block">High school graduation year</label>
                   <input
                     type="text"
                     value={gradYear}
@@ -774,7 +820,7 @@ function OnboardingContent() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block">Class (Grad Year)</label>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block">High school graduation year</label>
                     <input
                       type="text"
                       value={gradYear}

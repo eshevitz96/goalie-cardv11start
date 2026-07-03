@@ -91,9 +91,10 @@ export async function updateProfile(rosterId: string, updates: {
         // 4. Update Profile Record (Metadata & Settings)
         if (roster.linked_user_id) {
             const profileUpdates: any = {};
-            if (updates.goalie_name) profileUpdates.goalie_name = updates.goalie_name;
-            if (updates.email) profileUpdates.email = updates.email;
-            if (updates.sport) profileUpdates.sport = updates.sport;
+            if (updates.goalie_name !== undefined) profileUpdates.goalie_name = updates.goalie_name;
+            if (updates.email !== undefined) profileUpdates.email = updates.email;
+            if (updates.sport !== undefined) profileUpdates.sport = updates.sport;
+            if (updates.grad_year !== undefined) profileUpdates.grad_year = updates.grad_year;
 
             // Store Team History in 'settings' JSON
             if (team_history) {
@@ -110,10 +111,15 @@ export async function updateProfile(rosterId: string, updates: {
             }
 
             if (Object.keys(profileUpdates).length > 0) {
-                await supabase
+                const { error: profileError } = await supabase
                     .from('profiles')
                     .update(profileUpdates)
                     .eq('id', roster.linked_user_id);
+                
+                if (profileError) {
+                    console.error("Failed to update profile record:", profileError);
+                    throw profileError;
+                }
             }
         }
 

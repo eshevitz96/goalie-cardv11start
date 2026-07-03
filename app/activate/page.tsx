@@ -15,24 +15,63 @@ import { ActivateBaselineStep } from "@/components/activate/ActivateBaselineStep
 import { ActivateSecurityStep } from "@/components/activate/ActivateSecurityStep";
 import { BrandPulse, InstitutionalSpinner } from "@/components/ui/Loaders";
 import { createInitialProfile, completeActivationWithPassword } from "./actions";
+import { ActivateSelectGoalieStep } from "@/components/activate/ActivateSelectGoalieStep";
 
 function ActivateController() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // Redirect Check: send logged-in users straight to /dashboard
+    // Redirect Check: send logged-in users straight to /dashboard ONLY if they have a linked card
     useEffect(() => {
         async function runRedirectCheck() {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                router.replace('/dashboard');
+                // If they are logged in, check if they already have a linked roster card
+                const { data: rosterCheck } = await supabase
+                    .from('roster_uploads')
+                    .select('id')
+                    .eq('linked_user_id', user.id)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (rosterCheck) {
+                    // Already linked - send to dashboard
+                    router.replace('/dashboard');
+                } else {
+                    // Not linked yet! Let them stay on activate to select/link a card.
+                    setIsLoading(true);
+                    setEmail(user.email || "");
+                    try {
+                        const status = await checkUserStatus(user.email || "");
+                        if (status.rosterStatus === 'multiple_found') {
+                            setMatchedRosters(status.rosters || []);
+                            setStep('select_goalie');
+                        } else if (status.rosterStatus === 'found') {
+                            // Single match found - link it directly
+                            await completeActivationWithPassword(
+                                user.email || "",
+                                "", // no password needed
+                                status.rosterId
+                            );
+                            window.location.href = '/dashboard';
+                        } else {
+                            // No card found, send to dashboard anyway
+                            router.replace('/dashboard');
+                        }
+                    } catch (e) {
+                        console.error("Failed to check status for logged-in user:", e);
+                        router.replace('/dashboard');
+                    } finally {
+                        setIsLoading(false);
+                    }
+                }
             }
         }
         runRedirectCheck();
     }, [router]);
 
     // State
-    const [step, setStep] = useState<'email' | 'security' | 'success'>('email');
+    const [step, setStep] = useState<'email' | 'select_goalie' | 'security' | 'success'>('email');
     const [email, setEmail] = useState(searchParams.get('email') || "");
     const [rosterData, setRosterData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -41,16 +80,27 @@ function ActivateController() {
 
     const [password, setPassword] = useState("");
     const [termsAccepted, setTermsAccepted] = useState(false);
+    const [matchedRosters, setMatchedRosters] = useState<any[]>([]);
+    const [selectedRosterId, setSelectedRosterId] = useState<string | null>(null);
 
     // --- Handlers ---
 
-    const handleEmailNext = (status: { exists: boolean, rosterStatus: 'found' | 'not_found' | 'linked' | 'error', isClaimed?: boolean }) => {
+    const handleEmailNext = (status: any) => {
         if (status.exists || status.rosterStatus === 'linked') {
             setError(null);
             router.push(`/login?email=${encodeURIComponent(email)}`);
-        } else {
-            // New user or roster found - proceed straight to security password step
+        } else if (status.rosterStatus === 'multiple_found') {
             setError(null);
+            setMatchedRosters(status.rosters || []);
+            setStep('select_goalie');
+        } else {
+            // New user or single roster found - proceed straight to security password step
+            setError(null);
+            if (status.rosterId) {
+                setSelectedRosterId(status.rosterId);
+            } else {
+                setSelectedRosterId(null);
+            }
             setStep('security');
         }
     };
@@ -68,7 +118,8 @@ function ActivateController() {
             const trimmedEmail = email.toLowerCase().trim();
             const result = await completeActivationWithPassword(
                 trimmedEmail,
-                password
+                password,
+                selectedRosterId || undefined
             );
 
             if (!result.success) throw new Error(result.error);
@@ -120,6 +171,36 @@ function ActivateController() {
                         setIsLoading={setIsLoading}
                         autoChecked={autoChecked}
                         error={error}
+                    />
+                )}
+
+                {step === 'select_goalie' && (
+                    <ActivateSelectGoalieStep
+                        rosters={matchedRosters}
+                        onSelect={async (rosterId) => {
+                            setSelectedRosterId(rosterId);
+                            // If they are already authenticated, we link it now and go to dashboard
+                            const { data: { user } } = await supabase.auth.getUser();
+                            if (user) {
+                                setIsLoading(true);
+                                try {
+                                    await completeActivationWithPassword(
+                                        email,
+                                        "", // no password needed
+                                        rosterId
+                                    );
+                                    window.location.href = '/dashboard';
+                                } catch (e: any) {
+                                    setError(e.message || "Failed to link card. Please try again.");
+                                } finally {
+                                    setIsLoading(false);
+                                }
+                            } else {
+                                setStep('security');
+                            }
+                        }}
+                        onBack={() => setStep('email')}
+                        isLoading={isLoading}
                     />
                 )}
 

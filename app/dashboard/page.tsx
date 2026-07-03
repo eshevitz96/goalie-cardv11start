@@ -49,6 +49,7 @@ export default function Dashboard() {
         navHref: "/calendar/week"
     });
     const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(true);
+    const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
     const [performanceScore, setPerformanceScore] = useState<number | string>(0);
     const [isPro, setIsPro] = useState(false);
     const [credits, setCredits] = useState(0);
@@ -108,16 +109,30 @@ export default function Dashboard() {
                     const localPb = localStorage.getItem('dev_training_pb');
                     setTrainingPb(localPb ? parseInt(localPb, 10) : null);
                     
+                    const devOnboarding = typeof window !== 'undefined' ? localStorage.getItem('dev_onboarding_completed') : null;
+                    setIsOnboardingCompleted(devOnboarding === 'true');
+                    setIsProfileIncomplete(devOnboarding !== 'true');
+
                     setLoading(false);
                     return;
                 }
 
-                // 1. Fetch user identity from public.users using auth_user_id
-                const { data: userRes, error: userErr } = await supabase
-                    .from('users')
-                    .select('id, first_name, last_name, display_name, gc_number, onboarding_completed, onboarding_completed_at, created_at, teams, handedness, primary_sport')
-                    .eq('auth_user_id', uid)
-                    .single();
+                // 1. Fetch user identity and profile details
+                const [userRes, profileRes] = await Promise.all([
+                    supabase
+                        .from('users')
+                        .select('id, first_name, last_name, display_name, gc_number, onboarding_completed, onboarding_completed_at, created_at, teams, handedness, primary_sport')
+                        .eq('auth_user_id', uid)
+                        .maybeSingle(),
+                    supabase
+                        .from('profiles')
+                        .select('goalie_name, sport, grad_year')
+                        .eq('id', uid)
+                        .maybeSingle()
+                ]);
+                
+                const userResData = userRes.data;
+                const userErr = userRes.error;
                 
                 let initials = "GC";
                 let fullName = "Goalie";
@@ -131,25 +146,38 @@ export default function Dashboard() {
                 let gcNumber = "GC-0000";
                 let sport = null;
                 
-                if (userRes && !userErr) {
-                    publicUserId = userRes.id;
-                    const f = userRes.first_name || "";
-                    const l = userRes.last_name || "";
+                if (userResData && !userErr) {
+                    publicUserId = userResData.id;
+                    const f = userResData.first_name || "";
+                    const l = userResData.last_name || "";
                     initials = ((f.charAt(0) || "") + (l.charAt(0) || "")).toUpperCase() || "GC";
-                    fullName = userRes.display_name || `${f} ${l}`.trim() || "Goalie";
-                    firstName = userRes.first_name || userRes.display_name || "Goalie";
-                    onboardingCompletedAt = userRes.onboarding_completed_at || null;
-                    userCreatedAt = userRes.created_at || null;
-                    onboarded = userRes.onboarding_completed !== false; // False means incomplete
-                    teams = userRes.teams || null;
-                    handedness = userRes.handedness || null;
-                    sport = normalizeSportDisplay(userRes.primary_sport);
-                    if (userRes.gc_number) {
-                        gcNumber = 'GC-' + String(userRes.gc_number).padStart(4, '0');
+                    fullName = userResData.display_name || `${f} ${l}`.trim() || "Goalie";
+                    firstName = userResData.first_name || userResData.display_name || "Goalie";
+                    onboardingCompletedAt = userResData.onboarding_completed_at || null;
+                    userCreatedAt = userResData.created_at || null;
+                    onboarded = userResData.onboarding_completed !== false; // False means incomplete
+                    teams = userResData.teams || null;
+                    handedness = userResData.handedness || null;
+                    sport = normalizeSportDisplay(userResData.primary_sport);
+                    if (userResData.gc_number) {
+                        gcNumber = 'GC-' + String(userResData.gc_number).padStart(4, '0');
                     }
                 }
                 setUserData({ initials, fullName, publicUserId, teams, handedness, gcNumber, sport });
                 setIsOnboardingCompleted(onboarded);
+
+                // Compute profile completeness
+                let isProfileIncompleteVal = false;
+                if (profileRes && profileRes.data) {
+                    const p = profileRes.data;
+                    const nameEmpty = !p.goalie_name || p.goalie_name.trim() === '';
+                    const sportUnset = !p.sport || p.sport.trim() === '';
+                    const gradYearNull = p.grad_year === null || p.grad_year === undefined;
+                    isProfileIncompleteVal = nameEmpty || sportUnset || gradYearNull;
+                } else {
+                    isProfileIncompleteVal = true;
+                }
+                setIsProfileIncomplete(isProfileIncompleteVal);
 
                 // 2. Fetch roster upload details using linked_user_id (matches auth.users.id)
                 const { data: rosterRes } = await supabase
@@ -476,18 +504,23 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Profile Setup Banner */}
-            {!isOnboardingCompleted && (
+            {/* Complete your card Banner */}
+            {isProfileIncomplete && (
                 <div className="max-w-xl md:max-w-[860px] mx-auto mb-6 w-full px-2">
-                    <div className="bg-[#006747]/10 border border-[#006747]/20 rounded-2xl p-4 flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                            <p className="m-0 text-sm font-bold text-[#f4f4f5] truncate">Complete your goalie profile</p>
-                            <p className="m-0 text-xs text-white/40 mt-1 line-clamp-2">Set up your birthday, username, teams, and tags to unlock your full Goalie Card.</p>
+                    <Link 
+                        href="/onboarding"
+                        className="block bg-zinc-900/40 border border-zinc-800 hover:border-zinc-700 rounded-2xl p-4 transition-all group"
+                    >
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                                <p className="m-0 text-sm font-bold text-white group-hover:text-white/90">Complete your card</p>
+                                <p className="m-0 text-xs text-zinc-400 mt-1">Set up your name, sport, and grad year to activate your card.</p>
+                            </div>
+                            <div className="bg-zinc-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl group-hover:bg-zinc-700 active:scale-95 transition-all whitespace-nowrap">
+                                Complete Setup
+                            </div>
                         </div>
-                        <Link href="/onboarding" className="bg-[#006747] text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-[#006747]/80 active:scale-95 transition-all whitespace-nowrap">
-                            Complete Setup
-                        </Link>
-                    </div>
+                    </Link>
                 </div>
             )}
 
@@ -515,6 +548,7 @@ export default function Dashboard() {
                         performanceScore={performanceScore}
                         initials={userData?.initials}
                         gcNumber={userData?.gcNumber}
+                        isIncomplete={isProfileIncomplete}
                         className="w-full"
                     />
                     

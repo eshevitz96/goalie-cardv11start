@@ -93,7 +93,7 @@ export async function provisionSelfServiceUser(email: string, rosterId: string, 
  */
 export async function completeActivationWithPassword(
     email: string,
-    password: string,
+    password?: string,
     rosterId?: string,
     rosterData?: any,
     formData?: any,
@@ -102,33 +102,55 @@ export async function completeActivationWithPassword(
 ) {
     try {
         const emailTrimmed = email.toLowerCase().trim();
-        
-        // 1. Create the Auth User
-        const { data: authData, error: authError } = await clientSupabase.auth.signUp({
-            email: emailTrimmed,
-            password
-        });
+        let userId: string | undefined;
 
-        if (authError) {
-            throw authError;
+        // Check if there is an active session/user first
+        const { data: { user: currentUser } } = await clientSupabase.auth.getUser();
+        if (currentUser) {
+            userId = currentUser.id;
+        } else {
+            if (!password) {
+                throw new Error("Password is required for registration.");
+            }
+            // 1. Create the Auth User
+            const { data: authData, error: authError } = await clientSupabase.auth.signUp({
+                email: emailTrimmed,
+                password
+            });
+
+            if (authError) {
+                throw authError;
+            }
+
+            userId = authData.user?.id;
         }
 
-        const userId = authData.user?.id;
-
-        // 2. Link existing roster records SILENTLY in the background using p_email argument
+        // 2. Link existing roster records SILENTLY in the background
         if (userId) {
             try {
-                const { data: matchedRosters, error: rpcError } = await clientSupabase.rpc(
-                    'find_roster_by_email',
-                    { p_email: emailTrimmed }
-                );
+                if (rosterId) {
+                    // Link ONLY the selected card
+                    await clientSupabase
+                        .from('roster_uploads')
+                        .update({ linked_user_id: userId, is_claimed: true })
+                        .eq('id', rosterId);
+                    console.log(`[Activation] Linked chosen roster ${rosterId} to user ${userId}`);
+                } else {
+                    // If no rosterId passed, query RPC but ONLY link if it is a single match
+                    const { data: matchedRosters, error: rpcError } = await clientSupabase.rpc(
+                        'find_roster_by_email',
+                        { p_email: emailTrimmed }
+                    );
 
-                if (!rpcError && matchedRosters && matchedRosters.length > 0) {
-                    for (const r of matchedRosters) {
+                    if (!rpcError && matchedRosters && matchedRosters.length === 1) {
+                        const r = matchedRosters[0];
                         await clientSupabase
                             .from('roster_uploads')
                             .update({ linked_user_id: userId, is_claimed: true })
                             .eq('id', r.id);
+                        console.log(`[Activation] Auto-linked single match roster ${r.id} to user ${userId}`);
+                    } else if (matchedRosters && matchedRosters.length > 1) {
+                        console.log(`[Activation] Multiple matches found (${matchedRosters.length}) but no rosterId specified. Skipping auto-link.`);
                     }
                 }
             } catch (rpcErr) {
