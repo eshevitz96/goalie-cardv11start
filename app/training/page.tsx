@@ -12,6 +12,7 @@ import { MobileBottomNav } from '@/components/shared/MobileBottomNav';
 import { twMerge } from 'tailwind-merge';
 import { useToast } from '@/context/ToastContext';
 import { BrandLogo } from "@/components/ui/BrandLogo";
+import { LessonsTransparency } from '@/components/goalie/LessonsTransparency';
 
 const DRILL_CATEGORIES = {
     physical: [
@@ -48,6 +49,131 @@ export default function TrainingPage() {
 
     const [loading, setLoading] = useState(true);
     const [personalBest, setPersonalBest] = useState<number | null>(null);
+    const [goalieProfileId, setGoalieProfileId] = useState<string | null>(null);
+    const [resolvingId, setResolvingId] = useState(true);
+    const [parentGoalies, setParentGoalies] = useState<any[]>([]);
+
+    const validateProfileId = async (id: string | null) => {
+        if (!id) return false;
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', id)
+                .maybeSingle();
+            return !error && data !== null;
+        } catch (e) {
+            console.error("Profile validation failed:", e);
+            return false;
+        }
+    };
+
+    // Resolve goalie child's profiles.id (especially for parent login)
+    useEffect(() => {
+        if (activeAuthLoading) return;
+        if (!activeUserId) {
+            setResolvingId(false);
+            return;
+        }
+
+        const resolveGoalieId = async () => {
+            if (activeUserId === '00000000-0000-0000-0000-000000000000') {
+                setGoalieProfileId('00000000-0000-0000-0000-000000000000');
+                setResolvingId(false);
+                return;
+            }
+
+            // 1. Goalie login: profiles.id is their own auth ID (activeUserId)
+            if (auth.userRole === 'goalie') {
+                const isValid = await validateProfileId(activeUserId);
+                if (isValid) {
+                    setGoalieProfileId(activeUserId);
+                } else {
+                    console.warn("Active user has no profiles.id record");
+                }
+                setResolvingId(false);
+                return;
+            }
+
+            // 2. Parent login: resolve linked goalie's profiles.id (roster_uploads.linked_user_id)
+            if (auth.userRole === 'parent' && auth.userEmail) {
+                try {
+                    // Match guardian_email column intentionally (no loose OR columns matching)
+                    const { data: rosters, error } = await supabase
+                        .from('roster_uploads')
+                        .select('id, linked_user_id, assigned_unique_id, goalie_name')
+                        .ilike('guardian_email', auth.userEmail);
+
+                    if (error) {
+                        console.error("Error fetching rosters for parent:", error);
+                        setResolvingId(false);
+                        return;
+                    }
+
+                    if (rosters && rosters.length > 0) {
+                        // Filter to children that have claimed their card (linked_user_id is not null)
+                        const activeRosters = rosters.filter(r => r.linked_user_id);
+
+                        if (activeRosters.length === 0) {
+                            setResolvingId(false);
+                            return;
+                        }
+
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const athleteIdParam = urlParams.get('athleteId');
+
+                        let selectedRoster = null;
+                        if (athleteIdParam) {
+                            // Strictly match within the parent's resolved active children set to enforce parent-child authorization boundary
+                            selectedRoster = activeRosters.find(
+                                r => r.id === athleteIdParam || 
+                                     r.assigned_unique_id === athleteIdParam || 
+                                     r.linked_user_id === athleteIdParam
+                            ) || null;
+                        }
+
+                        if (selectedRoster) {
+                            // Validate the resolved id actually maps to a real profile before trusting it
+                            const isValid = await validateProfileId(selectedRoster.linked_user_id);
+                            if (isValid) {
+                                setGoalieProfileId(selectedRoster.linked_user_id);
+                            }
+                            setResolvingId(false);
+                            return;
+                        } else {
+                            if (activeRosters.length === 1) {
+                                // Safe to auto-select single child after validation
+                                const singleRoster = activeRosters[0];
+                                const isValid = await validateProfileId(singleRoster.linked_user_id);
+                                if (isValid) {
+                                    setGoalieProfileId(singleRoster.linked_user_id);
+                                }
+                                setResolvingId(false);
+                                return;
+                            } else {
+                                // Multi-child parent: never auto-select, present child picker
+                                setParentGoalies(activeRosters);
+                                setResolvingId(false);
+                                return;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error resolving goalie ID for parent:", e);
+                }
+            }
+
+            // Fallback to activeUserId
+            const isValid = await validateProfileId(activeUserId);
+            if (isValid) {
+                setGoalieProfileId(activeUserId);
+            }
+            setResolvingId(false);
+        };
+
+        resolveGoalieId();
+    }, [activeUserId, activeAuthLoading, auth.userRole, auth.userEmail]);
+
 
     // Redesign tabs state: 'drills' | 'timer' | 'game'
     const [activeTab, setActiveTab] = useState<'drills' | 'timer' | 'game'>('drills');
@@ -169,7 +295,7 @@ export default function TrainingPage() {
         });
     };
 
-    if (activeAuthLoading || (loading && activeUserId)) {
+    if (activeAuthLoading || resolvingId || (loading && activeUserId)) {
         return (
             <div 
                 className="flex items-center justify-center text-foreground w-full"
@@ -202,20 +328,61 @@ export default function TrainingPage() {
                 <BrandLogo textClassName="text-lg font-medium tracking-tight text-white/90 select-none pointer-events-none" />
             </div>
 
-            {/* Active Mission Card Link */}
+            {/* Lessons Transparency View / Goalie Selector */}
             <div className="max-w-[480px] mx-auto w-full mb-6 no-print">
-                <Link 
-                    href="/workout"
-                    className="flex items-center justify-between p-4 bg-[#1C1C1E] border border-white/5 rounded-2xl hover:border-white/10 hover:scale-[1.01] active:scale-[0.99] transition-all group"
-                >
-                    <div>
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-1">Today's Mission</span>
-                        <h4 className="text-xs font-black uppercase text-white tracking-wider mt-0.5">Daily Coach Engine Card</h4>
+                {goalieProfileId ? (
+                    <LessonsTransparency goalieProfileId={goalieProfileId} />
+                ) : parentGoalies.length > 0 ? (
+                    <div className="w-full bg-[#1C1C1E] border border-white/5 rounded-3xl p-6 space-y-4 shadow-xl relative overflow-hidden">
+                        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                        <div>
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-1">
+                                Goalie Card
+                            </span>
+                            <h3 className="text-lg font-bold text-white tracking-tight leading-none">
+                                Select Goalie
+                            </h3>
+                        </div>
+                        <p className="text-xs text-zinc-400 leading-relaxed font-medium">
+                            Please select an athlete to view their private training lessons:
+                        </p>
+                        <div className="grid grid-cols-1 gap-2.5 pt-2">
+                            {parentGoalies.map((roster) => (
+                                <button
+                                    key={roster.id}
+                                    onClick={async () => {
+                                        setResolvingId(true);
+                                        const isValid = await validateProfileId(roster.linked_user_id);
+                                        if (isValid) {
+                                            setGoalieProfileId(roster.linked_user_id);
+                                        } else {
+                                            toast.error("Selected goalie profile is not active yet.");
+                                        }
+                                        setResolvingId(false);
+                                    }}
+                                    className="w-full text-left p-4 bg-black/20 border border-white/5 hover:border-[#006747]/40 hover:bg-[#006747]/5 rounded-2xl transition-all font-bold text-sm text-white flex items-center justify-between group cursor-pointer"
+                                >
+                                    <span>{roster.goalie_name}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-wider bg-white/5 border border-white/10 text-zinc-400 px-2.5 py-1.5 rounded-xl group-hover:bg-[#006747] group-hover:text-white transition-all font-sans">
+                                        View Lessons
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <span className="text-[9px] font-black uppercase tracking-wider bg-[#006747]/10 border border-[#006747]/20 text-[#006747] px-2.5 py-1.5 rounded-xl group-hover:bg-[#006747] group-hover:text-white transition-all">
-                        View Card
-                    </span>
-                </Link>
+                ) : (
+                    <div className="w-full bg-[#1C1C1E] border border-white/5 rounded-3xl p-6 flex flex-col items-center justify-center text-center min-h-[160px]">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-1">
+                            Private Training
+                        </span>
+                        <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-2">
+                            No Active Lessons
+                        </h4>
+                        <p className="text-[11px] text-zinc-500 max-w-xs leading-relaxed">
+                            No active athlete profile was found linked to your account.
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Segmented Control Selector Tabs */}
