@@ -114,7 +114,7 @@ export default function AdminRosterPage() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
-                        <div className="flex items-center gap-2 mb-2 text-slate-500 font-bold text-sm">
+                        <div className="flex items-center gap-2 mb-2 text-green-600 font-bold text-sm">
                             <ShieldCheck size={16} /> Secure Admin View
                         </div>
                         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">September Training Roster</h1>
@@ -137,7 +137,7 @@ export default function AdminRosterPage() {
                                     <div className="text-4xl font-bold tracking-tighter">
                                         {count}<span className="text-xl text-slate-400 font-medium tracking-normal">/{MAX_CAPACITY}</span>
                                     </div>
-                                    <div className={`text-xs font-bold px-3 py-1 rounded-full ${isFull ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-100 text-slate-800 border border-slate-300'}`}>
+                                    <div className={`text-xs font-bold px-3 py-1 rounded-full ${isFull ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
                                         {isFull ? 'FULL' : 'AVAILABLE'}
                                     </div>
                                 </div>
@@ -181,13 +181,13 @@ export default function AdminRosterPage() {
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                                            sub.payment_status === 'paid' ? 'bg-slate-100 text-slate-800' : 
+                                                            sub.payment_status === 'paid' ? 'bg-green-50 text-green-700' : 
                                                             sub.payment_status === 'pending' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'
                                                         }`}>
                                                             {sub.payment_status?.toUpperCase() || 'UNKNOWN'}
                                                         </span>
                                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                                            sub.waiver_completed ? 'bg-slate-100 text-slate-800' : 'bg-red-50 text-red-600'
+                                                            sub.waiver_completed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
                                                         }`}>
                                                             WAIVER: {sub.waiver_completed ? 'YES' : 'NO'}
                                                         </span>
