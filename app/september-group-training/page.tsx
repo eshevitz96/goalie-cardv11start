@@ -292,16 +292,21 @@ function SeptemberGroupTrainingContent() {
 
                 <div className="bg-white border-2 border-slate-200 rounded-[2rem] p-8 md:p-12 shadow-xl relative overflow-hidden">
                     {/* Universal Back Button */}
-                    {step !== 'access-code' && !isLoading && !clientSecret && (
+                    {!isLoading && !clientSecret && (
                         <button
                             onClick={() => {
-                                if (step === 'info') setStep('access-code');
+                                if (step === 'access-code') window.location.href = '/dashboard';
+                                else if (step === 'info') setStep('access-code');
                                 else if (step === 'card-prompt') setStep('info');
                                 else if (step === 'waiver') setStep('card-prompt');
                                 else if (step === 'plan-selection') setStep('waiver');
-                                else if (step === 'payment-confirm') setStep('plan-selection');
+                                else if (step === 'date-selection') setStep('plan-selection');
+                                else if (step === 'payment-confirm') {
+                                    if (selectedPlan === 'session3') setStep('plan-selection');
+                                    else setStep('date-selection');
+                                }
                             }}
-                            className="absolute top-6 left-6 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all z-20 group"
+                            className="absolute top-6 left-6 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all z-20 group flex items-center justify-center"
                         >
                             <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
                         </button>

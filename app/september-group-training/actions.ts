@@ -249,6 +249,7 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
                 email: submission.email,
                 productType: 'september group training',
                 planSelected: planId,
+                selectedDates: selectedDates.join(', '),
                 isTestMode: String(isTestMode)
             }
         } as any);

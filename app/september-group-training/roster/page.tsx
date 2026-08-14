@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { fetchAdminRoster } from "./actions";
-import { Loader2, Lock, ArrowRight, ShieldCheck, Download } from "lucide-react";
+import { Loader2, Lock, ArrowRight, ShieldCheck, Download, ChevronLeft } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { Button } from "@/components/ui/Button";
+import Link from "next/link";
 
 export default function AdminRosterPage() {
     const [password, setPassword] = useState("");
@@ -35,7 +36,10 @@ export default function AdminRosterPage() {
 
     if (!isAuthenticated) {
         return (
-            <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
+            <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans relative">
+                <Link href="/dashboard" className="absolute top-8 left-8 flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-bold text-sm">
+                    <ChevronLeft size={16} /> Back to Goalie Card
+                </Link>
                 <div className="w-full max-w-sm bg-white rounded-[2rem] border-2 border-slate-200 p-8 shadow-xl">
                     <div className="flex flex-col items-center mb-8">
                         <BrandLogo size={14} className="mb-4" />
