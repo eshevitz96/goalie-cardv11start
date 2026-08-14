@@ -44,16 +44,16 @@ export default function TransactionHistory() {
         }).format(amount / 100);
     };
 
-    if (isLoading) return <div className="min-h-screen bg-black flex items-center justify-center text-white"><InstitutionalSpinner size={40} /></div>;
+    if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center text-foreground"><InstitutionalSpinner size={40} /></div>;
 
     return (
-        <main className="min-h-screen bg-black text-white p-4 md:p-8">
+        <main className="min-h-screen bg-background text-foreground p-4 md:p-8">
             <div className="max-w-3xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <Link
                         href="/dashboard"
-                        className="p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-colors"
+                        className="p-2 rounded-full bg-secondary border border-border hover:bg-secondary/80 text-foreground transition-colors"
                     >
                         <ArrowLeft size={20} />
                     </Link>
@@ -63,12 +63,12 @@ export default function TransactionHistory() {
                 </div>
 
                 {/* Transactions list */}
-                <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
-                    <div className="p-6 border-b border-zinc-800">
+                <div className="bg-card/20 backdrop-blur-2xl border border-border rounded-3xl overflow-hidden shadow-lg">
+                    <div className="p-6 border-b border-border">
                         <div className="flex justify-between items-end">
                             <div>
-                                <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Total Spend (YTD)</div>
-                                <div className="text-3xl font-black text-white">{formatCurrency(totalSpend)}</div>
+                                <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Spend (YTD)</div>
+                                <div className="text-3xl font-black text-foreground">{formatCurrency(totalSpend)}</div>
                             </div>
                             <button className="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
                                 <Download size={14} /> Download All
@@ -76,26 +76,26 @@ export default function TransactionHistory() {
                         </div>
                     </div>
 
-                    <div className="divide-y divide-zinc-800">
+                    <div className="divide-y divide-border">
                         {transactions.length === 0 ? (
-                            <div className="p-8 text-center text-zinc-500 text-sm">No transactions found.</div>
+                            <div className="p-8 text-center text-muted-foreground text-sm">No transactions found.</div>
                         ) : (
                             transactions.map((tx) => (
-                                <div key={tx.id} className="p-4 md:p-6 flex items-center justify-between hover:bg-zinc-800/20 transition-colors group">
+                                <div key={tx.id} className="p-4 md:p-6 flex items-center justify-between hover:bg-secondary/20 transition-colors group">
                                     <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
                                             <CheckCircle2 size={18} />
                                         </div>
                                         <div>
-                                            <div className="font-bold text-white">{tx.description || "Payment"}</div>
-                                            <div className="text-xs text-zinc-500">
+                                            <div className="font-bold text-foreground">{tx.description || "Payment"}</div>
+                                            <div className="text-xs text-muted-foreground">
                                                 {new Date(tx.created_at).toLocaleDateString()} • {tx.stripe_payment_intent_id?.slice(-8) || "ID-XXXX"}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="font-mono font-bold text-white">{formatCurrency(tx.amount)}</div>
-                                        <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider mt-1">
+                                        <div className="font-mono font-bold text-foreground">{formatCurrency(tx.amount)}</div>
+                                        <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mt-1">
                                             {tx.status}
                                         </div>
                                     </div>

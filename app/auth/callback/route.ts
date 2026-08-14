@@ -12,14 +12,28 @@ export async function GET(request: Request) {
         next = "/update-password";
     }
 
-    console.log(`[Auth Callback] Origin: ${origin}, Next: ${next}, Has Code: ${!!code}`);
+    const tokenHash = searchParams.get("token_hash");
 
-    if (code) {
+    console.log(`[Auth Callback] Origin: ${origin}, Next: ${next}, Has Code: ${!!code}, Has TokenHash: ${!!tokenHash}`);
+
+    if (code || tokenHash) {
         const supabase = createClient();
-        console.log(`[Auth Callback] Exchanging code for session...`);
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        let authError = null;
 
-        if (!error) {
+        if (code) {
+            console.log(`[Auth Callback] Exchanging code for session...`);
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            authError = error;
+        } else if (tokenHash) {
+            console.log(`[Auth Callback] Verifying OTP token hash...`);
+            const { error } = await supabase.auth.verifyOtp({
+                type: (type as any) || "magiclink",
+                token_hash: tokenHash
+            });
+            authError = error;
+        }
+
+        if (!authError) {
             // --- START AUTO-RECOGNITION LOGIC ---
             const { data: { user } } = await supabase.auth.getUser();
             if (user?.email) {
@@ -87,9 +101,9 @@ export async function GET(request: Request) {
             return NextResponse.redirect(redirectUrl);
         }
 
-        console.error(`[Auth Callback] Exchange error:`, error.message);
+        console.error(`[Auth Callback] Auth error:`, authError.message);
     } else {
-        console.warn(`[Auth Callback] No auth code found in request params.`);
+        console.warn(`[Auth Callback] No auth code or token_hash found in request params.`);
     }
 
     // fallback to error page

@@ -24,8 +24,9 @@ export function BrandLogo({
   textClassName = "text-3xl md:text-4xl font-medium tracking-tight",
   text = "Goalie Card",
   flowerSize = "1.0em",
-  gap = "gap-[0.4ch]"
-}: BrandProps) {
+  gap = "gap-[0.4ch]",
+  iconClassName
+}: BrandProps & { iconClassName?: string }) {
   return (
     <div 
       className={twMerge("flex items-center", gap, textClassName, className)}
@@ -36,10 +37,7 @@ export function BrandLogo({
           src="/flower-logo.png?v=5"
           alt="Goalie Card Logo"
           draggable={false}
-          className="h-full w-full object-contain pointer-events-none select-none opacity-100 transition-all duration-300"
-          style={{ 
-            filter: 'invert(1)'
-          }}
+          className={twMerge("h-full w-full object-contain pointer-events-none select-none opacity-100 transition-all duration-300", iconClassName)}
         />
       </div>
       {withText && (

@@ -32,43 +32,23 @@ export function Library({ onSelectReport, onCreateNew }: LibraryProps) {
   };
 
   return (
-    <div style={{ padding: '48px 64px', width: '100%', maxWidth: '1600px', margin: '0' }}>
+    <div className="w-full max-w-[1600px] mx-auto px-4 py-6 md:px-16 md:py-12">
       {/* Title Row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '64px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <LibraryBig size={36} strokeWidth={2.5} color="#FFFFFF" />
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 700, letterSpacing: '-0.03em', fontFamily: 'var(--font-brand)' }}>Library</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 md:mb-16">
+        <div className="flex items-center gap-4">
+          <LibraryBig size={32} className="text-white md:w-9 md:h-9" strokeWidth={2.5} />
+          <h1 className="text-2xl md:text-[2.5rem] font-bold tracking-tight text-white font-sans">Library</h1>
         </div>
         
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            padding: '10px 18px', 
-            borderRadius: '12px',
-            background: 'rgba(255,255,255,0.05)',
-            color: 'var(--text-primary)',
-            fontSize: '0.9rem',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            fontWeight: 600
-          }}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+          <button className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-xs font-semibold text-white transition-all">
             Recent Sessions
-            <ChevronDown size={14} color="rgba(255, 255, 255, 0.4)" />
+            <ChevronDown size={14} className="text-white/40" />
           </button>
           
           <button 
             onClick={handleNewSession}
-            style={{ 
-              padding: '12px 24px', 
-              background: '#FFFFFF', 
-              color: '#000000', 
-              fontWeight: 600, 
-              borderRadius: '12px',
-              fontSize: '0.95rem',
-              letterSpacing: '-0.01em',
-              cursor: 'pointer'
-            }}
+            className="px-5 py-2.5 bg-white text-black font-semibold rounded-xl text-xs md:text-sm hover:bg-white/95 transition-all active:scale-[0.98] text-center"
           >
             New Game Session
           </button>
@@ -76,30 +56,17 @@ export function Library({ onSelectReport, onCreateNew }: LibraryProps) {
       </div>
 
       {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '32px' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
         {/* Create New Card */}
         <motion.div
           onClick={handleNewSession}
           whileHover={{ scale: 1.015, borderColor: 'rgba(255, 255, 255, 0.2)' }}
-          style={{ 
-            padding: '48px 32px',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '16px',
-            background: 'rgba(255, 255, 255, 0.02)',
-            border: '2px dashed rgba(255, 255, 255, 0.1)',
-            borderRadius: '28px',
-            color: 'rgba(255, 255, 255, 0.3)',
-            height: '240px'
-          }}
+          className="p-6 md:p-8 cursor-pointer flex flex-col items-center justify-center gap-4 bg-white/[0.02] border-2 border-dashed border-white/10 hover:border-white/20 rounded-[28px] text-white/30 h-[200px] md:h-[240px] transition-all"
         >
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Plus size={32} color="#FFFFFF" strokeWidth={3} />
+          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/10 flex items-center justify-center">
+            <Plus size={24} className="text-white md:w-8 md:h-8" strokeWidth={3} />
           </div>
-          <span style={{ fontWeight: 600, fontSize: '1.1rem', color: '#FFFFFF' }}>Create New Session</span>
+          <span className="font-semibold text-sm md:text-base text-white">Create New Session</span>
         </motion.div>
 
         {/* Saved Reports */}
@@ -108,42 +75,32 @@ export function Library({ onSelectReport, onCreateNew }: LibraryProps) {
             key={report.id}
             onClick={() => handleReportClick(report)}
             whileHover={{ scale: 1.015, background: 'rgba(255, 255, 255, 0.04)' }}
-            style={{ 
-              padding: '32px',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '28px',
-              height: '240px',
-              justifyContent: 'space-between'
-            }}
+            className="p-6 md:p-8 cursor-pointer flex flex-col bg-white/[0.02] border border-white/8 hover:border-white/15 rounded-[28px] h-[200px] md:h-[240px] justify-between transition-all"
           >
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <div style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div className="flex justify-between items-start mb-3">
+                <div className="px-2 py-1 bg-white/5 rounded-md text-[9px] md:text-[10px] font-bold text-white/40 uppercase tracking-wider">
                   {report.sport}
                 </div>
-                <div style={{ color: 'rgba(255,255,255,0.2)' }}>
-                   <Clock size={18} />
+                <div className="text-white/25">
+                   <Clock size={16} />
                 </div>
               </div>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px', letterSpacing: '-0.02em' }}>{report.title}</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem' }}>
-                <Calendar size={14} color="#FFFFFF" />
+              <h3 className="text-base md:text-xl font-bold mb-2 tracking-tight text-white line-clamp-1">{report.title}</h3>
+              <div className="flex items-center gap-2 text-white/30 text-xs font-semibold">
+                <Calendar size={12} className="text-white" />
                 {new Date(report.date).toLocaleDateString()}
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '20px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px' }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Film size={14} color="#FFFFFF" />
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{report.clips.length} Clips</span>
+            <div className="flex gap-4 border-t border-white/5 pt-4">
+               <div className="flex items-center gap-1.5 text-xs text-white/70">
+                  <Film size={12} className="text-white" />
+                  <span className="font-semibold">{report.clips.length} Clips</span>
                </div>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Target size={14} color="#FFFFFF" />
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{report.shots.length} Shots</span>
+               <div className="flex items-center gap-1.5 text-xs text-white/70">
+                  <Target size={12} className="text-white" />
+                  <span className="font-semibold">{report.shots.length} Shots</span>
                </div>
             </div>
           </motion.div>

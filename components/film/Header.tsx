@@ -20,99 +20,46 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
     : (title || (activeTab === 'workspace' ? 'Workspace' : 'Game Report'));
 
   return (
-    <header style={{ 
-      padding: '0 24px', 
-      display: 'flex', 
-      justifyContent: 'space-between', 
-      alignItems: 'center', 
-      background: 'var(--bg-primary)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 1100,
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
-      height: '80px'
-    }}>
+    <header className="sticky top-0 z-[1100] flex flex-col md:flex-row justify-between items-center bg-[var(--bg-primary)] border-b border-white/5 px-4 md:px-6 py-3 md:py-0 h-auto md:h-20 gap-3 md:gap-0">
       {/* Left Group: Navigation */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '48px', height: '100%' }}>
+      <div className="flex items-center justify-between md:justify-start gap-4 md:gap-12 w-full md:w-auto h-full">
         {activeTab !== 'library' && (
           <button 
             onClick={handleBackToLibrary}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '4px', 
-              color: 'rgba(255, 255, 255, 0.45)',
-              fontSize: '0.95rem',
-              fontWeight: 500,
-              transition: 'color 0.2s',
-              fontFamily: 'var(--font-heading)',
-              letterSpacing: '-0.01em'
-            }}
-            onMouseOver={e => e.currentTarget.style.color = '#FFFFFF'}
-            onMouseOut={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.45)'}
+            className="flex items-center gap-1 text-[rgba(255,255,255,0.45)] hover:text-white text-[0.95rem] font-medium transition-colors font-sans tracking-tight"
           >
             <ChevronLeft size={20} strokeWidth={2.5} />
             Library
           </button>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '1.5rem', marginLeft: activeTab === 'library' ? '12px' : '0' }}>
-          <span style={{ 
-            color: '#FFFFFF',
-            letterSpacing: '-0.02em',
-            fontFamily: 'var(--font-brand)',
-            fontWeight: 700,
-            fontSize: '1.4rem'
-          }}>
+        <div className={`flex items-center gap-2 md:gap-4 text-xl md:text-2xl ${activeTab === 'library' ? 'ml-1 md:ml-3' : 'ml-0'}`}>
+          <span className="text-white tracking-tight font-sans font-bold text-[1.25rem] md:text-[1.4rem]">
             Goalie Card
           </span>
           
-          <span style={{ 
-            color: 'rgba(255, 255, 255, 0.2)', 
-            fontWeight: 400
-          }}>
+          <span className="text-white/20 font-light hidden md:inline">
             /
           </span>
           
-          <span style={{ 
-            color: 'rgba(255, 255, 255, 0.45)', 
-            fontWeight: 500,
-            letterSpacing: '-0.02em',
-            fontFamily: 'var(--font-heading)', // Inter
-            fontSize: '1.5rem'
-          }}>
+          <span className="text-white/45 font-medium tracking-tight font-sans text-[1.3rem] md:text-[1.5rem] hidden md:inline">
             {activeLabel}
           </span>
         </div>
       </div>
 
-      {/* Right Group: Sport Selector */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+      {/* Right Group: Sport Selector (takes full width on mobile) */}
+      <div className="w-full md:w-auto flex items-center justify-end">
         <select 
           value={sport}
           onChange={(e) => setSport(e.target.value as any)}
-          style={{ 
-            padding: '8px 32px 8px 16px', 
-            background: 'rgba(255, 255, 255, 0.05)', 
-            borderRadius: '12px', 
-            fontSize: '0.85rem', 
-            color: '#FFFFFF',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            fontWeight: 600,
-            fontFamily: 'var(--font-heading)',
-            letterSpacing: '-0.01em',
-            cursor: 'pointer',
-            outline: 'none',
-            appearance: 'auto', // Restore native behavior for reliability
-            textAlign: 'left',
-            minWidth: '160px'
-          }}
+          className="w-full md:w-auto px-4 py-2 bg-white/5 border border-white/15 rounded-xl text-xs font-semibold text-white cursor-pointer outline-none md:min-w-[160px] text-left appearance-auto"
         >
-          <option value="Hockey">Ice Hockey</option>
-          <option value="Mens Lacrosse">Men's Lacrosse</option>
-          <option value="Womens Lacrosse">Women's Lacrosse</option>
-          <option value="Soccer">Soccer</option>
-          <option value="Field Hockey">Field Hockey</option>
+          <option value="Hockey" className="bg-neutral-950">Ice Hockey</option>
+          <option value="Mens Lacrosse" className="bg-neutral-950">Men's Lacrosse</option>
+          <option value="Womens Lacrosse" className="bg-neutral-950">Women's Lacrosse</option>
+          <option value="Soccer" className="bg-neutral-950">Soccer</option>
+          <option value="Field Hockey" className="bg-neutral-950">Field Hockey</option>
         </select>
       </div>
     </header>

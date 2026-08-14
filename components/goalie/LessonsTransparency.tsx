@@ -111,7 +111,7 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
     const isLowBalance = remainingCount <= 1;
 
     return (
-        <div className="w-full bg-[#1C1C1E] border border-white/5 rounded-3xl p-6 space-y-6 shadow-xl relative overflow-hidden">
+        <div className="w-full glass rounded-3xl p-6 space-y-6 relative overflow-hidden">
             {/* Top Glow Accent */}
             <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             

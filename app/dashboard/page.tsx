@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +9,8 @@ import { Loader2, Calendar, Video, Target, ArrowRight } from "lucide-react";
 import { isPastSeniorSeason } from "@/utils/role-logic";
 import { GoalieCard } from "@/components/GoalieCard";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
+import { LessonsTransparency } from "@/components/goalie/LessonsTransparency";
+import { PendingActionsOverlay } from "@/components/goalie/PendingActionsOverlay";
 import { v11Engine } from "@/lib/v11-engine";
 import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
 import { BrandLogo } from "@/components/ui/BrandLogo";
@@ -54,6 +56,10 @@ export default function Dashboard() {
     const [isPro, setIsPro] = useState(false);
     const [credits, setCredits] = useState(0);
     const [showProgress, setShowProgress] = useState(true);
+    const [hasLessonRecord, setHasLessonRecord] = useState(false);
+    const [resolvedGoalieId, setResolvedGoalieId] = useState<string | null>(null);
+    const [showActionsOverlay, setShowActionsOverlay] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
     const { seasonLabel: hookSeasonLabel } = useSeasonTimeline(userData?.sport || rosterData?.sport || null);
 
     useEffect(() => {
@@ -62,13 +68,11 @@ export default function Dashboard() {
         }
     }, [auth.loading, auth.isAuthenticated, router]);
 
-    useEffect(() => {
+    const fetchData = useCallback(async () => {
         if (!auth.userId) return;
-
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                const uid = auth.userId;
+        setLoading(true);
+        try {
+            const uid = auth.userId;
 
                 if (uid === '00000000-0000-0000-0000-000000000000') {
                     setUserData({
@@ -117,17 +121,42 @@ export default function Dashboard() {
                     return;
                 }
 
-                // 1. Fetch user identity and profile details
+                // 1. Resolve Goalie Profile ID (FIX 1)
+                let goalieProfileId = uid;
+                let rosterRes = null;
+
+                if (auth.userRole === 'parent' && auth.userEmail) {
+                    const { data: parentRosters } = await supabase
+                        .from('roster_uploads')
+                        .select('*')
+                        .ilike('guardian_email', auth.userEmail);
+                    if (parentRosters && parentRosters.length > 0) {
+                        const activeRoster = parentRosters.find(r => r.linked_user_id) || parentRosters[0];
+                        rosterRes = activeRoster;
+                        goalieProfileId = activeRoster.linked_user_id || uid;
+                    }
+                } else {
+                    const { data: rRes } = await supabase
+                        .from('roster_uploads')
+                        .select('*')
+                        .eq('linked_user_id', uid)
+                        .maybeSingle();
+                    rosterRes = rRes;
+                }
+
+                setResolvedGoalieId(goalieProfileId);
+
+                // 2. Fetch user identity and profile details using resolved goalie ID
                 const [userRes, profileRes] = await Promise.all([
                     supabase
                         .from('users')
                         .select('id, first_name, last_name, display_name, gc_number, onboarding_completed, onboarding_completed_at, created_at, teams, handedness, primary_sport')
-                        .eq('auth_user_id', uid)
+                        .eq('auth_user_id', goalieProfileId)
                         .maybeSingle(),
                     supabase
                         .from('profiles')
                         .select('goalie_name, sport, grad_year')
-                        .eq('id', uid)
+                        .eq('id', goalieProfileId)
                         .maybeSingle()
                 ]);
                 
@@ -179,12 +208,7 @@ export default function Dashboard() {
                 }
                 setIsProfileIncomplete(isProfileIncompleteVal);
 
-                // 2. Fetch roster upload details using linked_user_id (matches auth.users.id)
-                const { data: rosterRes } = await supabase
-                    .from('roster_uploads')
-                    .select('*')
-                    .eq('linked_user_id', uid)
-                    .maybeSingle();
+
 
                 let isProVal = false;
                 let creditsVal = 0;
@@ -221,6 +245,20 @@ export default function Dashboard() {
                 setIsPro(isProVal);
                 setCredits(creditsVal);
                 setPracticesCount(practicesVal);
+
+                // Fetch goalie_lesson_balance view (FIX 2)
+                let lessonsBalanceRowExists = false;
+                try {
+                    const { data: balanceData } = await supabase
+                        .from("goalie_lesson_balance")
+                        .select("goalie_id")
+                        .eq("goalie_id", goalieProfileId)
+                        .maybeSingle();
+                    lessonsBalanceRowExists = !!balanceData;
+                } catch (e) {
+                    console.warn("Failed to fetch goalie_lesson_balance:", e);
+                }
+                setHasLessonRecord(lessonsBalanceRowExists);
 
                 // 3. Fetch latest Performance Index score (from performance_index_snapshots)
                 try {
@@ -298,6 +336,27 @@ export default function Dashboard() {
 
                     const weeklyIntentionText = intentionRes?.intention_text || null;
                     setHasWeeklyIntention(!!weeklyIntentionText);
+
+                    // Open-app overlay actions check (non-blocking with timeout fallback)
+                    if (goalieProfileId) {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                        fetch('/api/lessons/pending', { signal: controller.signal })
+                            .then(res => res.json())
+                            .then(pendData => {
+                                clearTimeout(timeoutId);
+                                const hasPendingLesson = pendData.success && pendData.pending && pendData.pending.length > 0;
+                                const needsIntention = !weeklyIntentionText && (auth.userRole === 'goalie' || auth.userRole === 'parent');
+                                if (hasPendingLesson || needsIntention) {
+                                    setShowActionsOverlay(true);
+                                }
+                            })
+                            .catch(e => {
+                                clearTimeout(timeoutId);
+                                console.warn("Failed to check pending overlay actions:", e);
+                            });
+                    }
 
                     // Fetch daily sessions for this week
                     const { data: weekSessions } = await supabase
@@ -458,19 +517,23 @@ export default function Dashboard() {
                     .maybeSingle();
 
                 setTrainingPb(scoreRes ? scoreRes.score : null);
+                setLoading(false); // FIXED SPINNER
 
-            } catch (err) {
-                console.error("Dashboard fetch error:", err);
-            }
+        } catch (err) {
+            console.error("Dashboard fetch error:", err);
             setLoading(false);
-        };
+        }
+    }, [auth.userId, auth.userRole, auth.userEmail, hookSeasonLabel]);
+
+    useEffect(() => {
         fetchData();
-    }, [auth.userId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [auth.userId, refreshTrigger]);
 
     if (auth.loading || loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-black text-foreground">
-                <Loader2 className="animate-spin text-white/30" size={32} />
+            <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+                <Loader2 className="animate-spin text-foreground/30" size={32} />
             </div>
         );
     }
@@ -486,7 +549,7 @@ export default function Dashboard() {
             style={{ background: '#09090B', padding: '32px 24px 140px 24px' }}
         >
             {/* Section 1: Simplified Minimal Header */}
-            <div className="max-w-xl md:max-w-[860px] mx-auto mb-6 w-full">
+            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto mb-6 w-full">
                 <div className="flex items-center justify-between px-2 border-b border-white/5 pb-4">
                     <div className="flex flex-col">
                         <p className="m-0 text-lg font-bold tracking-tight text-white/90">
@@ -506,7 +569,7 @@ export default function Dashboard() {
 
             {/* Complete your card Banner */}
             {isProfileIncomplete && (
-                <div className="max-w-xl md:max-w-[860px] mx-auto mb-6 w-full px-2">
+                <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto mb-6 w-full px-2">
                     <Link 
                         href="/onboarding"
                         className="block bg-zinc-900/40 border border-zinc-800 hover:border-zinc-700 rounded-2xl p-4 transition-all group"
@@ -525,10 +588,10 @@ export default function Dashboard() {
             )}
 
             {/* Main responsive card-first layout */}
-            <div className="max-w-xl md:max-w-[860px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-start w-full">
+            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-start w-full">
                 
                 {/* Left Column (or Top on Mobile): Athlete Card */}
-                <div className="col-span-1 md:col-span-5 w-full flex flex-col items-center">
+                <div className="col-span-1 md:col-span-5 lg:col-span-4 w-full flex flex-col items-center">
                     <GoalieCard
                         name={rosterData?.goalie_name || userData?.fullName}
                         team={rosterData?.team || (userData?.teams && userData.teams[0]) || "Unattached"}
@@ -563,7 +626,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Right Column (or Bottom on Mobile): Greeting + Actions + Tiles + Pulse */}
-                <div className="col-span-1 md:col-span-7 flex flex-col gap-6 w-full">
+                <div className="col-span-1 md:col-span-7 lg:col-span-8 flex flex-col gap-6 w-full">
                     
                     {/* Context-Aware Greeting */}
                     <div className="px-2">
@@ -571,32 +634,42 @@ export default function Dashboard() {
                         <p className="m-0 text-sm text-white/40 mt-1">{subline}</p>
                     </div>
 
-                    {/* Today's Action Card */}
-                    <Link href={actionCard.navHref} className="flex flex-col justify-between transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
-                        <div 
-                            className="flex flex-col justify-between p-6 h-48"
-                            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', position: 'relative', overflow: 'hidden' }}
-                        >
-                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.12), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
-                            
-                            <div className="relative z-10">
-                                <p className="m-0 mb-1 text-[8px] font-black uppercase tracking-[0.3em] text-white/35">Today</p>
-                                <p className="m-0 mb-1.5 text-xl font-bold tracking-tight leading-tight text-[#f4f4f5]">{actionCard.headline}</p>
-                                <p className="m-0 text-xs text-white/40 font-medium leading-relaxed">
-                                    {actionCard.subline}
-                                </p>
+                                        {/* Today's Action Card & Lessons Transparency (Side-by-Side on Desktop/Tablet if balance exists) */}
+                    <div className={twMerge(
+                        "grid grid-cols-1 gap-6 w-full",
+                        (hasLessonRecord || credits > 0) ? "lg:grid-cols-2" : "grid-cols-1"
+                    )}>
+                        {/* Today's Action Card */}
+                        <Link href={actionCard.navHref} className="flex flex-col justify-between transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer h-full min-h-[192px]">
+                            <div 
+                                className="flex flex-col justify-between p-6 h-full glass rounded-3xl relative overflow-hidden"
+                            >
+                                <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.12), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
+                                
+                                <div className="relative z-10">
+                                    <p className="m-0 mb-1 text-[8px] font-black uppercase tracking-[0.3em] text-white/35">Today</p>
+                                    <p className="m-0 mb-1.5 text-xl font-bold tracking-tight leading-tight text-[#f4f4f5]">{actionCard.headline}</p>
+                                    <p className="m-0 text-xs text-white/40 font-medium leading-relaxed">
+                                        {actionCard.subline}
+                                    </p>
+                                </div>
+                                <div className="relative z-10 mt-4">
+                                    <span className="bg-white text-[#09090B] rounded-full px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] inline-flex items-center gap-2">
+                                        <ArrowRight size={12} />
+                                        {actionCard.btnText}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="relative z-10">
-                                <span className="bg-white text-[#09090B] rounded-full px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] inline-flex items-center gap-2">
-                                    <ArrowRight size={12} />
-                                    {actionCard.btnText}
-                                </span>
-                            </div>
-                        </div>
-                    </Link>
+                        </Link>
+
+                        {/* Reclaimed Space: Lessons Transparency (Render Gate - FIX 2) */}
+                        {(hasLessonRecord || credits > 0) && resolvedGoalieId && (
+                            <LessonsTransparency goalieProfileId={resolvedGoalieId} />
+                        )}
+                    </div>
 
                     {/* Module Tiles Grid (3-Column) */}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-3 w-full">
                         <Link 
                             href="/calendar" 
                             className="flex flex-col items-center justify-center p-4 bg-[#1C1C1E] border border-white/5 transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl"
@@ -627,7 +700,7 @@ export default function Dashboard() {
 
                     {/* Weekly Pulse */}
                     <div 
-                        className="p-4 bg-[#1C1C1E] border border-white/5 rounded-2xl flex justify-between items-center"
+                        className="p-4 glass rounded-3xl flex justify-between items-center"
                     >
                         <div className="flex gap-2 justify-between w-full px-1">
                             {dayLetters.map((dayLetter, dayIdx) => {
@@ -659,6 +732,19 @@ export default function Dashboard() {
 
             {/* Mobile Bottom Navigation */}
             <MobileBottomNav />
+
+            {/* Pending Actions Overlay (Confirmation & Weekly Intention Flow) */}
+            {showActionsOverlay && resolvedGoalieId && (
+                <PendingActionsOverlay
+                    goalieProfileId={resolvedGoalieId}
+                    publicUserId={userData?.publicUserId || undefined}
+                    rosterId={rosterData?.id}
+                    userRole={auth.userRole || 'goalie'}
+                    hasWeeklyIntention={hasWeeklyIntention}
+                    onClose={() => setShowActionsOverlay(false)}
+                    onRefreshDashboard={() => setRefreshTrigger(prev => prev + 1)}
+                />
+            )}
         </div>
     );
 }

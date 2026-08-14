@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Lock, ArrowRight, AlertCircle, Check, Eye, EyeOff } from "lucide-react";
+import { Loader2, ArrowRight, AlertCircle, Check } from "lucide-react";
 import { clsx } from "clsx";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
 interface ActivateSecurityStepProps {
-    password: string;
-    setPassword: (password: string) => void;
     termsAccepted: boolean;
     setTermsAccepted: (accepted: boolean) => void;
     onSubmit: () => void;
@@ -16,54 +14,17 @@ interface ActivateSecurityStepProps {
 }
 
 export function ActivateSecurityStep({
-    password,
-    setPassword,
     termsAccepted,
     setTermsAccepted,
     onSubmit,
     isLoading,
     error
 }: ActivateSecurityStepProps) {
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
     const [localError, setLocalError] = useState<string | null>(null);
-
-    // Calculate password strength
-    const getPasswordStrength = (pw: string) => {
-        if (!pw) return { score: 0, label: "", color: "" };
-        if (pw.length < 8) return { score: 1, label: "Too Short (Min 8 characters)", color: "bg-red-500 w-1/3" };
-        
-        let strength = 2; // Starts at Weak (>= 8 chars)
-        const hasNumber = /\d/.test(pw);
-        const hasUpperOrSpecial = /[A-Z]/.test(pw) || /[!@#$%^&*(),.?":{}|<>]/.test(pw);
-
-        if (hasNumber) strength += 1;
-        if (hasUpperOrSpecial) strength += 1;
-
-        if (strength === 2) {
-            return { score: 2, label: "Weak Password", color: "bg-orange-500 w-1/3" };
-        } else if (strength === 3) {
-            return { score: 3, label: "Medium Password", color: "bg-yellow-500 w-2/3" };
-        } else {
-            return { score: 4, label: "Strong Password", color: "bg-emerald-500 w-full" };
-        }
-    };
-
-    const strength = getPasswordStrength(password);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setLocalError(null);
-
-        if (password.length < 8) {
-            setLocalError("Password must be at least 8 characters.");
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            setLocalError("Passwords do not match.");
-            return;
-        }
 
         if (!termsAccepted) {
             setLocalError("Please accept the terms to continue.");
@@ -78,71 +39,11 @@ export function ActivateSecurityStep({
             <div className="mb-6 flex flex-col items-start gap-4">
                 <BrandLogo />
                 <h2 className="text-xl font-bold text-foreground/80 tracking-tight">
-                    Secure Your Account
+                    Activate Your Card
                 </h2>
-            </div>
-
-            <div className="space-y-4">
-                <div className="space-y-2">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Create Password</label>
-                    <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            required
-                            value={password}
-                            onChange={(e) => {
-                                setPassword(e.target.value);
-                                setLocalError(null);
-                            }}
-                            className="w-full bg-secondary border border-border rounded-xl pl-12 pr-12 py-4 text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50 text-lg"
-                            placeholder="Password (min 8 chars)"
-                            minLength={8}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                    </div>
-
-                    {/* Password Strength Indicator */}
-                    {password && (
-                        <div className="mt-2 space-y-1 px-1">
-                            <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-                                <div className={clsx("h-full transition-all duration-350", strength.color)} />
-                            </div>
-                            <p className={clsx("text-[10px] font-bold uppercase tracking-wider", {
-                                "text-red-500": strength.score === 1,
-                                "text-orange-500": strength.score === 2,
-                                "text-yellow-500": strength.score === 3,
-                                "text-emerald-500": strength.score === 4,
-                            })}>
-                                {strength.label}
-                            </p>
-                        </div>
-                    )}
-                </div>
-
-                <div className="space-y-2">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Confirm Password</label>
-                    <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            required
-                            value={confirmPassword}
-                            onChange={(e) => {
-                                setConfirmPassword(e.target.value);
-                                setLocalError(null);
-                            }}
-                            className="w-full bg-secondary border border-border rounded-xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50 text-lg"
-                            placeholder="Confirm password"
-                        />
-                    </div>
-                </div>
+                <p className="text-muted-foreground text-xs leading-normal">
+                    Accept the terms to generate a secure activation link for your email address.
+                </p>
             </div>
 
             <div className="space-y-4">
@@ -185,10 +86,10 @@ export function ActivateSecurityStep({
 
             <button
                 type="submit"
-                disabled={isLoading || password.length < 8}
-                className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                disabled={isLoading}
+                className="w-full py-5 text-md font-bold uppercase tracking-widest rounded-2xl shadow-xl bg-primary text-white hover:scale-[1.02] transition-transform active:scale-95 flex justify-center items-center gap-2 disabled:opacity-50"
             >
-                {isLoading ? <Loader2 className="animate-spin" /> : <>Activate Account <ArrowRight size={18} /></>}
+                {isLoading ? <Loader2 className="animate-spin text-white" size={20} /> : <>Activate Card <ArrowRight size={18} /></>}
             </button>
         </form>
     );

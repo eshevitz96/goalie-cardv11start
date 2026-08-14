@@ -24,11 +24,15 @@ export default function MainApp() {
   const renderContent = () => {
     switch (activeTab) {
       case 'library': 
-        return <Library onSelectReport={() => setActiveTab('report')} onCreateNew={() => setActiveTab('workspace')} />;
+        return (
+          <div className="flex-1 overflow-y-auto w-full">
+            <Library onSelectReport={() => setActiveTab('report')} onCreateNew={() => setActiveTab('workspace')} />
+          </div>
+        );
       
       case 'report': 
         return (
-          <div style={{ flex: 1, padding: '32px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+          <div className="flex-1 p-4 md:p-8 overflow-y-auto flex justify-center">
             <GameReportSummary
               onEditWorkspace={() => setActiveTab('workspace')}
               onSaveComplete={goToLibrary}
@@ -41,16 +45,16 @@ export default function MainApp() {
         );
       case 'workspace':
         return (
-          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden">
             <PlaylistSidebar onViewReport={() => setActiveTab('report')} />
-            <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto' }}>
+            <div className="flex-1 p-4 md:p-6 flex flex-col gap-6 overflow-y-auto">
               {clips.length === 0 ? (
-                <div style={{ margin: 'auto', maxWidth: '600px', width: '100%' }}>
+                <div className="m-auto max-w-[600px] w-full">
                   <UploadDropzone />
                 </div>
               ) : activeClip ? (
-                <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-                  <div className="glass-panel" style={{ flex: 1, minWidth: 0, padding: '16px' }}>
+                <div className="flex flex-col lg:flex-row gap-6 items-start">
+                  <div className="glass-panel flex-1 w-full p-4">
                     {activeClip.url ? (
                       <video 
                         id="active-clip-video"
@@ -58,25 +62,25 @@ export default function MainApp() {
                         controls 
                         autoPlay
                         preload="auto"
-                        style={{ width: '100%', borderRadius: '8px', background: '#000', maxHeight: '500px' }} 
+                        className="w-full rounded-lg bg-black max-h-[500px]"
                       />
                     ) : (
-                      <div className="flex-center" style={{ width: '100%', minHeight: '300px', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px dashed var(--surface-glass-border)', flexDirection: 'column', gap: '16px', padding: '32px', textAlign: 'center' }}>
-                         <div style={{ color: '#FF2E2E', fontSize: '1.25rem', fontWeight: 600 }}>Video Offline</div>
+                      <div className="flex-center flex-col gap-4 p-8 text-center w-full min-h-[300px] rounded-lg bg-[var(--bg-tertiary)] border border-dashed border-[var(--surface-glass-border)]">
+                         <div className="text-red-500 text-xl font-semibold">Video Offline</div>
                          <UploadDropzone />
                       </div>
                     )}
-                    <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h3 style={{ fontSize: '1.1rem' }}>{activeClip.name}</h3>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{(activeClip.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <div className="mt-4 flex justify-between items-center">
+                      <h3 className="text-[1.1rem] font-bold text-white">{activeClip.name}</h3>
+                      <p className="text-[var(--text-secondary)] text-sm">{(activeClip.size / 1024 / 1024).toFixed(2)} MB</p>
                     </div>
                   </div>
-                  <div style={{ flexShrink: 0, width: '440px' }}>
+                  <div className="w-full lg:w-[440px] shrink-0">
                     <TacticalPlotter />
                   </div>
                 </div>
               ) : (
-                <div className="flex-center" style={{ flex: 1, color: 'var(--text-secondary)' }}>
+                <div className="flex-center flex-1 text-[var(--text-secondary)]">
                   Select a clip from the playlist to begin plotting.
                 </div>
               )}
@@ -88,28 +92,13 @@ export default function MainApp() {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      height: '100vh', 
-      width: '100vw',
-      background: 'var(--bg-primary)',
-      color: 'var(--text-primary)',
-      overflow: 'hidden'
-    }}>
+    <div className="flex flex-col min-h-screen md:h-screen w-full md:w-screen bg-[var(--bg-primary)] text-[var(--text-primary)] md:overflow-hidden">
       <Header 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
       />
 
-      <main style={{ 
-        flex: 1, 
-        overflow: 'hidden',
-        position: 'relative',
-        background: 'var(--bg-primary)',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+      <main className="flex-1 relative flex flex-col md:overflow-hidden bg-[var(--bg-primary)]">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -117,7 +106,7 @@ export default function MainApp() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+            className="h-full flex flex-col"
           >
             {renderContent()}
           </motion.div>

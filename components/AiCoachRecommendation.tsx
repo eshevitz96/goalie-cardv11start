@@ -157,35 +157,35 @@ export function AiCoachRecommendation({
             <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
-                className="fixed inset-0 z-[120] bg-[#080808] text-white flex flex-col items-center justify-between p-8 pt-[env(safe-area-inset-top)] pb-[calc(env(safe-area-inset-bottom)+2rem)] overflow-hidden"
+                className="fixed inset-0 z-[120] bg-background text-foreground flex flex-col items-center justify-between p-8 pt-[env(safe-area-inset-top)] pb-[calc(env(safe-area-inset-bottom)+2rem)] overflow-hidden"
             >
                 <div className="w-full max-w-sm flex items-start justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 flex items-center justify-center">
-                            <img src="/flower-logo.png" className="w-6 h-6 opacity-80" alt="Logo" style={{ filter: 'invert(1)' }} />
+                            <img src="/flower-logo.png" className="w-6 h-6 opacity-80" alt="Logo" />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-bold uppercase tracking-widest text-white/30">March 2026</span>
+                            <span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">March 2026</span>
                             <span className="text-sm font-semibold tracking-tight">Daily Practice</span>
                         </div>
                     </div>
                     <button 
                         onClick={() => setShowProtocolCompletion(false)}
-                        className="text-white/40 hover:text-white transition-colors"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
                     >
                         <X size={18} />
                     </button>
                 </div>
 
                 <div className="w-full max-w-sm space-y-1 my-4">
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/40">
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                         <span>1/31</span>
                     </div>
-                    <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-[2px] w-full bg-secondary rounded-full overflow-hidden">
                         <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: '15%' }}
-                            className="h-full bg-white/60"
+                            className="h-full bg-primary"
                         />
                     </div>
                 </div>
@@ -200,13 +200,13 @@ export function AiCoachRecommendation({
                             className="flex-1 flex flex-col items-center justify-center text-center space-y-8"
                         >
                             <div className="space-y-1">
-                                <h3 className="text-xl font-semibold tracking-tight text-white">Session Complete</h3>
-                                <p className="text-[10px] text-white/30 font-bold uppercase tracking-[.4em]">Analytics Profile Updated</p>
+                                <h3 className="text-xl font-semibold tracking-tight text-foreground">Session Complete</h3>
+                                <p className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-[.4em]">Analytics Profile Updated</p>
                             </div>
                             
                             <div className="relative">
-                                <h2 className="text-[9.5rem] font-medium tracking-tighter leading-none text-white">{streak}</h2>
-                                <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[.6em] text-white/20">Current Streak</span>
+                                <h2 className="text-[9.5rem] font-medium tracking-tighter leading-none text-foreground">{streak}</h2>
+                                <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[.6em] text-muted-foreground/35">Current Streak</span>
                             </div>
                         </motion.div>
                     )}
@@ -227,8 +227,8 @@ export function AiCoachRecommendation({
                                     { val: "...", label: "Execution" }
                                 ].map((stat, i) => (
                                     <div key={i} className="flex flex-col items-center gap-1">
-                                        <span className="text-6xl font-medium tracking-tighter text-white">{stat.val}</span>
-                                        <span className="text-[9px] font-bold uppercase tracking-[.25em] text-white/30">{stat.label}</span>
+                                        <span className="text-6xl font-medium tracking-tighter text-foreground">{stat.val}</span>
+                                        <span className="text-[9px] font-bold uppercase tracking-[.25em] text-muted-foreground/60">{stat.label}</span>
                                     </div>
                                 ))}
                             </div>
@@ -264,33 +264,33 @@ export function AiCoachRecommendation({
                                 return (
                                     <>
                                         <div className="space-y-1">
-                                            <span className="text-[8px] font-bold uppercase tracking-[.6em] text-white/20">Analysis Complete</span>
+                                            <span className="text-[8px] font-bold uppercase tracking-[.6em] text-muted-foreground/35">Analysis Complete</span>
                                             <h3 className="text-xl font-semibold uppercase tracking-tight leading-none">Elite Index</h3>
                                         </div>
 
                                         <div className="flex flex-col items-center gap-2">
-                                            <span className="text-[9.5rem] font-medium text-white tracking-tighter leading-none tabular-nums">
+                                            <span className="text-[9.5rem] font-medium text-foreground tracking-tighter leading-none tabular-nums">
                                                 {latestSnapshot ? Math.round(latestSnapshot.score_after) : idxData.total.toFixed(0)}
                                             </span>
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Current Rank</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Current Rank</span>
                                         </div>
 
-                                        <div className="w-full max-w-sm space-y-6 pt-10 border-t border-white/5">
-                                            <span className="text-[8px] font-bold uppercase tracking-[.4em] text-white/20 block mb-6 px-1">How to rank up</span>
+                                        <div className="w-full max-w-sm space-y-6 pt-10 border-t border-border">
+                                            <span className="text-[8px] font-bold uppercase tracking-[.4em] text-muted-foreground/35 block mb-6 px-1">How to rank up</span>
                                             <div className="grid grid-cols-1 gap-1 pb-10">
                                                 {[
                                                     { label: "Daily Journal Entry", pts: "5", status: "READY" },
                                                     { label: "Chart Performance", pts: "15", status: "NEW FILM" },
                                                     { label: "7-Day Active Streak", pts: "10", status: "ACTIVE" }
                                                 ].map((guide, i) => (
-                                                    <div key={i} className="grid grid-cols-[1fr_auto] items-center p-4 py-3 bg-white/[0.01] border border-white/5 rounded-2xl">
+                                                    <div key={i} className="grid grid-cols-[1fr_auto] items-center p-4 py-3 bg-secondary/40 border border-border rounded-2xl">
                                                         <div className="flex flex-col items-start gap-0.5 min-w-0">
-                                                            <span className="text-[9px] font-medium text-white/90 uppercase tracking-widest leading-none truncate">{guide.label}</span>
-                                                            <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest">{guide.status}</span>
+                                                            <span className="text-[9px] font-medium text-foreground/90 uppercase tracking-widest leading-none truncate">{guide.label}</span>
+                                                            <span className="text-[7px] font-bold text-muted-foreground/45 uppercase tracking-widest">{guide.status}</span>
                                                         </div>
                                                         <div className="w-14 flex justify-end items-baseline gap-1.5 shrink-0">
-                                                            <span className="text-white font-bold text-[11px] tracking-tight">{guide.pts}</span>
-                                                            <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest">PTS</span>
+                                                            <span className="text-foreground font-bold text-[11px] tracking-tight">{guide.pts}</span>
+                                                            <span className="text-[7px] font-bold text-muted-foreground/45 uppercase tracking-widest">PTS</span>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -306,20 +306,20 @@ export function AiCoachRecommendation({
                 <div className="w-full max-w-sm flex flex-col items-center gap-8">
                     <div className="flex gap-2">
                         {[0, 1, 2].map(i => (
-                            <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${completionSlide === i ? 'bg-white w-4' : 'bg-white/20'}`} />
+                            <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${completionSlide === i ? 'bg-foreground w-4' : 'bg-foreground/20'}`} />
                         ))}
                     </div>
 
                     <div className="flex items-center gap-4 w-full">
-                        <button className="flex-1 h-16 rounded-full border border-white/10 flex items-center justify-center gap-3 text-[11px] font-bold uppercase tracking-widest hover:bg-white/5">
+                        <button className="flex-1 h-16 rounded-full border border-border flex items-center justify-center gap-3 text-[11px] font-bold uppercase tracking-widest hover:bg-secondary/80">
                             Share
                         </button>
                         <button 
                             onClick={() => {
                                 if (completionSlide < 2) setCompletionSlide(prev => prev + 1);
                                 else setShowProtocolCompletion(false);
-                            }}
-                            className="flex-1 h-16 rounded-full bg-white text-black flex items-center justify-center text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all"
+                             }}
+                            className="flex-1 h-16 rounded-full bg-primary text-white flex items-center justify-center text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all animate-in fade-in duration-300"
                         >
                             {completionSlide < 2 ? 'Next' : 'Done'}
                         </button>

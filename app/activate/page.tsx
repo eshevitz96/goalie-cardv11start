@@ -3,7 +3,7 @@
 
 import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/utils/supabase/client";
 import { checkUserStatus } from "@/app/actions";
@@ -15,6 +15,7 @@ import { ActivateBaselineStep } from "@/components/activate/ActivateBaselineStep
 import { ActivateSecurityStep } from "@/components/activate/ActivateSecurityStep";
 import { BrandPulse, InstitutionalSpinner } from "@/components/ui/Loaders";
 import { createInitialProfile, completeActivationWithPassword } from "./actions";
+import { sendMagicLink } from "@/app/auth/actions";
 import { ActivateSelectGoalieStep } from "@/components/activate/ActivateSelectGoalieStep";
 
 function ActivateController() {
@@ -106,7 +107,6 @@ function ActivateController() {
     };
 
     const handleFinalActivation = async () => {
-        if (!password) return;
         if (!termsAccepted) {
             setError("Please accept the terms to continue.");
             return;
@@ -116,27 +116,12 @@ function ActivateController() {
 
         try {
             const trimmedEmail = email.toLowerCase().trim();
-            const result = await completeActivationWithPassword(
-                trimmedEmail,
-                password,
-                selectedRosterId || undefined
-            );
+            const result = await sendMagicLink(trimmedEmail);
 
             if (!result.success) throw new Error(result.error);
-            window.location.href = '/dashboard';
+            setStep('success');
         } catch (err: any) {
-            if (err.message && (err.message.includes('already registered') || err.message.includes('already exists') || err.message.includes('already in use'))) {
-                setError(
-                    <span>
-                        An account already exists with this email —{' '}
-                        <a href={`/login?email=${encodeURIComponent(email)}`} className="underline font-bold text-primary">
-                            log in instead
-                        </a>.
-                    </span>
-                );
-            } else {
-                setError(err.message || "Signup failed. Please try again.");
-            }
+            setError(err.message || "Activation failed. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -206,8 +191,6 @@ function ActivateController() {
 
                 {step === 'security' && (
                     <ActivateSecurityStep
-                        password={password}
-                        setPassword={setPassword}
                         termsAccepted={termsAccepted}
                         setTermsAccepted={setTermsAccepted}
                         onSubmit={handleFinalActivation}
@@ -217,13 +200,13 @@ function ActivateController() {
                 )}
 
                 {step === 'success' && (
-                    <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="mb-12">
-                            <BrandPulse size={100} />
+                    <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500 bg-card border border-border rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(15,41,66,0.05)] relative overflow-hidden">
+                        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20">
+                            <CheckCircle2 size={32} className="text-primary" />
                         </div>
-                        <h2 className="text-3xl font-black text-foreground mb-3 tracking-tighter uppercase">Initializing Card</h2>
-                        <p className="text-muted-foreground text-[10px] font-black uppercase tracking-[0.2em] mb-8 opacity-40">
-                            Synchronizing with Institutional Vault...
+                        <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tighter">Transmission Sent</h2>
+                        <p className="text-muted-foreground text-xs leading-relaxed max-w-[280px] mx-auto uppercase font-bold tracking-tight mb-8">
+                            A secure activation link has been sent to <span className="text-foreground">{email}</span>. Check your inbox to claim your card.
                         </p>
                     </div>
                 )}

@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 
 export function SplashLoader() {
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#080808] flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center">
 
       {/* Static CIC flower — no animation */}
       <img
@@ -20,7 +20,6 @@ export function SplashLoader() {
           width: 52,
           height: 52,
           objectFit: "contain",
-          filter: "invert(1)",
           display: "block",
           userSelect: "none",
           marginBottom: 40,
@@ -33,7 +32,7 @@ export function SplashLoader() {
           position: "relative",
           width: 140,
           height: 1.5,
-          background: "rgba(255,255,255,0.1)",
+          background: "rgba(15, 23, 42, 0.08)",
           borderRadius: 999,
           overflow: "hidden",
         }}
@@ -49,7 +48,7 @@ export function SplashLoader() {
             top: 0,
             bottom: 0,
             borderRadius: 999,
-            background: "rgba(255,255,255,0.85)",
+            background: "#006747",
           }}
         />
         {/* Phase 2: slow creep to 95% — simulates waiting for server */}
@@ -63,7 +62,7 @@ export function SplashLoader() {
             top: 0,
             bottom: 0,
             borderRadius: 999,
-            background: "rgba(255,255,255,0.85)",
+            background: "#006747",
           }}
         />
       </div>
@@ -107,7 +106,6 @@ export function InlineLoader({ visible }: { visible: boolean }) {
           width: 24,
           height: 24,
           objectFit: "contain",
-          filter: "invert(1)",
           display: "block",
         }}
       />
@@ -118,7 +116,7 @@ export function InlineLoader({ visible }: { visible: boolean }) {
           position: "relative",
           width: 56,
           height: 1.5,
-          background: "rgba(255,255,255,0.12)",
+          background: "rgba(15, 23, 42, 0.08)",
           borderRadius: 999,
           overflow: "hidden",
         }}
@@ -131,7 +129,7 @@ export function InlineLoader({ visible }: { visible: boolean }) {
             inset: 0,
             width: "45%",
             borderRadius: 999,
-            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent)",
+            background: "linear-gradient(90deg, transparent, #006747, transparent)",
           }}
         />
       </div>

@@ -17,14 +17,7 @@ export function PlaylistSidebar({ onViewReport }: PlaylistProps) {
   };
 
   return (
-    <div style={{
-      width: 'var(--sidebar-w)',
-      height: '100%',
-      borderRight: '1px solid var(--surface-glass-border)',
-      background: 'var(--bg-secondary)',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
+    <div className="w-full md:w-[var(--sidebar-w)] h-auto md:h-full border-b md:border-b-0 md:border-r border-[var(--surface-glass-border)] bg-[var(--bg-secondary)] flex flex-col shrink-0">
       <div style={{ padding: '32px 24px', borderBottom: '1px solid var(--surface-glass-border)' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Film size={20} />

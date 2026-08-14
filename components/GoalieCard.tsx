@@ -108,7 +108,7 @@ export function GoalieCard({
             <Link 
                 href="/onboarding"
                 className={twMerge(
-                    "glass rounded-3xl p-6 shadow-2xl flex flex-col relative overflow-hidden group hover:border-white/20 transition-all duration-300 min-h-[480px] select-none block cursor-pointer",
+                    "glass rounded-3xl p-6 shadow-2xl flex flex-col relative overflow-hidden group hover:border-white/20 transition-all duration-300 min-h-[280px] md:min-h-[360px] select-none block cursor-pointer",
                     className
                 )}
             >
@@ -189,7 +189,7 @@ export function GoalieCard({
         <Link 
             href="/profile"
             className={twMerge(
-                "glass rounded-3xl p-6 shadow-2xl flex flex-col relative overflow-hidden group hover:border-white/20 transition-all duration-300 min-h-[480px] select-none block cursor-pointer",
+                "glass rounded-3xl p-6 shadow-2xl flex flex-col relative overflow-hidden group hover:border-white/20 transition-all duration-300 min-h-[320px] md:min-h-[420px] select-none block cursor-pointer",
                 className
             )}
         >

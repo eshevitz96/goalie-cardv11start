@@ -33,7 +33,7 @@ export function MobileBottomNav() {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-[100] md:hidden bg-[#09090B]/90 backdrop-blur-md border-t border-white/10 px-4 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-3 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 z-[100] md:hidden bg-[#09090B] border-t border-zinc-900 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 px-6 shadow-[0_-8px_30px_rgb(0,0,0,0.12)]">
             <div className="max-w-md mx-auto flex items-center justify-between">
                 {navItems.map((item) => {
                     const Icon = item.icon;
@@ -46,19 +46,19 @@ export function MobileBottomNav() {
                         <Link 
                             key={item.name} 
                             href={item.href}
-                            className="flex flex-col items-center gap-1 flex-1 py-1.5 transition-all text-center"
+                            className="flex flex-col items-center justify-center gap-1 flex-1 py-2 transition-all active:scale-[0.93] text-center"
                         >
                             <Icon 
-                                size={20} 
+                                size={22} 
                                 className={twMerge(
-                                    "transition-colors duration-200",
-                                    isActive ? "text-white" : "text-white/40 hover:text-white/70"
+                                    "transition-colors duration-150",
+                                    isActive ? "text-white" : "text-[#71717A] hover:text-zinc-400"
                                 )} 
                             />
                             <span 
                                 className={twMerge(
-                                    "text-[9px] font-black uppercase tracking-widest transition-colors duration-200",
-                                    isActive ? "text-white" : "text-white/35"
+                                    "text-[9px] font-bold uppercase tracking-wider mt-1 transition-colors duration-150",
+                                    isActive ? "text-white" : "text-[#71717A]"
                                 )}
                             >
                                 {item.name}
