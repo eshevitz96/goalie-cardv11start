@@ -118,7 +118,6 @@ export default function AdminRosterPage() {
                             <ShieldCheck size={16} /> Secure Admin View
                         </div>
                         <h1 className="text-3xl md:text-4xl font-sans font-bold tracking-tight">September Training Roster</h1>
-                        <p className="text-slate-500 font-sans font-medium mt-2">Real-time capacity and registration tracking.</p>
                     </div>
                 </div>
 
