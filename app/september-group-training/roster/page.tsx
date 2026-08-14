@@ -61,8 +61,8 @@ export default function AdminRosterPage() {
                 <div className="w-full max-w-sm bg-white rounded-[2rem] border-2 border-slate-200 p-8 shadow-xl">
                     <div className="flex flex-col items-center mb-8">
                         <BrandLogo size={14} className="mb-4" />
-                        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Admin Roster</h1>
-                        <p className="text-sm text-slate-500 mt-1">September Group Training</p>
+                        <h1 className="text-xl font-sans font-bold text-slate-900 tracking-tight">Admin Roster</h1>
+                        <p className="text-sm font-sans text-slate-500 mt-1">September Group Training</p>
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-4">
@@ -117,8 +117,8 @@ export default function AdminRosterPage() {
                         <div className="flex items-center gap-2 mb-2 text-green-600 font-bold text-sm">
                             <ShieldCheck size={16} /> Secure Admin View
                         </div>
-                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">September Training Roster</h1>
-                        <p className="text-slate-500 font-medium mt-2">Real-time capacity and registration tracking.</p>
+                        <h1 className="text-3xl md:text-4xl font-sans font-bold tracking-tight">September Training Roster</h1>
+                        <p className="text-slate-500 font-sans font-medium mt-2">Real-time capacity and registration tracking.</p>
                     </div>
                 </div>
 
@@ -130,8 +130,8 @@ export default function AdminRosterPage() {
                         return (
                             <div key={date} className="bg-white border-2 border-slate-200 rounded-[2rem] p-6 shadow-sm flex flex-col justify-between">
                                 <div>
-                                    <h3 className="font-bold text-xl mb-1">{date}</h3>
-                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Capacity</p>
+                                    <h3 className="font-sans font-bold text-xl mb-1">{date}</h3>
+                                    <p className="text-xs font-sans font-bold uppercase tracking-widest text-slate-400">Capacity</p>
                                 </div>
                                 <div className="mt-6 flex items-end justify-between">
                                     <div className="text-4xl font-bold tracking-tighter">
@@ -154,8 +154,8 @@ export default function AdminRosterPage() {
                         return (
                             <div key={date} className="bg-white border-2 border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
                                 <div className="bg-slate-900 text-white p-6 flex justify-between items-center">
-                                    <h2 className="font-bold text-xl">{date} Roster</h2>
-                                    <span className="text-sm font-medium opacity-80">{dateSubmissions.length} Goalies</span>
+                                    <h2 className="font-sans font-bold text-xl">{date} Roster</h2>
+                                    <span className="text-sm font-sans font-medium opacity-80">{dateSubmissions.length} Goalies</span>
                                 </div>
                                 <div className="p-0">
                                     {dateSubmissions.length === 0 ? (
@@ -171,8 +171,8 @@ export default function AdminRosterPage() {
                                                             {i + 1}
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-bold text-lg">{sub.athlete_name}</h4>
-                                                            {sub.parent_name && <p className="text-sm text-slate-500">Parent: {sub.parent_name}</p>}
+                                                            <h4 className="font-sans font-bold text-lg">{sub.athlete_name}</h4>
+                                                            {sub.parent_name && <p className="text-sm font-sans text-slate-500">Parent: {sub.parent_name}</p>}
                                                         </div>
                                                     </div>
                                                     <div className="text-sm space-y-1">
