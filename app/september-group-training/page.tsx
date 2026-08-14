@@ -735,7 +735,7 @@ function SeptemberGroupTrainingContent() {
                                                         <h3 className="font-bold text-slate-900 text-lg font-sans">{d.date}</h3>
                                                         <p className="text-xs text-slate-500 font-medium">Lambert • Group Training</p>
                                                     </div>
-                                                    <div className={`text-sm font-bold ${isFull ? 'text-red-500' : 'text-emerald-600'}`}>
+                                                    <div className={`text-sm font-bold ${isFull ? 'text-red-500' : 'text-slate-900'}`}>
                                                         {isFull ? 'FULL' : `${d.spotsLeft} spot${d.spotsLeft === 1 ? '' : 's'} left`}
                                                     </div>
                                                 </div>

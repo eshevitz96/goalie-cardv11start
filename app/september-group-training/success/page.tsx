@@ -155,7 +155,7 @@ function SeptemberGroupTrainingSuccessContent() {
                         size={40}
                         textClassName="text-3xl md:text-4xl font-bold tracking-tight mb-2 text-slate-900"
                     />
-                    <div className="flex items-center gap-2 text-emerald-600 text-sm uppercase tracking-[0.2em] font-bold mt-2">
+                    <div className="flex items-center gap-2 text-slate-500 text-sm uppercase tracking-[0.2em] font-bold mt-2">
                         <CheckCircle2 size={16} />
                         Enrollment Complete
                     </div>
@@ -192,13 +192,13 @@ function SeptemberGroupTrainingSuccessContent() {
                                     <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-bold text-slate-500">
                                         <ShieldCheck size={12} /> Waiver
                                     </div>
-                                    <p className="text-sm font-bold text-emerald-600">Confirmed</p>
+                                    <p className="text-sm font-bold text-slate-900">Confirmed</p>
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-bold text-slate-500">
                                         <CreditCard size={12} /> Payment
                                     </div>
-                                    <p className="text-sm font-bold text-emerald-600">Authorized</p>
+                                    <p className="text-sm font-bold text-slate-900">Authorized</p>
                                 </div>
                             </div>
 
