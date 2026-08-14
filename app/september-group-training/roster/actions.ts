@@ -34,3 +34,25 @@ export async function fetchAdminRoster(password: string) {
         return { error: `Server Error: ${err.message}` };
     }
 }
+
+export async function deleteSubmission(id: string, password: string) {
+    if (password !== "ShevitzBears23") {
+        return { error: "Incorrect password." };
+    }
+
+    try {
+        const supabase = getSupabaseAdmin();
+        const { error } = await supabase
+            .from('private_training_submissions')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            return { error: `Database Error: ${error.message}` };
+        }
+
+        return { success: true };
+    } catch (err: any) {
+        return { error: `Server Error: ${err.message}` };
+    }
+}

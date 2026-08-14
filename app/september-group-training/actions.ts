@@ -26,10 +26,11 @@ export async function getAvailableDates() {
         const TARGET_DATES = ['Sept 5', 'Sept 12', 'Sept 19'];
         
         // Count spots taken for each date
-        // We consider a spot taken if selected_dates is populated.
+        // We consider a spot taken ONLY if payment is received.
         const { data, error } = await supabaseAdmin
             .from('private_training_submissions')
-            .select('selected_dates');
+            .select('selected_dates')
+            .eq('payment_status', 'paid');
             
         if (error) {
             console.error("Error fetching dates:", error);

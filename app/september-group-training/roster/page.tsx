@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { fetchAdminRoster } from "./actions";
-import { Loader2, Lock, ArrowRight, ShieldCheck, Download, ChevronLeft } from "lucide-react";
+import { fetchAdminRoster, deleteSubmission } from "./actions";
+import { Loader2, Lock, ArrowRight, ShieldCheck, Download, ChevronLeft, Trash2 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
@@ -29,6 +29,24 @@ export default function AdminRosterPage() {
             }
         } catch (err: any) {
             setError("Something went wrong.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this pending submission?")) return;
+        
+        setIsLoading(true);
+        try {
+            const res = await deleteSubmission(id, password);
+            if (res.error) {
+                alert(res.error);
+            } else {
+                setRosterData(prev => prev.filter(s => s.id !== id));
+            }
+        } catch (err) {
+            alert("Failed to delete.");
         } finally {
             setIsLoading(false);
         }
@@ -86,11 +104,11 @@ export default function AdminRosterPage() {
     const validSubmissions = rosterData.filter(s => Array.isArray(s.selected_dates) && s.selected_dates.length > 0);
 
     const getCapacityForDate = (date: string) => {
-        return validSubmissions.filter(s => s.selected_dates.includes(date)).length;
+        return validSubmissions.filter(s => s.selected_dates.includes(date) && s.payment_status === 'paid').length;
     };
 
     return (
-        <main className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans text-slate-900">
+        <main className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans font-bold text-slate-900">
             <div className="max-w-6xl mx-auto space-y-12">
                 
                 {/* Header */}
@@ -173,6 +191,15 @@ export default function AdminRosterPage() {
                                                         }`}>
                                                             WAIVER: {sub.waiver_completed ? 'YES' : 'NO'}
                                                         </span>
+                                                        {sub.payment_status !== 'paid' && (
+                                                            <button 
+                                                                onClick={() => handleDelete(sub.id)}
+                                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors ml-2"
+                                                                title="Delete pending submission"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}
