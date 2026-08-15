@@ -298,8 +298,8 @@ export default function TrainingPage() {
     if (activeAuthLoading || resolvingId || (loading && activeUserId)) {
         return (
             <div 
-                className="flex items-center justify-center text-foreground w-full"
-                style={{ minHeight: '100vh' }} className="flex items-center justify-center text-foreground w-full bg-background"
+                className="flex items-center justify-center text-foreground w-full bg-background"
+                style={{ minHeight: '100vh' }}
             >
                 <Loader2 className="animate-spin text-muted-foreground" size={32} />
             </div>
