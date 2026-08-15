@@ -51,12 +51,6 @@ function LoginController() {
         setError(null);
 
         try {
-            // Bypass auth completely in local dev if flag is set
-            if (process.env.NEXT_PUBLIC_DEV_BYPASS === "true") {
-                router.push("/dashboard");
-                return;
-            }
-
             // Send secure magic link for verification and sign in
             const res = await sendMagicLink(email);
             if (res.success) {
@@ -148,10 +142,7 @@ function LoginController() {
                                 <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20">
                                     <CheckCircle2 size={32} className="text-primary" />
                                 </div>
-                                <h2 className="text-3xl font-bold text-foreground tracking-tighter mb-3">Transmission Sent</h2>
-                                <p className="text-muted-foreground text-xs mb-8 leading-relaxed max-w-[280px] mx-auto uppercase font-bold tracking-tight">
-                                    Security recovery protocols initiated for <span className="text-foreground">{email}</span>. Check your inbox.
-                                </p>
+                                <h2 className="text-3xl font-bold text-foreground tracking-tighter mb-8">Sent</h2>
                                 <button
                                     type="button"
                                     onClick={() => { setStep('email'); setError(null); }}
