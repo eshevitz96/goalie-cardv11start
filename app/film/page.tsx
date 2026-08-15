@@ -25,8 +25,8 @@ export default function FilmPage() {
 
     if (!isLocalhost && (auth.loading || !auth.isAuthenticated)) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#000000] text-white">
-                <Loader2 className="animate-spin text-white/30" size={32} />
+            <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+                <Loader2 className="animate-spin text-muted-foreground/50" size={32} />
             </div>
         );
     }

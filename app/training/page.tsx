@@ -299,9 +299,9 @@ export default function TrainingPage() {
         return (
             <div 
                 className="flex items-center justify-center text-foreground w-full"
-                style={{ minHeight: '100vh', background: '#09090B' }}
+                style={{ minHeight: '100vh' }} className="flex items-center justify-center text-foreground w-full bg-background"
             >
-                <Loader2 className="animate-spin text-white/30" size={32} />
+                <Loader2 className="animate-spin text-muted-foreground" size={32} />
             </div>
         );
     }
@@ -316,34 +316,34 @@ export default function TrainingPage() {
 
     return (
         <div 
-            className="text-foreground font-sans flex flex-col justify-start w-full min-h-screen pb-[calc(120px+env(safe-area-inset-bottom))]"
-            style={{ background: '#09090B', padding: '32px 24px 140px 24px' }}
+            className="text-foreground font-sans flex flex-col justify-start w-full min-h-screen pb-[calc(120px+env(safe-area-inset-bottom))] bg-background"
+            style={{ padding: '32px 24px 140px 24px' }}
         >
             {/* Top Navigation & Header */}
-            <div className="max-w-[480px] mx-auto w-full mb-6 flex items-center justify-between border-b border-white/5 pb-4 px-1">
-                <Link href="/dashboard" className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity text-white">
+            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full mb-6 flex items-center justify-between border-b border-border pb-4 px-1">
+                <Link href="/dashboard" className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity text-foreground">
                     <ArrowLeft size={16} />
                     <span className="text-xs font-bold uppercase tracking-wider">Dashboard</span>
                 </Link>
-                <BrandLogo textClassName="text-lg font-medium tracking-tight text-white/90 select-none pointer-events-none" />
+                <BrandLogo textClassName="text-lg font-medium tracking-tight text-foreground select-none pointer-events-none" />
             </div>
 
             {/* Lessons Transparency View / Goalie Selector */}
-            <div className="max-w-[480px] mx-auto w-full mb-6 no-print">
+            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full mb-6 no-print">
                 {goalieProfileId ? (
                     <LessonsTransparency goalieProfileId={goalieProfileId} />
                 ) : parentGoalies.length > 0 ? (
-                    <div className="w-full bg-[#1C1C1E] border border-white/5 rounded-3xl p-6 space-y-4 shadow-xl relative overflow-hidden">
+                    <div className="w-full bg-card border border-border rounded-3xl p-6 space-y-4 shadow-xl relative overflow-hidden">
                         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                         <div>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-1">
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground block mb-1">
                                 Goalie Card
                             </span>
-                            <h3 className="text-lg font-bold text-white tracking-tight leading-none">
+                            <h3 className="text-lg font-bold text-foreground tracking-tight leading-none">
                                 Select Goalie
                             </h3>
                         </div>
-                        <p className="text-xs text-zinc-400 leading-relaxed font-medium">
+                        <p className="text-xs text-muted-foreground leading-relaxed font-medium">
                             Please select an athlete to view their private training lessons:
                         </p>
                         <div className="grid grid-cols-1 gap-2.5 pt-2">
@@ -360,10 +360,10 @@ export default function TrainingPage() {
                                         }
                                         setResolvingId(false);
                                     }}
-                                    className="w-full text-left p-4 bg-black/20 border border-white/5 hover:border-[#006747]/40 hover:bg-[#006747]/5 rounded-2xl transition-all font-bold text-sm text-white flex items-center justify-between group cursor-pointer"
+                                    className="w-full text-left p-4 bg-muted border border-border hover:border-border hover:border-foreground/40 hover:bg-foreground/5 rounded-2xl transition-all font-bold text-sm text-foreground flex items-center justify-between group cursor-pointer"
                                 >
                                     <span>{roster.goalie_name}</span>
-                                    <span className="text-[9px] font-black uppercase tracking-wider bg-white/5 border border-white/10 text-zinc-400 px-2.5 py-1.5 rounded-xl group-hover:bg-[#006747] group-hover:text-white transition-all font-sans">
+                                    <span className="text-[9px] font-black uppercase tracking-wider bg-muted border border-border text-muted-foreground px-2.5 py-1.5 rounded-xl group-hover:bg-foreground group-hover:text-background group-hover:text-foreground transition-all font-sans">
                                         View Lessons
                                     </span>
                                 </button>
@@ -371,14 +371,14 @@ export default function TrainingPage() {
                         </div>
                     </div>
                 ) : (
-                    <div className="w-full bg-[#1C1C1E] border border-white/5 rounded-3xl p-6 flex flex-col items-center justify-center text-center min-h-[160px]">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-1">
+                    <div className="w-full bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center min-h-[160px]">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground block mb-1">
                             Private Training
                         </span>
-                        <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-2">
+                        <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
                             No Active Lessons
                         </h4>
-                        <p className="text-[11px] text-zinc-500 max-w-xs leading-relaxed">
+                        <p className="text-[11px] text-muted-foreground max-w-xs leading-relaxed">
                             No active athlete profile was found linked to your account.
                         </p>
                     </div>
@@ -386,12 +386,12 @@ export default function TrainingPage() {
             </div>
 
             {/* Segmented Control Selector Tabs */}
-            <div className="max-w-[480px] mx-auto w-full mb-8 grid grid-cols-3 p-1 bg-white/[0.03] border border-white/5 rounded-2xl gap-1 shrink-0">
+            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full mb-8 grid grid-cols-3 p-1 bg-muted border border-border rounded-2xl gap-1 shrink-0">
                 <button
                     onClick={() => setActiveTab('drills')}
                     className={twMerge(
                         "py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
-                        activeTab === 'drills' ? "bg-white text-black font-black" : "text-white/40 hover:text-white/70"
+                        activeTab === 'drills' ? "bg-background text-foreground font-black shadow-sm" : "text-muted-foreground hover:text-foreground/70"
                     )}
                 >
                     <BookOpen size={13} />
@@ -401,7 +401,7 @@ export default function TrainingPage() {
                     onClick={() => setActiveTab('timer')}
                     className={twMerge(
                         "py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
-                        activeTab === 'timer' ? "bg-white text-black font-black" : "text-white/40 hover:text-white/70"
+                        activeTab === 'timer' ? "bg-background text-foreground font-black shadow-sm" : "text-muted-foreground hover:text-foreground/70"
                     )}
                 >
                     <Clock size={13} />
@@ -411,7 +411,7 @@ export default function TrainingPage() {
                     onClick={() => setActiveTab('game')}
                     className={twMerge(
                         "py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
-                        activeTab === 'game' ? "bg-white text-black font-black" : "text-white/40 hover:text-white/70"
+                        activeTab === 'game' ? "bg-background text-foreground font-black shadow-sm" : "text-muted-foreground hover:text-foreground/70"
                     )}
                 >
                     <Gamepad2 size={13} />
@@ -420,14 +420,14 @@ export default function TrainingPage() {
             </div>
 
             {/* Content view panel */}
-            <div className="max-w-[480px] mx-auto w-full flex-1">
+            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full flex-1">
                 {/* 1. DRILLS TAB */}
                 {activeTab === 'drills' && (
                     <div className="space-y-6">
                         {/* Physical Drills */}
                         <div>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-3 px-1">Physical Drills</span>
-                            <div className="space-y-2.5">
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground block mb-3 px-1">Physical Drills</span>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {DRILL_CATEGORIES.physical.map(name => {
                                     const details = DRILL_LIBRARY[name];
                                     const isActiveDrill = selectedDrill === name;
@@ -438,8 +438,8 @@ export default function TrainingPage() {
                                             className={twMerge(
                                                 "border rounded-2xl p-4 overflow-hidden transition-all duration-300",
                                                 isActiveDrill 
-                                                    ? "bg-[#1C1C1E]/95 border-[#006747]/60 ring-1 ring-[#006747]/30 shadow-lg shadow-[#006747]/5" 
-                                                    : "bg-[#1C1C1E] border-white/5"
+                                                    ? "bg-card/95 border-foreground/30 ring-1 ring-foreground/10 shadow-lg shadow-foreground/5" 
+                                                    : "bg-card border-border"
                                             )}
                                         >
                                             <div 
@@ -447,20 +447,20 @@ export default function TrainingPage() {
                                                 className="flex items-center justify-between cursor-pointer"
                                             >
                                                 <h4 className="text-xs font-black uppercase tracking-wider text-foreground">{name}</h4>
-                                                {isExpanded ? <ChevronUp size={16} className="text-white/40" /> : <ChevronDown size={16} className="text-white/40" />}
+                                                {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                                             </div>
                                             {isExpanded && details && (
-                                                <div className="mt-4 pt-3 border-t border-white/5 space-y-4">
+                                                <div className="mt-4 pt-3 border-t border-border space-y-4">
                                                     <div>
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-[#006747] block mb-1">Key Steps</span>
-                                                        <ol className="list-decimal pl-4 space-y-1 text-xs text-white/70 font-medium">
+                                                        <span className="text-[8px] font-black uppercase tracking-widest text-foreground block mb-1">Key Steps</span>
+                                                        <ol className="list-decimal pl-4 space-y-1 text-xs text-foreground/70 font-medium">
                                                             {details.steps.map((step, i) => <li key={i}>{step}</li>)}
                                                         </ol>
                                                     </div>
                                                     {details.points.length > 0 && (
                                                         <div>
-                                                            <span className="text-[8px] font-black uppercase tracking-widest text-white/30 block mb-1">Coaching Points</span>
-                                                            <ul className="list-disc pl-4 space-y-0.5 text-xs text-white/50 font-medium">
+                                                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Coaching Points</span>
+                                                            <ul className="list-disc pl-4 space-y-0.5 text-xs text-foreground/50 font-medium">
                                                                 {details.points.map((pt, i) => <li key={i}>{pt}</li>)}
                                                             </ul>
                                                         </div>
@@ -468,24 +468,24 @@ export default function TrainingPage() {
                                                     {isActiveDrill ? (
                                                         <div 
                                                             onClick={(e) => e.stopPropagation()}
-                                                            className="mt-4 bg-white/[0.02] border border-white/5 rounded-2xl p-4 gap-4 flex flex-col sm:flex-row items-center justify-center"
+                                                            className="mt-4 bg-muted/50 border border-border rounded-2xl p-4 gap-4 flex flex-col sm:flex-row items-center justify-center"
                                                         >
                                                             <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
                                                                 <svg className="w-28 h-28 -rotate-90">
                                                                     <circle
                                                                         cx="56" cy="56" r="44"
-                                                                        className="text-white/5" stroke="currentColor" strokeWidth="4" fill="transparent"
+                                                                        className="text-foreground/5" stroke="currentColor" strokeWidth="4" fill="transparent"
                                                                     />
                                                                     <circle
                                                                         cx="56" cy="56" r="44"
-                                                                        className="text-[#006747] transition-all duration-300" stroke="currentColor" strokeWidth="4" fill="transparent"
+                                                                        className="text-foreground transition-all duration-300" stroke="currentColor" strokeWidth="4" fill="transparent"
                                                                         strokeDasharray={2 * Math.PI * 44}
                                                                         strokeDashoffset={2 * Math.PI * 44 - (timerDuration / totalDuration) * 2 * Math.PI * 44}
                                                                         strokeLinecap="round"
                                                                     />
                                                                 </svg>
                                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                    <span className="text-xl font-black font-mono tracking-tight text-white">{formatTime(timerDuration)}</span>
+                                                                    <span className="text-xl font-black font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
                                                                 </div>
                                                             </div>
                                                             <div className="flex flex-col gap-2 w-full sm:w-auto min-w-[120px]">
@@ -494,7 +494,7 @@ export default function TrainingPage() {
                                                                         e.stopPropagation();
                                                                         setTimerIsActive(!timerIsActive);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-white text-black hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     {timerIsActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
                                                                     {timerIsActive ? 'Pause' : 'Resume'}
@@ -505,7 +505,7 @@ export default function TrainingPage() {
                                                                         setTimerIsActive(false);
                                                                         setTimerDuration(totalDuration);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/5 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     <RotateCcw size={12} />
                                                                     Reset
@@ -530,7 +530,7 @@ export default function TrainingPage() {
                                                                 e.stopPropagation();
                                                                 startDrillTimer(name, details.duration || 5);
                                                             }}
-                                                            className="w-full py-3 bg-[#006747] hover:bg-[#006747]/80 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
                                                         >
                                                             Start {details.duration || 5}m Timer
                                                         </button>
@@ -545,8 +545,8 @@ export default function TrainingPage() {
 
                         {/* Mental Drills */}
                         <div className="pt-2">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-3 px-1">Mental & Breathwork</span>
-                            <div className="space-y-2.5">
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground block mb-3 px-1">Mental & Breathwork</span>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {DRILL_CATEGORIES.mental.map(name => {
                                     const details = DRILL_LIBRARY[name];
                                     const isActiveDrill = selectedDrill === name;
@@ -557,8 +557,8 @@ export default function TrainingPage() {
                                             className={twMerge(
                                                 "border rounded-2xl p-4 overflow-hidden transition-all duration-300",
                                                 isActiveDrill 
-                                                    ? "bg-[#1C1C1E]/95 border-[#006747]/60 ring-1 ring-[#006747]/30 shadow-lg shadow-[#006747]/5" 
-                                                    : "bg-[#1C1C1E] border-white/5"
+                                                    ? "bg-card/95 border-foreground/30 ring-1 ring-foreground/10 shadow-lg shadow-foreground/5" 
+                                                    : "bg-card border-border"
                                             )}
                                         >
                                             <div 
@@ -566,20 +566,20 @@ export default function TrainingPage() {
                                                 className="flex items-center justify-between cursor-pointer"
                                             >
                                                 <h4 className="text-xs font-black uppercase tracking-wider text-foreground">{name}</h4>
-                                                {isExpanded ? <ChevronUp size={16} className="text-white/40" /> : <ChevronDown size={16} className="text-white/40" />}
+                                                {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                                             </div>
                                             {isExpanded && details && (
-                                                <div className="mt-4 pt-3 border-t border-white/5 space-y-4">
+                                                <div className="mt-4 pt-3 border-t border-border space-y-4">
                                                     <div>
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-[#006747] block mb-1">Key Steps</span>
-                                                        <ol className="list-decimal pl-4 space-y-1 text-xs text-white/70 font-medium">
+                                                        <span className="text-[8px] font-black uppercase tracking-widest text-foreground block mb-1">Key Steps</span>
+                                                        <ol className="list-decimal pl-4 space-y-1 text-xs text-foreground/70 font-medium">
                                                             {details.steps.map((step, i) => <li key={i}>{step}</li>)}
                                                         </ol>
                                                     </div>
                                                     {details.points.length > 0 && (
                                                         <div>
-                                                            <span className="text-[8px] font-black uppercase tracking-widest text-white/30 block mb-1">Key Points</span>
-                                                            <ul className="list-disc pl-4 space-y-0.5 text-xs text-white/50 font-medium">
+                                                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Key Points</span>
+                                                            <ul className="list-disc pl-4 space-y-0.5 text-xs text-foreground/50 font-medium">
                                                                 {details.points.map((pt, i) => <li key={i}>{pt}</li>)}
                                                             </ul>
                                                         </div>
@@ -587,24 +587,24 @@ export default function TrainingPage() {
                                                     {isActiveDrill ? (
                                                         <div 
                                                             onClick={(e) => e.stopPropagation()}
-                                                            className="mt-4 bg-white/[0.02] border border-white/5 rounded-2xl p-4 gap-4 flex flex-col sm:flex-row items-center justify-center"
+                                                            className="mt-4 bg-muted/50 border border-border rounded-2xl p-4 gap-4 flex flex-col sm:flex-row items-center justify-center"
                                                         >
                                                             <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
                                                                 <svg className="w-28 h-28 -rotate-90">
                                                                     <circle
                                                                         cx="56" cy="56" r="44"
-                                                                        className="text-white/5" stroke="currentColor" strokeWidth="4" fill="transparent"
+                                                                        className="text-foreground/5" stroke="currentColor" strokeWidth="4" fill="transparent"
                                                                     />
                                                                     <circle
                                                                         cx="56" cy="56" r="44"
-                                                                        className="text-[#006747] transition-all duration-300" stroke="currentColor" strokeWidth="4" fill="transparent"
+                                                                        className="text-foreground transition-all duration-300" stroke="currentColor" strokeWidth="4" fill="transparent"
                                                                         strokeDasharray={2 * Math.PI * 44}
                                                                         strokeDashoffset={2 * Math.PI * 44 - (timerDuration / totalDuration) * 2 * Math.PI * 44}
                                                                         strokeLinecap="round"
                                                                     />
                                                                 </svg>
                                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                    <span className="text-xl font-black font-mono tracking-tight text-white">{formatTime(timerDuration)}</span>
+                                                                    <span className="text-xl font-black font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
                                                                 </div>
                                                             </div>
                                                             <div className="flex flex-col gap-2 w-full sm:w-auto min-w-[120px]">
@@ -613,7 +613,7 @@ export default function TrainingPage() {
                                                                         e.stopPropagation();
                                                                         setTimerIsActive(!timerIsActive);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-white text-black hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     {timerIsActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
                                                                     {timerIsActive ? 'Pause' : 'Resume'}
@@ -624,7 +624,7 @@ export default function TrainingPage() {
                                                                         setTimerIsActive(false);
                                                                         setTimerDuration(totalDuration);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/5 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     <RotateCcw size={12} />
                                                                     Reset
@@ -649,7 +649,7 @@ export default function TrainingPage() {
                                                                 e.stopPropagation();
                                                                 startDrillTimer(name, details.duration || 5);
                                                             }}
-                                                            className="w-full py-3 bg-[#006747] hover:bg-[#006747]/80 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
                                                         >
                                                             Start {details.duration || 5}m Timer
                                                         </button>
@@ -664,8 +664,8 @@ export default function TrainingPage() {
 
                         {/* Video Review */}
                         <div className="pt-2">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-3 px-1">Video Review</span>
-                            <div className="space-y-2.5">
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground block mb-3 px-1">Video Review</span>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {DRILL_CATEGORIES.video.map(name => {
                                     const details = DRILL_LIBRARY[name];
                                     const isActiveDrill = selectedDrill === name;
@@ -676,8 +676,8 @@ export default function TrainingPage() {
                                             className={twMerge(
                                                 "border rounded-2xl p-4 overflow-hidden transition-all duration-300",
                                                 isActiveDrill 
-                                                    ? "bg-[#1C1C1E]/95 border-[#006747]/60 ring-1 ring-[#006747]/30 shadow-lg shadow-[#006747]/5" 
-                                                    : "bg-[#1C1C1E] border-white/5"
+                                                    ? "bg-card/95 border-foreground/30 ring-1 ring-foreground/10 shadow-lg shadow-foreground/5" 
+                                                    : "bg-card border-border"
                                             )}
                                         >
                                             <div 
@@ -685,20 +685,20 @@ export default function TrainingPage() {
                                                 className="flex items-center justify-between cursor-pointer"
                                             >
                                                 <h4 className="text-xs font-black uppercase tracking-wider text-foreground">{name}</h4>
-                                                {isExpanded ? <ChevronUp size={16} className="text-white/40" /> : <ChevronDown size={16} className="text-white/40" />}
+                                                {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                                             </div>
                                             {isExpanded && details && (
-                                                <div className="mt-4 pt-3 border-t border-white/5 space-y-4">
+                                                <div className="mt-4 pt-3 border-t border-border space-y-4">
                                                     <div>
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-[#006747] block mb-1">Key Steps</span>
-                                                        <ol className="list-decimal pl-4 space-y-1 text-xs text-white/70 font-medium">
+                                                        <span className="text-[8px] font-black uppercase tracking-widest text-foreground block mb-1">Key Steps</span>
+                                                        <ol className="list-decimal pl-4 space-y-1 text-xs text-foreground/70 font-medium">
                                                             {details.steps.map((step, i) => <li key={i}>{step}</li>)}
                                                         </ol>
                                                     </div>
                                                     {details.points.length > 0 && (
                                                         <div>
-                                                            <span className="text-[8px] font-black uppercase tracking-widest text-white/30 block mb-1">Focus Points</span>
-                                                            <ul className="list-disc pl-4 space-y-0.5 text-xs text-white/50 font-medium">
+                                                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Focus Points</span>
+                                                            <ul className="list-disc pl-4 space-y-0.5 text-xs text-foreground/50 font-medium">
                                                                 {details.points.map((pt, i) => <li key={i}>{pt}</li>)}
                                                             </ul>
                                                         </div>
@@ -706,24 +706,24 @@ export default function TrainingPage() {
                                                     {isActiveDrill ? (
                                                         <div 
                                                             onClick={(e) => e.stopPropagation()}
-                                                            className="mt-4 bg-white/[0.02] border border-white/5 rounded-2xl p-4 gap-4 flex flex-col sm:flex-row items-center justify-center"
+                                                            className="mt-4 bg-muted/50 border border-border rounded-2xl p-4 gap-4 flex flex-col sm:flex-row items-center justify-center"
                                                         >
                                                             <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
                                                                 <svg className="w-28 h-28 -rotate-90">
                                                                     <circle
                                                                         cx="56" cy="56" r="44"
-                                                                        className="text-white/5" stroke="currentColor" strokeWidth="4" fill="transparent"
+                                                                        className="text-foreground/5" stroke="currentColor" strokeWidth="4" fill="transparent"
                                                                     />
                                                                     <circle
                                                                         cx="56" cy="56" r="44"
-                                                                        className="text-[#006747] transition-all duration-300" stroke="currentColor" strokeWidth="4" fill="transparent"
+                                                                        className="text-foreground transition-all duration-300" stroke="currentColor" strokeWidth="4" fill="transparent"
                                                                         strokeDasharray={2 * Math.PI * 44}
                                                                         strokeDashoffset={2 * Math.PI * 44 - (timerDuration / totalDuration) * 2 * Math.PI * 44}
                                                                         strokeLinecap="round"
                                                                     />
                                                                 </svg>
                                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                    <span className="text-xl font-black font-mono tracking-tight text-white">{formatTime(timerDuration)}</span>
+                                                                    <span className="text-xl font-black font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
                                                                 </div>
                                                             </div>
                                                             <div className="flex flex-col gap-2 w-full sm:w-auto min-w-[120px]">
@@ -732,7 +732,7 @@ export default function TrainingPage() {
                                                                         e.stopPropagation();
                                                                         setTimerIsActive(!timerIsActive);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-white text-black hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     {timerIsActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
                                                                     {timerIsActive ? 'Pause' : 'Resume'}
@@ -743,7 +743,7 @@ export default function TrainingPage() {
                                                                         setTimerIsActive(false);
                                                                         setTimerDuration(totalDuration);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/5 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     <RotateCcw size={12} />
                                                                     Reset
@@ -768,7 +768,7 @@ export default function TrainingPage() {
                                                                 e.stopPropagation();
                                                                 startDrillTimer(name, details.duration || 10);
                                                             }}
-                                                            className="w-full py-3 bg-[#006747] hover:bg-[#006747]/80 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
                                                         >
                                                             Start {details.duration || 10}m Timer
                                                         </button>
@@ -791,22 +791,22 @@ export default function TrainingPage() {
                             <svg className="w-56 h-56 -rotate-90">
                                 <circle
                                     cx="112" cy="112" r={radius}
-                                    className="text-white/5" stroke="currentColor" strokeWidth="6" fill="transparent"
+                                    className="text-foreground/5" stroke="currentColor" strokeWidth="6" fill="transparent"
                                 />
                                 <circle
                                     cx="112" cy="112" r={radius}
-                                    className="text-[#006747] transition-all duration-300" stroke="currentColor" strokeWidth="6" fill="transparent"
+                                    className="text-foreground transition-all duration-300" stroke="currentColor" strokeWidth="6" fill="transparent"
                                     strokeDasharray={circumference}
                                     strokeDashoffset={strokeDashoffset}
                                     strokeLinecap="round"
                                 />
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-4xl font-black font-mono tracking-tight text-white">{formatTime(timerDuration)}</span>
+                                <span className="text-4xl font-black font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
                                 {selectedDrill ? (
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-[#006747] mt-2 max-w-[140px] truncate">{selectedDrill}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-foreground mt-2 max-w-[140px] truncate">{selectedDrill}</span>
                                 ) : (
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-white/30 mt-2">No Drill Selected</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mt-2">No Drill Selected</span>
                                 )}
                             </div>
                         </div>
@@ -816,13 +816,13 @@ export default function TrainingPage() {
                             <div className="flex justify-between gap-3">
                                 <button
                                     onClick={() => adjustTimer(-60)}
-                                    className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white border border-white/5 text-[10px] font-bold uppercase tracking-wider rounded-xl"
+                                    className="flex-1 py-2 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border text-[10px] font-bold uppercase tracking-wider rounded-xl"
                                 >
                                     - 1 Min
                                 </button>
                                 <button
                                     onClick={() => adjustTimer(60)}
-                                    className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white border border-white/5 text-[10px] font-bold uppercase tracking-wider rounded-xl"
+                                    className="flex-1 py-2 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border text-[10px] font-bold uppercase tracking-wider rounded-xl"
                                 >
                                     + 1 Min
                                 </button>
@@ -833,7 +833,7 @@ export default function TrainingPage() {
                                     <button
                                         key={mins}
                                         onClick={() => handleTimerPreset(mins)}
-                                        className="py-1.5 bg-white/5 hover:bg-white/10 text-white border border-white/5 text-[9px] font-bold rounded-lg"
+                                        className="py-1.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border text-[9px] font-bold rounded-lg"
                                     >
                                         {mins}m
                                     </button>
@@ -848,14 +848,14 @@ export default function TrainingPage() {
                                     setTimerIsActive(false);
                                     setTimerDuration(totalDuration);
                                 }}
-                                className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors text-white"
+                                className="w-12 h-12 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors text-foreground"
                                 title="Reset"
                             >
                                 <RotateCcw size={18} />
                             </button>
                             <button
                                 onClick={() => setTimerIsActive(!timerIsActive)}
-                                className="w-20 h-20 rounded-full border-2 border-white/15 bg-white text-black flex items-center justify-center hover:bg-neutral-200 transition-all shadow-xl"
+                                className="w-20 h-20 rounded-full border-2 border-white/15 bg-foreground text-background flex items-center justify-center hover:bg-neutral-200 transition-all shadow-xl"
                             >
                                 {timerIsActive ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" className="ml-1" />}
                             </button>
@@ -866,7 +866,7 @@ export default function TrainingPage() {
                                     setTotalDuration(300);
                                     setTimerDuration(300);
                                 }}
-                                className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors text-white/50 hover:text-white"
+                                className="w-12 h-12 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors text-foreground/50 hover:text-foreground"
                                 title="Clear"
                             >
                                 Clear

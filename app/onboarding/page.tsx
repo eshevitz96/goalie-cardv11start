@@ -362,7 +362,7 @@ function OnboardingContent() {
 
   if (authLoading || loadingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#09090B] text-white">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="animate-spin text-[#006747]" size={40} />
           <span className="text-zinc-400 font-mono tracking-wider uppercase text-xs">Loading Card Profile...</span>
@@ -374,14 +374,14 @@ function OnboardingContent() {
   // ── EDIT MODE (Single page edit form) ──
   if (isEditMode) {
     return (
-      <main className="min-h-screen bg-[#09090B] text-foreground font-sans pt-12 pb-24 px-4 md:px-8 relative overflow-hidden">
+      <main className="min-h-screen bg-background text-foreground font-sans pt-12 pb-24 px-4 md:px-8 relative overflow-hidden">
         {/* Decorative elements */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#006747]/50 via-[#006747]/20 to-[#006747]/50" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#006747]/3 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="max-w-md mx-auto space-y-8 relative z-10">
           <div className="space-y-2">
-            <h1 className="text-3xl font-black tracking-tight text-white uppercase">Edit Profile</h1>
+            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Edit Profile</h1>
             <p className="text-sm text-zinc-400">Update your goalie card profile details below.</p>
           </div>
 
@@ -407,7 +407,7 @@ function OnboardingContent() {
                     type="date"
                     value={birthday}
                     onChange={(e) => setBirthday(e.target.value)}
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-12 pr-5 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-12 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                   />
                 </div>
                 <span className="text-[9px] text-zinc-500 italic">Used for age verification & scoring metrics.</span>
@@ -421,7 +421,7 @@ function OnboardingContent() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="First Name"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                   />
                 </div>
                 <div className="space-y-2">
@@ -431,7 +431,7 @@ function OnboardingContent() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Last Name"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                   />
                 </div>
               </div>
@@ -445,7 +445,7 @@ function OnboardingContent() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase())}
                     placeholder="username"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-8 pr-5 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-bold placeholder:text-zinc-600"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-8 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-bold placeholder:text-zinc-600"
                   />
                 </div>
                 {isValidatingUsername && (
@@ -477,7 +477,7 @@ function OnboardingContent() {
                   {teams.map((t, i) => (
                     <span key={i} className="px-3 py-1 bg-[#006747]/10 text-[#006747] border border-[#006747]/20 rounded-full text-xs font-semibold flex items-center gap-1.5 animate-fade-in">
                       {t}
-                      <button type="button" onClick={() => removeTeamTag(t)} className="text-zinc-400 hover:text-white font-bold">×</button>
+                      <button type="button" onClick={() => removeTeamTag(t)} className="text-zinc-400 hover:text-foreground font-bold">×</button>
                     </span>
                   ))}
                 </div>
@@ -487,7 +487,7 @@ function OnboardingContent() {
                     value={teamInput}
                     onChange={(e) => setTeamInput(e.target.value)}
                     placeholder="Enter team name..."
-                    className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
+                    className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -495,7 +495,7 @@ function OnboardingContent() {
                       }
                     }}
                   />
-                  <button type="button" onClick={addTeamTag} className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold transition-colors">Add</button>
+                  <button type="button" onClick={addTeamTag} className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-foreground rounded-xl text-xs font-bold transition-colors">Add</button>
                 </div>
               </div>
             </div>
@@ -516,7 +516,7 @@ function OnboardingContent() {
                       onClick={() => toggleSuggestedTag(t)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
                         isSelected 
-                          ? 'bg-[#006747]/10 border-[#006747] text-[#006747]' 
+                          ? 'bg-[#006747] border-[#006747] text-[#006747]' 
                           : 'bg-black/40 border-zinc-800 text-zinc-400 hover:bg-zinc-800'
                       }`}
                     >
@@ -532,7 +532,7 @@ function OnboardingContent() {
                   value={customTagInput}
                   onChange={(e) => setCustomTagInput(e.target.value)}
                   placeholder="Custom tag..."
-                  className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
+                  className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -540,7 +540,7 @@ function OnboardingContent() {
                     }
                   }}
                 />
-                <button type="button" onClick={addCustomTag} className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold transition-colors">Add</button>
+                <button type="button" onClick={addCustomTag} className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-foreground rounded-xl text-xs font-bold transition-colors">Add</button>
               </div>
             </div>
 
@@ -558,7 +558,7 @@ function OnboardingContent() {
                     value={height}
                     onChange={(e) => setHeight(e.target.value)}
                     placeholder="e.g. 6ft 0in"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                   />
                 </div>
                 <div className="space-y-2">
@@ -568,7 +568,7 @@ function OnboardingContent() {
                     value={gradYear}
                     onChange={(e) => setGradYear(e.target.value)}
                     placeholder="e.g. 2026"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                   />
                 </div>
               </div>
@@ -581,7 +581,7 @@ function OnboardingContent() {
                     value={gpa}
                     onChange={(e) => setGpa(e.target.value)}
                     placeholder="e.g. 3.85"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                   />
                 </div>
                 <div className="space-y-2">
@@ -589,7 +589,7 @@ function OnboardingContent() {
                   <select
                     value={handedness}
                     onChange={(e) => setHandedness(e.target.value)}
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                   >
                     <option value="" className="bg-zinc-950">Select hand...</option>
                     <option value="right" className="bg-zinc-950">Right Handed</option>
@@ -625,7 +625,7 @@ function OnboardingContent() {
 
   // ── WIZARD MODE (4 steps, fully skippable) ──
   return (
-    <div className="calendar-root bg-[#09090B] min-h-screen text-white relative">
+    <div className="calendar-root bg-background min-h-screen text-foreground relative">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#006747]/50 via-[#006747]/20 to-[#006747]/50" />
 
       {/* Skip Onboarding completely header button */}
@@ -633,7 +633,7 @@ function OnboardingContent() {
         <button
           type="button"
           onClick={handleSkipAll}
-          className="text-zinc-500 hover:text-white text-xs font-black uppercase tracking-widest transition-colors cursor-pointer"
+          className="text-zinc-500 hover:text-foreground text-xs font-black uppercase tracking-widest transition-colors cursor-pointer"
         >
           Skip Setup
         </button>
@@ -659,7 +659,7 @@ function OnboardingContent() {
           {step === 1 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-white mb-2 uppercase">Who are you?</h1>
+                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Who are you?</h1>
                 <p className="text-sm text-zinc-400">Let&apos;s set up your basic goalie identity card.</p>
               </div>
 
@@ -672,7 +672,7 @@ function OnboardingContent() {
                     type="date"
                     value={birthday}
                     onChange={(e) => setBirthday(e.target.value)}
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-12 pr-5 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-12 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                   />
                 </div>
                 <span className="text-[9px] text-zinc-500 italic">Used for age verification & scoring metrics.</span>
@@ -700,7 +700,7 @@ function OnboardingContent() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase())}
                     placeholder="username"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-8 pr-5 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-bold placeholder:text-zinc-600"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-8 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-bold placeholder:text-zinc-600"
                   />
                 </div>
                 {isValidatingUsername && (
@@ -720,7 +720,7 @@ function OnboardingContent() {
           {step === 2 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-white mb-2 uppercase">Sport & Roster</h1>
+                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Sport & Roster</h1>
                 <p className="text-sm text-zinc-400">Select what you play and which teams you represent.</p>
               </div>
 
@@ -735,7 +735,7 @@ function OnboardingContent() {
                   {teams.map((t, i) => (
                     <span key={i} className="px-3 py-1 bg-[#006747]/10 text-[#006747] border border-[#006747]/20 rounded-full text-xs font-semibold flex items-center gap-1.5 animate-fade-in">
                       {t}
-                      <button type="button" onClick={() => removeTeamTag(t)} className="text-zinc-400 hover:text-white font-bold">×</button>
+                      <button type="button" onClick={() => removeTeamTag(t)} className="text-zinc-400 hover:text-foreground font-bold">×</button>
                     </span>
                   ))}
                 </div>
@@ -745,7 +745,7 @@ function OnboardingContent() {
                     value={teamInput}
                     onChange={(e) => setTeamInput(e.target.value)}
                     placeholder="Enter team name..."
-                    className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
+                    className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -753,7 +753,7 @@ function OnboardingContent() {
                       }
                     }}
                   />
-                  <button type="button" onClick={addTeamTag} className="px-4 py-3.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold transition-colors">Add</button>
+                  <button type="button" onClick={addTeamTag} className="px-4 py-3.5 bg-zinc-800 hover:bg-zinc-700 text-foreground rounded-xl text-xs font-bold transition-colors">Add</button>
                 </div>
               </div>
             </div>
@@ -763,7 +763,7 @@ function OnboardingContent() {
           {step === 3 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-white mb-2 uppercase">Custom Attributes</h1>
+                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Custom Attributes</h1>
                 <p className="text-sm text-zinc-400">Add characteristics to help coaches filter and find your card.</p>
               </div>
 
@@ -777,7 +777,7 @@ function OnboardingContent() {
                       onClick={() => toggleSuggestedTag(t)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
                         isSelected 
-                          ? 'bg-[#006747]/10 border-[#006747] text-[#006747]' 
+                          ? 'bg-[#006747] border-[#006747] text-[#006747]' 
                           : 'bg-black/40 border-zinc-800 text-zinc-400 hover:bg-zinc-800'
                       }`}
                     >
@@ -793,7 +793,7 @@ function OnboardingContent() {
                   value={customTagInput}
                   onChange={(e) => setCustomTagInput(e.target.value)}
                   placeholder="Custom tag..."
-                  className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
+                  className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -801,12 +801,12 @@ function OnboardingContent() {
                     }
                   }}
                 />
-                <button type="button" onClick={addCustomTag} className="px-4 py-3.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold transition-colors">Add</button>
+                <button type="button" onClick={addCustomTag} className="px-4 py-3.5 bg-zinc-800 hover:bg-zinc-700 text-foreground rounded-xl text-xs font-bold transition-colors">Add</button>
               </div>
 
               {/* Profile Attributes Inputs */}
               <div className="border-t border-zinc-800/80 pt-6 mt-6 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Goalie Attributes</h3>
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Goalie Attributes</h3>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -816,7 +816,7 @@ function OnboardingContent() {
                       value={height}
                       onChange={(e) => setHeight(e.target.value)}
                       placeholder="e.g. 6ft 0in"
-                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                     />
                   </div>
                   <div className="space-y-2">
@@ -826,7 +826,7 @@ function OnboardingContent() {
                       value={gradYear}
                       onChange={(e) => setGradYear(e.target.value)}
                       placeholder="e.g. 2026"
-                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                     />
                   </div>
                 </div>
@@ -839,7 +839,7 @@ function OnboardingContent() {
                       value={gpa}
                       onChange={(e) => setGpa(e.target.value)}
                       placeholder="e.g. 3.85"
-                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                     />
                   </div>
                   <div className="space-y-2">
@@ -847,7 +847,7 @@ function OnboardingContent() {
                     <select
                       value={handedness}
                       onChange={(e) => setHandedness(e.target.value)}
-                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
                     >
                       <option value="" className="bg-zinc-950">Select hand...</option>
                       <option value="right" className="bg-zinc-950">Right Handed</option>
@@ -863,7 +863,7 @@ function OnboardingContent() {
           {step === 4 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-white mb-2 uppercase">Performance Baseline</h1>
+                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Performance Baseline</h1>
                 <p className="text-sm text-zinc-400">Answer 3 simple questions to set your initial performance rating.</p>
               </div>
 
@@ -953,7 +953,7 @@ function OnboardingContent() {
             <button
               type="button"
               onClick={handleSkipStep}
-              className="text-zinc-500 hover:text-white text-sm font-bold transition-colors cursor-pointer"
+              className="text-zinc-500 hover:text-foreground text-sm font-bold transition-colors cursor-pointer"
             >
               Skip {step === 4 ? 'Assessment' : 'Step'}
             </button>
@@ -983,7 +983,7 @@ function OnboardingContent() {
 export default function OnboardingPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#09090B] text-white">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <Loader2 className="animate-spin text-[#006747]" size={40} />
       </div>
     }>

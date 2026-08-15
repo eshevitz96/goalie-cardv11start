@@ -17,7 +17,7 @@ export default function RenewSession() {
 
     return (
         <main className="min-h-screen bg-black text-white p-4 md:p-8">
-            <div className="max-w-2xl mx-auto space-y-8">
+            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <Link

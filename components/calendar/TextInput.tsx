@@ -34,10 +34,10 @@ export default function TextInput({
   }, [autoFocus]);
 
   const sharedClasses = `
-    w-full bg-transparent text-text-primary text-title font-bold
-    border-b-2 border-border-subtle focus:border-accent focus:outline-none
+    w-full bg-transparent text-foreground text-xl font-bold
+    border-b-2 border-border focus:border-[#006747] focus:outline-none
     transition-colors duration-200 pb-3 min-h-[56px]
-    placeholder:text-text-muted
+    placeholder:text-muted-foreground
     ${className}
   `;
 
@@ -56,7 +56,7 @@ export default function TextInput({
           className={`${sharedClasses} resize-none`}
         />
         {maxLength && (
-          <span className="absolute bottom-1 right-0 text-micro text-text-muted">
+          <span className="absolute bottom-1 right-0 text-xs text-muted-foreground">
             {value.length}/{maxLength}
           </span>
         )}
@@ -78,7 +78,7 @@ export default function TextInput({
         className={sharedClasses}
       />
       {maxLength && (
-        <span className="absolute bottom-1 right-0 text-micro text-text-muted">
+        <span className="absolute bottom-1 right-0 text-xs text-muted-foreground">
           {value.length}/{maxLength}
         </span>
       )}

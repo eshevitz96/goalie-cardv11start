@@ -47,13 +47,13 @@ export default function MoodScale({ onSelect, selected }: MoodScaleProps) {
               border transition-all duration-200 min-h-[56px]
               cursor-pointer select-none active:scale-[0.98] text-left
               ${isActive 
-                ? 'bg-accent/10 border-accent text-accent shadow-[0_0_20px_rgba(0,230,118,0.08)]' 
-                : 'bg-card border-border-subtle text-text-primary hover:bg-card-hover hover:border-border-focus'
+                ? 'bg-[#006747] border-[#006747] text-[#006747] shadow-sm' 
+                : 'bg-card border-border text-foreground hover:bg-muted hover:border-border/80'
               }
             `}
           >
             <span className="text-2xl">{mood.emoji}</span>
-            <span className="text-body-lg font-medium">
+            <span className="text-lg font-medium">
               {mood.label}
             </span>
           </button>

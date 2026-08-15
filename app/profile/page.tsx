@@ -232,14 +232,14 @@ export default function ProfilePage() {
     if (auth.loading || loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-                <Loader2 className="animate-spin text-white/30" size={32} />
+                <Loader2 className="animate-spin text-muted-foreground" size={32} />
             </div>
         );
     }
 
     return (
         <div className="min-h-screen bg-background text-foreground font-sans pt-6 pb-20 px-4 md:px-8">
-            <div className="max-w-xl mx-auto">
+            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto">
                 
                 {/* Back Navigation & Brand Logo */}
                 <div className="flex items-center justify-between mb-4 px-2">
@@ -247,76 +247,79 @@ export default function ProfilePage() {
                         <ArrowLeft size={18} />
                         <span className="text-xs font-medium">Back to dashboard</span>
                     </Link>
-                    <BrandLogo textClassName="text-lg md:text-xl font-medium tracking-tight text-white/90 select-none pointer-events-none" />
+                    <BrandLogo textClassName="text-lg md:text-xl font-medium tracking-tight text-foreground select-none pointer-events-none" />
                 </div>
 
-                {/* Identity Card */}
-                <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-6 w-full">
+                    {/* Left Column (Identity, Profile, Membership, Logout) */}
+                    <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-3">
+                        {/* Identity Card */}
+                <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
                     <div className="flex items-start justify-between mb-6">
                         <div>
-                            <p className="m-0 text-[11px] font-black uppercase tracking-widest text-white/40 mb-1">{userData?.gcNumber}</p>
+                            <p className="m-0 text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-1">{userData?.gcNumber}</p>
                             <div className="flex items-center gap-2">
                                 <p className="m-0 text-2xl font-bold tracking-tight">{userData?.fullName}</p>
-                                <Link href="/onboarding?edit=true" className="p-1 hover:bg-white/10 rounded-lg transition-colors text-white/60 hover:text-white" title="Edit Profile">
+                                <Link href="/onboarding?edit=true" className="p-1 hover:bg-muted-foreground/20 rounded-lg transition-colors text-muted-foreground/80 hover:text-foreground" title="Edit Profile">
                                     <Edit2 size={16} />
                                 </Link>
                             </div>
-                            <p className="m-0 text-sm font-medium text-white/60 mt-1">{userData?.positionClub}</p>
+                            <p className="m-0 text-sm font-medium text-muted-foreground/80 mt-1">{userData?.positionClub}</p>
                         </div>
                         <PerformanceAvatar score={performanceScore} size={56}>
-                            <div className="w-full h-full rounded-full flex items-center justify-center font-bold text-lg bg-[#006747] text-white shadow-xl shrink-0">
+                            <div className="w-full h-full rounded-full flex items-center justify-center font-bold text-lg bg-[#006747] text-foreground shadow-xl shrink-0">
                                 {userData?.initials}
                             </div>
                         </PerformanceAvatar>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
-                        <div className="rounded-[24px] p-4 bg-black/20 border border-white/5">
-                            <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">Save %</p>
+                        <div className="rounded-[24px] p-4 bg-muted border border-border">
+                            <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Save %</p>
                             <p className="m-0 text-xl font-bold mt-2">{stats.savePct}</p>
                         </div>
-                        <div className="rounded-[24px] p-4 bg-black/20 border border-white/5">
-                            <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">Saves</p>
+                        <div className="rounded-[24px] p-4 bg-muted border border-border">
+                            <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Saves</p>
                             <p className="m-0 text-xl font-bold mt-2">{stats.saves}</p>
                         </div>
-                        <div className="rounded-[24px] p-4 bg-black/20 border border-white/5">
-                            <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">Games</p>
+                        <div className="rounded-[24px] p-4 bg-muted border border-border">
+                            <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Games</p>
                             <p className="m-0 text-xl font-bold mt-2">{stats.games}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Profile Details Grid */}
-                <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">
-                    <p className="m-0 mb-4 text-[10px] font-black uppercase tracking-widest text-white/40">Profile</p>
+                <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
+                    <p className="m-0 mb-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Profile</p>
                     <div className="grid grid-cols-2 gap-y-4 gap-x-6">
                         <div>
-                            <p className="m-0 text-[11px] font-black uppercase tracking-widest text-white/40">Height</p>
+                            <p className="m-0 text-[11px] font-black uppercase tracking-widest text-muted-foreground">Height</p>
                             <p className="m-0 text-sm font-bold mt-1">{userData?.height}</p>
                         </div>
                         <div>
-                            <p className="m-0 text-[11px] font-black uppercase tracking-widest text-white/40">Class</p>
+                            <p className="m-0 text-[11px] font-black uppercase tracking-widest text-muted-foreground">Class</p>
                             <p className="m-0 text-sm font-bold mt-1">{userData?.grad_year}</p>
                         </div>
                         <div>
-                            <p className="m-0 text-[11px] font-black uppercase tracking-widest text-white/40">GPA</p>
+                            <p className="m-0 text-[11px] font-black uppercase tracking-widest text-muted-foreground">GPA</p>
                             <p className="m-0 text-sm font-bold mt-1">{userData?.gpa}</p>
                         </div>
                         <div>
-                            <p className="m-0 text-[11px] font-black uppercase tracking-widest text-white/40">Stick</p>
+                            <p className="m-0 text-[11px] font-black uppercase tracking-widest text-muted-foreground">Stick</p>
                             <p className="m-0 text-sm font-bold mt-1">{userData?.handedness}</p>
                         </div>
                     </div>
 
                     {/* Custom Tags Section */}
                     {userData?.profileTags && userData.profileTags.length > 0 && (
-                        <div className="mt-6 pt-6 border-t border-white/10 animate-fade-in">
-                            <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-white/40">Custom Tags</p>
+                        <div className="mt-6 pt-6 border-t border-border animate-fade-in">
+                            <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Custom Tags</p>
                             <div className="flex flex-wrap gap-2">
                                 {userData.profileTags.map((tag: string, idx: number) => (
                                     <span
                                         key={idx}
-                                        className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-semibold text-white/90"
+                                        className="px-3 py-1 bg-muted border border-border rounded-full text-xs font-semibold text-foreground"
                                     >
                                         {tag}
                                     </span>
@@ -326,74 +329,19 @@ export default function ProfilePage() {
                     )}
                 </div>
 
-                {/* Events & Commitments Placeholder */}
-                <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">
-                    <div className="flex items-center justify-between mb-4">
-                        <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">Events & commitments</p>
-                        <Plus size={18} className="text-white/40 cursor-pointer hover:text-white transition-colors" />
-                    </div>
-                    
-                    <div className="flex items-center gap-4 py-3 border-b border-white/10">
-                        <Calendar size={22} className="text-white/40 shrink-0" />
-                        <div className="flex-1">
-                            <p className="m-0 text-sm font-bold">Top 205 Camp</p>
-                            <p className="m-0 text-xs text-white/60 mt-0.5">June 14-16 · Registered</p>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-[#006747]/20 text-[#006747] rounded-full shrink-0">
-                            Confirmed
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-4 py-3 pt-4">
-                        <Calendar size={22} className="text-white/40 shrink-0" />
-                        <div className="flex-1">
-                            <p className="m-0 text-sm font-bold">Showcase Tournament</p>
-                            <p className="m-0 text-xs text-white/60 mt-0.5">July 22-24 · Open</p>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-white/10 text-white rounded-full shrink-0">
-                            Register
-                        </span>
-                    </div>
-                </div>
-
-                {/* Recruiting Visibility */}
-                <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">
-                    <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-white/40">Recruiting visibility</p>
-                    <div className="flex items-center justify-between mb-2">
-                        <p className="m-0 text-sm font-bold">Public profile</p>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Off</span>
-                            <ToggleLeft size={24} className="text-white/20" />
-                        </div>
-                    </div>
-                    <p className="m-0 text-xs text-white/40 leading-relaxed font-medium">
-                        Turn on to allow verified college coaches to view your profile, save percentage, and approved highlight clips.
-                    </p>
-                </div>
-
-                {/* Public Connections Placeholder */}
-                <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">
-                    <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-white/40">Public Connections</p>
-                    <div className="rounded-[24px] p-4 bg-black/20 border border-white/5 flex flex-col gap-2">
-                        <p className="m-0 text-sm font-bold text-white/90">Goalie Connections</p>
-                        <p className="m-0 text-xs text-white/40 leading-relaxed font-medium">
-                            Connect with other goalies, share cards, and build your network. (Coming Soon)
-                        </p>
-                    </div>
-                </div>
-
-                {/* Membership Card */}
+                
+                        {/* Membership Card */}
                 {subscriptionData && (
-                    <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-3">
+                    <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40 mb-1 font-bold">Membership</p>
+                                <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1 font-bold">Membership</p>
                                 <p className="m-0 text-sm font-bold tracking-tight">{subscriptionData.plan}</p>
                             </div>
                             <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shrink-0 ${
                                 subscriptionData.status === 'Active' 
-                                    ? 'bg-[#006747] text-white shadow-lg' 
-                                    : 'bg-white/10 text-white/60'
+                                    ? 'bg-[#006747] text-foreground shadow-lg' 
+                                    : 'bg-muted-foreground/20 text-muted-foreground/80'
                             }`}>
                                 {subscriptionData.status}
                             </span>
@@ -402,10 +350,10 @@ export default function ProfilePage() {
                         <button
                             onClick={handleManageSubscription}
                             disabled={portalLoading}
-                            className="w-full py-4 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white border border-white/10 rounded-2xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                            className="w-full py-4 bg-muted hover:bg-muted-foreground/20 disabled:opacity-50 text-foreground border border-border rounded-2xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
                         >
                             {portalLoading ? (
-                                <Loader2 className="animate-spin text-white/30" size={16} />
+                                <Loader2 className="animate-spin text-muted-foreground" size={16} />
                             ) : (
                                 "Manage subscription"
                             )}
@@ -425,6 +373,69 @@ export default function ProfilePage() {
                     <LogOut size={16} />
                     Log Out
                 </button>
+                    </div>
+
+                    {/* Right Column (Events, Visibility, Connections) */}
+                    <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-3">
+                        {/* Events & Commitments Placeholder */}
+                <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
+                    <div className="flex items-center justify-between mb-4">
+                        <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Events & commitments</p>
+                        <Plus size={18} className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors" />
+                    </div>
+                    
+                    <div className="flex items-center gap-4 py-3 border-b border-border">
+                        <Calendar size={22} className="text-muted-foreground shrink-0" />
+                        <div className="flex-1">
+                            <p className="m-0 text-sm font-bold">Top 205 Camp</p>
+                            <p className="m-0 text-xs text-muted-foreground/80 mt-0.5">June 14-16 · Registered</p>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-[#006747] text-[#006747] rounded-full shrink-0">
+                            Confirmed
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-4 py-3 pt-4">
+                        <Calendar size={22} className="text-muted-foreground shrink-0" />
+                        <div className="flex-1">
+                            <p className="m-0 text-sm font-bold">Showcase Tournament</p>
+                            <p className="m-0 text-xs text-muted-foreground/80 mt-0.5">July 22-24 · Open</p>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-muted-foreground/20 text-foreground rounded-full shrink-0">
+                            Register
+                        </span>
+                    </div>
+                </div>
+
+                {/* Recruiting Visibility */}
+                <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
+                    <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Recruiting visibility</p>
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="m-0 text-sm font-bold">Public profile</p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Off</span>
+                            <ToggleLeft size={24} className="text-muted-foreground/50" />
+                        </div>
+                    </div>
+                    <p className="m-0 text-xs text-muted-foreground leading-relaxed font-medium">
+                        Turn on to allow verified college coaches to view your profile, save percentage, and approved highlight clips.
+                    </p>
+                </div>
+
+                {/* Public Connections Placeholder */}
+                <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
+                    <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Public Connections</p>
+                    <div className="rounded-[24px] p-4 bg-muted border border-border flex flex-col gap-2">
+                        <p className="m-0 text-sm font-bold text-foreground">Goalie Connections</p>
+                        <p className="m-0 text-xs text-muted-foreground leading-relaxed font-medium">
+                            Connect with other goalies, share cards, and build your network. (Coming Soon)
+                        </p>
+                    </div>
+                </div>
+
+                
+                    </div>
+                </div>
 
             </div>
         </div>

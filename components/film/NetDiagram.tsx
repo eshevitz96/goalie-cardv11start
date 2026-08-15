@@ -42,9 +42,9 @@ export function NetDiagram({ onPlot, currentPoint, historyShots = [] }: NetDiagr
   const cfg = SPORT_CONFIG[sport] ?? SPORT_CONFIG['Hockey'];
   const { w, h, aspectRatio, dotSpacing: sp } = cfg;
   
-  // Refined styling: grey instead of white for better contrast with plots
-  const NET_COLOR = 'rgba(255, 255, 255, 0.2)'; // Subtle grey
-  const FRAME_COLOR = 'rgba(255, 255, 255, 0.4)'; // Clear but not overbearing
+  // Refined styling: use foreground/muted for light mode compatibility
+  const NET_COLOR = 'var(--muted-foreground)'; 
+  const FRAME_COLOR = 'var(--foreground)'; 
   const postW = Math.max(1, w * 0.015);
   const postH = Math.max(1, h * 0.02);
 
@@ -52,13 +52,10 @@ export function NetDiagram({ onPlot, currentPoint, historyShots = [] }: NetDiagr
     <div
       ref={containerRef}
       onClick={handleClick}
-      className="glass-panel"
       style={{
         width: '100%',
         aspectRatio,
-        background: 'rgba(255,255,255,0.01)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '0',
+        background: 'transparent',
         position: 'relative',
         cursor: 'crosshair',
         overflow: 'hidden'
@@ -67,11 +64,11 @@ export function NetDiagram({ onPlot, currentPoint, historyShots = [] }: NetDiagr
       <svg
         viewBox={`0 0 ${w} ${h}`}
         preserveAspectRatio="none"
-        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.8 }}
       >
         <defs>
           <pattern id="dot-pattern" x={sp / 2} y={sp / 2} width={sp} height={sp} patternUnits="userSpaceOnUse">
-            <circle cx="0" cy="0" r="0.6" fill={NET_COLOR} />
+            <circle cx="0" cy="0" r="0.6" fill={NET_COLOR} opacity="0.5" />
           </pattern>
         </defs>
 
@@ -97,7 +94,7 @@ export function NetDiagram({ onPlot, currentPoint, historyShots = [] }: NetDiagr
         )}
         
         {/* Floor / goal line */}
-        <line x1="0" y1={h} x2={w} y2={h} stroke={FRAME_COLOR} strokeWidth={postH} />
+        <line x1="0" y1={h} x2={w} y2={h} stroke={FRAME_COLOR} strokeWidth={postH} opacity="0.3" />
       </svg>
 
       {/* Historical Shots */}
@@ -108,10 +105,11 @@ export function NetDiagram({ onPlot, currentPoint, historyShots = [] }: NetDiagr
             left: `${shot.netLocation.x * 100}%`,
             top: `${shot.netLocation.y * 100}%`,
             width: '6px', height: '6px',
-            background: shot.isSave ? 'rgba(255,255,255,0.6)' : 'rgba(255,46,46,0.8)',
+            background: shot.isSave ? 'var(--foreground)' : 'var(--destructive)',
             borderRadius: '50%',
             transform: 'translate(-50%, -50%)',
-            pointerEvents: 'none'
+            pointerEvents: 'none',
+            border: shot.isSave ? 'none' : '1px solid var(--destructive)'
           }} />
         ) : null
       )}

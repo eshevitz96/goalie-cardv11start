@@ -169,7 +169,7 @@ export default function ParentProfile() {
 
     return (
         <main className="min-h-screen bg-background text-foreground p-4 md:p-8 transition-colors duration-300">
-            <div className="max-w-xl mx-auto space-y-8">
+            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">

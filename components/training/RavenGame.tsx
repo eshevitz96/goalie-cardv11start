@@ -263,7 +263,7 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
             ctx.scale(scaleX, scaleY);
 
             // Draw background
-            ctx.fillStyle = '#09090B';
+            ctx.fillStyle = '#FFFFFF';
             ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
             const state = gameStateRef.current;
@@ -279,7 +279,7 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                     const gapBottom = gate.gapCenter + gapHeight / 2;
 
                     // Top block
-                    ctx.fillStyle = '#1C1C1E';
+                    ctx.fillStyle = '#F1F5F9';
                     ctx.fillRect(gate.x, 0, gateWidth, gapTop);
 
                     // Top block border
@@ -296,7 +296,7 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                     ctx.stroke();
 
                     // Bottom block
-                    ctx.fillStyle = '#1C1C1E';
+                    ctx.fillStyle = '#F1F5F9';
                     ctx.fillRect(gate.x, gapBottom, gateWidth, CANVAS_HEIGHT - gapBottom);
 
                     // Bottom block border
@@ -314,14 +314,14 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                 });
 
                 // Draw marker
-                ctx.fillStyle = '#FFFFFF';
+                ctx.fillStyle = '#0F172A';
                 ctx.beginPath();
                 ctx.arc(80, markerYRef.current, radius, 0, Math.PI * 2);
                 ctx.fill();
 
                 // Draw live score counter
                 if (state === 'playing') {
-                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillStyle = '#0F172A';
                     ctx.font = '14px monospace';
                     ctx.textAlign = 'center';
                     ctx.fillText(scoreRef.current.toString(), CANVAS_WIDTH / 2, 36);
@@ -333,7 +333,7 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                 const oscY = 250 + Math.sin(time) * 15;
                 markerYRef.current = oscY;
 
-                ctx.fillStyle = '#FFFFFF';
+                ctx.fillStyle = '#0F172A';
                 ctx.beginPath();
                 ctx.arc(80, oscY, radius, 0, Math.PI * 2);
                 ctx.fill();
@@ -361,7 +361,7 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                 e.preventDefault(); // Stop click emulation lag on touch
                 triggerJump();
             }}
-            className="relative w-full max-w-[480px] bg-[#09090B] border border-white/10 rounded-[32px] overflow-hidden focus:outline-none select-none cursor-pointer shadow-2xl"
+            className="relative w-full max-w-[480px] bg-background border border-border rounded-[32px] overflow-hidden focus:outline-none select-none cursor-pointer shadow-2xl"
             style={{ aspectRatio: '4/5', maxHeight: '62vh' }}
             tabIndex={0}
         >
@@ -369,17 +369,17 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
 
             {/* Start Screen Overlay - Cleaned of Game Titles */}
             {gameState === 'idle' && (
-                <div className="absolute inset-0 bg-[#09090B]/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center select-none pointer-events-none">
-                    <p className="m-0 text-[11px] font-black tracking-widest text-white/60 uppercase mt-12 animate-pulse">
+                <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center select-none pointer-events-none">
+                    <p className="m-0 text-[11px] font-black tracking-widest text-muted-foreground/60 uppercase mt-12 animate-pulse">
                         Tap or Space to begin
                     </p>
                     
-                    <p className="m-0 text-[10px] text-white/40 mt-2 font-medium tracking-wide">
+                    <p className="m-0 text-[10px] text-muted-foreground/40 mt-2 font-medium tracking-wide">
                         Fly through the gaps. Don't hit the walls.
                     </p>
                     
                     {personalBest !== null && (
-                        <p className="absolute bottom-8 m-0 text-[10px] font-mono tracking-wider text-white/30 uppercase">
+                        <p className="absolute bottom-8 m-0 text-[10px] font-mono tracking-wider text-muted-foreground/30 uppercase">
                             Personal Best: {personalBest}
                         </p>
                     )}
@@ -388,19 +388,19 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
 
             {/* Session End Screen Telemetry Overlay (Simplified) */}
             {gameState === 'dead' && (
-                <div className="absolute inset-0 bg-[#09090B]/95 flex flex-col items-center justify-between p-10 select-none">
+                <div className="absolute inset-0 bg-background/95 flex flex-col items-center justify-between p-10 select-none">
                     {/* Empty spacer to align center */}
                     <div />
 
                     {/* F1 Telemetry Readouts - Simplified to Reactions and Personal Best */}
                     <div className="w-full max-w-[260px] flex flex-col gap-4 font-mono">
                         <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                            <span className="text-[11px] font-bold tracking-wider text-white/40 uppercase">Reactions</span>
-                            <span className="text-2xl font-bold text-white leading-none">{sessionMetrics.score}</span>
+                            <span className="text-[11px] font-bold tracking-wider text-muted-foreground/40 uppercase">Reactions</span>
+                            <span className="text-2xl font-bold text-foreground leading-none">{sessionMetrics.score}</span>
                         </div>
                         <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                            <span className="text-[11px] font-bold tracking-wider text-white/40 uppercase">Personal Best</span>
-                            <span className="text-2xl font-bold text-white leading-none">
+                            <span className="text-[11px] font-bold tracking-wider text-muted-foreground/40 uppercase">Personal Best</span>
+                            <span className="text-2xl font-bold text-foreground leading-none">
                                 {personalBest !== null ? Math.max(personalBest, sessionMetrics.score) : sessionMetrics.score}
                             </span>
                         </div>
@@ -408,7 +408,7 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                         {/* New PB banner */}
                         {isNewPb && (
                             <div className="flex justify-center pt-2">
-                                <span className="text-[10px] font-bold tracking-widest text-[#006747] uppercase">
+                                <span className="text-[10px] font-bold tracking-widest text-foreground uppercase">
                                     New PB
                                 </span>
                             </div>
@@ -422,11 +422,11 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                                 e.stopPropagation(); // Avoid triggering standard click jump
                                 startGame();
                             }}
-                            className="w-full max-w-[260px] py-4 bg-white/5 hover:bg-white/10 active:scale-[0.98] text-white border border-white/10 rounded-2xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center"
+                            className="w-full max-w-[260px] py-4 bg-white/5 hover:bg-white/10 active:scale-[0.98] text-foreground border border-border rounded-2xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center"
                         >
                             Run Again
                         </button>
-                        <p className="m-0 text-[10px] font-mono tracking-wider text-white/20 uppercase">
+                        <p className="m-0 text-[10px] font-mono tracking-wider text-foreground/20 uppercase">
                             Session data logged.
                         </p>
                     </div>

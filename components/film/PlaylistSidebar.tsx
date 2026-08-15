@@ -17,20 +17,20 @@ export function PlaylistSidebar({ onViewReport }: PlaylistProps) {
   };
 
   return (
-    <div className="w-full md:w-[var(--sidebar-w)] h-auto md:h-full border-b md:border-b-0 md:border-r border-[var(--surface-glass-border)] bg-[var(--bg-secondary)] flex flex-col shrink-0">
-      <div style={{ padding: '32px 24px', borderBottom: '1px solid var(--surface-glass-border)' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '12px' }}>
+    <div className="w-full md:w-[var(--sidebar-w)] h-auto md:h-full border-b md:border-b-0 md:border-r border-border bg-muted/30 flex flex-col shrink-0 font-sans">
+      <div className="p-6 md:p-8 border-b border-border">
+        <h2 className="text-xl font-bold flex items-center gap-3 font-sans text-foreground tracking-tight">
           <Film size={20} />
           Clip Playlist
         </h2>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+        <div className="flex justify-between items-center mt-4">
+          <p className="text-muted-foreground text-sm font-medium">
             {clips.length} clip{clips.length !== 1 ? 's' : ''} loaded
           </p>
           {clips.length > 0 && (
             <button 
               onClick={onViewReport}
-              style={{ fontSize: '0.8rem', padding: '6px 14px', background: '#FFFFFF', color: '#000000', borderRadius: '10px', fontWeight: 700 }}
+              className="text-xs px-3.5 py-1.5 bg-foreground text-background rounded-lg font-bold hover:bg-foreground/90 transition-colors"
             >
               Review Report
             </button>
@@ -38,52 +38,42 @@ export function PlaylistSidebar({ onViewReport }: PlaylistProps) {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+      <div className="flex-1 overflow-y-auto p-5">
         {clips.map((clip, idx) => {
           const isActive = clip.id === activeClipId;
           return (
             <div 
               key={clip.id}
               onClick={() => setActiveClipId(clip.id)}
-              className="glass-panel"
-              style={{
-                padding: '16px',
-                marginBottom: '12px',
-                cursor: 'pointer',
-                borderColor: isActive ? '#FFFFFF' : 'var(--surface-glass-border)',
-                background: isActive ? 'rgba(255,255,255,0.05)' : 'var(--surface-glass)'
-              }}
+              className={`p-4 mb-3 cursor-pointer rounded-2xl border transition-all flex justify-between items-start ${
+                isActive 
+                  ? 'bg-muted border-foreground/30 shadow-sm' 
+                  : 'bg-card border-border hover:border-foreground/20'
+              }`}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 700, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {idx + 1}. {clip.name}
-                  </p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    {(clip.size / (1024 * 1024)).toFixed(1)} MB
-                  </p>
-                </div>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); removeClip(clip.id); }}
-                  style={{ color: 'rgba(255,255,255,0.2)', padding: '4px' }}
-                >
-                  <Trash2 size={16} />
-                </button>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm whitespace-nowrap overflow-hidden text-ellipsis text-foreground">
+                  {idx + 1}. {clip.name}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">
+                  {(clip.size / (1024 * 1024)).toFixed(1)} MB
+                </p>
               </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); removeClip(clip.id); }}
+                className="text-muted-foreground hover:text-destructive p-1 transition-colors rounded-md hover:bg-destructive/10"
+              >
+                <Trash2 size={16} />
+              </button>
             </div>
           );
         })}
       </div>
 
-      <div style={{ padding: '24px', borderTop: '1px solid var(--surface-glass-border)' }}>
-        <label style={{ 
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-          width: '100%', padding: '12px', borderRadius: '12px', 
-          background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-glass-border)',
-          fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer'
-        }}>
+      <div className="p-6 border-t border-border bg-background/50">
+        <label className="flex items-center justify-center gap-2 w-full p-3 rounded-xl bg-muted/50 hover:bg-muted border border-border text-sm font-semibold text-foreground cursor-pointer transition-colors">
           <Plus size={18} /> Add More Clips
-          <input type="file" multiple accept="video/*" onChange={handleFileSelect} style={{ display: 'none' }} />
+          <input type="file" multiple accept="video/*" onChange={handleFileSelect} className="hidden" />
         </label>
       </div>
     </div>

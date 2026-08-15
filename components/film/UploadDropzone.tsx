@@ -25,45 +25,20 @@ export function UploadDropzone() {
     <div 
       onDragOver={e => e.preventDefault()}
       onDrop={handleDrop}
-      className="glass-panel flex-center"
-      style={{
-        flexDirection: 'column',
-        gap: '24px',
-        padding: '64px 32px',
-        border: '2px dashed var(--surface-glass-border)',
-        background: 'rgba(255, 255, 255, 0.01)',
-        cursor: 'pointer',
-        textAlign: 'center',
-        minHeight: '300px'
-      }}
+      className="flex flex-col items-center justify-center gap-6 py-16 px-8 border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 rounded-3xl cursor-pointer text-center min-h-[300px] transition-colors shadow-sm font-sans"
     >
-      <div style={{ 
-        width: '80px', 
-        height: '80px', 
-        borderRadius: '50%', 
-        background: 'rgba(255, 255, 255, 0.05)', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center' 
-      }}>
-        <Upload size={32} color="var(--text-secondary)" />
+      <div className="w-20 h-20 rounded-full bg-background flex items-center justify-center shadow-sm border border-border">
+        <Upload size={32} className="text-muted-foreground" />
       </div>
       
       <div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px' }}>Drop Game Clips Here</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Supports MP4, MOV up to 50MB per clip</p>
+        <h2 className="text-2xl font-bold mb-2 text-foreground font-sans tracking-tight">Drop Game Clips Here</h2>
+        <p className="text-muted-foreground text-[0.95rem] font-medium">Supports MP4, MOV up to 50MB per clip</p>
       </div>
 
-      <label style={{ 
-        padding: '12px 24px', 
-        background: '#FFFFFF', 
-        color: '#000000', 
-        borderRadius: '12px', 
-        fontWeight: 700,
-        fontSize: '0.95rem'
-      }}>
+      <label className="px-6 py-3 bg-foreground text-background rounded-xl font-bold text-[0.95rem] cursor-pointer hover:bg-foreground/90 transition-colors shadow-sm">
         Browse Files
-        <input type="file" multiple accept="video/*" onChange={handleFileSelect} style={{ display: 'none' }} />
+        <input type="file" multiple accept="video/*" onChange={handleFileSelect} className="hidden" />
       </label>
     </div>
   );

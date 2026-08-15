@@ -90,7 +90,7 @@ function PregameContent() {
 
   if (auth.loading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <Loader2 className="animate-spin text-white/30" size={32} />
       </div>
     );
@@ -100,13 +100,13 @@ function PregameContent() {
     <div className="calendar-root">
       <FlowScreen backHref="/calendar" showBack={!saving}>
         <div className="animate-fade-in-up w-full">
-          <h1 className="text-hero-sm md:text-hero font-bold tracking-tight leading-tight mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-12">
             How&apos;s your head now?
           </h1>
           {saving ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="animate-spin text-accent mb-4" size={32} />
-              <p className="text-body text-text-secondary">Saving readiness state...</p>
+              <p className="text-base text-muted-foreground">Saving readiness state...</p>
             </div>
           ) : (
             <MoodScale onSelect={handleSelect} />
@@ -120,7 +120,7 @@ function PregameContent() {
 export default function PregamePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <Loader2 className="animate-spin text-white/30" size={32} />
       </div>
     }>

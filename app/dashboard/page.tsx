@@ -546,13 +546,13 @@ export default function Dashboard() {
     return (
         <div 
             className="text-foreground font-sans flex flex-col justify-start w-full min-h-screen pb-[calc(120px+env(safe-area-inset-bottom))]"
-            style={{ background: '#09090B', padding: '32px 24px 140px 24px' }}
+            style={{ padding: '32px 24px 140px 24px' }}
         >
             {/* Section 1: Simplified Minimal Header */}
             <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto mb-6 w-full">
-                <div className="flex items-center justify-between px-2 border-b border-white/5 pb-4">
+                <div className="flex items-center justify-between px-2 border-b border-border/50 pb-4">
                     <div className="flex flex-col">
-                        <p className="m-0 text-lg font-bold tracking-tight text-white/90">
+                        <p className="m-0 text-lg font-bold tracking-tight text-foreground/90">
                             {dayOfWeekStr}, {dateStrShort}
                         </p>
                         <p className="m-0 text-[9px] font-black uppercase tracking-[0.15em] text-[#006747] mt-1 leading-none">
@@ -562,7 +562,7 @@ export default function Dashboard() {
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <BrandLogo textClassName="text-lg md:text-xl font-medium tracking-tight text-white/90 select-none pointer-events-none" />
+                        <BrandLogo textClassName="text-lg md:text-xl font-medium tracking-tight text-foreground/90 select-none pointer-events-none" />
                     </div>
                 </div>
             </div>
@@ -572,14 +572,14 @@ export default function Dashboard() {
                 <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto mb-6 w-full px-2">
                     <Link 
                         href="/onboarding"
-                        className="block bg-zinc-900/40 border border-zinc-800 hover:border-zinc-700 rounded-2xl p-4 transition-all group"
+                        className="block bg-card border border-border hover:border-border/80 rounded-2xl p-4 transition-all group shadow-sm"
                     >
                         <div className="flex items-center justify-between gap-4">
                             <div className="min-w-0">
-                                <p className="m-0 text-sm font-bold text-white group-hover:text-white/90">Complete your card</p>
-                                <p className="m-0 text-xs text-zinc-400 mt-1">Set up your name, sport, and grad year to activate your card.</p>
+                                <p className="m-0 text-sm font-bold text-foreground group-hover:text-foreground/90">Complete your card</p>
+                                <p className="m-0 text-xs text-muted-foreground mt-1">Set up your name, sport, and grad year to activate your card.</p>
                             </div>
-                            <div className="bg-zinc-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl group-hover:bg-zinc-700 active:scale-95 transition-all whitespace-nowrap">
+                            <div className="bg-foreground text-background text-xs font-bold px-4 py-2.5 rounded-xl group-hover:bg-foreground/90 active:scale-95 transition-all whitespace-nowrap">
                                 Complete Setup
                             </div>
                         </div>
@@ -591,7 +591,7 @@ export default function Dashboard() {
             <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-start w-full">
                 
                 {/* Left Column (or Top on Mobile): Athlete Card */}
-                <div className="col-span-1 md:col-span-5 lg:col-span-4 w-full flex flex-col items-center">
+                <div className="col-span-1 md:col-span-4 lg:col-span-3 w-full flex flex-col items-center">
                     <GoalieCard
                         name={rosterData?.goalie_name || userData?.fullName}
                         team={rosterData?.team || (userData?.teams && userData.teams[0]) || "Unattached"}
@@ -626,12 +626,36 @@ export default function Dashboard() {
                 </div>
 
                 {/* Right Column (or Bottom on Mobile): Greeting + Actions + Tiles + Pulse */}
-                <div className="col-span-1 md:col-span-7 lg:col-span-8 flex flex-col gap-6 w-full">
+                <div className="col-span-1 md:col-span-8 lg:col-span-9 flex flex-col gap-6 w-full">
                     
                     {/* Context-Aware Greeting */}
-                    <div className="px-2">
-                        <p className="m-0 text-3xl font-bold tracking-tight text-[#f4f4f5]">{greeting}</p>
-                        <p className="m-0 text-sm text-white/40 mt-1">{subline}</p>
+                    <div className="px-2 mb-4">
+                        <h1 className="m-0 text-4xl md:text-5xl font-sans font-black tracking-tight text-foreground">{greeting}</h1>
+                        <p className="m-0 text-base md:text-lg text-muted-foreground font-medium mt-1 mb-5">{subline}</p>
+                        
+                        {/* Weekly Pulse - Compact */}
+                        <div className="flex gap-2">
+                            {dayLetters.map((dayLetter, dayIdx) => {
+                                const isActive = activeDays.has(dayIdx);
+                                const isToday = dayIdx === todayIndex;
+                                
+                                return (
+                                    <div 
+                                        key={dayIdx} 
+                                        className={twMerge(
+                                            "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black transition-all duration-300",
+                                            isToday
+                                                ? "bg-foreground text-background ring-2 ring-foreground/20 ring-offset-2 ring-offset-background scale-110"
+                                                : isActive
+                                                    ? "bg-[#006747] text-[#006747]"
+                                                    : "bg-muted text-muted-foreground/30 border border-border/50"
+                                        )}
+                                    >
+                                        {dayLetter}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
                                         {/* Today's Action Card & Lessons Transparency (Side-by-Side on Desktop/Tablet if balance exists) */}
@@ -647,14 +671,14 @@ export default function Dashboard() {
                                 <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.12), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
                                 
                                 <div className="relative z-10">
-                                    <p className="m-0 mb-1 text-[8px] font-black uppercase tracking-[0.3em] text-white/35">Today</p>
-                                    <p className="m-0 mb-1.5 text-xl font-bold tracking-tight leading-tight text-[#f4f4f5]">{actionCard.headline}</p>
-                                    <p className="m-0 text-xs text-white/40 font-medium leading-relaxed">
+                                    <p className="m-0 mb-1 text-[8px] font-black uppercase tracking-[0.3em] text-foreground/35">Today</p>
+                                    <p className="m-0 mb-1.5 text-xl font-bold tracking-tight leading-tight text-foreground">{actionCard.headline}</p>
+                                    <p className="m-0 text-xs text-muted-foreground font-medium leading-relaxed">
                                         {actionCard.subline}
                                     </p>
                                 </div>
                                 <div className="relative z-10 mt-4">
-                                    <span className="bg-white text-[#09090B] rounded-full px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] inline-flex items-center gap-2">
+                                    <span className="bg-foreground text-background rounded-full px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] inline-flex items-center gap-2">
                                         <ArrowRight size={12} />
                                         {actionCard.btnText}
                                     </span>
@@ -672,59 +696,33 @@ export default function Dashboard() {
                     <div className="grid grid-cols-3 gap-3 w-full">
                         <Link 
                             href="/calendar" 
-                            className="flex flex-col items-center justify-center p-4 bg-[#1C1C1E] border border-white/5 transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl"
+                            className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
                         >
-                            <Calendar size={24} className="text-white mb-2" />
-                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Calendar</p>
-                            <p className="m-0 text-[9px] text-white/35 mt-1">This week</p>
+                            <Calendar size={24} className="text-foreground mb-2" />
+                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Calendar</p>
+                            <p className="m-0 text-[9px] text-muted-foreground mt-1">This week</p>
                         </Link>
                         <Link 
                             href="/film" 
-                            className="flex flex-col items-center justify-center p-4 bg-[#1C1C1E] border border-white/5 transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl"
+                            className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
                         >
-                            <Video size={24} className="text-white mb-2" />
-                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Film</p>
-                            <p className="m-0 text-[9px] text-white/35 mt-1">{gamesCount > 0 ? `${gamesCount} games` : 'No games'}</p>
+                            <Video size={24} className="text-foreground mb-2" />
+                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Film</p>
+                            <p className="m-0 text-[9px] text-muted-foreground mt-1">{gamesCount > 0 ? `${gamesCount} games` : 'No games'}</p>
                         </Link>
                         <Link 
                             href="/training" 
-                            className="flex flex-col items-center justify-center p-4 bg-[#1C1C1E] border border-white/5 transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl"
+                            className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
                         >
-                            <Target size={24} className="text-white mb-2" />
-                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-[#f4f4f5]">Training</p>
-                            <p className="m-0 text-[9px] text-white/35 mt-1">
+                            <Target size={24} className="text-foreground mb-2" />
+                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Training</p>
+                            <p className="m-0 text-[9px] text-muted-foreground mt-1">
                                 {trainingPb !== null ? `PB: ${trainingPb}` : 'No runs'}
                             </p>
                         </Link>
                     </div>
 
-                    {/* Weekly Pulse */}
-                    <div 
-                        className="p-4 glass rounded-3xl flex justify-between items-center"
-                    >
-                        <div className="flex gap-2 justify-between w-full px-1">
-                            {dayLetters.map((dayLetter, dayIdx) => {
-                                const isActive = activeDays.has(dayIdx);
-                                const isToday = dayIdx === todayIndex;
-                                
-                                return (
-                                    <div 
-                                        key={dayIdx} 
-                                        className={twMerge(
-                                            "w-9 h-9 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 shadow-md",
-                                            isToday
-                                                ? "bg-emerald-400 text-neutral-950 ring-2 ring-emerald-400/40 ring-offset-2 ring-offset-[#1C1C1E] scale-110"
-                                                : isActive
-                                                    ? "bg-[#006747] text-white"
-                                                    : "bg-white/5 text-white/30 border border-white/5"
-                                        )}
-                                    >
-                                        {dayLetter}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+
 
                 </div>
 

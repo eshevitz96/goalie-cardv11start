@@ -117,11 +117,11 @@ export function GoalieCard({
                 <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-40 w-40 rounded-full bg-foreground/5 blur-3xl opacity-50" />
 
                 <div className="relative z-10 flex flex-col items-center justify-center flex-1 text-center space-y-4 h-full my-auto">
-                    <div className="w-16 h-16 bg-[#006747]/10 text-[#006747] rounded-full flex items-center justify-center border border-[#006747]/20 group-hover:bg-[#006747]/20 transition-colors">
+                    <div className="w-16 h-16 bg-[#006747]/10 text-[#006747] rounded-full flex items-center justify-center border border-[#006747]/20 group-hover:bg-[#006747]/10 transition-colors">
                         <Settings2 size={28} />
                     </div>
                     <div className="space-y-2 max-w-xs">
-                        <h3 className="text-xl font-bold text-foreground group-hover:text-white transition-colors uppercase tracking-tight">Complete your card</h3>
+                        <h3 className="text-xl font-bold text-foreground group-hover:text-foreground/80 transition-colors uppercase tracking-tight">Complete your card</h3>
                         <p className="text-xs text-muted-foreground leading-normal">
                             Tap here to set up your name, sport, and grad year to activate your card.
                         </p>
@@ -200,7 +200,7 @@ export function GoalieCard({
             {/* Identity Section (Top) */}
             <div className="relative z-10 flex flex-col w-full mb-4">
                 {/* Full-width Name Row */}
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tighter leading-tight mb-3 break-words whitespace-normal w-full group-hover:text-white transition-colors">
+                <h1 className="text-2xl md:text-3xl font-sans font-bold text-foreground tracking-tighter leading-tight mb-3 break-words whitespace-normal w-full group-hover:text-foreground/80 transition-colors">
                     {safeName}
                 </h1>
 
@@ -209,17 +209,9 @@ export function GoalieCard({
                     {/* Initials & Progress Ring */}
                     <PerformanceAvatar score={hasScore ? Number(performanceScore) : 0} size={72}>
                         <div className="w-full h-full bg-[#006747] text-white flex flex-col items-center justify-center leading-none rounded-full border border-white/5 shadow-md select-none pointer-events-none">
-                            <span className={twMerge(
-                                "font-black tracking-tighter uppercase", 
-                                hasScore ? "text-[13px]" : "text-[16px]"
-                            )}>
-                                {calculatedInitials}
+                            <span className="text-[26px] font-black tracking-tighter text-white">
+                                {hasScore ? performanceScore : "0"}
                             </span>
-                            {hasScore && (
-                                <span className="text-[11px] font-black text-emerald-400 tracking-tight mt-0.5">
-                                    {performanceScore}
-                                </span>
-                            )}
                         </div>
                     </PerformanceAvatar>
 

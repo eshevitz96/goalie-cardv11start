@@ -95,9 +95,9 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
 
     if (loading) {
         return (
-            <div className="w-full bg-[#1C1C1E] border border-white/5 rounded-3xl p-6 flex flex-col items-center justify-center min-h-[200px]">
-                <Loader2 className="animate-spin text-white/30" size={24} />
-                <span className="text-xs text-white/40 mt-2 font-bold uppercase tracking-wider">Syncing Lesson Data...</span>
+            <div className="w-full bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center min-h-[200px]">
+                <Loader2 className="animate-spin text-muted-foreground/60" size={24} />
+                <span className="text-xs text-muted-foreground mt-2 font-bold uppercase tracking-wider">Syncing Lesson Data...</span>
             </div>
         );
     }
@@ -110,6 +110,55 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
     // Shift to neutral color if remaining balance is low (<= 1)
     const isLowBalance = remainingCount <= 1;
 
+    // Check if they have zero history of private training
+    const hasNoPrivateTraining = balance === null || (balance.lessons_earned === 0 && sessions.length === 0);
+
+    if (hasNoPrivateTraining) {
+        return (
+            <div className="w-full glass rounded-3xl p-6 space-y-4 relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                
+                <div className="flex justify-between items-start">
+                    <div>
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-1">
+                            Coach Engine
+                        </span>
+                        <h3 className="text-lg font-sans font-bold text-foreground tracking-tight leading-none">
+                            Self-Guided Training
+                        </h3>
+                    </div>
+                    <div className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground">
+                        Active
+                    </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                    You don't have any private lessons scheduled right now. Use the Coach Engine to generate personalized daily training missions to keep sharpening your skills.
+                </p>
+
+                <div className="mt-2 pt-2">
+                    <Link 
+                        href="/workout"
+                        className="flex items-center justify-between p-4 bg-muted border border-border rounded-2xl hover:border-foreground/40 hover:scale-[1.01] active:scale-[0.99] transition-all group shadow-sm cursor-pointer"
+                    >
+                        <div className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                                <Sparkles size={10} className="text-muted-foreground" />
+                                Today's Mission
+                            </span>
+                            <h4 className="text-sm font-sans font-black uppercase text-foreground tracking-wider truncate">
+                                Generate Training Card
+                            </h4>
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-wider bg-foreground text-background px-3 py-2 rounded-xl transition-all whitespace-nowrap ml-2 shadow-sm">
+                            Start
+                        </span>
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="w-full glass rounded-3xl p-6 space-y-6 relative overflow-hidden">
             {/* Top Glow Accent */}
@@ -118,10 +167,10 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
             {/* Card Header */}
             <div className="flex justify-between items-start">
                 <div>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-1">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-1">
                         Private Training
                     </span>
-                    <h3 className="text-lg font-bold text-white tracking-tight leading-none">
+                    <h3 className="text-lg font-sans font-bold text-foreground tracking-tight leading-none">
                         Lessons Transparency
                     </h3>
                 </div>
@@ -131,13 +180,13 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
                     <div className={twMerge(
                         "text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border shadow-sm transition-all duration-300",
                         isLowBalance 
-                            ? "bg-zinc-850 border-zinc-700 text-zinc-400" 
-                            : "bg-[#006747]/15 border-[#006747]/30 text-emerald-400"
+                            ? "bg-muted border-border text-muted-foreground" 
+                            : "bg-foreground text-background border-transparent"
                     )}>
                         {remainingCount} {remainingCount === 1 ? 'Lesson' : 'Lessons'} Left
                     </div>
                 ) : (
-                    <div className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full bg-zinc-800/50 border border-zinc-800/30 text-zinc-500 italic">
+                    <div className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground italic">
                         No Active Lessons
                     </div>
                 )}
@@ -145,31 +194,31 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
 
             {/* Lesson Count Details Grid */}
             <div className="grid grid-cols-3 gap-3">
-                <div className="bg-black/20 border border-white/[0.03] rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/35 mb-1">
+                <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
                         Purchased
                     </span>
-                    <span className="text-base font-black text-white">
+                    <span className="text-base font-black text-foreground">
                         {balance !== null ? earnedCount : "—"}
                     </span>
                 </div>
-                <div className="bg-black/20 border border-white/[0.03] rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/35 mb-1">
+                <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
                         Completed
                     </span>
-                    <span className="text-base font-black text-white">
+                    <span className="text-base font-black text-foreground">
                         {sessions.length > 0 ? deliveredCount : "—"}
                     </span>
                 </div>
-                <div className="bg-black/20 border border-white/[0.03] rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/35 mb-1">
+                <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
                         Remaining
                     </span>
                     <span className={twMerge(
                         "text-base font-black transition-colors",
                         hasActiveLessons 
-                            ? (isLowBalance ? "text-zinc-400" : "text-emerald-400") 
-                            : "text-zinc-500"
+                            ? (isLowBalance ? "text-muted-foreground" : "text-[#006747]") 
+                            : "text-muted-foreground"
                     )}>
                         {balance !== null ? remainingCount : "—"}
                     </span>
@@ -178,10 +227,10 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
 
             {/* Expandable Lesson History Log */}
             {sessions.length > 0 && (
-                <div className="border-t border-white/5 pt-4">
+                <div className="border-t border-border pt-4 mt-6">
                     <button
                         onClick={() => setShowHistory(!showHistory)}
-                        className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                        className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                     >
                         <span>Lesson Log ({sessions.length})</span>
                         {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -193,20 +242,20 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
                                 <div key={session.id || index} className="flex gap-4 relative group">
                                     {/* Timeline Connector Line */}
                                     {index < sessions.length - 1 && (
-                                        <div className="absolute top-3 bottom-0 left-2 w-px bg-white/5 group-hover:bg-white/10 transition-colors" />
+                                        <div className="absolute top-3 bottom-0 left-2 w-px bg-border group-hover:bg-border/80 transition-colors" />
                                     )}
                                     
                                     {/* Timeline Node Icon */}
-                                    <div className="w-4 h-4 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center shrink-0 mt-1 relative z-10 transition-colors group-hover:border-zinc-700">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-500 group-hover:bg-zinc-400 transition-colors" />
+                                    <div className="w-4 h-4 rounded-full bg-muted border border-border flex items-center justify-center shrink-0 mt-1 relative z-10 transition-colors group-hover:border-foreground/30">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground group-hover:bg-foreground/50 transition-colors" />
                                     </div>
                                     
                                     {/* Session Details */}
                                     <div className="flex-1 space-y-1 pb-3">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-1.5">
-                                                <Calendar size={12} className="text-zinc-500" />
-                                                <span className="text-[10px] font-bold text-zinc-400 font-mono">
+                                                <Calendar size={12} className="text-muted-foreground" />
+                                                <span className="text-[10px] font-bold text-foreground font-mono">
                                                     {new Date(session.date).toLocaleDateString(undefined, { 
                                                         year: 'numeric', 
                                                         month: 'short', 
@@ -215,17 +264,17 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
                                                 </span>
                                             </div>
                                             {session.lesson_number !== undefined && (
-                                                <span className="text-[8px] font-black uppercase tracking-wider text-zinc-500 bg-white/5 border border-white/5 px-2 py-0.5 rounded-md font-mono">
+                                                <span className="text-[8px] font-black uppercase tracking-wider text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-md font-mono">
                                                     Lesson {session.lesson_number}
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-[9px] text-zinc-500 font-medium">
+                                        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground font-medium">
                                             <MapPin size={10} />
                                             <span>{session.location || "Unknown Location"}</span>
                                         </div>
                                         {session.notes && (
-                                            <p className="text-xs text-zinc-450 bg-black/20 border-l border-zinc-700/60 p-2.5 rounded-r-xl mt-1 leading-relaxed italic font-medium whitespace-pre-line">
+                                            <p className="text-xs text-foreground/80 bg-muted border-l-2 border-border p-2.5 rounded-r-xl mt-1 leading-relaxed italic font-medium whitespace-pre-line">
                                                 "{session.notes}"
                                             </p>
                                         )}
@@ -238,13 +287,13 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
             )}
 
             {/* Collapsed / Secondary Self-Guided Missions Toggle */}
-            <div className="border-t border-white/5 pt-4">
+            <div className="border-t border-border pt-4 mt-2">
                 <button
                     onClick={() => setShowDailyMission(!showDailyMission)}
-                    className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
                     <span className="flex items-center gap-1.5">
-                        <Sparkles size={12} className="text-zinc-500" />
+                        <Sparkles size={12} className="text-muted-foreground" />
                         Self-Guided Training Missions
                     </span>
                     {showDailyMission ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -254,17 +303,17 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
                     <div className="mt-3">
                         <Link 
                             href="/workout"
-                            className="flex items-center justify-between p-3.5 bg-black/20 border border-white/5 rounded-2xl hover:border-white/10 hover:scale-[1.01] active:scale-[0.99] transition-all group"
+                            className="flex items-center justify-between p-3.5 bg-muted border border-border rounded-2xl hover:border-border/80 hover:scale-[1.01] active:scale-[0.99] transition-all group"
                         >
                             <div className="min-w-0 flex-1">
-                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[#006747] block mb-0.5">
+                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-0.5">
                                     Today's Mission
                                 </span>
-                                <h4 className="text-xs font-black uppercase text-white tracking-wider truncate">
+                                <h4 className="text-xs font-sans font-black uppercase text-foreground tracking-wider truncate">
                                     Daily Coach Engine Card
                                 </h4>
                             </div>
-                            <span className="text-[9px] font-black uppercase tracking-wider bg-[#006747]/10 border border-[#006747]/20 text-[#006747] px-2.5 py-1.5 rounded-xl group-hover:bg-[#006747] group-hover:text-white transition-all whitespace-nowrap ml-2">
+                            <span className="text-[9px] font-black uppercase tracking-wider bg-foreground/10 border border-border text-foreground px-2.5 py-1.5 rounded-xl group-hover:bg-foreground group-hover:text-background transition-all whitespace-nowrap ml-2">
                                 View Card
                             </span>
                         </Link>

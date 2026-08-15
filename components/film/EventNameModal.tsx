@@ -50,25 +50,16 @@ export function EventNameModal({ isOpen, onClose, onSubmit }: EventNameModalProp
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--surface-glass-border)',
-                borderRadius: '24px',
-                padding: '32px',
-                width: '100%',
-                maxWidth: '400px',
-                pointerEvents: 'auto',
-                boxShadow: '0 24px 48px rgba(0,0,0,0.5)'
-              }}
+              className="bg-card border border-border rounded-3xl p-8 w-full max-w-[400px] pointer-events-auto shadow-2xl font-sans"
             >
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px', color: '#FFFFFF' }}>New Game Session</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '24px' }}>
+              <h2 className="text-2xl font-bold mb-2 text-foreground font-sans tracking-tight">New Game Session</h2>
+              <p className="text-muted-foreground text-sm mb-6">
                 Enter event details before attaching clips.
               </p>
 
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Event Name</label>
+              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Event Name</label>
                   <input
                     type="text"
                     value={eventName}
@@ -76,72 +67,33 @@ export function EventNameModal({ isOpen, onClose, onSubmit }: EventNameModalProp
                     placeholder="e.g., vs Avalanche"
                     autoFocus
                     required
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-tertiary)',
-                      border: '1px solid var(--surface-glass-border)',
-                      borderRadius: '12px',
-                      padding: '16px',
-                      fontSize: '1rem',
-                      color: '#FFFFFF',
-                      outline: 'none',
-                      transition: 'border-color 0.2s'
-                    }}
+                    className="w-full bg-muted border border-border rounded-xl p-4 text-base text-foreground outline-none transition-colors focus:border-foreground/30 placeholder:text-muted-foreground/50"
                   />
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Date & Time</label>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Date & Time</label>
                   <input
                     type="datetime-local"
                     value={eventDate}
                     onChange={e => setEventDate(e.target.value)}
                     required
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-tertiary)',
-                      border: '1px solid var(--surface-glass-border)',
-                      borderRadius: '12px',
-                      padding: '16px',
-                      fontSize: '1rem',
-                      color: '#FFFFFF',
-                      outline: 'none',
-                      transition: 'border-color 0.2s'
-                    }}
+                    className="w-full bg-muted border border-border rounded-xl p-4 text-base text-foreground outline-none transition-colors focus:border-foreground/30 placeholder:text-muted-foreground/50"
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px' }}>
+                <div className="flex gap-3 mt-2">
                   <button
                     type="button"
                     onClick={onClose}
-                    style={{
-                      flex: 1,
-                      padding: '14px',
-                      background: 'transparent',
-                      color: 'var(--text-primary)',
-                      border: '1px solid var(--surface-glass-border)',
-                      borderRadius: '12px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
+                    className="flex-1 py-3.5 bg-transparent text-foreground border border-border rounded-xl font-semibold cursor-pointer hover:bg-muted transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={!eventName.trim()}
-                    style={{
-                      flex: 1,
-                      padding: '14px',
-                      background: '#FFFFFF',
-                      color: '#000000',
-                      border: 'none',
-                      borderRadius: '12px',
-                      fontWeight: 700,
-                      cursor: eventName.trim() ? 'pointer' : 'not-allowed',
-                      opacity: eventName.trim() ? 1 : 0.5
-                    }}
+                    className="flex-1 py-3.5 bg-foreground text-background border-none rounded-xl font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-foreground/90 transition-colors"
                   >
                     Continue
                   </button>

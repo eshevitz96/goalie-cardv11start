@@ -50,6 +50,7 @@ export default function CalendarPage() {
   const [gameType, setGameType] = useState("game");
 
   const [showPracticeModal, setShowPracticeModal] = useState(false);
+  const [showAddEventDropdown, setShowAddEventDropdown] = useState(false);
   const [practiceDate, setPracticeDate] = useState("");
   const [practiceTime, setPracticeTime] = useState("");
   const [practiceLocation, setPracticeLocation] = useState("");
@@ -626,7 +627,7 @@ export default function CalendarPage() {
   if (auth.loading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <Loader2 className="animate-spin text-white/30" size={32} />
+        <Loader2 className="animate-spin text-muted-foreground" size={32} />
       </div>
     );
   }
@@ -637,46 +638,47 @@ export default function CalendarPage() {
 
   return (
     <div 
-      className="min-h-screen bg-[#09090B] text-white font-sans py-8 px-4 md:px-8 pb-[calc(100px+env(safe-area-inset-bottom))]"
+      className="min-h-screen bg-background text-foreground font-sans py-8 px-4 md:px-8 pb-[calc(100px+env(safe-area-inset-bottom))]"
       style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif' }}
     >
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto">
         
         {/* Header navigation */}
         <div className="flex items-center justify-between mb-8">
-          <Link href="/dashboard" className="flex items-center gap-2 text-white/60 hover:text-white transition-colors text-xs font-semibold uppercase tracking-wider">
+          <Link href="/dashboard" className="flex items-center gap-2 text-muted-foreground/80 hover:text-foreground transition-colors text-xs font-semibold uppercase tracking-wider">
             <ArrowLeft size={16} />
             Back to Dashboard
           </Link>
           {season && (
-            <div className="flex gap-2">
+            <div className="relative">
               <button 
-                onClick={() => setShowGameModal(true)} 
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#006747] hover:bg-[#005238] transition-colors rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer"
+                onClick={() => setShowAddEventDropdown(!showAddEventDropdown)} 
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#006747] hover:bg-[#005238] text-white transition-colors rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer shadow-sm"
               >
-                <Plus size={14} /> Add Game
+                <Plus size={14} /> Add Event
               </button>
-              <button 
-                onClick={() => setShowPracticeModal(true)} 
-                className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer"
-              >
-                <Plus size={14} /> Add Practice
-              </button>
+              {showAddEventDropdown && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-50 flex flex-col">
+                  <button onClick={() => { setShowAddEventDropdown(false); setShowGameModal(true); }} className="px-4 py-3 text-left text-sm font-bold text-foreground hover:bg-muted transition-colors border-b border-border">Game</button>
+                  <button onClick={() => { setShowAddEventDropdown(false); setShowPracticeModal(true); }} className="px-4 py-3 text-left text-sm font-bold text-foreground hover:bg-muted transition-colors border-b border-border">Practice</button>
+                  <Link href="/training" className="px-4 py-3 text-left text-sm font-bold text-foreground hover:bg-muted transition-colors block">Training</Link>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Season Check */}
         {!season ? (
-          <div className="rounded-[32px] p-8 md:p-12 bg-[#1C1C1E] border border-white/10 shadow-xl text-center max-w-xl mx-auto my-12">
-            <CalendarIcon size={48} className="mx-auto text-white/30 mb-6" />
+          <div className="rounded-[32px] p-8 md:p-12 bg-card border border-border shadow-xl text-center max-w-xl mx-auto my-12">
+            <CalendarIcon size={48} className="mx-auto text-muted-foreground mb-6" />
             <h2 className="text-2xl font-bold tracking-tight mb-3">Set Up Your Season</h2>
-            <p className="text-white/60 text-sm leading-relaxed mb-8">
+            <p className="text-muted-foreground/80 text-sm leading-relaxed mb-8">
               Goalie Card coordinates your weekly intentions, game preparation, and post-game film reviews around an active season schedule. Set up your season now to start logging your pulse.
             </p>
             <form onSubmit={handleCreateSeason} className="space-y-4 text-left">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Season Name</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Season Name</label>
                 <input 
                   type="text" 
                   value={seasonNameInput}
@@ -688,7 +690,7 @@ export default function CalendarPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Start Date</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Start Date</label>
                   <input 
                     type="date" 
                     value={seasonStartInput}
@@ -698,7 +700,7 @@ export default function CalendarPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">End Date</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">End Date</label>
                   <input 
                     type="date" 
                     value={seasonEndInput}
@@ -711,7 +713,7 @@ export default function CalendarPage() {
               <button 
                 type="submit" 
                 disabled={dbSaving}
-                className="w-full mt-6 py-4 bg-[#006747] hover:bg-[#005238] disabled:opacity-50 text-white text-xs font-bold uppercase tracking-widest rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full mt-6 py-4 bg-[#006747] hover:bg-[#005238] disabled:opacity-50 text-foreground text-xs font-bold uppercase tracking-widest rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 {dbSaving && <Loader2 size={16} className="animate-spin" />}
                 Initialize Season
@@ -723,76 +725,79 @@ export default function CalendarPage() {
           </div>
         ) : (
           <>
-            {/* Week Switcher Block */}
-            <div className="flex items-center justify-between bg-[#1C1C1E] border border-white/10 rounded-[24px] p-4 mb-4 shadow-sm">
-              <button 
-                onClick={() => setWeekOffset(weekOffset - 1)}
-                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/5 border border-white/5 transition-colors cursor-pointer"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <div className="text-center">
-                <p className="m-0 text-sm font-bold tracking-tight">{weekStartLabel} — {weekEndLabel}</p>
-                <div className="flex items-center justify-center gap-1.5 mt-0.5">
-                  <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">{season.name}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSeasonNameInput(season.name || "");
-                      setSeasonStartInput(season.start_date || "");
-                      setSeasonEndInput(season.end_date || "");
-                      setSeasonError("");
-                      setShowSeasonModal(true);
-                    }}
-                    className="text-white/25 hover:text-white/60 transition-colors cursor-pointer"
-                    aria-label="Edit season"
-                  >
-                    <Pencil size={10} />
-                  </button>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              {/* Week Switcher Block */}
+              <div className="lg:col-span-1 flex items-center justify-between bg-card border border-border rounded-[24px] p-6 shadow-sm">
+                <button 
+                  onClick={() => setWeekOffset(weekOffset - 1)}
+                  className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-muted border border-border transition-colors cursor-pointer shrink-0"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <div className="text-center px-2">
+                  <p className="m-0 text-sm font-bold tracking-tight leading-tight">{weekStartLabel} — {weekEndLabel}</p>
+                  <div className="flex items-center justify-center gap-1.5 mt-1.5">
+                    <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">{season.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSeasonNameInput(season.name || "");
+                        setSeasonStartInput(season.start_date || "");
+                        setSeasonEndInput(season.end_date || "");
+                        setSeasonError("");
+                        setShowSeasonModal(true);
+                      }}
+                      className="text-foreground/25 hover:text-muted-foreground/80 transition-colors cursor-pointer"
+                      aria-label="Edit season"
+                    >
+                      <Pencil size={10} />
+                    </button>
+                  </div>
                 </div>
+                <button 
+                  onClick={() => setWeekOffset(weekOffset + 1)}
+                  className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-muted border border-border transition-colors cursor-pointer shrink-0"
+                >
+                  <ChevronRight size={18} />
+                </button>
               </div>
-              <button 
-                onClick={() => setWeekOffset(weekOffset + 1)}
-                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/5 border border-white/5 transition-colors cursor-pointer"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
 
-            {/* Intention Card */}
-            <div className="rounded-[32px] p-6 bg-[#1C1C1E] border border-white/10 shadow-sm mb-6 relative overflow-hidden">
-              <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.07), transparent 60%)', pointerEvents: 'none' }}></div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="m-0 text-[10px] font-black uppercase tracking-widest text-white/40">Weekly Intention</p>
-                  <Link 
-                    href="/calendar/week" 
-                    className="text-[10px] font-black uppercase tracking-widest text-[#006747] hover:text-[#4ade80] transition-colors"
-                  >
-                    {weeklyIntention ? "Adjust Intention" : "Set Intention"}
-                  </Link>
-                </div>
-                {weeklyIntention ? (
-                  <p className="m-0 text-lg md:text-xl font-bold tracking-tight text-white/90 leading-tight">
-                    &ldquo;{weeklyIntention.intention_text}&rdquo;
-                  </p>
-                ) : (
-                  <div>
-                    <p className="m-0 text-sm font-medium text-white/40 mb-3">No intention set for this week.</p>
+              {/* Intention Card */}
+              <div className="lg:col-span-2 rounded-[24px] p-6 bg-card border border-border shadow-sm relative overflow-hidden flex flex-col justify-center">
+                <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.07), transparent 60%)', pointerEvents: 'none' }}></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Weekly Intention</p>
                     <Link 
                       href="/calendar/week" 
-                      className="inline-flex items-center gap-1 px-4 py-2 bg-[#006747]/10 text-[#006747] border border-[#006747]/20 rounded-full text-[10px] font-black uppercase tracking-wider hover:bg-[#006747]/20 transition-colors"
+                      className="text-[10px] font-black uppercase tracking-widest text-[#006747] hover:text-[#4ade80] transition-colors"
                     >
-                      Begin Weekly Setup
+                      {weeklyIntention ? "Adjust Intention" : "Set Intention"}
                     </Link>
                   </div>
-                )}
+                  {weeklyIntention ? (
+                    <p className="m-0 text-lg md:text-xl font-bold tracking-tight text-foreground leading-tight">
+                      &ldquo;{weeklyIntention.intention_text}&rdquo;
+                    </p>
+                  ) : (
+                    <div>
+                      <p className="m-0 text-sm font-medium text-muted-foreground mb-3">No intention set for this week.</p>
+                      <Link 
+                        href="/calendar/week" 
+                        className="inline-flex items-center gap-1 px-4 py-2 bg-[#006747]/10 text-[#006747] border border-[#006747]/20 rounded-full text-[10px] font-black uppercase tracking-wider hover:bg-[#006747]/10 transition-colors"
+                      >
+                        Begin Weekly Setup
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Daily schedule items */}
-            <div className="space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/40 px-2">Schedule</p>
+            <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-2">Schedule Grid</p>
+              <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
               
               {weekDates.map((date, idx) => {
                 const dateStr = date.toISOString().split("T")[0];
@@ -805,39 +810,33 @@ export default function CalendarPage() {
                 return (
                   <div 
                     key={idx}
-                    className={`rounded-[24px] p-5 border transition-all ${
+                    className={`rounded-[20px] p-4 border transition-all flex flex-col h-full min-h-[160px] ${
                       isDayToday 
-                        ? "bg-[#1C1C1E] border-[#006747]/30 shadow-md" 
-                        : "bg-[#1C1C1E]/50 border-white/5 hover:border-white/10"
+                        ? "bg-card border-[#006747]/30 shadow-md ring-1 ring-[#006747]/10" 
+                        : "bg-card border-border/40 hover:border-border/80"
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
-                      <div className="flex items-center gap-3">
-                        <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                          isDayToday ? "bg-[#006747] text-white" : "bg-white/5 text-white/60"
-                        }`}>
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/50">
+                      <div>
+                        <p className={`m-0 text-xs font-black uppercase tracking-widest ${isDayToday ? "text-[#006747]" : "text-muted-foreground"}`}>
+                          {date.toLocaleDateString("en-US", { weekday: "short" })}
+                        </p>
+                        <p className={`m-0 text-lg font-bold tracking-tight ${isDayToday ? "text-foreground" : "text-foreground/80"}`}>
                           {date.getDate()}
-                        </span>
-                        <div>
-                          <p className="m-0 text-xs font-bold">
-                            {date.toLocaleDateString("en-US", { weekday: "long" })}
-                          </p>
-                          <p className="m-0 text-[9px] font-bold text-white/40 tracking-wider">
-                            {date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          </p>
-                        </div>
+                        </p>
                       </div>
                       {isDayToday && (
-                        <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 bg-[#006747]/20 text-[#006747] rounded-full">
-                          Today
-                        </span>
+                        <div className="w-2 h-2 rounded-full bg-[#006747]"></div>
                       )}
                     </div>
 
-                    {!hasEvents ? (
-                      <p className="m-0 text-xs text-white/30 italic pl-1">No scheduled games or practices.</p>
-                    ) : (
-                      <div className="space-y-4">
+                    <div className="flex-1 flex flex-col gap-2">
+                      {!hasEvents ? (
+                        <div className="flex-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Minimal empty state */}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
                         {/* Render Games */}
                         {dayGames.map((game, gIdx) => {
                           const today = new Date();
@@ -857,24 +856,24 @@ export default function CalendarPage() {
                                 setEditGameError("");
                                 setGameDeleteConfirm(false);
                               }}
-                              className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-black/25 hover:bg-black/35 border border-white/5 rounded-2xl cursor-pointer transition-all"
+                              className="flex flex-col gap-3 p-3 bg-muted/50 hover:bg-muted border border-border rounded-xl cursor-pointer transition-all"
                             >
                               <div className="space-y-1.5">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-[#006747] text-white rounded-full">
+                                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-[#006747] text-foreground rounded-full">
                                     {game.game_type || "GAME"}
                                   </span>
                                   <p className="m-0 text-sm font-bold">{game.opponent}</p>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/50">
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-foreground/50">
                                   <span className="flex items-center gap-1"><Clock size={12} /> {formatTime(game.scheduled_time)}</span>
                                   <span className="flex items-center gap-1"><MapPin size={12} /> {game.location}</span>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
                                 <Link 
                                   href="/film" 
-                                  className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 transition-colors border border-white/10 rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                                  className="flex items-center gap-1 px-3 py-1.5 bg-muted hover:bg-muted-foreground/20 transition-colors border border-border rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
                                 >
                                   <Video size={12} /> View Film
                                 </Link>
@@ -882,14 +881,14 @@ export default function CalendarPage() {
                                 {isGamePast ? (
                                   <Link 
                                     href={`/calendar/postgame?date=${game.scheduled_date}`} 
-                                    className="flex items-center gap-1 px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                                    className="flex items-center gap-1 px-3 py-1.5 bg-muted border border-border hover:bg-muted-foreground/20 text-foreground rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
                                   >
                                     <Smile size={12} /> Debrief
                                   </Link>
                                 ) : (
                                   <Link 
                                     href={`/calendar/pregame?date=${game.scheduled_date}`} 
-                                    className="flex items-center gap-1 px-3 py-1.5 bg-[#006747]/20 border border-[#006747]/30 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                                    className="flex items-center gap-1 px-3 py-1.5 bg-[#006747] border border-transparent text-foreground rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
                                   >
                                     <Clock size={12} /> Prepare
                                   </Link>
@@ -912,21 +911,21 @@ export default function CalendarPage() {
                               setEditPracticeError("");
                               setPracticeDeleteConfirm(false);
                             }}
-                            className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-black/10 hover:bg-black/20 border border-white/5 rounded-2xl cursor-pointer transition-all"
+                            className="flex flex-col gap-3 p-3 bg-muted/50 hover:bg-muted border border-border rounded-xl cursor-pointer transition-all"
                           >
                             <div className="space-y-1.5">
                               <div className="flex items-center gap-2">
-                                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-white/10 text-white/80 rounded-full">
+                                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-muted-foreground/20 text-foreground/80 rounded-full">
                                   PRACTICE
                                 </span>
                                 <p className="m-0 text-sm font-bold">Team Practice</p>
                               </div>
-                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/50">
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-foreground/50">
                                 <span className="flex items-center gap-1"><Clock size={12} /> {formatTime(practice.scheduled_time)}</span>
                                 <span className="flex items-center gap-1"><MapPin size={12} /> {practice.location}</span>
                               </div>
                               {practice.notes && (
-                                <p className="m-0 text-xs text-white/40 italic flex items-center gap-1 pt-1">
+                                <p className="m-0 text-xs text-muted-foreground italic flex items-center gap-1 pt-1">
                                   <FileText size={12} /> Note: {practice.notes}
                                 </p>
                               )}
@@ -935,9 +934,11 @@ export default function CalendarPage() {
                         ))}
                       </div>
                     )}
+                    </div>
                   </div>
                 );
               })}
+              </div>
             </div>
           </>
         )}
@@ -953,58 +954,58 @@ export default function CalendarPage() {
           }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
         >
-          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+          <div className="bg-card border border-border rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
             <h3 className="text-lg font-bold tracking-tight mb-4">Add Scheduled Game</h3>
             <form onSubmit={handleCreateGame} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Opponent</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Opponent</label>
                 <input 
                   type="text" 
                   value={gameOpponent}
                   onChange={(e) => setGameOpponent(e.target.value)}
                   placeholder="e.g. Crusaders Lacrosse"
                   required
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Date</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                   <input 
                     type="date" 
                     value={gameDate}
                     onChange={(e) => setGameDate(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Time</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                   <input 
                     type="time" 
                     value={gameTime}
                     onChange={(e) => setGameTime(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Location</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                 <input 
                   type="text" 
                   value={gameLocation}
                   onChange={(e) => setGameLocation(e.target.value)}
                   placeholder="e.g. Home Field or Away"
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Game Type</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Game Type</label>
                 <select
                   value={gameType}
                   onChange={(e) => setGameType(e.target.value)}
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 >
                   <option value="game">Regular Season Game</option>
                   <option value="playoff">Playoff Game</option>
@@ -1015,14 +1016,14 @@ export default function CalendarPage() {
                 <button 
                   type="button" 
                   onClick={() => setShowGameModal(false)}
-                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Add Game
@@ -1041,63 +1042,63 @@ export default function CalendarPage() {
           }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
         >
-          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+          <div className="bg-card border border-border rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
             <h3 className="text-lg font-bold tracking-tight mb-4">Add Practice Session</h3>
             <form onSubmit={handleCreatePractice} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Date</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                   <input 
                     type="date" 
                     value={practiceDate}
                     onChange={(e) => setPracticeDate(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Time</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                   <input 
                     type="time" 
                     value={practiceTime}
                     onChange={(e) => setPracticeTime(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Location</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                 <input 
                   type="text" 
                   value={practiceLocation}
                   onChange={(e) => setPracticeLocation(e.target.value)}
                   placeholder="e.g. Practice Turf 2"
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Practice Notes</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Practice Notes</label>
                 <input 
                   type="text" 
                   value={practiceNotes}
                   onChange={(e) => setPracticeNotes(e.target.value)}
                   placeholder="e.g. Extra focus on stick work"
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 />
               </div>
               <div className="flex gap-3 mt-6">
                 <button 
                   type="button" 
                   onClick={() => setShowPracticeModal(false)}
-                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Add Practice
@@ -1116,58 +1117,58 @@ export default function CalendarPage() {
           }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
         >
-          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+          <div className="bg-card border border-border rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
             <h3 className="text-lg font-bold tracking-tight mb-4">Edit Scheduled Game</h3>
             <form onSubmit={handleUpdateGame} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Opponent</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Opponent</label>
                 <input 
                   type="text" 
                   value={editGameOpponent}
                   onChange={(e) => setEditGameOpponent(e.target.value)}
                   placeholder="e.g. Crusaders Lacrosse"
                   required
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Date</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                   <input 
                     type="date" 
                     value={editGameDate}
                     onChange={(e) => setEditGameDate(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Time</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                   <input 
                     type="time" 
                     value={editGameTime}
                     onChange={(e) => setEditGameTime(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Location</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                 <input 
                   type="text" 
                   value={editGameLocation}
                   onChange={(e) => setEditGameLocation(e.target.value)}
                   placeholder="e.g. Home Field or Away"
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Game Type</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Game Type</label>
                 <select
                   value={editGameType}
                   onChange={(e) => setEditGameType(e.target.value)}
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 >
                   <option value="game">Regular Season Game</option>
                   <option value="playoff">Playoff Game</option>
@@ -1181,14 +1182,14 @@ export default function CalendarPage() {
                 <button 
                   type="button" 
                   onClick={() => setEditingGame(null)}
-                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes
@@ -1196,7 +1197,7 @@ export default function CalendarPage() {
               </div>
 
               {/* Red double-tap Delete section */}
-              <div className="border-t border-white/5 pt-4 mt-4 text-center">
+              <div className="border-t border-border pt-4 mt-4 text-center">
                 {!gameDeleteConfirm ? (
                   <button
                     type="button"
@@ -1207,12 +1208,12 @@ export default function CalendarPage() {
                   </button>
                 ) : (
                   <div className="space-y-3 animate-fade-in">
-                    <p className="m-0 text-xs text-white/60 font-medium">Are you sure? This cannot be undone.</p>
+                    <p className="m-0 text-xs text-muted-foreground/80 font-medium">Are you sure? This cannot be undone.</p>
                     <div className="flex justify-center gap-3">
                       <button
                         type="button"
                         onClick={() => setGameDeleteConfirm(false)}
-                        className="px-4 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                        className="px-4 py-1.5 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
                       >
                         Nevermind
                       </button>
@@ -1220,7 +1221,7 @@ export default function CalendarPage() {
                         type="button"
                         onClick={handleDeleteGame}
                         disabled={dbSaving}
-                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
                       >
                         {dbSaving && <Loader2 size={10} className="animate-spin" />}
                         Confirm Delete
@@ -1242,49 +1243,49 @@ export default function CalendarPage() {
           }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
         >
-          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+          <div className="bg-card border border-border rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
             <h3 className="text-lg font-bold tracking-tight mb-4">Edit Practice Session</h3>
             <form onSubmit={handleUpdatePractice} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Date</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                   <input 
                     type="date" 
                     value={editPracticeDate}
                     onChange={(e) => setEditPracticeDate(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Time</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                   <input 
                     type="time" 
                     value={editPracticeTime}
                     onChange={(e) => setEditPracticeTime(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Location</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                 <input 
                   type="text" 
                   value={editPracticeLocation}
                   onChange={(e) => setEditPracticeLocation(e.target.value)}
                   placeholder="e.g. Practice Turf 2"
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Practice Notes</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Practice Notes</label>
                 <input 
                   type="text" 
                   value={editPracticeNotes}
                   onChange={(e) => setEditPracticeNotes(e.target.value)}
                   placeholder="e.g. Extra focus on stick work"
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 />
               </div>
               {editPracticeError && (
@@ -1294,14 +1295,14 @@ export default function CalendarPage() {
                 <button 
                   type="button" 
                   onClick={() => setEditingPractice(null)}
-                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes
@@ -1309,7 +1310,7 @@ export default function CalendarPage() {
               </div>
 
               {/* Red double-tap Delete section */}
-              <div className="border-t border-white/5 pt-4 mt-4 text-center">
+              <div className="border-t border-border pt-4 mt-4 text-center">
                 {!practiceDeleteConfirm ? (
                   <button
                     type="button"
@@ -1320,12 +1321,12 @@ export default function CalendarPage() {
                   </button>
                 ) : (
                   <div className="space-y-3 animate-fade-in">
-                    <p className="m-0 text-xs text-white/60 font-medium">Are you sure? This cannot be undone.</p>
+                    <p className="m-0 text-xs text-muted-foreground/80 font-medium">Are you sure? This cannot be undone.</p>
                     <div className="flex justify-center gap-3">
                       <button
                         type="button"
                         onClick={() => setPracticeDeleteConfirm(false)}
-                        className="px-4 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                        className="px-4 py-1.5 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
                       >
                         Nevermind
                       </button>
@@ -1333,7 +1334,7 @@ export default function CalendarPage() {
                         type="button"
                         onClick={handleDeletePractice}
                         disabled={dbSaving}
-                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
                       >
                         {dbSaving && <Loader2 size={10} className="animate-spin" />}
                         Confirm Delete
@@ -1358,40 +1359,40 @@ export default function CalendarPage() {
           }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
         >
-          <div className="bg-[#1C1C1E] border border-white/10 rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+          <div className="bg-card border border-border rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
             <h3 className="text-lg font-bold tracking-tight mb-1">Edit Season</h3>
-            <p className="text-xs text-white/40 mb-5">Update your season name or dates.</p>
+            <p className="text-xs text-muted-foreground mb-5">Update your season name or dates.</p>
             <form onSubmit={handleUpdateSeason} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Season Name</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Season Name</label>
                 <input
                   type="text"
                   value={seasonNameInput}
                   onChange={(e) => setSeasonNameInput(e.target.value)}
                   placeholder="e.g. Spring 2026"
                   required
-                  className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">Start Date</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Start Date</label>
                   <input
                     type="date"
                     value={seasonStartInput}
                     onChange={(e) => setSeasonStartInput(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5">End Date</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">End Date</label>
                   <input
                     type="date"
                     value={seasonEndInput}
                     onChange={(e) => setSeasonEndInput(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#006747] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#006747] focus:outline-none"
                   />
                 </div>
               </div>
@@ -1402,14 +1403,14 @@ export default function CalendarPage() {
                 <button
                   type="button"
                   onClick={() => { setShowSeasonModal(false); setSeasonError(""); }}
-                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes

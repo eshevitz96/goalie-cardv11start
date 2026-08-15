@@ -174,7 +174,7 @@ function PostgameContent() {
 
   if (auth.loading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <Loader2 className="animate-spin text-white/30" size={32} />
       </div>
     );
@@ -186,7 +186,7 @@ function PostgameContent() {
         
         {step === "mood" && (
           <div className="animate-fade-in-up w-full">
-            <h1 className="text-hero-sm md:text-hero font-bold tracking-tight leading-tight mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-12">
               How&apos;d you play?
             </h1>
             <MoodScale onSelect={handleMoodSelect} selected={mood ?? undefined} />
@@ -196,9 +196,9 @@ function PostgameContent() {
         {step === "focus" && (
           <div className="animate-fade-in-up w-full">
             {weeklyIntentionText && (
-              <div className="mb-10 bg-card border border-border-subtle rounded-2xl p-6 border-l-[3px] border-l-accent animate-fade-in">
+              <div className="mb-10 bg-card border border-border rounded-2xl p-6 border-l-[3px] border-l-accent animate-fade-in">
                 <p className="m-0 text-micro text-text-muted font-bold mb-2">This week&apos;s intention</p>
-                <p className="m-0 text-body-lg font-bold text-text-primary leading-tight">&ldquo;{weeklyIntentionText}&rdquo;</p>
+                <p className="m-0 text-lg font-bold text-foreground leading-tight">&ldquo;{weeklyIntentionText}&rdquo;</p>
               </div>
             )}
             
@@ -215,12 +215,12 @@ function PostgameContent() {
                     key={val}
                     type="button"
                     onClick={() => setBroughtIt(val)}
-                    className={`w-full px-6 py-4 rounded-2xl border text-body-lg font-medium
+                    className={`w-full px-6 py-4 rounded-2xl border text-lg font-medium
                       transition-all duration-200 min-h-[56px] text-left cursor-pointer
                       active:scale-[0.98]
                       ${isActive
                         ? "bg-accent/10 border-accent text-accent shadow-[0_0_20px_rgba(0,230,118,0.08)]"
-                        : "bg-card border-border-subtle text-text-primary hover:bg-card-hover hover:border-border-focus"
+                        : "bg-card border-border text-foreground hover:bg-muted hover:border-border/80"
                       }`}
                   >
                     {labels[val]}
@@ -241,13 +241,13 @@ function PostgameContent() {
                 <div className="mt-8 flex items-center justify-between">
                   <button 
                     onClick={() => setStep("unexpected")}
-                    className="text-text-secondary text-body-lg font-medium hover:text-text-primary transition-colors cursor-pointer"
+                    className="text-muted-foreground text-lg font-medium hover:text-foreground transition-colors cursor-pointer"
                   >
                     Skip
                   </button>
                   <button 
                     onClick={() => setStep("unexpected")}
-                    className="px-8 py-3.5 bg-accent text-[#09090B] font-bold rounded-2xl text-body-lg cursor-pointer active:scale-[0.97] transition-all"
+                    className="px-8 py-3.5 bg-accent text-white font-bold rounded-2xl text-lg cursor-pointer active:scale-[0.97] transition-all"
                   >
                     Next
                   </button>
@@ -259,10 +259,10 @@ function PostgameContent() {
 
         {step === "unexpected" && (
           <div className="animate-fade-in-up w-full">
-            <h1 className="text-hero-sm md:text-hero font-bold tracking-tight leading-tight mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-4">
               Anything unexpected happen?
             </h1>
-            <p className="text-body text-text-secondary mb-10">In-game events, physical changes, or mental shifts.</p>
+            <p className="text-base text-muted-foreground mb-10">In-game events, physical changes, or mental shifts.</p>
             <TextInput 
               value={unexpected}
               onChange={setUnexpected}
@@ -272,13 +272,13 @@ function PostgameContent() {
             <div className="mt-12 flex items-center justify-between">
               <button 
                 onClick={() => setStep("next_time")}
-                className="text-text-secondary text-body-lg font-medium hover:text-text-primary transition-colors cursor-pointer"
+                className="text-muted-foreground text-lg font-medium hover:text-foreground transition-colors cursor-pointer"
               >
                 Skip
               </button>
               <button 
                 onClick={() => setStep("next_time")}
-                className="px-8 py-3.5 bg-accent text-[#09090B] font-bold rounded-2xl text-body-lg cursor-pointer active:scale-[0.97] transition-all"
+                className="px-8 py-3.5 bg-accent text-white font-bold rounded-2xl text-lg cursor-pointer active:scale-[0.97] transition-all"
               >
                 Next
               </button>
@@ -288,10 +288,10 @@ function PostgameContent() {
 
         {step === "next_time" && (
           <div className="animate-fade-in-up w-full">
-            <h1 className="text-hero-sm md:text-hero font-bold tracking-tight leading-tight mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-8">
               One thing for next time
             </h1>
-            <p className="text-body text-text-secondary mb-10 -mt-6">What is the single mechanical adjustment you will make?</p>
+            <p className="text-base text-muted-foreground mb-10 -mt-6">What is the single mechanical adjustment you will make?</p>
             <TextInput 
               value={oneThingNext}
               onChange={setOneThingNext}
@@ -302,7 +302,7 @@ function PostgameContent() {
               <button 
                 onClick={savePostgameDebrief}
                 disabled={!oneThingNext.trim()}
-                className="px-8 py-3.5 bg-accent text-[#09090B] font-bold rounded-2xl text-body-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-all"
+                className="px-8 py-3.5 bg-accent text-white font-bold rounded-2xl text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-all"
               >
                 Done
               </button>
@@ -313,7 +313,7 @@ function PostgameContent() {
         {step === "saving_state" && (
           <div className="flex flex-col items-center justify-center py-12 animate-fade-in-up">
             <Loader2 className="animate-spin text-accent mb-4" size={32} />
-            <p className="text-body text-text-secondary font-medium">Saving post-game debrief...</p>
+            <p className="text-base text-muted-foreground font-medium">Saving post-game debrief...</p>
           </div>
         )}
 
@@ -325,7 +325,7 @@ function PostgameContent() {
 export default function PostgamePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <Loader2 className="animate-spin text-white/30" size={32} />
       </div>
     }>

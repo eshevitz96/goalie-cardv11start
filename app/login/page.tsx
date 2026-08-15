@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { InstitutionalSpinner } from "@/components/ui/Loaders";
 import { Mail, ArrowRight, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { checkUserStatus } from "@/app/actions";
 import { sendMagicLink } from "@/app/auth/actions";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
@@ -52,40 +51,23 @@ function LoginController() {
         setError(null);
 
         try {
-            const status = await checkUserStatus(email);
-            if (status.exists) {
-                // User exists - send secure magic link
-                const res = await sendMagicLink(email);
-                if (res.success) {
-                    setStep('link-sent');
-                } else {
-                    setError(res.error || "Failed to send login email. Please try again.");
-                }
+            // Bypass auth completely in local dev if flag is set
+            if (process.env.NEXT_PUBLIC_DEV_BYPASS === "true") {
+                router.push("/dashboard");
+                return;
+            }
+
+            // Send secure magic link for verification and sign in
+            const res = await sendMagicLink(email);
+            if (res.success) {
+                setStep('link-sent');
             } else {
-                // User does not exist, redirect to activate to claim card
-                router.push(`/activate?email=${encodeURIComponent(email)}`);
+                setError(res.error || "Failed to send login email. Please try again.");
             }
         } catch (err: any) {
             setError("Unable to verify email. Please try again.");
             console.error(err);
         } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleAppleSignIn = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'apple',
-                options: {
-                    redirectTo: `${window.location.origin}/auth/callback`
-                }
-            });
-            if (error) throw error;
-        } catch (err: any) {
-            setError(err.message);
             setIsLoading(false);
         }
     };
@@ -113,7 +95,7 @@ function LoginController() {
                                 className="space-y-8"
                             >
                                 <div className="space-y-2 text-center">
-                                    <h2 className="text-3xl font-bold tracking-tight text-foreground">Secure Sign In</h2>
+                                    <h2 className="text-3xl font-bold font-sans tracking-tight text-foreground">Secure Sign In</h2>
                                     <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
                                         Enter your email to receive a secure access link in your inbox.
                                     </p>
@@ -155,20 +137,6 @@ function LoginController() {
                                         )}
                                     </button>
                                 </form>
-
-                                <div className="relative my-8 text-center">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-border/60"></div>
-                                    </div>
-                                    <span className="relative bg-card px-4 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">or</span>
-                                </div>
-
-                                <button
-                                    onClick={handleAppleSignIn}
-                                    className="w-full py-4 text-sm font-bold uppercase tracking-widest rounded-2xl shadow-md bg-secondary text-foreground hover:bg-secondary/80 transition-colors flex justify-center items-center gap-2 border border-border"
-                                >
-                                    Continue with Apple
-                                </button>
                             </motion.div>
                         ) : (
                             <motion.div

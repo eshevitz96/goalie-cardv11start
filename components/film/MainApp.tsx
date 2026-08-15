@@ -92,7 +92,7 @@ export default function MainApp() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen md:h-screen w-full md:w-screen bg-[var(--bg-primary)] text-[var(--text-primary)] md:overflow-hidden">
+    <div className="flex flex-col min-h-screen md:h-screen w-full md:w-screen bg-[var(--bg-primary)] text-[var(--text-primary)] md:overflow-hidden font-sans">
       <Header 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 

@@ -85,8 +85,8 @@ export function GameReportSummary({ onEditWorkspace, onSaveComplete, onSelectCli
   const formattedDate = date ? new Date(date).toLocaleDateString() : '04/18/2026';
 
   return (
-    <div className="max-w-[1000px] w-full mx-auto text-white px-2 py-4 md:p-10">
-      <div className="glass-panel p-4 md:p-10 bg-[rgba(20,20,20,0.6)]">
+    <div className="max-w-[1000px] w-full mx-auto px-2 py-4 md:p-10">
+      <div className="glass-panel p-4 md:p-10">
         
         {/* Header Area */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
@@ -95,8 +95,8 @@ export function GameReportSummary({ onEditWorkspace, onSaveComplete, onSelectCli
               <FileBarChart2 size={32} />
               <h1 className="text-xl md:text-3xl font-bold tracking-tight">{title || 'Untitled Session'}</h1>
             </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-white/40 text-xs md:text-sm">
-              <Calendar size={14} className="text-white" />
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs md:text-sm">
+              <Calendar size={14} className="text-muted-foreground" />
               <span>{formattedDate}</span>
               <span className="mx-1">•</span>
               <span>{clips.length} Clips processed • {totalShots} Shots logged</span>
@@ -108,10 +108,11 @@ export function GameReportSummary({ onEditWorkspace, onSaveComplete, onSelectCli
               onClick={onEditWorkspace}
               style={{ 
                 padding: '10px 20px', 
-                background: 'rgba(255,255,255,0.05)', 
+                background: 'var(--muted)', 
                 borderRadius: '10px', 
                 fontWeight: 600,
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid var(--border)',
+                color: 'var(--foreground)',
                 display: 'flex', alignItems: 'center', gap: '8px',
                 fontSize: '0.9rem'
               }}
@@ -122,8 +123,8 @@ export function GameReportSummary({ onEditWorkspace, onSaveComplete, onSelectCli
               onClick={onSaveComplete}
               style={{ 
                 padding: '10px 24px', 
-                background: '#FFFFFF', 
-                color: '#000000', 
+                background: 'var(--foreground)', 
+                color: 'var(--background)', 
                 borderRadius: '10px', 
                 fontWeight: 700,
                 display: 'flex', alignItems: 'center', gap: '8px',
@@ -137,21 +138,21 @@ export function GameReportSummary({ onEditWorkspace, onSaveComplete, onSelectCli
 
         {/* Clip Roster */}
         <div style={{ marginBottom: '48px' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Film size={16} color="#FFFFFF" /> Game Film — {clips.length} Clips
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--muted-foreground)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Film size={16} color="currentColor" /> Game Film — {clips.length} Clips
           </h3>
           <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '12px' }}>
             {clips.map((clip, idx) => (
               <div key={clip.id} onClick={() => onSelectClip(clip.id)} style={{ flexShrink: 0, width: '200px', cursor: 'pointer' }}>
-                <div style={{ width: '100%', height: '110px', background: '#000', borderRadius: '12px', overflow: 'hidden', position: 'relative', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ width: '100%', height: '110px', background: '#000', borderRadius: '12px', overflow: 'hidden', position: 'relative', border: '1px solid var(--border)' }}>
                   <ClipThumbnail clip={clip} />
-                  <div style={{ position: 'absolute', top: '6px', left: '6px', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em' }}>
+                  <div style={{ position: 'absolute', top: '6px', left: '6px', background: 'rgba(0,0,0,0.6)', color: '#FFFFFF', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em' }}>
                     CLIP {idx + 1}
                   </div>
                 </div>
                 <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{shots.filter(s => s.clipId === clip.id).length} shot</span>
-                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}>1st</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--foreground)' }}>{shots.filter(s => s.clipId === clip.id).length} shot</span>
+                  <span style={{ color: 'var(--muted-foreground)', fontSize: '0.75rem' }}>1st</span>
                 </div>
               </div>
             ))}
@@ -164,30 +165,30 @@ export function GameReportSummary({ onEditWorkspace, onSaveComplete, onSelectCli
             { label: 'Goals', value: goals },
             { label: 'Deflection Save %', value: deflectionSavePct + '%' }
           ].map((stat, i) => (
-            <div key={i} className="p-4 md:p-6 rounded-2xl bg-white/[0.03] border border-white/5 text-center">
-              <div className="color-[rgba(255,255,255,0.4)] text-[10px] md:text-xs font-semibold uppercase tracking-wider mb-2">{stat.label}</div>
-              <div className="text-xl md:text-3xl font-black text-white">{stat.value}</div>
+            <div key={i} className="p-4 md:p-6 rounded-2xl bg-muted/50 border border-border text-center">
+              <div className="text-muted-foreground text-[10px] md:text-xs font-semibold uppercase tracking-wider mb-2">{stat.label}</div>
+              <div className="text-xl md:text-3xl font-black text-foreground">{stat.value}</div>
             </div>
           ))}
         </div>
 
         {/* Tactical Plots Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-4 md:p-8 rounded-2xl bg-white/[0.03] border border-white/5">
+          <div className="p-4 md:p-8 rounded-2xl bg-muted/50 border border-border">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-base md:text-lg font-bold text-white">Net Scatter Plot</h3>
-              <div className="flex gap-3 text-[10px] md:text-xs text-white/55">
-                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-white/60" /> Save</span>
+              <h3 className="text-base md:text-lg font-bold text-foreground">Net Scatter Plot</h3>
+              <div className="flex gap-3 text-[10px] md:text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-400" /> Save</span>
                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#FF2E2E]" /> Goal</span>
               </div>
             </div>
-            <p className="text-center text-white/40 text-xs md:text-sm font-semibold mb-4">Goal Net</p>
+            <p className="text-center text-muted-foreground text-xs md:text-sm font-semibold mb-4">Goal Net</p>
             <NetDiagram onPlot={() => {}} currentPoint={null} historyShots={shots} />
           </div>
 
-          <div className="p-4 md:p-8 rounded-2xl bg-white/[0.03] border border-white/5">
-            <h3 className="text-base md:text-lg font-bold text-white mb-6">Origin Surface Map</h3>
-            <p className="text-center text-white/40 text-xs md:text-sm font-semibold mb-4">Playing Surface</p>
+          <div className="p-4 md:p-8 rounded-2xl bg-muted/50 border border-border">
+            <h3 className="text-base md:text-lg font-bold text-foreground mb-6">Origin Surface Map</h3>
+            <p className="text-center text-muted-foreground text-xs md:text-sm font-semibold mb-4">Playing Surface</p>
             <SurfaceDiagram onPlot={() => {}} currentPoint={null} historyShots={shots} />
           </div>
         </div>

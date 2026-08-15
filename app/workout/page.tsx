@@ -330,14 +330,14 @@ export default function MissionCardPage() {
 
     if (!mounted || auth.loading) {
         return (
-            <div className="min-h-screen bg-[#09090B] flex items-center justify-center text-white">
+            <div className="min-h-screen bg-background flex items-center justify-center text-foreground">
                 <span className="text-xs uppercase tracking-widest text-zinc-400">Syncing Coach Engine...</span>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#09090B] text-white flex flex-col font-sans select-none antialiased md:h-screen md:max-h-screen md:overflow-hidden print:h-auto print:max-h-none print:bg-white print:text-black">
+        <div className="min-h-screen bg-background text-foreground flex flex-col font-sans select-none antialiased md:h-screen md:max-h-screen md:overflow-hidden print:h-auto print:max-h-none print:bg-white print:text-white">
             
             {/* Top Toolbar (Hidden on Print) */}
             <div className="w-full bg-[#18181B]/80 border-b border-white/5 px-4 py-2 flex items-center justify-between shrink-0 no-print backdrop-blur-md sticky top-0 z-50">
@@ -373,7 +373,7 @@ export default function MissionCardPage() {
                         <span className="text-xs font-bold uppercase tracking-wider text-[#7DD3FC]">Syncing Contract...</span>
                     </div>
                 ) : !activeContract ? (
-                    <div className="bg-[#18181B] border border-white/10 rounded-2xl p-6 shadow-2xl max-w-lg mx-auto w-full text-center space-y-4">
+                    <div className="bg-[#18181B] border border-border rounded-2xl p-6 shadow-2xl max-w-lg mx-auto w-full text-center space-y-4">
                         <div className="w-12 h-12 rounded-full bg-red-400/10 border border-red-450/30 flex items-center justify-center mx-auto text-red-400">
                             <AlertCircle size={20} />
                         </div>
@@ -386,7 +386,7 @@ export default function MissionCardPage() {
                     <>
                         {/* STEP 1: READINESS CHECK-IN */}
                         {step === 'readiness' && (
-                            <div className="bg-[#18181B] border border-white/10 rounded-2xl p-4 md:p-6 shadow-2xl space-y-4 max-w-lg mx-auto w-full">
+                            <div className="bg-[#18181B] border border-border rounded-2xl p-4 md:p-6 shadow-2xl space-y-4 max-w-lg mx-auto w-full">
                                 <header className="border-b border-white/5 pb-2">
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#006747]">
                                         {activeContract.objective ? activeContract.objective.toUpperCase() : 'READINESS CHECK-IN'}
@@ -409,8 +409,8 @@ export default function MissionCardPage() {
                                         className={twMerge(
                                             "flex-1 h-8 rounded-xl font-black text-xs transition-all",
                                             energy === val 
-                                                ? "bg-white text-black" 
-                                                : "bg-white/5 hover:bg-white/10 text-zinc-400"
+                                                ? "bg-[#006747] hover:bg-[#005238] text-white" 
+                                                : "bg-muted hover:bg-muted-foreground/10 text-zinc-400"
                                         )}
                                     >
                                         {val}
@@ -434,8 +434,8 @@ export default function MissionCardPage() {
                                     className={twMerge(
                                         "py-2 text-center text-[10px] font-black uppercase rounded-xl border transition-all",
                                         sorenessLegs 
-                                            ? "bg-[#006747]/10 border-[#006747] text-[#006747]" 
-                                            : "bg-transparent border-white/5 text-zinc-400 hover:border-white/10"
+                                            ? "bg-[#006747] border-[#006747] text-[#006747]" 
+                                            : "bg-transparent border-white/5 text-zinc-400 hover:border-border"
                                     )}
                                 >
                                     Legs
@@ -445,8 +445,8 @@ export default function MissionCardPage() {
                                     className={twMerge(
                                         "py-2 text-center text-[10px] font-black uppercase rounded-xl border transition-all",
                                         sorenessCore 
-                                            ? "bg-[#006747]/10 border-[#006747] text-[#006747]" 
-                                            : "bg-transparent border-white/5 text-zinc-400 hover:border-white/10"
+                                            ? "bg-[#006747] border-[#006747] text-[#006747]" 
+                                            : "bg-transparent border-white/5 text-zinc-400 hover:border-border"
                                     )}
                                 >
                                     Core
@@ -456,8 +456,8 @@ export default function MissionCardPage() {
                                     className={twMerge(
                                         "py-2 text-center text-[10px] font-black uppercase rounded-xl border transition-all",
                                         sorenessUpper 
-                                            ? "bg-[#006747]/10 border-[#006747] text-[#006747]" 
-                                            : "bg-transparent border-white/5 text-zinc-400 hover:border-white/10"
+                                            ? "bg-[#006747] border-[#006747] text-[#006747]" 
+                                            : "bg-transparent border-white/5 text-zinc-400 hover:border-border"
                                     )}
                                 >
                                     Upper Body
@@ -475,8 +475,8 @@ export default function MissionCardPage() {
                                         className={twMerge(
                                             "py-2 text-[10px] font-black uppercase rounded-xl border transition-all",
                                             environment === "home" 
-                                                ? "bg-white text-black border-white" 
-                                                : "bg-transparent border-white/5 text-zinc-400 hover:border-white/10"
+                                                ? "bg-[#006747] hover:bg-[#005238] text-white border-white" 
+                                                : "bg-transparent border-white/5 text-zinc-400 hover:border-border"
                                         )}
                                     >
                                         Home
@@ -486,8 +486,8 @@ export default function MissionCardPage() {
                                         className={twMerge(
                                             "py-2 text-[10px] font-black uppercase rounded-xl border transition-all",
                                             environment === "gym" 
-                                                ? "bg-white text-black border-white" 
-                                                : "bg-transparent border-white/5 text-zinc-400 hover:border-white/10"
+                                                ? "bg-[#006747] hover:bg-[#005238] text-white border-white" 
+                                                : "bg-transparent border-white/5 text-zinc-400 hover:border-border"
                                         )}
                                     >
                                         Gym
@@ -502,8 +502,8 @@ export default function MissionCardPage() {
                                         className={twMerge(
                                             "py-2 text-[10px] font-black uppercase rounded-xl border transition-all",
                                             timeAvailable === "30" 
-                                                ? "bg-white text-black border-white" 
-                                                : "bg-transparent border-white/5 text-zinc-400 hover:border-white/10"
+                                                ? "bg-[#006747] hover:bg-[#005238] text-white border-white" 
+                                                : "bg-transparent border-white/5 text-zinc-400 hover:border-border"
                                         )}
                                     >
                                         30 Mins
@@ -513,8 +513,8 @@ export default function MissionCardPage() {
                                         className={twMerge(
                                             "py-2 text-[10px] font-black uppercase rounded-xl border transition-all",
                                             timeAvailable === "60" 
-                                                ? "bg-white text-black border-white" 
-                                                : "bg-transparent border-white/5 text-zinc-400 hover:border-white/10"
+                                                ? "bg-[#006747] hover:bg-[#005238] text-white border-white" 
+                                                : "bg-transparent border-white/5 text-zinc-400 hover:border-border"
                                         )}
                                     >
                                         60 Mins
@@ -534,8 +534,8 @@ export default function MissionCardPage() {
                                         className={twMerge(
                                             "py-2 text-[9px] font-black uppercase rounded-xl border transition-all",
                                             activeBottleneck === opt 
-                                                ? "bg-[#006747]/10 border-[#006747] text-[#006747]" 
-                                                : "bg-transparent border-white/5 text-zinc-400 hover:border-white/10"
+                                                ? "bg-[#006747] border-[#006747] text-[#006747]" 
+                                                : "bg-transparent border-white/5 text-zinc-400 hover:border-border"
                                         )}
                                     >
                                         {opt}
@@ -557,27 +557,27 @@ export default function MissionCardPage() {
 
                 {/* STEP 2: ACTIVE MISSION CARD */}
                 {step === 'active_mission' && mission && (
-                    <div className="flex-1 flex flex-col justify-between bg-zinc-950/40 border border-white/10 rounded-2xl p-3 md:p-4 relative shadow-2xl overflow-hidden print:bg-white print:border-zinc-800 print:rounded-none print:shadow-none print:p-0 print:border-2">
+                    <div className="flex-1 flex flex-col justify-between bg-zinc-950/40 border border-border rounded-2xl p-3 md:p-4 relative shadow-2xl overflow-hidden print:bg-white print:border-zinc-800 print:rounded-none print:shadow-none print:p-0 print:border-2">
                         
                         {/* Control buttons */}
                         <div className="absolute top-4 right-4 no-print flex gap-2">
                             <button 
                                 onClick={() => setShowExplanation(!showExplanation)}
-                                className="bg-white/5 border border-white/10 p-2 rounded-lg hover:bg-white/10 text-white flex items-center justify-center"
+                                className="bg-white/5 border border-border p-2 rounded-lg hover:bg-muted text-white flex items-center justify-center"
                                 title="Toggle Decision Trace"
                             >
                                 {showExplanation ? <EyeOff size={14} /> : <Eye size={14} />}
                             </button>
                             <button 
                                 onClick={() => window.print()}
-                                className="bg-white/5 border border-white/10 p-2 rounded-lg hover:bg-white/10 text-white flex items-center justify-center"
+                                className="bg-white/5 border border-border p-2 rounded-lg hover:bg-muted text-white flex items-center justify-center"
                                 title="Print Card"
                             >
                                 <Printer size={14} />
                             </button>
                         </div>
 
-                        <header className="border-b border-white/10 pb-2 mb-2 print:border-zinc-300">
+                        <header className="border-b border-border pb-2 mb-2 print:border-zinc-300">
                             <div className="flex justify-between items-start">
                                 <div>
                                     <div className="flex items-center gap-2">
@@ -586,7 +586,7 @@ export default function MissionCardPage() {
                                         </span>
                                         <span className="text-[8px] font-black tracking-wider bg-zinc-850 border border-white/15 text-zinc-300 px-1.5 py-0.5 rounded print:border print:border-zinc-400 print:bg-zinc-100 print:text-zinc-800">DAY {mission.day_number}</span>
                                     </div>
-                                    <h1 className="text-lg md:text-2xl font-black text-white leading-tight uppercase tracking-tighter print:text-black">
+                                    <h1 className="text-lg md:text-2xl font-black text-white leading-tight uppercase tracking-tighter print:text-white">
                                         {mission.title}
                                     </h1>
                                 </div>
@@ -601,7 +601,7 @@ export default function MissionCardPage() {
 
                             <div className="mt-1.5 flex items-center gap-2 bg-[#1E293B]/40 border border-white/5 rounded px-2 py-1 print:bg-zinc-50 print:border-zinc-200">
                                 <span className="text-[8px] font-black uppercase text-[#006747] shrink-0 print:text-zinc-700">MISSION:</span>
-                                <span className="text-xs font-bold text-zinc-200 print:text-black">{mission.directive}</span>
+                                <span className="text-xs font-bold text-zinc-200 print:text-white">{mission.directive}</span>
                             </div>
                         </header>
 
@@ -636,7 +636,7 @@ export default function MissionCardPage() {
                                                     <div className="w-4 h-4 rounded border border-[#006747] text-white bg-[#006747] flex items-center justify-center shrink-0 print:border-zinc-400">
                                                         <Check size={10} strokeWidth={4} />
                                                     </div>
-                                                    <span className="text-xs font-bold text-zinc-300 print:text-black">{task.name}</span>
+                                                    <span className="text-xs font-bold text-zinc-300 print:text-white">{task.name}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -654,7 +654,7 @@ export default function MissionCardPage() {
                                                     <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-wider">{block.subtitle}</span>
                                                 </h2>
                                                 <div className="w-full text-xs">
-                                                    <div className="grid grid-cols-12 border-b border-white/10 pb-1 mb-1 font-black text-zinc-400 uppercase tracking-wider text-[9px] print:border-zinc-300 print:text-zinc-600">
+                                                    <div className="grid grid-cols-12 border-b border-border pb-1 mb-1 font-black text-zinc-400 uppercase tracking-wider text-[9px] print:border-zinc-300 print:text-zinc-600">
                                                         <div className="col-span-6">Exercise</div>
                                                         <div className="col-span-2 text-center">Sets</div>
                                                         <div className="col-span-2 text-center">Weight</div>
@@ -668,19 +668,19 @@ export default function MissionCardPage() {
                                                                 className="grid grid-cols-12 items-center py-0.5 cursor-pointer group hover:bg-white/5 rounded px-0.5 -mx-0.5 transition-colors print:hover:bg-transparent"
                                                             >
                                                                 <div className={twMerge(
-                                                                    "col-span-6 font-bold truncate print:text-black",
+                                                                    "col-span-6 font-bold truncate print:text-white",
                                                                     task.done ? "line-through text-zinc-500" : "text-zinc-200"
                                                                 )}>
                                                                     {task.name}
                                                                 </div>
                                                                 <div className="col-span-2 text-center font-bold text-zinc-400 print:text-zinc-700">{task.sets}</div>
-                                                                <div className="col-span-2 text-center font-bold text-zinc-300 print:text-black">{task.weight}</div>
+                                                                <div className="col-span-2 text-center font-bold text-zinc-300 print:text-white">{task.weight}</div>
                                                                 <div className="col-span-2 flex justify-end">
                                                                     <div className={twMerge(
                                                                         "w-4 h-4 rounded border flex items-center justify-center transition-all print:border-zinc-400",
                                                                         task.done 
                                                                             ? "bg-[#006747] border-[#006747] text-white print:bg-[#006747] print:text-white" 
-                                                                            : "bg-transparent border-white/10 group-hover:border-white/30"
+                                                                            : "bg-transparent border-border group-hover:border-white/30"
                                                                     )}>
                                                                         {task.done && <Check size={11} strokeWidth={3} />}
                                                                     </div>
@@ -716,7 +716,7 @@ export default function MissionCardPage() {
                                                 >
                                                     <div className="col-span-10">
                                                         <div className={twMerge(
-                                                            "font-black text-xs print:text-black",
+                                                            "font-black text-xs print:text-white",
                                                             task.done ? "line-through text-zinc-500" : "text-white"
                                                         )}>
                                                             {task.name}
@@ -733,7 +733,7 @@ export default function MissionCardPage() {
                                                             "w-4 h-4 rounded border flex items-center justify-center transition-all print:border-zinc-400",
                                                             task.done 
                                                                 ? "bg-[#006747] border-[#006747] text-white print:bg-[#006747] print:text-white" 
-                                                                : "bg-transparent border-white/10 group-hover:border-white/30"
+                                                                : "bg-transparent border-border group-hover:border-white/30"
                                                         )}>
                                                             {task.done && <Check size={11} strokeWidth={3} />}
                                                         </div>
@@ -754,7 +754,7 @@ export default function MissionCardPage() {
                                                 <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-wider">{block.subtitle}</span>
                                             </h2>
                                             <div className="w-full text-xs">
-                                                <div className="grid grid-cols-12 border-b border-white/10 pb-1 mb-1 font-black text-zinc-400 uppercase tracking-wider text-[9px] print:border-zinc-300 print:text-zinc-600">
+                                                <div className="grid grid-cols-12 border-b border-border pb-1 mb-1 font-black text-zinc-400 uppercase tracking-wider text-[9px] print:border-zinc-300 print:text-zinc-600">
                                                     <div className="col-span-6">Exercise</div>
                                                     <div className="col-span-3 text-center">Reps</div>
                                                     <div className="col-span-3 text-right">Done</div>
@@ -767,18 +767,18 @@ export default function MissionCardPage() {
                                                             className="grid grid-cols-12 items-center py-0.5 cursor-pointer group hover:bg-white/5 rounded px-0.5 -mx-0.5 transition-colors print:hover:bg-transparent"
                                                         >
                                                             <div className={twMerge(
-                                                                "col-span-6 font-bold truncate print:text-black",
+                                                                "col-span-6 font-bold truncate print:text-white",
                                                                 task.done ? "line-through text-zinc-500" : "text-zinc-200"
                                                              )}>
                                                                 {task.name}
                                                             </div>
-                                                            <div className="col-span-3 text-center font-bold text-zinc-300 print:text-black">{task.reps}</div>
+                                                            <div className="col-span-3 text-center font-bold text-zinc-300 print:text-white">{task.reps}</div>
                                                             <div className="col-span-3 flex justify-end">
                                                                 <div className={twMerge(
                                                                     "w-4 h-4 rounded border flex items-center justify-center transition-all print:border-zinc-400",
                                                                     task.done 
                                                                         ? "bg-[#006747] border-[#006747] text-white print:bg-[#006747] print:text-white" 
-                                                                        : "bg-transparent border-white/10 group-hover:border-white/30"
+                                                                        : "bg-transparent border-border group-hover:border-white/30"
                                                                 )}>
                                                                     {task.done && <Check size={11} strokeWidth={3} />}
                                                                 </div>
@@ -804,10 +804,10 @@ export default function MissionCardPage() {
                                                 <div 
                                                     key={tIdx}
                                                     onClick={() => toggleTaskDone(actualBlockIndex, tIdx)}
-                                                    className="flex items-center justify-between bg-black/20 border border-white/5 rounded p-1.5 cursor-pointer group hover:border-white/10 print:bg-zinc-50 print:border-zinc-200"
+                                                    className="flex items-center justify-between bg-black/20 border border-white/5 rounded p-1.5 cursor-pointer group hover:border-border print:bg-zinc-50 print:border-zinc-200"
                                                 >
                                                     <div className={twMerge(
-                                                        "text-xs font-bold print:text-black",
+                                                        "text-xs font-bold print:text-white",
                                                         task.done ? "line-through text-zinc-500" : "text-zinc-200"
                                                     )}>
                                                         {task.name}
@@ -816,7 +816,7 @@ export default function MissionCardPage() {
                                                         "w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 print:border-zinc-400",
                                                         task.done 
                                                             ? "bg-[#006747] border-[#006747] text-white print:bg-[#006747] print:text-white" 
-                                                            : "bg-transparent border-white/10 group-hover:border-white/30"
+                                                            : "bg-transparent border-border group-hover:border-white/30"
                                                     )}>
                                                         {task.done && <Check size={11} strokeWidth={3} />}
                                                     </div>
@@ -831,17 +831,17 @@ export default function MissionCardPage() {
                         </div>
 
                         {/* FOOTER */}
-                        <footer className="border-t border-white/10 pt-2 shrink-0 print:border-zinc-300">
+                        <footer className="border-t border-border pt-2 shrink-0 print:border-zinc-300">
                             <div className="grid grid-cols-3 gap-2 items-start">
                                 <div className="col-span-2">
                                     <span className="text-[8px] font-black text-[#006747] uppercase tracking-wider block print:text-[#006747]">CURRENT FOCUS</span>
-                                    <div className="text-[10px] font-bold text-zinc-300 leading-tight uppercase print:text-black">
+                                    <div className="text-[10px] font-bold text-zinc-300 leading-tight uppercase print:text-white">
                                         Become a better goalie today. Not a stronger lifter.
                                     </div>
                                 </div>
                                 <div className="text-right flex flex-col justify-end">
                                     <span className="text-[8px] font-black text-zinc-500 uppercase tracking-wider block print:text-zinc-650">BOTTLENECK</span>
-                                    <span className="text-[10px] font-black text-white uppercase tracking-tight print:text-black">
+                                    <span className="text-[10px] font-black text-white uppercase tracking-tight print:text-white">
                                         {mission.bottleneck.toUpperCase().replace(/_/g, ' ')}
                                     </span>
                                 </div>
@@ -866,7 +866,7 @@ export default function MissionCardPage() {
 
                 {/* STEP 3: MISSION REFLECTION */}
                 {step === 'reflection' && mission && (
-                    <div className="bg-[#18181B] border border-white/10 rounded-2xl p-4 md:p-6 shadow-2xl space-y-4 max-w-lg mx-auto w-full">
+                    <div className="bg-[#18181B] border border-border rounded-2xl p-4 md:p-6 shadow-2xl space-y-4 max-w-lg mx-auto w-full">
                         <header className="border-b border-white/5 pb-2">
                             <span className="text-[10px] font-black uppercase tracking-widest text-[#FBBF24]">MISSION COMPLETED</span>
                             <h1 className="text-xl font-black text-white uppercase tracking-tight mt-0.5">Mission Reflection</h1>
@@ -887,7 +887,7 @@ export default function MissionCardPage() {
                                             onClick={() => setReflectLanding(v)}
                                             className={twMerge(
                                                 "flex-1 h-8 rounded font-black text-xs transition-colors",
-                                                reflectLanding === v ? "bg-[#7DD3FC] text-black" : "bg-white/5 hover:bg-white/10"
+                                                reflectLanding === v ? "bg-[#7DD3FC] text-white" : "bg-muted hover:bg-muted-foreground/10"
                                             )}
                                         >
                                             {v}
@@ -910,7 +910,7 @@ export default function MissionCardPage() {
                                             onClick={() => setReflectBalance(v)}
                                             className={twMerge(
                                                 "flex-1 h-8 rounded font-black text-xs transition-colors",
-                                                reflectBalance === v ? "bg-[#7DD3FC] text-black" : "bg-white/5 hover:bg-white/10"
+                                                reflectBalance === v ? "bg-[#7DD3FC] text-white" : "bg-muted hover:bg-muted-foreground/10"
                                             )}
                                         >
                                             {v}
@@ -933,7 +933,7 @@ export default function MissionCardPage() {
                                             onClick={() => setReflectConditioning(v)}
                                             className={twMerge(
                                                 "flex-1 h-8 rounded font-black text-xs transition-colors",
-                                                reflectConditioning === v ? "bg-[#7DD3FC] text-black" : "bg-white/5 hover:bg-white/10"
+                                                reflectConditioning === v ? "bg-[#7DD3FC] text-white" : "bg-muted hover:bg-muted-foreground/10"
                                             )}
                                         >
                                             {v}
@@ -956,7 +956,7 @@ export default function MissionCardPage() {
                                         onClick={() => setReflectEnergy(v)}
                                         className={twMerge(
                                             "flex-1 h-8 rounded font-black text-xs transition-colors",
-                                            reflectEnergy === v ? "bg-[#7DD3FC] text-black" : "bg-white/5 hover:bg-white/10"
+                                            reflectEnergy === v ? "bg-[#7DD3FC] text-white" : "bg-muted hover:bg-muted-foreground/10"
                                         )}
                                     >
                                         {v}
@@ -1001,7 +1001,7 @@ export default function MissionCardPage() {
 
                         <button 
                             onClick={handleCompleteMission}
-                            className="w-full py-3.5 bg-[#FBBF24] hover:bg-yellow-500 text-black text-xs font-black uppercase tracking-wider rounded-xl transition-all active:scale-98"
+                            className="w-full py-3.5 bg-[#FBBF24] hover:bg-yellow-500 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all active:scale-98"
                         >
                             Archive Mission & Update Model
                         </button>
@@ -1010,7 +1010,7 @@ export default function MissionCardPage() {
 
                 {/* STEP 4: LEARNING & ARCHIVE SUMMARY */}
                 {step === 'learning_archive' && learningResult && (
-                    <div className="bg-[#18181B] border border-white/10 rounded-2xl p-4 md:p-6 shadow-2xl space-y-4 max-w-lg mx-auto w-full">
+                    <div className="bg-[#18181B] border border-border rounded-2xl p-4 md:p-6 shadow-2xl space-y-4 max-w-lg mx-auto w-full">
                         <header className="border-b border-white/5 pb-2 text-center">
                             <div className="w-12 h-12 rounded-full bg-amber-400/10 border border-[#FBBF24]/30 flex items-center justify-center mx-auto mb-2 text-[#FBBF24]">
                                 <Sparkles size={20} />
@@ -1062,7 +1062,7 @@ export default function MissionCardPage() {
                         <div className="pt-2 border-t border-white/5 text-center">
                             <button 
                                 onClick={handleStartNewDay}
-                                className="px-5 py-2.5 bg-white text-black font-black uppercase text-[10px] tracking-wider rounded-xl transition-all hover:bg-neutral-200 active:scale-95 shadow-md cursor-pointer"
+                                className="px-5 py-2.5 bg-[#006747] hover:bg-[#005238] text-white font-black uppercase text-[10px] tracking-wider rounded-xl transition-all hover:bg-neutral-200 active:scale-95 shadow-md cursor-pointer"
                             >
                                 Fast-forward to Tomorrow&apos;s Mission
                             </button>

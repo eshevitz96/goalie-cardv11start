@@ -191,7 +191,7 @@ export function PendingActionsOverlay({
         <div className="fixed inset-0 z-50 bg-background flex flex-col px-6 pt-4 pb-8 overflow-y-auto w-full text-foreground">
             
             {/* Header: Skip button */}
-            <div className="flex justify-end w-full max-w-lg mx-auto">
+            <div className="absolute top-6 right-6 md:top-8 md:right-8 z-50">
                 <button
                     onClick={onClose}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary border border-border hover:bg-secondary/80 text-[10px] font-black uppercase tracking-wider text-foreground transition-all cursor-pointer rounded-full"
@@ -202,7 +202,7 @@ export function PendingActionsOverlay({
             </div>
 
             {/* Content Body */}
-            <div className="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full py-8">
+            <div className="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full py-8 mt-12 md:mt-0">
                 <AnimatePresence mode="wait">
                     
                     {step === 'lesson_confirm' && currentLesson && (
@@ -215,20 +215,20 @@ export function PendingActionsOverlay({
                             className="w-full flex flex-col justify-center"
                         >
                             <div className="mb-2">
-                                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-primary">
+                                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground">
                                     Lesson {currentLesson.lesson_number} • Session {currentLesson.session_number}
                                 </span>
                             </div>
                             
-                            <h1 className="text-2xl md:text-4xl font-bold tracking-tight leading-tight mb-4 text-foreground">
+                            <h1 className="text-3xl md:text-5xl font-sans font-bold tracking-tight leading-tight mb-4 text-foreground">
                                 Confirm your lesson from {lessonDateStr}
                             </h1>
 
                             {/* Coach's Takeaway context if present */}
                             {currentLesson.coach_takeaway && (
                                 <div className="glass p-5 rounded-2xl border border-border mb-8 relative overflow-hidden bg-card shadow-sm">
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                                    <p className="m-0 text-[9px] font-black uppercase tracking-widest text-primary mb-1">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-foreground" />
+                                    <p className="m-0 text-[9px] font-black uppercase tracking-widest text-foreground mb-1">
                                         Coach focus: {currentLesson.coach_focus_area || 'General Training'}
                                     </p>
                                     <p className="m-0 text-xs text-muted-foreground/60 font-bold uppercase tracking-wider mb-2">Coach's takeaway:</p>
@@ -242,14 +242,19 @@ export function PendingActionsOverlay({
                                 What clicked? What was hard? Write a brief takeaway to complete confirmation.
                             </p>
 
-                            <TextInput
+                            <textarea
                                 value={lessonTakeaway}
-                                onChange={setLessonTakeaway}
+                                onChange={(e) => {
+                                    if (e.target.value.length <= 250) setLessonTakeaway(e.target.value);
+                                }}
                                 placeholder="Your lesson takeaway..."
-                                maxLength={250}
-                                multiline={true}
-                                autoFocus={true}
+                                autoFocus
+                                rows={4}
+                                className="w-full bg-input border border-border focus:border-foreground rounded-xl px-4 py-4 text-foreground text-lg font-medium focus:outline-none transition-colors duration-200 placeholder:text-muted-foreground resize-none !outline-none"
                             />
+                            <div className="text-right mt-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                {lessonTakeaway.length}/250
+                            </div>
 
                             {error && (
                                 <p className="text-red-600 bg-red-500/5 border border-red-500/10 text-xs flex items-center gap-2 p-3 rounded-xl font-bold mt-4">
@@ -261,9 +266,9 @@ export function PendingActionsOverlay({
                                 <button
                                     onClick={handleConfirmLesson}
                                     disabled={saving || !lessonTakeaway.trim()}
-                                    className="px-6 py-3.5 bg-primary text-white font-extrabold rounded-2xl text-sm flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-[1.02] transition-all shadow-md animate-in fade-in duration-200"
+                                    className="px-6 py-3.5 bg-foreground text-background font-extrabold rounded-2xl text-sm flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-[1.02] transition-all shadow-md animate-in fade-in duration-200"
                                 >
-                                    {saving && <Loader2 size={16} className="animate-spin text-white" />}
+                                    {saving && <Loader2 size={16} className="animate-spin text-background" />}
                                     {saving ? 'Confirming...' : 'Confirm Lesson'}
                                     {!saving && <ChevronRight size={16} />}
                                 </button>
@@ -280,24 +285,30 @@ export function PendingActionsOverlay({
                             transition={{ duration: 0.25 }}
                             className="w-full flex flex-col justify-center"
                         >
-                            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-2 block">
+                            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground mb-2 block">
                                 Weekly Setup
                             </span>
                             
-                            <h1 className="text-2xl md:text-4xl font-bold tracking-tight leading-tight mb-2 text-foreground">
+                            <h1 className="text-3xl md:text-5xl font-sans font-bold tracking-tight leading-tight mb-2 text-foreground">
                                 What's your primary focus this week?
                             </h1>
                             <p className="text-sm text-muted-foreground mb-8 font-medium">
                                 Set one specific, mechanical focus for your training and games.
                             </p>
 
-                            <TextInput
+                            <input
+                                type="text"
                                 value={focusText}
-                                onChange={setFocusText}
+                                onChange={(e) => {
+                                    if (e.target.value.length <= 100) setFocusText(e.target.value);
+                                }}
                                 placeholder="One specific thing..."
-                                maxLength={100}
-                                autoFocus={true}
+                                autoFocus
+                                className="w-full bg-input border border-border focus:border-foreground rounded-xl px-4 py-4 text-foreground text-lg font-medium focus:outline-none transition-colors duration-200 placeholder:text-muted-foreground !outline-none"
                             />
+                            <div className="text-right mt-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                {focusText.length}/100
+                            </div>
 
                             {error && (
                                 <p className="text-red-600 bg-red-500/5 border border-red-500/10 text-xs flex items-center gap-2 p-3 rounded-xl font-bold mt-4">
@@ -309,9 +320,9 @@ export function PendingActionsOverlay({
                                 <button
                                     onClick={handleSaveIntention}
                                     disabled={saving || !focusText.trim()}
-                                    className="px-6 py-3.5 bg-primary text-white font-extrabold rounded-2xl text-sm flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-[1.02] transition-all shadow-md animate-in fade-in duration-200"
+                                    className="px-6 py-3.5 bg-foreground text-background font-extrabold rounded-2xl text-sm flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-[1.02] transition-all shadow-md animate-in fade-in duration-200"
                                 >
-                                    {saving && <Loader2 size={16} className="animate-spin text-white" />}
+                                    {saving && <Loader2 size={16} className="animate-spin text-background" />}
                                     {saving ? 'Saving...' : 'Set Focus'}
                                     {!saving && <ChevronRight size={16} />}
                                 </button>

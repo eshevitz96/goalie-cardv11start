@@ -206,8 +206,8 @@ export default function WeeklySetupPage() {
 
   if (auth.loading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] text-white">
-        <Loader2 className="animate-spin text-white/30" size={32} />
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <Loader2 className="animate-spin text-muted-foreground" size={32} />
       </div>
     );
   }
@@ -218,26 +218,26 @@ export default function WeeklySetupPage() {
         
         {step === "week_overview" && (
           <div className="animate-fade-in-up w-full">
-            <h1 className="text-hero-sm md:text-hero font-bold tracking-tight leading-tight mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-8">
               Here&apos;s your week.
             </h1>
             
             {!hasEvents ? (
-              <div className="bg-card border border-border-subtle rounded-2xl p-6 text-center mb-8">
-                <CalendarIcon size={32} className="mx-auto mb-4 animate-logo-pulse calendar-icon-white" />
-                <p className="m-0 text-body font-medium text-text-secondary">No games or practices scheduled.</p>
-                <p className="m-0 text-caption text-text-muted mt-1">You can add games and practices directly from the calendar later.</p>
+              <div className="bg-card border border-border rounded-2xl p-6 text-center mb-8">
+                <CalendarIcon size={32} className="mx-auto mb-4 animate-logo-pulse text-muted-foreground" />
+                <p className="m-0 text-base font-medium text-muted-foreground">No games or practices scheduled.</p>
+                <p className="m-0 text-xs text-muted-foreground/80 mt-1">You can add games and practices directly from the calendar later.</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 mb-8 no-scrollbar">
                 {games.map((game, idx) => (
-                  <div key={idx} className="bg-card border border-border-subtle rounded-2xl p-4 flex items-center justify-between">
+                  <div key={idx} className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between">
                     <div>
-                      <p className="m-0 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                      <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                         {game.game_type === "playoff" ? "PLAYOFF GAME" : "GAME"}
                       </p>
-                      <p className="m-0 text-body-lg font-bold text-text-primary mt-1">{game.opponent}</p>
-                      <div className="flex items-center gap-3 text-caption text-text-muted mt-1.5">
+                      <p className="m-0 text-lg font-bold text-foreground mt-1">{game.opponent}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground/80 mt-1.5">
                         <span className="flex items-center gap-1"><Clock size={12} /> {formatTime(game.scheduled_time)}</span>
                         <span className="flex items-center gap-1"><MapPin size={12} /> {game.location}</span>
                       </div>
@@ -246,11 +246,11 @@ export default function WeeklySetupPage() {
                 ))}
                 
                 {practices.map((practice, idx) => (
-                  <div key={idx} className="bg-card border border-border-subtle rounded-2xl p-4 flex items-center justify-between">
+                  <div key={idx} className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between">
                     <div>
-                      <p className="m-0 text-[10px] font-black uppercase tracking-widest text-text-secondary">PRACTICE</p>
-                      <p className="m-0 text-body-lg font-bold text-text-primary mt-1">Team Session</p>
-                      <div className="flex items-center gap-3 text-caption text-text-muted mt-1.5">
+                      <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">PRACTICE</p>
+                      <p className="m-0 text-lg font-bold text-foreground mt-1">Team Session</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground/80 mt-1.5">
                         <span className="flex items-center gap-1"><Clock size={12} /> {formatTime(practice.scheduled_time)}</span>
                         <span className="flex items-center gap-1"><MapPin size={12} /> {practice.location}</span>
                       </div>
@@ -265,7 +265,7 @@ export default function WeeklySetupPage() {
                 <button 
                   onClick={() => router.push("/calendar")}
                   type="button"
-                  className="text-body font-bold !text-[#006747] hover:underline bg-transparent border-none cursor-pointer flex items-center gap-1"
+                  className="text-base font-bold !text-[#006747] hover:text-[#005238] font-bold bg-transparent border-none cursor-pointer flex items-center gap-1"
                 >
                   Set up your season →
                 </button>
@@ -275,7 +275,7 @@ export default function WeeklySetupPage() {
               <button 
                 onClick={handleNextStep}
                 type="button"
-                className="px-8 py-3.5 bg-white text-[#09090B] font-extrabold rounded-2xl text-body-lg cursor-pointer active:scale-[0.97] transition-all"
+                className="px-8 py-3.5 bg-[#006747] hover:bg-[#005238] text-white shadow-md font-extrabold rounded-2xl text-lg cursor-pointer active:scale-[0.97] transition-all"
               >
                 Confirm week
               </button>
@@ -285,7 +285,7 @@ export default function WeeklySetupPage() {
 
         {step === "mood" && (
           <div className="animate-fade-in-up w-full">
-            <h1 className="text-hero-sm md:text-hero font-bold tracking-tight leading-tight mb-10">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-10">
               How are you coming into this week?
             </h1>
             <MoodScale 
@@ -300,10 +300,10 @@ export default function WeeklySetupPage() {
 
         {step === "focus" && (
           <div className="animate-fade-in-up w-full">
-            <h1 className="text-hero-sm md:text-hero font-bold tracking-tight leading-tight mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-8">
               What&apos;s your primary focus this week?
             </h1>
-            <p className="text-body text-text-secondary mb-10 -mt-6">Set one specific, mechanical focus for your training and games.</p>
+            <p className="text-base text-muted-foreground mb-10 -mt-6">Set one specific, mechanical focus for your training and games.</p>
             <TextInput 
               value={focusText}
               onChange={setFocusText}
@@ -315,9 +315,9 @@ export default function WeeklySetupPage() {
                 onClick={saveWeeklyIntention}
                 disabled={saving || !focusText.trim()}
                 type="button"
-                className="px-8 py-3.5 bg-white text-[#09090B] font-extrabold rounded-2xl text-body-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-all flex items-center gap-2"
+                className="px-8 py-3.5 bg-[#006747] hover:bg-[#005238] text-white shadow-md font-extrabold rounded-2xl text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-all flex items-center gap-2"
               >
-                {saving && <Loader2 size={16} className="animate-spin text-[#09090B]" />}
+                {saving && <Loader2 size={16} className="animate-spin text-white" />}
                 {saving ? "Saving..." : "Done"}
               </button>
             </div>
@@ -326,7 +326,7 @@ export default function WeeklySetupPage() {
 
         {step === "confirmation" && (
           <div className="animate-fade-in-up w-full text-center">
-            <div className="w-16 h-16 bg-accent/10 text-accent rounded-full flex items-center justify-center mx-auto mb-8">
+            <div className="w-16 h-16 bg-[#006747] text-[#006747] rounded-full flex items-center justify-center mx-auto mb-8">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -334,13 +334,13 @@ export default function WeeklySetupPage() {
             <h1 className="text-hero-sm font-bold tracking-tight leading-tight mb-4">
               You&apos;re set.
             </h1>
-            <p className="text-body text-text-secondary mb-12 max-w-sm mx-auto">
+            <p className="text-base text-muted-foreground mb-12 max-w-sm mx-auto">
               See you on the other side. Focus set for the week. Let&apos;s get to the work.
             </p>
             <button 
               onClick={() => router.push("/calendar")}
               type="button"
-              className="w-full py-4 bg-white text-[#09090B] font-extrabold uppercase tracking-wider rounded-2xl cursor-pointer active:scale-[0.97] transition-all"
+              className="w-full py-4 bg-[#006747] hover:bg-[#005238] text-white shadow-md font-extrabold uppercase tracking-wider rounded-2xl cursor-pointer active:scale-[0.97] transition-all"
             >
               Back to Calendar
             </button>

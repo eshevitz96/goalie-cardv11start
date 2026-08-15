@@ -156,6 +156,11 @@ export async function sendMagicLink(email: string) {
         const resendApiKey = process.env.RESEND_API_KEY;
         const fromAddress = process.env.EMAIL_FROM_ADDRESS || "onboarding@resend.dev";
 
+        if (!resendApiKey) {
+            console.log("[Auth Action] No RESEND_API_KEY found. Simulating email send. Magic link is:", confirmationLink);
+            return { success: true };
+        }
+
         const res = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {

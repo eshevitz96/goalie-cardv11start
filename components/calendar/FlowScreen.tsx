@@ -24,13 +24,13 @@ export default function FlowScreen({ children, onBack, showBack = true, backHref
   }
 
   return (
-    <div className="min-h-screen flex flex-col px-6 pt-4 pb-8 relative w-full bg-canvas text-text-primary">
+    <div className="min-h-screen flex flex-col px-6 pt-4 pb-8 relative w-full bg-background text-foreground">
       {/* Back button — fixed position, never overlaps */}
       {showBack && (
         <button
           onClick={handleBack}
           type="button"
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-card transition-colors flex-shrink-0 -ml-1 mb-4 text-text-secondary hover:text-text-primary cursor-pointer"
+          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-card transition-colors flex-shrink-0 -ml-1 mb-4 text-muted-foreground hover:text-foreground cursor-pointer"
           aria-label="Go back"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">

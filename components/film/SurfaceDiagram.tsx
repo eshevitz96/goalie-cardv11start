@@ -8,7 +8,7 @@ interface SurfaceProps {
   historyShots?: { id?: string, rinkLocation: Point | null, isSave: boolean }[];
 }
 
-const LINE = '#FFFFFF';
+const LINE = 'var(--foreground)';
 
 export function SurfaceDiagram({ onPlot, currentPoint, historyShots = [] }: SurfaceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -30,24 +30,24 @@ export function SurfaceDiagram({ onPlot, currentPoint, historyShots = [] }: Surf
         </clipPath>
       </defs>
       <g clipPath="url(#hockeyClip)">
-        <rect x="0" y="0" width="85" height="100" fill="rgba(255,255,255,0.02)" />
-        <circle cx="22" cy="31" r="15" fill="none" stroke="rgba(220,40,40,0.4)" strokeWidth="0.8" />
-        <circle cx="63" cy="31" r="15" fill="none" stroke="rgba(220,40,40,0.4)" strokeWidth="0.8" />
-        <circle cx="22" cy="31" r="1.5" fill="rgba(220,40,40,0.8)" />
-        <circle cx="63" cy="31" r="1.5" fill="rgba(220,40,40,0.8)" />
+        <rect x="0" y="0" width="85" height="100" fill="var(--background)" />
+        <circle cx="22" cy="31" r="15" fill="none" stroke="rgba(239,68,68,0.4)" strokeWidth="0.8" />
+        <circle cx="63" cy="31" r="15" fill="none" stroke="rgba(239,68,68,0.4)" strokeWidth="0.8" />
+        <circle cx="22" cy="31" r="1.5" fill="rgba(239,68,68,0.8)" />
+        <circle cx="63" cy="31" r="1.5" fill="rgba(239,68,68,0.8)" />
         {/* Goal Line - Split to avoid crease overlap */}
-        <line x1="0" y1="11" x2="38.5" y2="11" stroke="#FF3B30" strokeWidth="1" />
-        <line x1="46.5" y1="11" x2="85" y2="11" stroke="#FF3B30" strokeWidth="1" />
+        <line x1="0" y1="11" x2="38.5" y2="11" stroke="#EF4444" strokeWidth="1" />
+        <line x1="46.5" y1="11" x2="85" y2="11" stroke="#EF4444" strokeWidth="1" />
         
         {/* Crease */}
         <path 
           d="M 38.5 11 L 38.5 15.47 A 6 6 0 0 0 46.5 15.47 L 46.5 11 Z" 
-          fill="rgba(0, 122, 255, 0.15)" 
-          stroke="#FF3B30" 
+          fill="rgba(59,130,246,0.15)" 
+          stroke="#EF4444" 
           strokeWidth="1" 
         />
-        <line x1="0" y1="75" x2="85" y2="75" stroke="rgba(30,100,255,0.8)" strokeWidth="2.5" />
-        <line x1="0" y1="100" x2="85" y2="100" stroke="rgba(220,40,40,0.6)" strokeWidth="2" strokeDasharray="4 2" />
+        <line x1="0" y1="75" x2="85" y2="75" stroke="rgba(59,130,246,0.8)" strokeWidth="2.5" />
+        <line x1="0" y1="100" x2="85" y2="100" stroke="rgba(239,68,68,0.6)" strokeWidth="2" strokeDasharray="4 2" />
         <path d="M 0 100 L 0 28 A 28 28 0 0 1 28 0 L 57 0 A 28 28 0 0 1 85 28 L 85 100" fill="none" stroke={LINE} strokeWidth="1" />
       </g>
     </svg>
@@ -55,7 +55,7 @@ export function SurfaceDiagram({ onPlot, currentPoint, historyShots = [] }: Surf
 
   const renderMensLax = () => (
     <svg viewBox="0 0 60 55" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
-      <rect x="0" y="0" width="60" height="55" fill="rgba(255,255,255,0.02)" />
+      <rect x="0" y="0" width="60" height="55" fill="var(--background)" />
       <circle cx="30" cy="15" r="3" fill="none" stroke={LINE} strokeWidth="0.5" />
       <line x1="28.5" y1="15" x2="31.5" y2="15" stroke={LINE} strokeWidth="0.5" />
       {/* Box lines / Alleys (20yd from sideline) */}
@@ -69,7 +69,7 @@ export function SurfaceDiagram({ onPlot, currentPoint, historyShots = [] }: Surf
 
   const renderWomensLax = () => (
     <svg viewBox="0 0 70 60" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
-      <rect x="0" y="0" width="70" height="60" fill="rgba(255,255,255,0.02)" />
+      <rect x="0" y="0" width="70" height="60" fill="var(--background)" />
       {/* Goal Circle (12yd from end) */}
       <circle cx="35" cy="12" r="2.6" fill="none" stroke={LINE} strokeWidth="0.5" />
       <line x1="33.7" y1="12" x2="36.3" y2="12" stroke={LINE} strokeWidth="0.5" />
@@ -97,7 +97,7 @@ export function SurfaceDiagram({ onPlot, currentPoint, historyShots = [] }: Surf
 
   const renderSoccer = () => (
     <svg viewBox="0 0 75 55" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
-      <rect x="0" y="0" width="75" height="55" fill="rgba(255,255,255,0.02)" />
+      <rect x="0" y="0" width="75" height="55" fill="var(--background)" />
       <rect x="15.5" y="0" width="44" height="18" fill="none" stroke={LINE} strokeWidth="0.5" />
       <rect x="27.5" y="0" width="20" height="6" fill="none" stroke={LINE} strokeWidth="0.4" />
       <circle cx="37.5" cy="12" r="0.5" fill={LINE} />
@@ -109,7 +109,7 @@ export function SurfaceDiagram({ onPlot, currentPoint, historyShots = [] }: Surf
 
   const renderFieldHockey = () => (
     <svg viewBox="0 0 60 50" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
-      <rect x="0" y="0" width="60" height="50" fill="rgba(255,255,255,0.02)" />
+      <rect x="0" y="0" width="60" height="50" fill="var(--background)" />
       <path d="M 14 0 A 16 16 0 0 0 46 0" fill="none" stroke={LINE} strokeWidth="0.5" />
       <circle cx="30" cy="7" r="0.5" fill={LINE} />
       <line x1="0" y1="50" x2="60" y2="50" stroke={LINE} strokeWidth="0.8" strokeDasharray="4 2" />
@@ -132,13 +132,10 @@ export function SurfaceDiagram({ onPlot, currentPoint, historyShots = [] }: Surf
     <div
       ref={containerRef}
       onClick={handleClick}
-      className="glass-panel"
       style={{
         width: '100%',
         aspectRatio: getAspectRatio(),
-        background: 'rgba(255,255,255,0.01)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '0',
+        background: 'transparent',
         position: 'relative',
         cursor: 'crosshair',
         overflow: 'hidden'
@@ -158,11 +155,12 @@ export function SurfaceDiagram({ onPlot, currentPoint, historyShots = [] }: Surf
               position: 'absolute',
               left: `${shot.rinkLocation.x * 100}%`,
               top: `${shot.rinkLocation.y * 100}%`,
-              width: '5px', height: '5px',
-              background: shot.isSave ? 'rgba(255,255,255,0.6)' : 'rgba(255,46,46,0.8)',
+              width: '6px', height: '6px',
+              background: shot.isSave ? 'var(--foreground)' : 'var(--destructive)',
               borderRadius: '50%',
               transform: 'translate(-50%, -50%)',
-              pointerEvents: 'none'
+              pointerEvents: 'none',
+              border: shot.isSave ? 'none' : '1px solid var(--destructive)'
             }} />
           )
         ))}
@@ -174,11 +172,11 @@ export function SurfaceDiagram({ onPlot, currentPoint, historyShots = [] }: Surf
             left: `${currentPoint.x * 100}%`,
             top: `${currentPoint.y * 100}%`,
             width: '12px', height: '12px',
-            background: '#FFFFFF',
+            background: 'var(--foreground)',
             borderRadius: '50%',
             transform: 'translate(-50%, -50%)',
-            boxShadow: '0 0 15px rgba(255,255,255,0.8)',
-            border: '2px solid #000',
+            boxShadow: '0 0 10px rgba(0,0,0,0.1)',
+            border: '2px solid var(--background)',
             pointerEvents: 'none',
             zIndex: 10
           }} />
