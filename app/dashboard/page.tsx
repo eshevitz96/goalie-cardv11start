@@ -236,7 +236,9 @@ export default function Dashboard() {
                         .select('*', { count: 'exact', head: true })
                         .eq('roster_id', rosterRes.id);
                     const loggedSessionsCount = (!sessionsErr && sessionsCount !== null) ? sessionsCount : 0;
-                    practicesVal = Math.max(Number(rosterRes.practice_count) || 0, loggedSessionsCount);
+                    
+                    // Decouple private lessons from team practices
+                    practicesVal = Number(rosterRes.practice_count) || 0;
 
                     // Base games count
                     gamesVal = Number(rosterRes.games_count) || 0;

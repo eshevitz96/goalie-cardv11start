@@ -520,15 +520,15 @@ function SeptemberGroupTrainingContent() {
                                         { id: 'liability', label: 'Extended Waiver of Liability' }
                                     ] as const).map((w) => (
                                         <div key={w.id} className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 rounded-xl transition-colors">
-                                            <div className="flex items-center gap-3">
+                                            <label className="flex items-center gap-3 cursor-pointer select-none">
                                                 <input 
                                                     type="checkbox" 
                                                     checked={waiverChecks[w.id]}
                                                     onChange={(e) => setWaiverChecks({ ...waiverChecks, [w.id]: e.target.checked })}
-                                                    className="w-5 h-5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                                    className="w-5 h-5 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
                                                 />
                                                 <span className="text-sm font-bold text-slate-700">{w.label}</span>
-                                            </div>
+                                            </label>
                                             <button 
                                                 type="button"
                                                 onClick={() => setViewingWaiver(w.id)}
@@ -597,18 +597,25 @@ function SeptemberGroupTrainingContent() {
                                                         <span className="text-2xl leading-none">&times;</span>
                                                     </button>
                                                 </div>
-                                                <div className="overflow-y-auto pr-4 text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">
+                                                <div className="p-6 overflow-y-auto text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">
                                                     {viewingWaiver === 'main' ? GROUP_TRAINING_CONFIG.trainingTerms.mainWaiver :
                                                      viewingWaiver === 'payment' ? GROUP_TRAINING_CONFIG.trainingTerms.paymentPolicy :
                                                      viewingWaiver === 'code' ? GROUP_TRAINING_CONFIG.trainingTerms.codeOfConduct :
                                                      GROUP_TRAINING_CONFIG.trainingTerms.liabilityWaiver}
                                                 </div>
-                                                <Button 
-                                                    className="mt-6 w-full py-4 bg-slate-900 text-white rounded-xl font-bold"
-                                                    onClick={() => setViewingWaiver(null)}
-                                                >
-                                                    Close
-                                                </Button>
+                                                <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end">
+                                                    <Button 
+                                                        onClick={() => {
+                                                            if (viewingWaiver) {
+                                                                setWaiverChecks({ ...waiverChecks, [viewingWaiver]: true });
+                                                            }
+                                                            setViewingWaiver(null);
+                                                        }}
+                                                        className="bg-slate-900 text-white hover:bg-slate-800 font-bold"
+                                                    >
+                                                        Accept & Close
+                                                    </Button>
+                                                </div>
                                             </motion.div>
                                         </motion.div>
                                     )}

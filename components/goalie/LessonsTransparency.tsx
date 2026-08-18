@@ -9,7 +9,8 @@ import {
     MapPin, 
     ChevronDown, 
     ChevronUp,
-    Sparkles
+    Sparkles,
+    ArrowRight
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -41,9 +42,7 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Collapsible states
-    const [showHistory, setShowHistory] = useState(false);
-    const [showDailyMission, setShowDailyMission] = useState(false);
+    const [activeTab, setActiveTab] = useState<'training' | 'history' | 'missions'>('training');
 
     useEffect(() => {
         if (!goalieProfileId) {
@@ -113,33 +112,36 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
     // Check if they have zero history of private training
     const hasNoPrivateTraining = balance === null || (balance.lessons_earned === 0 && sessions.length === 0);
 
+    // If hasNoPrivateTraining is true, we ONLY show the Self-Guided Missions section
+    // because private training is only visible to connected users.
     if (hasNoPrivateTraining) {
         return (
-            <div className="w-full glass rounded-3xl p-6 space-y-4 relative overflow-hidden">
+            <div className="w-full h-[320px] glass rounded-3xl p-6 relative overflow-hidden transition-all duration-300 flex flex-col">
                 <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                 
-                <div className="flex justify-between items-start">
-                    <div>
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-1">
-                            Coach Engine
-                        </span>
-                        <h3 className="text-lg font-sans font-bold text-foreground tracking-tight leading-none">
-                            Self-Guided Training
-                        </h3>
-                    </div>
-                    <div className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground">
-                        Active
+                <div className="flex justify-between items-start mb-4 shrink-0">
+                    <div className="w-full">
+                        <button className="w-full flex justify-between items-center group cursor-default">
+                            <div className="flex flex-col items-start">
+                                <h3 className="text-lg font-sans font-bold text-foreground tracking-tight leading-none flex items-center gap-2">
+                                    Self-Guided Missions
+                                </h3>
+                            </div>
+                            <div className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground">
+                                Active
+                            </div>
+                        </button>
                     </div>
                 </div>
 
-                <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                    You don't have any private lessons scheduled right now. Use the Coach Engine to generate personalized daily training missions to keep sharpening your skills.
-                </p>
+                <div className="flex-1 flex flex-col justify-center border-t border-border/50 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <p className="text-sm text-muted-foreground leading-relaxed font-medium mb-6">
+                        Use the Coach Engine to generate personalized daily training missions to keep sharpening your skills.
+                    </p>
 
-                <div className="mt-2 pt-2">
                     <Link 
                         href="/workout"
-                        className="flex items-center justify-between p-4 bg-muted border border-border rounded-2xl hover:border-foreground/40 hover:scale-[1.01] active:scale-[0.99] transition-all group shadow-sm cursor-pointer"
+                        className="flex items-center justify-between p-4 bg-muted border border-border rounded-2xl hover:border-foreground/40 hover:scale-[1.01] active:scale-[0.99] transition-all group shadow-sm cursor-pointer shrink-0"
                     >
                         <div className="min-w-0 flex-1">
                             <span className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">
@@ -160,147 +162,171 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
     }
 
     return (
-        <div className="w-full glass rounded-3xl p-6 space-y-6 relative overflow-hidden">
+        <div className="w-full h-[320px] glass rounded-3xl p-6 relative overflow-hidden transition-all duration-300 flex flex-col gap-2">
             {/* Top Glow Accent */}
             <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             
-            {/* Card Header */}
-            <div className="flex justify-between items-start">
-                <div>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-1">
+            {/* ACCORDION 1: PRIVATE TRAINING */}
+            <div className="flex flex-col flex-shrink-0 min-h-0 overflow-hidden" style={{ flex: activeTab === 'training' ? '1 1 0%' : 'none' }}>
+                <button 
+                    onClick={() => setActiveTab(activeTab === 'training' ? 'missions' : 'training')}
+                    className="flex justify-between items-center w-full text-left group transition-colors py-2 shrink-0"
+                >
+                    <h3 className="text-lg font-sans font-bold text-foreground tracking-tight leading-none group-hover:text-foreground/80 transition-colors">
                         Private Training
-                    </span>
-                    <h3 className="text-lg font-sans font-bold text-foreground tracking-tight leading-none">
-                        Lessons Transparency
                     </h3>
-                </div>
-                
-                {/* Remaining Badge */}
-                {hasActiveLessons ? (
-                    <div className={twMerge(
-                        "text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border shadow-sm transition-all duration-300",
-                        isLowBalance 
-                            ? "bg-muted border-border text-muted-foreground" 
-                            : "bg-foreground text-background border-transparent"
-                    )}>
-                        {remainingCount} {remainingCount === 1 ? 'Lesson' : 'Lessons'} Left
+                    
+                    <div className="flex items-center gap-3">
+                        {/* Remaining Badge */}
+                        {hasActiveLessons ? (
+                            <div className={twMerge(
+                                "text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border shadow-sm transition-all duration-300",
+                                isLowBalance 
+                                    ? "bg-muted border-border text-muted-foreground" 
+                                    : "bg-foreground text-background border-transparent"
+                            )}>
+                                {remainingCount} {remainingCount === 1 ? 'Lesson' : 'Lessons'} Left
+                            </div>
+                        ) : (
+                            <div className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground italic hidden sm:block">
+                                No Active Lessons
+                            </div>
+                        )}
+                        <div className="text-muted-foreground group-hover:text-foreground transition-colors">
+                            {activeTab === 'training' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </div>
                     </div>
-                ) : (
-                    <div className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground italic">
-                        No Active Lessons
+                </button>
+
+                {activeTab === 'training' && (
+                    <div className="mt-4 flex-1 animate-in fade-in slide-in-from-top-2 duration-300 overflow-y-auto">
+                        {/* Lesson Count Details Grid */}
+                        <div className="grid grid-cols-3 gap-3 h-full pb-2">
+                            <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
+                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+                                    Purchased
+                                </span>
+                                <span className="text-base font-black text-foreground">
+                                    {balance !== null ? earnedCount : "—"}
+                                </span>
+                            </div>
+                            <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
+                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+                                    Completed
+                                </span>
+                                <span className="text-base font-black text-foreground">
+                                    {sessions.length > 0 ? deliveredCount : "—"}
+                                </span>
+                            </div>
+                            <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
+                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+                                    Remaining
+                                </span>
+                                <span className={twMerge(
+                                    "text-base font-black transition-colors",
+                                    hasActiveLessons 
+                                        ? (isLowBalance ? "text-muted-foreground" : "text-[#006747]") 
+                                        : "text-muted-foreground"
+                                )}>
+                                    {balance !== null ? remainingCount : "—"}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
 
-            {/* Lesson Count Details Grid */}
-            <div className="grid grid-cols-3 gap-3">
-                <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
-                        Purchased
-                    </span>
-                    <span className="text-base font-black text-foreground">
-                        {balance !== null ? earnedCount : "—"}
-                    </span>
-                </div>
-                <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
-                        Completed
-                    </span>
-                    <span className="text-base font-black text-foreground">
-                        {sessions.length > 0 ? deliveredCount : "—"}
-                    </span>
-                </div>
-                <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
-                        Remaining
-                    </span>
-                    <span className={twMerge(
-                        "text-base font-black transition-colors",
-                        hasActiveLessons 
-                            ? (isLowBalance ? "text-muted-foreground" : "text-[#006747]") 
-                            : "text-muted-foreground"
-                    )}>
-                        {balance !== null ? remainingCount : "—"}
-                    </span>
-                </div>
-            </div>
+            <div className="h-px bg-border/60 w-full shrink-0" />
 
-            {/* Expandable Lesson History Log */}
-            {sessions.length > 0 && (
-                <div className="border-t border-border pt-4 mt-6">
-                    <button
-                        onClick={() => setShowHistory(!showHistory)}
-                        className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                    >
-                        <span>Lesson Log ({sessions.length})</span>
-                        {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-                    
-                    {showHistory && (
-                        <div className="mt-4 space-y-4 max-h-[320px] overflow-y-auto pr-1">
-                            {sessions.map((session, index) => (
-                                <div key={session.id || index} className="flex gap-4 relative group">
-                                    {/* Timeline Connector Line */}
-                                    {index < sessions.length - 1 && (
-                                        <div className="absolute top-3 bottom-0 left-2 w-px bg-border group-hover:bg-border/80 transition-colors" />
-                                    )}
-                                    
-                                    {/* Timeline Node Icon */}
-                                    <div className="w-4 h-4 rounded-full bg-muted border border-border flex items-center justify-center shrink-0 mt-1 relative z-10 transition-colors group-hover:border-foreground/30">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground group-hover:bg-foreground/50 transition-colors" />
-                                    </div>
-                                    
-                                    {/* Session Details */}
-                                    <div className="flex-1 space-y-1 pb-3">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5">
-                                                <Calendar size={12} className="text-muted-foreground" />
-                                                <span className="text-[10px] font-bold text-foreground font-mono">
-                                                    {new Date(session.date).toLocaleDateString(undefined, { 
-                                                        year: 'numeric', 
-                                                        month: 'short', 
-                                                        day: 'numeric' 
-                                                    })}
-                                                </span>
-                                            </div>
-                                            {session.lesson_number !== undefined && (
-                                                <span className="text-[8px] font-black uppercase tracking-wider text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-md font-mono">
-                                                    Lesson {session.lesson_number}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground font-medium">
-                                            <MapPin size={10} />
-                                            <span>{session.location || "Unknown Location"}</span>
-                                        </div>
-                                        {session.notes && (
-                                            <p className="text-xs text-foreground/80 bg-muted border-l-2 border-border p-2.5 rounded-r-xl mt-1 leading-relaxed italic font-medium whitespace-pre-line">
-                                                "{session.notes}"
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Collapsed / Secondary Self-Guided Missions Toggle */}
-            <div className="border-t border-border pt-4 mt-2">
-                <button
-                    onClick={() => setShowDailyMission(!showDailyMission)}
-                    className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            {/* ACCORDION 2: LESSON LOG */}
+            <div className="flex flex-col flex-shrink-0 min-h-0 overflow-hidden" style={{ flex: activeTab === 'history' ? '1 1 0%' : 'none' }}>
+                <button 
+                    onClick={() => setActiveTab(activeTab === 'history' ? 'training' : 'history')}
+                    className="flex justify-between items-center w-full text-left group transition-colors py-2 shrink-0"
                 >
-                    <span className="flex items-center gap-1.5">
-                        <Sparkles size={12} className="text-muted-foreground" />
-                        Self-Guided Training Missions
-                    </span>
-                    {showDailyMission ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    <h3 className="text-lg font-sans font-bold text-foreground tracking-tight leading-none group-hover:text-foreground/80 transition-colors flex items-center gap-2">
+                        Lesson Log <span className="text-xs font-bold text-muted-foreground ml-1">({sessions.length})</span>
+                    </h3>
+                    <div className="text-muted-foreground group-hover:text-foreground transition-colors">
+                        {activeTab === 'history' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </div>
                 </button>
 
-                {showDailyMission && (
-                    <div className="mt-3">
+                {activeTab === 'history' && (
+                    <div className="mt-3 flex-1 animate-in fade-in slide-in-from-top-2 duration-300 overflow-y-auto pr-1 pb-2">
+                        {sessions.length > 0 ? (
+                            <div className="space-y-4">
+                                {sessions.map((session, index) => (
+                                    <div key={session.id || index} className="flex gap-4 relative group">
+                                        {/* Timeline Connector Line */}
+                                        {index < sessions.length - 1 && (
+                                            <div className="absolute top-3 bottom-0 left-2 w-px bg-border group-hover:bg-border/80 transition-colors" />
+                                        )}
+                                        
+                                        {/* Timeline Node Icon */}
+                                        <div className="w-4 h-4 rounded-full bg-muted border border-border flex items-center justify-center shrink-0 mt-1 relative z-10 transition-colors group-hover:border-foreground/30">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground group-hover:bg-foreground/50 transition-colors" />
+                                        </div>
+                                        
+                                        {/* Session Details */}
+                                        <div className="flex-1 space-y-1 pb-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Calendar size={12} className="text-muted-foreground" />
+                                                    <span className="text-[10px] font-bold text-foreground font-mono">
+                                                        {new Date(session.date).toLocaleDateString(undefined, { 
+                                                            year: 'numeric', 
+                                                            month: 'short', 
+                                                            day: 'numeric' 
+                                                        })}
+                                                    </span>
+                                                </div>
+                                                {session.lesson_number !== undefined && (
+                                                    <span className="text-[8px] font-black uppercase tracking-wider text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-md font-mono">
+                                                        Lesson {session.lesson_number}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground font-medium">
+                                                <MapPin size={10} />
+                                                <span>{session.location || "Unknown Location"}</span>
+                                            </div>
+                                            {session.notes && (
+                                                <p className="text-xs text-foreground/80 bg-muted border-l-2 border-border p-2.5 rounded-r-xl mt-1 leading-relaxed italic font-medium whitespace-pre-line">
+                                                    "{session.notes}"
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-muted border border-border rounded-xl p-6 text-center h-full flex flex-col justify-center">
+                                <p className="text-xs font-medium text-muted-foreground italic">No past lessons recorded.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            <div className="h-px bg-border/60 w-full shrink-0" />
+
+            {/* ACCORDION 3: SELF-GUIDED TRAINING MISSIONS */}
+            <div className="flex flex-col flex-shrink-0 min-h-0 overflow-hidden" style={{ flex: activeTab === 'missions' ? '1 1 0%' : 'none' }}>
+                <button 
+                    onClick={() => setActiveTab(activeTab === 'missions' ? 'training' : 'missions')}
+                    className="flex justify-between items-center w-full text-left group transition-colors py-2 shrink-0"
+                >
+                    <h3 className="text-lg font-sans font-bold text-foreground tracking-tight leading-none group-hover:text-foreground/80 transition-colors flex items-center gap-2">
+                        Self-Guided Missions
+                    </h3>
+                    <div className="text-muted-foreground group-hover:text-foreground transition-colors">
+                        {activeTab === 'missions' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </div>
+                </button>
+
+                {activeTab === 'missions' && (
+                    <div className="mt-4 flex-1 animate-in fade-in slide-in-from-top-2 duration-300 overflow-y-auto pb-2 flex flex-col justify-center">
                         <Link 
                             href="/workout"
                             className="flex items-center justify-between p-3.5 bg-muted border border-border rounded-2xl hover:border-border/80 hover:scale-[1.01] active:scale-[0.99] transition-all group"
@@ -313,8 +339,8 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
                                     Daily Coach Engine Card
                                 </h4>
                             </div>
-                            <span className="text-[9px] font-black uppercase tracking-wider bg-foreground/10 border border-border text-foreground px-2.5 py-1.5 rounded-xl group-hover:bg-foreground group-hover:text-background transition-all whitespace-nowrap ml-2">
-                                View Card
+                            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider bg-foreground/10 border border-border text-foreground px-3 py-1.5 rounded-xl group-hover:bg-foreground group-hover:text-background transition-all whitespace-nowrap ml-2">
+                                View Card <ArrowRight size={10} />
                             </span>
                         </Link>
                     </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { twMerge } from "tailwind-merge";
 import Link from "next/link";
 import { Settings2, Check } from "lucide-react";
+import { supabase } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
@@ -68,25 +69,45 @@ export function GoalieCard({
     const [customStart, setCustomStart] = useState<string>("");
     const [customEnd, setCustomEnd] = useState<string>("");
 
-    // Persist to local storage keyed by goalie ID
+    // Fetch custom season dates from Supabase
     useEffect(() => {
-        if (id) {
-            const saved = localStorage.getItem(`season_dates_${id}`);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.start) setCustomStart(parsed.start);
-                    if (parsed.end) setCustomEnd(parsed.end);
-                } catch (e) {}
+        if (!id) return;
+        
+        async function fetchSeasonDates() {
+            try {
+                const { data, error } = await supabase
+                    .from('card_season_settings')
+                    .select('practice_start_date, season_end_date')
+                    .eq('roster_id', id)
+                    .maybeSingle();
+                
+                if (data && !error) {
+                    if (data.practice_start_date) setCustomStart(data.practice_start_date);
+                    if (data.season_end_date) setCustomEnd(data.season_end_date);
+                }
+            } catch (err) {
+                console.error("Failed to load season dates:", err);
             }
         }
+        
+        fetchSeasonDates();
     }, [id]);
 
-    useEffect(() => {
-        if (id && customStart && customEnd) {
-            localStorage.setItem(`season_dates_${id}`, JSON.stringify({ start: customStart, end: customEnd }));
+    const saveSeasonDates = async () => {
+        if (!id) return;
+        try {
+            await supabase
+                .from('card_season_settings')
+                .upsert({
+                    roster_id: id,
+                    practice_start_date: customStart || null,
+                    season_end_date: customEnd || null,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'roster_id' });
+        } catch (err) {
+            console.error("Failed to save season dates:", err);
         }
-    }, [id, customStart, customEnd]);
+    };
 
     // Use season timeline logic hook
     const { seasonProgress: hookProgress, seasonLabel } = useSeasonTimeline(sport);
@@ -313,9 +334,10 @@ export function GoalieCard({
                                         />
                                     </div>
                                     <button 
-                                        onClick={(e) => {
+                                        onClick={async (e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
+                                            await saveSeasonDates();
                                             setIsEditingSeason(false);
                                         }}
                                         className="w-6 h-6 rounded bg-primary/20 text-primary flex items-center justify-center shrink-0 hover:bg-primary/30 cursor-pointer"
