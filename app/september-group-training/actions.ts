@@ -220,23 +220,41 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
             return { error: `Invalid plan selected: ${planId}` };
         }
 
-        const lineItems = isTestMode
-            ? [{
+        let baseAmount = plan.amount;
+        // Standard Stripe fee calculation (2.9% + $0.30) to ensure net payout equals the exact base rate:
+        // Total = Math.ceil((baseAmount + 30) / (1 - 0.029)) = Math.ceil((baseAmount + 30) / 0.971)
+        let totalTargetCents = Math.ceil((baseAmount + 30) / 0.971);
+        let feeAmount = totalTargetCents - baseAmount;
+
+        if (isTestMode) {
+            baseAmount = 100;
+            feeAmount = 34; // $1.34 total -> $1.00 net payout
+        }
+
+        const lineItems = [
+            {
                 price_data: {
                     currency: 'usd' as const,
-                    product_data: { name: `[TEST] ${plan.name}`, description: plan.description },
-                    unit_amount: 100, // $1.00 for test mode
+                    product_data: {
+                        name: isTestMode ? `[TEST] ${plan.name}` : plan.name,
+                        description: plan.description,
+                    },
+                    unit_amount: baseAmount,
                 },
                 quantity: 1,
-              }]
-            : [{
+            },
+            {
                 price_data: {
                     currency: 'usd' as const,
-                    product_data: { name: plan.name, description: plan.description },
-                    unit_amount: plan.amount,
+                    product_data: {
+                        name: 'Card Processing & Admin Fee',
+                        description: 'Standard 2.9% + $0.30 transaction fee',
+                    },
+                    unit_amount: feeAmount,
                 },
                 quantity: 1,
-            }];
+            },
+        ];
 
         const stripe = getStripe();
         const session = await stripe.checkout.sessions.create({

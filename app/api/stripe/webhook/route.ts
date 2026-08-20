@@ -120,7 +120,7 @@ export async function POST(req: Request) {
                 await supabase.from('roster_uploads').update({ assigned_coach_id: coachId }).eq('id', rosterId);
                 if (requestId) await supabase.from('coach_requests').update({ status: 'completed' }).eq('id', requestId);
             }
-        } else if (metadata.productType === 'private training access') {
+        } else if (metadata.productType === 'private training access' || metadata.productType === 'september group training') {
             const submissionId = metadata.submissionId;
             if (submissionId) {
                 const { data: subData, error: subError } = await supabase.from('private_training_submissions').update({
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
                 }).eq('id', submissionId).select('athlete_name, email, digital_signature').single();
                 
                 if (subError) {
-                    console.error("Private training submission sync error:", subError);
+                    console.error("Training submission sync error:", subError);
                 } else if (subData && process.env.RESEND_API_KEY) {
                     try {
                         let receiptUrl = '';
@@ -148,7 +148,9 @@ export async function POST(req: Request) {
                             }
                         }
 
-                        const fromEmail = process.env.EMAIL_FROM_ADDRESS || "Goalie Card Private Training <onboarding@resend.dev>";
+                        const isGroup = metadata.productType === 'september group training';
+                        const productTitle = isGroup ? "September Group Training" : "Private Training";
+                        const fromEmail = process.env.EMAIL_FROM_ADDRESS || `Goalie Card ${productTitle} <onboarding@resend.dev>`;
                         
                         await fetch("https://api.resend.com/emails", {
                             method: "POST",
@@ -159,12 +161,13 @@ export async function POST(req: Request) {
                             body: JSON.stringify({
                                 from: fromEmail,
                                 to: ["e@cmmncreators.com", subData.email],
-                                subject: `Private Training Waiver Confirmation: ${subData.athlete_name}`,
+                                subject: `${productTitle} Waiver Confirmation: ${subData.athlete_name}`,
                                 html: `
-                                    <h2>Private Training Waiver Confirmed</h2>
+                                    <h2>${productTitle} Waiver Confirmed</h2>
                                     <p><strong>Athlete:</strong> ${subData.athlete_name}</p>
                                     <p><strong>Email:</strong> ${subData.email}</p>
                                     <p><strong>Plan:</strong> ${metadata.planSelected || 'Unknown'}</p>
+                                    ${metadata.selectedDates ? `<p><strong>Selected Dates:</strong> ${metadata.selectedDates}</p>` : ''}
                                     ${receiptUrl ? `<p><strong>Receipt/Invoice:</strong> <a href="${receiptUrl}">View Receipt</a></p>` : ''}
                                     <hr />
                                     <h3>Digital Signature</h3>

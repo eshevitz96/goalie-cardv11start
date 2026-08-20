@@ -666,8 +666,13 @@ function SeptemberGroupTrainingContent() {
                                                         <h3 className="font-bold text-slate-900 text-lg font-sans">{plan.label}</h3>
                                                         <p className="text-xs text-slate-500 font-medium">{isDisabled ? 'Unavailable - A date is full' : 'Group Training at Lambert'}</p>
                                                     </div>
-                                                    <div className="text-xl font-bold text-slate-900">
-                                                        ${plan.price}
+                                                    <div className="text-right">
+                                                        <div className="text-xl font-bold text-slate-900">
+                                                            ${plan.price}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                            + card fee
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );
