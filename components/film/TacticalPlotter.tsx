@@ -172,17 +172,29 @@ export function TacticalPlotter() {
             <label className={LABEL_CLASS}>Modifiers</label>
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => setIsDeflected(!isDeflected)}
+                type="button"
+                onClick={(e) => { e.preventDefault(); setIsDeflected(!isDeflected); }}
+                style={{ 
+                  backgroundColor: isDeflected ? '#00E676' : undefined, 
+                  color: isDeflected ? '#000' : undefined,
+                  borderColor: isDeflected ? '#00E676' : undefined 
+                }}
                 className={`py-3 px-2 rounded-xl text-xs font-bold transition-colors cursor-pointer border ${
-                  isDeflected ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
+                  !isDeflected ? 'bg-card text-foreground border-border hover:bg-muted' : ''
                 }`}
               >
                 Deflected
               </button>
               <button
-                onClick={() => setIsScreened(!isScreened)}
+                type="button"
+                onClick={(e) => { e.preventDefault(); setIsScreened(!isScreened); }}
+                style={{ 
+                  backgroundColor: isScreened ? '#00E676' : undefined, 
+                  color: isScreened ? '#000' : undefined,
+                  borderColor: isScreened ? '#00E676' : undefined 
+                }}
                 className={`py-3 px-2 rounded-xl text-xs font-bold transition-colors cursor-pointer border ${
-                  isScreened ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
+                  !isScreened ? 'bg-card text-foreground border-border hover:bg-muted' : ''
                 }`}
               >
                 Screened
@@ -216,8 +228,8 @@ export function TacticalPlotter() {
                   <div
                     key={shot.id}
                     onClick={() => active ? clearForm() : loadShot(shot)}
-                    className={`relative shrink-0 w-14 h-10 rounded-xl flex items-center justify-center cursor-pointer border transition-colors ${
-                      active ? 'bg-background border-foreground shadow-sm' : 'bg-card border-border hover:border-foreground/30'
+                    className={`relative shrink-0 px-3 min-w-[3.5rem] h-10 rounded-xl flex items-center justify-center cursor-pointer border transition-all duration-200 ${
+                      active ? 'bg-background border-foreground shadow-sm gap-2' : 'bg-card border-border hover:border-foreground/30'
                     }`}
                   >
                     <span className={`text-sm font-black ${shot.isSave ? 'text-foreground' : 'text-destructive'}`}>
@@ -225,10 +237,11 @@ export function TacticalPlotter() {
                     </span>
                     {active && (
                       <button 
+                        type="button"
                         onClick={e => handleDelete(e, shot.id)} 
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center cursor-pointer shadow-sm hover:scale-110 transition-transform"
+                        className="w-5 h-5 rounded-full text-muted-foreground hover:bg-destructive hover:text-white flex items-center justify-center cursor-pointer transition-colors"
                       >
-                        <Trash2 size={10} />
+                        <Trash2 size={12} />
                       </button>
                     )}
                   </div>

@@ -138,11 +138,11 @@ export function GoalieCard({
                 <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-40 w-40 rounded-full bg-foreground/5 blur-3xl opacity-50" />
 
                 <div className="relative z-10 flex flex-col items-center justify-center flex-1 text-center space-y-4 h-full my-auto">
-                    <div className="w-16 h-16 bg-[#006747]/10 text-[#006747] rounded-full flex items-center justify-center border border-[#006747]/20 group-hover:bg-[#006747]/10 transition-colors">
+                    <div className="w-16 h-16 bg-[#00E676]/10 text-[#00E676] rounded-full flex items-center justify-center border border-[#00E676]/20 group-hover:bg-[#00E676]/10 transition-colors">
                         <Settings2 size={28} />
                     </div>
                     <div className="space-y-2 max-w-xs">
-                        <h3 className="text-xl font-bold text-foreground group-hover:text-foreground/80 transition-colors uppercase tracking-tight">Complete your card</h3>
+                        <h3 className="text-xl font-bold text-foreground group-hover:text-foreground/80 transition-colors ">Complete your card</h3>
                         <p className="text-xs text-muted-foreground leading-normal">
                             Tap here to set up your name, sport, and grad year to activate your card.
                         </p>
@@ -155,7 +155,7 @@ export function GoalieCard({
     if (pureIcon) {
         return (
             <div className={twMerge("flex items-center justify-center bg-muted rounded-2xl text-foreground border border-border shrink-0 shadow-inner", className)}>
-                <div className="w-full h-full bg-[#006747] flex items-center justify-center rounded-2xl text-white font-bold uppercase text-sm">
+                <div className="w-full h-full bg-[#00E676] flex items-center justify-center rounded-2xl text-black font-bold uppercase text-sm">
                     {initials || "GC"}
                 </div>
             </div>
@@ -229,8 +229,8 @@ export function GoalieCard({
                 <div className="flex items-center gap-4">
                     {/* Initials & Progress Ring */}
                     <PerformanceAvatar score={hasScore ? Number(performanceScore) : 0} size={72}>
-                        <div className="w-full h-full bg-[#006747] text-white flex flex-col items-center justify-center leading-none rounded-full border border-white/5 shadow-md select-none pointer-events-none">
-                            <span className="text-[26px] font-black tracking-tighter text-white">
+                        <div className="w-full h-full bg-[#00E676] text-black flex flex-col items-center justify-center leading-none rounded-full border border-black/5 shadow-md select-none pointer-events-none">
+                            <span className="text-[26px] font-black tracking-tighter text-black">
                                 {hasScore ? performanceScore : "0"}
                             </span>
                         </div>

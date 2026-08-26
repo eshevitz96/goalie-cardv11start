@@ -171,12 +171,12 @@ export function SurfaceDiagram({ onPlot, currentPoint, historyShots = [] }: Surf
             position: 'absolute',
             left: `${currentPoint.x * 100}%`,
             top: `${currentPoint.y * 100}%`,
-            width: '12px', height: '12px',
-            background: 'var(--foreground)',
+            width: '14px', height: '14px',
+            background: '#00E676',
             borderRadius: '50%',
             transform: 'translate(-50%, -50%)',
-            boxShadow: '0 0 10px rgba(0,0,0,0.1)',
-            border: '2px solid var(--background)',
+            border: '2px solid #020817',
+            boxShadow: '0 0 10px rgba(0, 230, 118, 0.6)',
             pointerEvents: 'none',
             zIndex: 10
           }} />

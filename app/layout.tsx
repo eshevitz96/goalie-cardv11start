@@ -59,6 +59,7 @@ import { ThemeProvider } from "@/context/ThemeProvider";
 import { ToastProvider } from "@/context/ToastContext";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WeeklyContractWidget } from "@/components/shared/WeeklyContractWidget";
 
 export default function RootLayout({
   children,
@@ -80,6 +81,7 @@ export default function RootLayout({
             <ErrorBoundary>
               <AppProvider>
                 {children}
+                <WeeklyContractWidget />
               </AppProvider>
             </ErrorBoundary>
           </ToastProvider>

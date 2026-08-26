@@ -364,7 +364,7 @@ function OnboardingContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="animate-spin text-[#006747]" size={40} />
+          <Loader2 className="animate-spin text-[#00E676]" size={40} />
           <span className="text-zinc-400 font-mono tracking-wider uppercase text-xs">Loading Card Profile...</span>
         </div>
       </div>
@@ -376,8 +376,8 @@ function OnboardingContent() {
     return (
       <main className="min-h-screen bg-background text-foreground font-sans pt-12 pb-24 px-4 md:px-8 relative overflow-hidden">
         {/* Decorative elements */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#006747]/50 via-[#006747]/20 to-[#006747]/50" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#006747]/3 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00E676]/50 via-[#00E676]/20 to-[#00E676]/50" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#00E676]/3 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="max-w-md mx-auto space-y-8 relative z-10">
           <div className="space-y-2">
@@ -395,7 +395,7 @@ function OnboardingContent() {
             {/* Identity Card */}
             <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6 space-y-4 backdrop-blur-md">
               <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2 flex items-center gap-2">
-                <User size={12} className="text-[#006747]" /> Goalie Identity
+                <User size={12} className="text-[#00E676]" /> Goalie Identity
               </h2>
 
               {/* Birthday at top */}
@@ -407,7 +407,7 @@ function OnboardingContent() {
                     type="date"
                     value={birthday}
                     onChange={(e) => setBirthday(e.target.value)}
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-12 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-12 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                   />
                 </div>
                 <span className="text-[9px] text-zinc-500 italic">Used for age verification & scoring metrics.</span>
@@ -421,7 +421,7 @@ function OnboardingContent() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="First Name"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                   />
                 </div>
                 <div className="space-y-2">
@@ -431,7 +431,7 @@ function OnboardingContent() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Last Name"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                   />
                 </div>
               </div>
@@ -445,7 +445,7 @@ function OnboardingContent() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase())}
                     placeholder="username"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-8 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-bold placeholder:text-zinc-600"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-8 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-bold placeholder:text-zinc-600"
                   />
                 </div>
                 {isValidatingUsername && (
@@ -455,7 +455,7 @@ function OnboardingContent() {
                   <p className="text-[10px] text-red-500">{usernameError}</p>
                 )}
                 {usernameAvailable && !isValidatingUsername && (
-                  <p className="text-[10px] text-[#006747]">Username available ✓</p>
+                  <p className="text-[10px] text-[#00E676]">Username available ✓</p>
                 )}
               </div>
             </div>
@@ -463,7 +463,7 @@ function OnboardingContent() {
             {/* Sport & Teams */}
             <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6 space-y-4 backdrop-blur-md">
               <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2 flex items-center gap-2">
-                <Compass size={12} className="text-[#006747]" /> Sport & Teams
+                <Compass size={12} className="text-[#00E676]" /> Sport & Teams
               </h2>
 
               <div className="space-y-2">
@@ -475,7 +475,7 @@ function OnboardingContent() {
                 <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block">Teams</label>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {teams.map((t, i) => (
-                    <span key={i} className="px-3 py-1 bg-[#006747]/10 text-[#006747] border border-[#006747]/20 rounded-full text-xs font-semibold flex items-center gap-1.5 animate-fade-in">
+                    <span key={i} className="px-3 py-1 bg-[#00E676]/10 text-[#00E676] border border-[#00E676]/20 rounded-full text-xs font-semibold flex items-center gap-1.5 animate-fade-in">
                       {t}
                       <button type="button" onClick={() => removeTeamTag(t)} className="text-zinc-400 hover:text-foreground font-bold">×</button>
                     </span>
@@ -487,7 +487,7 @@ function OnboardingContent() {
                     value={teamInput}
                     onChange={(e) => setTeamInput(e.target.value)}
                     placeholder="Enter team name..."
-                    className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
+                    className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-xs font-semibold"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -503,7 +503,7 @@ function OnboardingContent() {
             {/* Profile Tags */}
             <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6 space-y-4 backdrop-blur-md">
               <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2 flex items-center gap-2">
-                <Tag size={12} className="text-[#006747]" /> Profile Tags
+                <Tag size={12} className="text-[#00E676]" /> Profile Tags
               </h2>
 
               <div className="flex flex-wrap gap-1.5">
@@ -516,7 +516,7 @@ function OnboardingContent() {
                       onClick={() => toggleSuggestedTag(t)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
                         isSelected 
-                          ? 'bg-[#006747] border-[#006747] text-[#006747]' 
+                          ? 'bg-[#00E676] border-[#00E676] text-black' 
                           : 'bg-black/40 border-zinc-800 text-zinc-400 hover:bg-zinc-800'
                       }`}
                     >
@@ -532,7 +532,7 @@ function OnboardingContent() {
                   value={customTagInput}
                   onChange={(e) => setCustomTagInput(e.target.value)}
                   placeholder="Custom tag..."
-                  className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
+                  className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-xs font-semibold"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -547,7 +547,7 @@ function OnboardingContent() {
             {/* Academic & Physical Details */}
             <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6 space-y-4 backdrop-blur-md animate-fade-in">
               <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2 flex items-center gap-2">
-                <Sparkles size={12} className="text-[#006747]" /> Goalie Attributes
+                <Sparkles size={12} className="text-[#00E676]" /> Goalie Attributes
               </h2>
 
               <div className="grid grid-cols-2 gap-4">
@@ -558,7 +558,7 @@ function OnboardingContent() {
                     value={height}
                     onChange={(e) => setHeight(e.target.value)}
                     placeholder="e.g. 6ft 0in"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                   />
                 </div>
                 <div className="space-y-2">
@@ -568,7 +568,7 @@ function OnboardingContent() {
                     value={gradYear}
                     onChange={(e) => setGradYear(e.target.value)}
                     placeholder="e.g. 2026"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                   />
                 </div>
               </div>
@@ -581,7 +581,7 @@ function OnboardingContent() {
                     value={gpa}
                     onChange={(e) => setGpa(e.target.value)}
                     placeholder="e.g. 3.85"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                   />
                 </div>
                 <div className="space-y-2">
@@ -589,7 +589,7 @@ function OnboardingContent() {
                   <select
                     value={handedness}
                     onChange={(e) => setHandedness(e.target.value)}
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                   >
                     <option value="" className="bg-zinc-950">Select hand...</option>
                     <option value="right" className="bg-zinc-950">Right Handed</option>
@@ -626,7 +626,7 @@ function OnboardingContent() {
   // ── WIZARD MODE (4 steps, fully skippable) ──
   return (
     <div className="calendar-root bg-background min-h-screen text-foreground relative">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#006747]/50 via-[#006747]/20 to-[#006747]/50" />
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00E676]/50 via-[#00E676]/20 to-[#00E676]/50" />
 
       {/* Skip Onboarding completely header button */}
       <div className="absolute top-6 right-6 z-20">
@@ -648,7 +648,7 @@ function OnboardingContent() {
               <div
                 key={s}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  step >= s ? 'w-8 bg-[#006747]' : 'w-2 bg-zinc-800'
+                  step >= s ? 'w-8 bg-[#00E676]' : 'w-2 bg-zinc-800'
                 }`}
               />
             ))}
@@ -672,7 +672,7 @@ function OnboardingContent() {
                     type="date"
                     value={birthday}
                     onChange={(e) => setBirthday(e.target.value)}
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-12 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-12 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                   />
                 </div>
                 <span className="text-[9px] text-zinc-500 italic">Used for age verification & scoring metrics.</span>
@@ -700,7 +700,7 @@ function OnboardingContent() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase())}
                     placeholder="username"
-                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-8 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-bold placeholder:text-zinc-600"
+                    className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-8 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-bold placeholder:text-zinc-600"
                   />
                 </div>
                 {isValidatingUsername && (
@@ -710,7 +710,7 @@ function OnboardingContent() {
                   <p className="text-[10px] text-red-500">{usernameError}</p>
                 )}
                 {usernameAvailable && !isValidatingUsername && (
-                  <p className="text-[10px] text-[#006747]">Username available ✓</p>
+                  <p className="text-[10px] text-[#00E676]">Username available ✓</p>
                 )}
               </div>
             </div>
@@ -733,7 +733,7 @@ function OnboardingContent() {
                 <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block">Who do you play for?</label>
                 <div className="flex flex-wrap gap-1.5 mb-2 min-h-[30px]">
                   {teams.map((t, i) => (
-                    <span key={i} className="px-3 py-1 bg-[#006747]/10 text-[#006747] border border-[#006747]/20 rounded-full text-xs font-semibold flex items-center gap-1.5 animate-fade-in">
+                    <span key={i} className="px-3 py-1 bg-[#00E676]/10 text-[#00E676] border border-[#00E676]/20 rounded-full text-xs font-semibold flex items-center gap-1.5 animate-fade-in">
                       {t}
                       <button type="button" onClick={() => removeTeamTag(t)} className="text-zinc-400 hover:text-foreground font-bold">×</button>
                     </span>
@@ -745,7 +745,7 @@ function OnboardingContent() {
                     value={teamInput}
                     onChange={(e) => setTeamInput(e.target.value)}
                     placeholder="Enter team name..."
-                    className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
+                    className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-xs font-semibold"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -777,7 +777,7 @@ function OnboardingContent() {
                       onClick={() => toggleSuggestedTag(t)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
                         isSelected 
-                          ? 'bg-[#006747] border-[#006747] text-[#006747]' 
+                          ? 'bg-[#00E676] border-[#00E676] text-black' 
                           : 'bg-black/40 border-zinc-800 text-zinc-400 hover:bg-zinc-800'
                       }`}
                     >
@@ -793,7 +793,7 @@ function OnboardingContent() {
                   value={customTagInput}
                   onChange={(e) => setCustomTagInput(e.target.value)}
                   placeholder="Custom tag..."
-                  className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-xs font-semibold"
+                  className="flex-1 bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-xs font-semibold"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -816,7 +816,7 @@ function OnboardingContent() {
                       value={height}
                       onChange={(e) => setHeight(e.target.value)}
                       placeholder="e.g. 6ft 0in"
-                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                     />
                   </div>
                   <div className="space-y-2">
@@ -826,7 +826,7 @@ function OnboardingContent() {
                       value={gradYear}
                       onChange={(e) => setGradYear(e.target.value)}
                       placeholder="e.g. 2026"
-                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                     />
                   </div>
                 </div>
@@ -839,7 +839,7 @@ function OnboardingContent() {
                       value={gpa}
                       onChange={(e) => setGpa(e.target.value)}
                       placeholder="e.g. 3.85"
-                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                     />
                   </div>
                   <div className="space-y-2">
@@ -847,7 +847,7 @@ function OnboardingContent() {
                     <select
                       value={handedness}
                       onChange={(e) => setHandedness(e.target.value)}
-                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#006747] transition-all text-sm font-semibold"
+                      className="w-full bg-black/60 border border-zinc-800 rounded-xl px-4 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                     >
                       <option value="" className="bg-zinc-950">Select hand...</option>
                       <option value="right" className="bg-zinc-950">Right Handed</option>
@@ -870,7 +870,7 @@ function OnboardingContent() {
               {/* Trajectory */}
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-[#006747]" /> 1. How has your performance state been lately?
+                  <Sparkles size={14} className="text-[#00E676]" /> 1. How has your performance state been lately?
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {['good', 'neutral', 'bad'].map((m) => (
@@ -880,7 +880,7 @@ function OnboardingContent() {
                       onClick={() => setBaselineAnswers({ ...baselineAnswers, trajectory: m })}
                       className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
                         baselineAnswers.trajectory === m
-                          ? 'bg-[#006747]/15 border-[#006747] text-[#006747] shadow-[0_0_15px_rgba(0,103,71,0.1)]'
+                          ? 'bg-[#00E676]/15 border-[#00E676] text-[#00E676] shadow-[0_0_15px_rgba(0,230,118,0.1)]'
                           : 'bg-black/40 border-zinc-800 text-zinc-500 hover:border-zinc-700'
                       }`}
                     >
@@ -893,7 +893,7 @@ function OnboardingContent() {
               {/* Physical */}
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                  <HeartPulse size={14} className="text-[#006747]" /> 2. Rate your current physical readiness
+                  <HeartPulse size={14} className="text-[#00E676]" /> 2. Rate your current physical readiness
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {['good', 'neutral', 'bad'].map((m) => (
@@ -903,7 +903,7 @@ function OnboardingContent() {
                       onClick={() => setBaselineAnswers({ ...baselineAnswers, readiness: m })}
                       className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
                         baselineAnswers.readiness === m
-                          ? 'bg-[#006747]/15 border-[#006747] text-[#006747] shadow-[0_0_15px_rgba(0,103,71,0.1)]'
+                          ? 'bg-[#00E676]/15 border-[#00E676] text-[#00E676] shadow-[0_0_15px_rgba(0,230,118,0.1)]'
                           : 'bg-black/40 border-zinc-800 text-zinc-500 hover:border-zinc-700'
                       }`}
                     >
@@ -916,7 +916,7 @@ function OnboardingContent() {
               {/* Focus (Phase) */}
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                  <Shield size={14} className="text-[#006747]" /> 3. Current Season Stage
+                  <Shield size={14} className="text-[#00E676]" /> 3. Current Season Stage
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -930,7 +930,7 @@ function OnboardingContent() {
                       onClick={() => setBaselineAnswers({ ...baselineAnswers, focus: phase.key })}
                       className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
                         baselineAnswers.focus === phase.key
-                          ? 'bg-[#006747]/15 border-[#006747] text-[#006747] shadow-[0_0_15px_rgba(0,103,71,0.1)]'
+                          ? 'bg-[#00E676]/15 border-[#00E676] text-[#00E676] shadow-[0_0_15px_rgba(0,230,118,0.1)]'
                           : 'bg-black/40 border-zinc-800 text-zinc-500 hover:border-zinc-700'
                       }`}
                     >
@@ -984,7 +984,7 @@ export default function OnboardingPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <Loader2 className="animate-spin text-[#006747]" size={40} />
+        <Loader2 className="animate-spin text-[#00E676]" size={40} />
       </div>
     }>
       <OnboardingContent />

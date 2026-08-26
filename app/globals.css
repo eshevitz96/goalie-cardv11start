@@ -40,7 +40,7 @@
   --popover: #FFFFFF;
   --popover-foreground: #0F172A;
 
-  --primary: #006747; /* Elite Emerald Green brand color */
+  --primary: #00E676; /* Elite Emerald Green brand color */
   --primary-foreground: #FFFFFF;
 
   --secondary: #F1F5F9; /* Clean light gray */
@@ -49,7 +49,7 @@
   --muted: #F8FAFC;
   --muted-foreground: #64748B;
 
-  --accent: #006747; 
+  --accent: #00E676; 
   --accent-foreground: #FFFFFF;
 
   --success: #10B981; /* High-contrast bright green */
@@ -58,7 +58,7 @@
 
   --border: #E2E8F0; /* Sharp light gray border */
   --input: #F1F5F9;
-  --ring: #006747;
+  --ring: #00E676;
 
   /* Dashboard V1 Required Variables */
   --color-background-primary: #FFFFFF;
@@ -207,7 +207,7 @@ body {
 
 /* ── Status Accents ─────────────────────────────────────────── */
 .status-emerald {
-  @apply text-[#006747] bg-[#006747]/10 border-[#006747]/20;
+  @apply text-[#00E676] bg-[#00E676]/10 border-[#00E676]/20;
 }
 
 /* ── Animations ──────────────────────────────────────────────── */
@@ -243,7 +243,7 @@ body {
   --text-tertiary: rgba(15, 41, 66, 0.35);
   
   --accent-primary: var(--primary);
-  --accent-glow: rgba(0, 103, 71, 0.2);
+  --accent-glow: rgba(0, 230, 118, 0.2);
   
   --surface-glass: var(--card-bg);
   --surface-glass-hover: rgba(255, 255, 255, 0.85);
@@ -351,9 +351,9 @@ body {
 .calendar-root .border-border-focus { border-color: var(--border-focus); }
 .calendar-root .focus\:border-accent:focus { border-color: var(--accent); }
 .calendar-root .border-accent { border-color: var(--accent); }
-.calendar-root .bg-accent\/10 { background-color: rgba(0, 103, 71, 0.1); }
-.calendar-root .border-accent\/25 { border-color: rgba(0, 103, 71, 0.25); }
-.calendar-root .hover\:border-accent\/40:hover { border-color: rgba(0, 103, 71, 0.40); }
+.calendar-root .bg-accent\/10 { background-color: rgba(0, 230, 118, 0.1); }
+.calendar-root .border-accent\/25 { border-color: rgba(0, 230, 118, 0.25); }
+.calendar-root .hover\:border-accent\/40:hover { border-color: rgba(0, 230, 118, 0.40); }
 
 /* Icon colour reset — Lucide icons use currentColor.
    Without this, a parent div with text-text-muted (#666) will bleed grey

@@ -87,7 +87,7 @@ export async function sendMagicLink(email: string) {
       font-weight: 900;
       letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: #006747;
+      color: #00E676;
       margin-bottom: 32px;
     }
     h1 {
@@ -108,7 +108,7 @@ export async function sendMagicLink(email: string) {
     }
     .btn {
       display: inline-block;
-      background-color: #006747;
+      background-color: #00E676;
       color: #FFFFFF !important;
       text-decoration: none;
       padding: 16px 36px;
@@ -117,7 +117,7 @@ export async function sendMagicLink(email: string) {
       letter-spacing: 0.15em;
       text-transform: uppercase;
       border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0, 103, 71, 0.2);
+      box-shadow: 0 4px 12px rgba(0, 230, 118, 0.2);
     }
     .footer {
       font-size: 11px;
@@ -128,7 +128,7 @@ export async function sendMagicLink(email: string) {
       margin-top: 8px;
     }
     .footer a {
-      color: #006747;
+      color: #00E676;
       text-decoration: none;
     }
   </style>

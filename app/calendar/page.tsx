@@ -55,6 +55,11 @@ export default function CalendarPage() {
   const [practiceTime, setPracticeTime] = useState("");
   const [practiceLocation, setPracticeLocation] = useState("");
   const [practiceNotes, setPracticeNotes] = useState("");
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [trainingDate, setTrainingDate] = useState("");
+  const [trainingTime, setTrainingTime] = useState("");
+  const [trainingFocus, setTrainingFocus] = useState("");
+  const [trainingLocation, setTrainingLocation] = useState("");
 
   // Edit Game Form States
   const [editingGame, setEditingGame] = useState<any>(null);
@@ -319,13 +324,89 @@ export default function CalendarPage() {
     }
   };
 
+  const handleCreateTraining = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trainingDate || !trainingTime) return;
+    setDbSaving(true);
+    try {
+      const uid = auth.userId;
+      
+      const { data: userRes } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_user_id", uid)
+        .single();
+      const publicUserId = userRes?.id;
+      
+      if (uid === "00000000-0000-0000-0000-000000000000" || !publicUserId) {
+        const newTraining = {
+          id: String(Date.now()),
+          opponent: trainingFocus || "Training",
+          scheduled_date: trainingDate,
+          scheduled_time: trainingTime + ":00",
+          location: trainingLocation || "TBD",
+          game_type: "training"
+        };
+        setGames([...games, newTraining]);
+        setShowTrainingModal(false);
+        setDbSaving(false);
+        return;
+      }
+
+      const { data: gameData, error: gameError } = await supabase
+        .from("games")
+        .insert({
+          season_id: season?.id,
+          opponent_name: trainingFocus || "Training",
+          game_date: trainingDate,
+          location: trainingLocation || "TBD"
+        })
+        .select()
+        .single();
+
+      if (gameError) throw gameError;
+
+      const { data, error } = await supabase
+        .from("game_sessions")
+        .insert({
+          user_id: publicUserId,
+          season_id: season?.id,
+          game_id: gameData.id,
+          opponent: trainingFocus || "Training",
+          location: trainingLocation || "TBD",
+          scheduled_date: trainingDate,
+          scheduled_time: trainingTime + ":00",
+          game_type: "training",
+          status: "draft"
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setGames([...games, data]);
+      setShowTrainingModal(false);
+    } catch (err: any) {
+      console.error("Add training error:", err);
+    } finally {
+      setDbSaving(false);
+    }
+  };
+
   const handleCreateGame = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!gameOpponent || !gameDate || !gameTime) return;
     setDbSaving(true);
     try {
       const uid = auth.userId;
-      if (uid === "00000000-0000-0000-0000-000000000000") {
+      
+      const { data: userRes } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_user_id", uid)
+        .single();
+      const publicUserId = userRes?.id;
+      
+      if (uid === "00000000-0000-0000-0000-000000000000" || !publicUserId) {
         const newGame = {
           id: String(Date.now()),
           opponent: gameOpponent,
@@ -339,6 +420,7 @@ export default function CalendarPage() {
         setDbSaving(false);
         return;
       }
+
 
       const { data, error } = await supabase
         .from("game_sessions")
@@ -645,15 +727,15 @@ export default function CalendarPage() {
         
         {/* Header navigation */}
         <div className="flex items-center justify-between mb-8">
-          <Link href="/dashboard" className="flex items-center gap-2 text-muted-foreground/80 hover:text-foreground transition-colors text-xs font-semibold uppercase tracking-wider">
+          <a href="/dashboard" className="flex items-center gap-2 text-muted-foreground/80 hover:text-foreground transition-colors text-xs font-semibold uppercase tracking-wider">
             <ArrowLeft size={16} />
             Back to Dashboard
-          </Link>
+          </a>
           {season && (
             <div className="relative">
               <button 
                 onClick={() => setShowAddEventDropdown(!showAddEventDropdown)} 
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#006747] hover:bg-[#005238] text-white transition-colors rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#00E676] hover:bg-[#00C853] text-black transition-colors rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer shadow-sm"
               >
                 <Plus size={14} /> Add Event
               </button>
@@ -661,7 +743,7 @@ export default function CalendarPage() {
                 <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-50 flex flex-col">
                   <button onClick={() => { setShowAddEventDropdown(false); setShowGameModal(true); }} className="px-4 py-3 text-left text-sm font-bold text-foreground hover:bg-muted transition-colors border-b border-border">Game</button>
                   <button onClick={() => { setShowAddEventDropdown(false); setShowPracticeModal(true); }} className="px-4 py-3 text-left text-sm font-bold text-foreground hover:bg-muted transition-colors border-b border-border">Practice</button>
-                  <Link href="/training" className="px-4 py-3 text-left text-sm font-bold text-foreground hover:bg-muted transition-colors block">Training</Link>
+                  <button onClick={() => { setShowAddEventDropdown(false); setShowTrainingModal(true); }} className="px-4 py-3 text-left text-sm font-bold text-foreground hover:bg-muted transition-colors border-b border-border">Training</button>
                 </div>
               )}
             </div>
@@ -713,7 +795,7 @@ export default function CalendarPage() {
               <button 
                 type="submit" 
                 disabled={dbSaving}
-                className="w-full mt-6 py-4 bg-[#006747] hover:bg-[#005238] disabled:opacity-50 text-foreground text-xs font-bold uppercase tracking-widest rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full mt-6 py-4 bg-[#00E676] hover:bg-[#00C853] disabled:opacity-50 text-black text-xs font-bold uppercase tracking-widest rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 {dbSaving && <Loader2 size={16} className="animate-spin" />}
                 Initialize Season
@@ -725,7 +807,7 @@ export default function CalendarPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div className="flex justify-center mb-8">
               {/* Week Switcher Block */}
               <div className="lg:col-span-1 flex items-center justify-between bg-card border border-border rounded-[24px] p-6 shadow-sm">
                 <button 
@@ -762,36 +844,7 @@ export default function CalendarPage() {
                 </button>
               </div>
 
-              {/* Intention Card */}
-              <div className="lg:col-span-2 rounded-[24px] p-6 bg-card border border-border shadow-sm relative overflow-hidden flex flex-col justify-center">
-                <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.07), transparent 60%)', pointerEvents: 'none' }}></div>
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Weekly Intention</p>
-                    <Link 
-                      href="/calendar/week" 
-                      className="text-[10px] font-black uppercase tracking-widest text-[#006747] hover:text-[#4ade80] transition-colors"
-                    >
-                      {weeklyIntention ? "Adjust Intention" : "Set Intention"}
-                    </Link>
-                  </div>
-                  {weeklyIntention ? (
-                    <p className="m-0 text-lg md:text-xl font-bold tracking-tight text-foreground leading-tight">
-                      &ldquo;{weeklyIntention.intention_text}&rdquo;
-                    </p>
-                  ) : (
-                    <div>
-                      <p className="m-0 text-sm font-medium text-muted-foreground mb-3">No intention set for this week.</p>
-                      <Link 
-                        href="/calendar/week" 
-                        className="inline-flex items-center gap-1 px-4 py-2 bg-[#006747]/10 text-[#006747] border border-[#006747]/20 rounded-full text-[10px] font-black uppercase tracking-wider hover:bg-[#006747]/10 transition-colors"
-                      >
-                        Begin Weekly Setup
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </div>
+
             </div>
 
             {/* Daily schedule items */}
@@ -826,7 +879,7 @@ export default function CalendarPage() {
                         </p>
                       </div>
                       {isDayToday && (
-                        <div className="w-2 h-2 rounded-full bg-[#006747]"></div>
+                        <div className="w-2 h-2 rounded-full bg-[#00E676]"></div>
                       )}
                     </div>
 
@@ -859,11 +912,11 @@ export default function CalendarPage() {
                               className="flex flex-col gap-3 p-3 bg-muted/50 hover:bg-muted border border-border rounded-xl cursor-pointer transition-all"
                             >
                               <div className="space-y-1.5">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-[#006747] text-foreground rounded-full">
+                                <div className="flex flex-col items-start gap-1.5">
+                                  <span className="shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-[#00E676] text-black rounded-full">
                                     {game.game_type || "GAME"}
                                   </span>
-                                  <p className="m-0 text-sm font-bold">{game.opponent}</p>
+                                  <p className="m-0 text-sm font-bold leading-tight break-words whitespace-normal">{game.opponent}</p>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-foreground/50">
                                   <span className="flex items-center gap-1"><Clock size={12} /> {formatTime(game.scheduled_time)}</span>
@@ -871,27 +924,27 @@ export default function CalendarPage() {
                                 </div>
                               </div>
                               <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
-                                <Link 
+                                <a 
                                   href="/film" 
                                   className="flex items-center gap-1 px-3 py-1.5 bg-muted hover:bg-muted-foreground/20 transition-colors border border-border rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
                                 >
                                   <Video size={12} /> View Film
-                                </Link>
+                                </a>
                                 
                                 {isGamePast ? (
-                                  <Link 
+                                  <a 
                                     href={`/calendar/postgame?date=${game.scheduled_date}`} 
                                     className="flex items-center gap-1 px-3 py-1.5 bg-muted border border-border hover:bg-muted-foreground/20 text-foreground rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
                                   >
                                     <Smile size={12} /> Debrief
-                                  </Link>
+                                  </a>
                                 ) : (
-                                  <Link 
+                                  <a 
                                     href={`/calendar/pregame?date=${game.scheduled_date}`} 
-                                    className="flex items-center gap-1 px-3 py-1.5 bg-[#006747] border border-transparent text-foreground rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                                    className="flex items-center gap-1 px-3 py-1.5 bg-[#00E676] hover:bg-[#00C853] text-black rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
                                   >
                                     <Clock size={12} /> Prepare
-                                  </Link>
+                                  </a>
                                 )}
                               </div>
                             </div>
@@ -914,11 +967,11 @@ export default function CalendarPage() {
                             className="flex flex-col gap-3 p-3 bg-muted/50 hover:bg-muted border border-border rounded-xl cursor-pointer transition-all"
                           >
                             <div className="space-y-1.5">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-muted-foreground/20 text-foreground/80 rounded-full">
+                              <div className="flex flex-col items-start gap-1.5">
+                                <span className="shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-muted-foreground/20 text-foreground/80 rounded-full">
                                   PRACTICE
                                 </span>
-                                <p className="m-0 text-sm font-bold">Team Practice</p>
+                                <p className="m-0 text-sm font-bold leading-tight break-words whitespace-normal">Team Practice</p>
                               </div>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-foreground/50">
                                 <span className="flex items-center gap-1"><Clock size={12} /> {formatTime(practice.scheduled_time)}</span>
@@ -1023,10 +1076,89 @@ export default function CalendarPage() {
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Add Game
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Training Modal */}
+      {showTrainingModal && (
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowTrainingModal(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+        >
+          <div className="bg-card border border-border rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+            <h3 className="text-lg font-bold tracking-tight mb-4">Add Training Session</h3>
+            <form onSubmit={handleCreateTraining} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground">Date</label>
+                    <button type="button" onClick={() => setTrainingDate(new Date().toISOString().split('T')[0])} className="text-[9px] font-bold uppercase tracking-wider bg-muted text-foreground px-2 py-0.5 rounded border border-border hover:bg-[#00E676] hover:text-black transition-colors">Today</button>
+                  </div>
+                  <input 
+                    type="date" 
+                    value={trainingDate}
+                    onChange={(e) => setTrainingDate(e.target.value)}
+                    required
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
+                  <input 
+                    type="time" 
+                    value={trainingTime}
+                    onChange={(e) => setTrainingTime(e.target.value)}
+                    required
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Focus / Title</label>
+                <input 
+                  type="text" 
+                  value={trainingFocus}
+                  onChange={(e) => setTrainingFocus(e.target.value)}
+                  placeholder="e.g. Hand-Eye Reactivity"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
+                <input 
+                  type="text" 
+                  value={trainingLocation}
+                  onChange={(e) => setTrainingLocation(e.target.value)}
+                  placeholder="e.g. Backyard / Gym"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setShowTrainingModal(false)}
+                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={dbSaving}
+                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {dbSaving && <Loader2 size={12} className="animate-spin" />}
+                  Add Training
                 </button>
               </div>
             </form>
@@ -1098,7 +1230,7 @@ export default function CalendarPage() {
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Add Practice
@@ -1189,7 +1321,7 @@ export default function CalendarPage() {
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes
@@ -1302,7 +1434,7 @@ export default function CalendarPage() {
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes
@@ -1410,7 +1542,7 @@ export default function CalendarPage() {
                 <button
                   type="submit"
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#006747] hover:bg-[#005238] text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes

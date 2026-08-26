@@ -14,6 +14,7 @@ import { PendingActionsOverlay } from "@/components/goalie/PendingActionsOverlay
 import { v11Engine } from "@/lib/v11-engine";
 import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
 import { BrandLogo } from "@/components/ui/BrandLogo";
+import { DigitalSignatureModal } from "@/components/goalie/DigitalSignatureModal";
 import { twMerge } from "tailwind-merge";
 
 function normalizeSportDisplay(rawSport: string | null | undefined): string | null {
@@ -34,6 +35,7 @@ export default function Dashboard() {
     const router = useRouter();
 
     const [loading, setLoading] = useState(true);
+    const [showSignatureModal, setShowSignatureModal] = useState(false);
     const [userData, setUserData] = useState<any>(null);
     const [rosterData, setRosterData] = useState<any>(null);
     const [activeDays, setActiveDays] = useState<Set<number>>(new Set());
@@ -79,7 +81,8 @@ export default function Dashboard() {
                         initials: "DV",
                         fullName: "Dev User",
                         publicUserId: "00000000-0000-0000-0000-000000000000",
-                        gcNumber: "GC-0001"
+                        gcNumber: "GC-0001",
+                        digital_signature: "Dev"
                     });
                     setRosterData({
                         id: "00000000-0000-0000-0000-000000000000",
@@ -192,7 +195,10 @@ export default function Dashboard() {
                         gcNumber = 'GC-' + String(userResData.gc_number).padStart(4, '0');
                     }
                 }
-                setUserData({ initials, fullName, publicUserId, teams, handedness, gcNumber, sport });
+                setUserData({ initials, fullName, publicUserId, teams, handedness, gcNumber, sport, digital_signature: (userRes.data as any)?.digital_signature });
+                if (!(userRes.data as any)?.digital_signature && localStorage.getItem('has_digital_signature') !== 'true') {
+                    setShowSignatureModal(true);
+                }
                 setIsOnboardingCompleted(onboarded);
 
                 // Compute profile completeness
@@ -546,6 +552,8 @@ export default function Dashboard() {
     const dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
  
     return (
+        <>
+        {showSignatureModal && <DigitalSignatureModal onComplete={() => setShowSignatureModal(false)} />}
         <div 
             className="text-foreground font-sans flex flex-col justify-start w-full min-h-screen pb-[calc(120px+env(safe-area-inset-bottom))]"
             style={{ padding: '32px 24px 140px 24px' }}
@@ -557,7 +565,7 @@ export default function Dashboard() {
                         <p className="m-0 text-lg font-bold tracking-tight text-foreground/90">
                             {dayOfWeekStr}, {dateStrShort}
                         </p>
-                        <p className="m-0 text-[9px] font-black uppercase tracking-[0.15em] text-[#006747] mt-1 leading-none">
+                        <p className="m-0 text-[9px] font-black uppercase tracking-[0.15em] text-[#00E676] mt-1 leading-none">
                             {(!seasonName || seasonName === "SEASON NOT SET") 
                                 ? `Season ${hookSeasonLabel}` 
                                 : (seasonName.toUpperCase().startsWith("SEASON") ? seasonName.toUpperCase() : `Season ${seasonName.toUpperCase()}`)}
@@ -572,7 +580,7 @@ export default function Dashboard() {
             {/* Complete your card Banner */}
             {isProfileIncomplete && (
                 <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto mb-6 w-full px-2">
-                    <Link 
+                    <a 
                         href="/onboarding"
                         className="block bg-card border border-border hover:border-border/80 rounded-2xl p-4 transition-all group shadow-sm"
                     >
@@ -585,7 +593,7 @@ export default function Dashboard() {
                                 Complete Setup
                             </div>
                         </div>
-                    </Link>
+                    </a>
                 </div>
             )}
 
@@ -622,7 +630,7 @@ export default function Dashboard() {
                         onClick={() => setShowProgress(!showProgress)}
                         className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors group cursor-pointer"
                     >
-                        <div className={`w-1.5 h-1.5 rounded-full border transition-colors ${showProgress ? 'bg-[#006747] border-[#006747]' : 'border-muted-foreground'}`} />
+                        <div className={`w-1.5 h-1.5 rounded-full border transition-colors ${showProgress ? 'bg-[#00E676] border-[#00E676]' : 'border-muted-foreground'}`} />
                         <span>{showProgress ? 'Hide' : 'Show'} Activity Counts</span>
                     </button>
                 </div>
@@ -649,7 +657,7 @@ export default function Dashboard() {
                                             isToday
                                                 ? "bg-foreground text-background ring-2 ring-foreground/20 ring-offset-2 ring-offset-background scale-110"
                                                 : isActive
-                                                    ? "bg-[#006747] text-[#006747]"
+                                                    ? "bg-[#00E676] text-[#00E676]"
                                                     : "bg-muted text-muted-foreground/30 border border-border/50"
                                         )}
                                     >
@@ -666,11 +674,11 @@ export default function Dashboard() {
                         (hasLessonRecord || credits > 0) ? "lg:grid-cols-2" : "grid-cols-1"
                     )}>
                         {/* Today's Action Card */}
-                        <Link href={actionCard.navHref} className="flex flex-col justify-between transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer h-full min-h-[192px]">
+                        <a href={actionCard.navHref} className="flex flex-col justify-between transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer h-full min-h-[192px]">
                             <div 
                                 className="flex flex-col justify-between p-6 h-full glass rounded-3xl relative overflow-hidden"
                             >
-                                <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,103,71,0.12), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
+                                <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 15% 15%, rgba(0,230,118,0.12), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
                                 
                                 <div className="relative z-10">
                                     <p className="m-0 mb-1 text-[8px] font-black uppercase tracking-[0.3em] text-foreground/35">Today</p>
@@ -686,7 +694,7 @@ export default function Dashboard() {
                                     </span>
                                 </div>
                             </div>
-                        </Link>
+                        </a>
 
                         {/* Reclaimed Space: Lessons Transparency (Render Gate - FIX 2) */}
                         {(hasLessonRecord || credits > 0) && resolvedGoalieId && (
@@ -695,33 +703,26 @@ export default function Dashboard() {
                     </div>
 
                     {/* Module Tiles Grid (3-Column) */}
-                    <div className="grid grid-cols-3 gap-3 w-full">
-                        <Link 
+                    <div className="grid grid-cols-2 gap-3 w-full">
+                        <a 
                             href="/calendar" 
                             className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
                         >
                             <Calendar size={24} className="text-foreground mb-2" />
                             <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Calendar</p>
                             <p className="m-0 text-[9px] text-muted-foreground mt-1">This week</p>
-                        </Link>
-                        <Link 
+                        </a>
+                        <a 
                             href="/film" 
                             className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
                         >
                             <Video size={24} className="text-foreground mb-2" />
                             <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Film</p>
                             <p className="m-0 text-[9px] text-muted-foreground mt-1">{gamesCount > 0 ? `${gamesCount} games` : 'No games'}</p>
-                        </Link>
-                        <Link 
-                            href="/training" 
-                            className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
-                        >
-                            <Target size={24} className="text-foreground mb-2" />
-                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Training</p>
-                            <p className="m-0 text-[9px] text-muted-foreground mt-1">
-                                {trainingPb !== null ? `PB: ${trainingPb}` : 'No runs'}
-                            </p>
-                        </Link>
+                        </a>
+                        {/* Training temporarily disabled for production push
+                        <a href="/training" ...>
+                        */}
                     </div>
 
 
@@ -746,5 +747,6 @@ export default function Dashboard() {
                 />
             )}
         </div>
+        </>
     );
 }

@@ -47,7 +47,7 @@ export default function MoodScale({ onSelect, selected }: MoodScaleProps) {
               border transition-all duration-200 min-h-[56px]
               cursor-pointer select-none active:scale-[0.98] text-left
               ${isActive 
-                ? 'bg-[#006747] border-[#006747] text-[#006747] shadow-sm' 
+                ? 'bg-[#00E676] border-[#00E676] text-black shadow-sm' 
                 : 'bg-card border-border text-foreground hover:bg-muted hover:border-border/80'
               }
             `}

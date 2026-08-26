@@ -96,7 +96,7 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
         return (
             <div className="w-full bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center min-h-[200px]">
                 <Loader2 className="animate-spin text-muted-foreground/60" size={24} />
-                <span className="text-xs text-muted-foreground mt-2 font-bold uppercase tracking-wider">Syncing Lesson Data...</span>
+                <span className="text-xs text-muted-foreground mt-2 font-bold  tracking-wider">Syncing Lesson Data...</span>
             </div>
         );
     }
@@ -112,7 +112,7 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
     // Check if they have zero history of private training
     const hasNoPrivateTraining = balance === null || (balance.lessons_earned === 0 && sessions.length === 0);
 
-    // If hasNoPrivateTraining is true, we ONLY show the Self-Guided Missions section
+    // If hasNoPrivateTraining is true, we ONLY show the Self-Guided Prep section
     // because private training is only visible to connected users.
     if (hasNoPrivateTraining) {
         return (
@@ -124,10 +124,10 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
                         <button className="w-full flex justify-between items-center group cursor-default">
                             <div className="flex flex-col items-start">
                                 <h3 className="text-lg font-sans font-bold text-foreground tracking-tight leading-none flex items-center gap-2">
-                                    Self-Guided Missions
+                                    Self-Guided Prep
                                 </h3>
                             </div>
-                            <div className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground">
+                            <div className="text-[10px] font-bold  tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground">
                                 Active
                             </div>
                         </button>
@@ -136,26 +136,28 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
 
                 <div className="flex-1 flex flex-col justify-center border-t border-border/50 animate-in fade-in slide-in-from-top-2 duration-300">
                     <p className="text-sm text-muted-foreground leading-relaxed font-medium mb-6">
-                        Use the Coach Engine to generate personalized daily training missions to keep sharpening your skills.
+                        Manage your schedule, set your intentions, and review your game film to keep sharpening your skills.
                     </p>
 
-                    <Link 
-                        href="/workout"
+                    <a 
+                        href="/calendar"
                         className="flex items-center justify-between p-4 bg-muted border border-border rounded-2xl hover:border-foreground/40 hover:scale-[1.01] active:scale-[0.99] transition-all group shadow-sm cursor-pointer shrink-0"
                     >
                         <div className="min-w-0 flex-1">
-                            <span className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">
-                                <Sparkles size={10} className="text-muted-foreground" />
-                                Today's Mission
+                            <span className="flex items-center gap-1.5 text-[8px] font-bold tracking-[0.2em] text-muted-foreground mb-1">
+                                <Calendar size={10} className="text-muted-foreground" />
+                                Calendar & Film
                             </span>
-                            <h4 className="text-sm font-sans font-black uppercase text-foreground tracking-wider truncate">
-                                Generate Training Card
+                            <h4 className="text-sm font-sans font-bold text-foreground tracking-wider truncate">
+                                Manage Your Schedule
                             </h4>
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-wider bg-foreground text-background px-3 py-2 rounded-xl transition-all whitespace-nowrap ml-2 shadow-sm">
-                            Start
-                        </span>
-                    </Link>
+                        <div className="flex flex-col items-end justify-center gap-1">
+                            <span className="text-[9px] font-bold tracking-wider bg-foreground text-background px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ml-2 shadow-md hover:scale-105 active:scale-95 flex items-center gap-1">
+                                View <ArrowRight size={12} />
+                            </span>
+                        </div>
+                    </a>
                 </div>
             </div>
         );
@@ -180,7 +182,7 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
                         {/* Remaining Badge */}
                         {hasActiveLessons ? (
                             <div className={twMerge(
-                                "text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border shadow-sm transition-all duration-300",
+                                "text-[10px] font-bold  tracking-wider px-3 py-1.5 rounded-full border shadow-sm transition-all duration-300",
                                 isLowBalance 
                                     ? "bg-muted border-border text-muted-foreground" 
                                     : "bg-foreground text-background border-transparent"
@@ -188,7 +190,7 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
                                 {remainingCount} {remainingCount === 1 ? 'Lesson' : 'Lessons'} Left
                             </div>
                         ) : (
-                            <div className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground italic hidden sm:block">
+                            <div className="text-[10px] font-bold  tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground italic hidden sm:block">
                                 No Active Lessons
                             </div>
                         )}
@@ -203,27 +205,27 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
                         {/* Lesson Count Details Grid */}
                         <div className="grid grid-cols-3 gap-3 h-full pb-2">
                             <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
-                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+                                <span className="text-[8px] font-bold  tracking-widest text-muted-foreground mb-1">
                                     Purchased
                                 </span>
-                                <span className="text-base font-black text-foreground">
+                                <span className="text-base font-bold text-foreground">
                                     {balance !== null ? earnedCount : "—"}
                                 </span>
                             </div>
                             <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
-                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+                                <span className="text-[8px] font-bold  tracking-widest text-muted-foreground mb-1">
                                     Completed
                                 </span>
-                                <span className="text-base font-black text-foreground">
+                                <span className="text-base font-bold text-foreground">
                                     {sessions.length > 0 ? deliveredCount : "—"}
                                 </span>
                             </div>
                             <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
-                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+                                <span className="text-[8px] font-bold  tracking-widest text-muted-foreground mb-1">
                                     Remaining
                                 </span>
                                 <span className={twMerge(
-                                    "text-base font-black transition-colors",
+                                    "text-base font-bold transition-colors",
                                     hasActiveLessons 
                                         ? (isLowBalance ? "text-muted-foreground" : "text-[#006747]") 
                                         : "text-muted-foreground"
@@ -282,7 +284,7 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
                                                     </span>
                                                 </div>
                                                 {session.lesson_number !== undefined && (
-                                                    <span className="text-[8px] font-black uppercase tracking-wider text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-md font-mono">
+                                                    <span className="text-[8px] font-bold  tracking-wider text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-md font-mono">
                                                         Lesson {session.lesson_number}
                                                     </span>
                                                 )}
@@ -327,22 +329,22 @@ export function LessonsTransparency({ goalieProfileId }: LessonsTransparencyProp
 
                 {activeTab === 'missions' && (
                     <div className="mt-4 flex-1 animate-in fade-in slide-in-from-top-2 duration-300 overflow-y-auto pb-2 flex flex-col justify-center">
-                        <Link 
-                            href="/workout"
+                        <a 
+                            href="/calendar"
                             className="flex items-center justify-between p-3.5 bg-muted border border-border rounded-2xl hover:border-border/80 hover:scale-[1.01] active:scale-[0.99] transition-all group"
                         >
                             <div className="min-w-0 flex-1">
-                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-0.5">
-                                    Today's Mission
+                                <span className="text-[8px] font-bold tracking-[0.2em] text-muted-foreground block mb-0.5">
+                                    Calendar & Film
                                 </span>
-                                <h4 className="text-xs font-sans font-black uppercase text-foreground tracking-wider truncate">
-                                    Daily Coach Engine Card
+                                <h4 className="text-xs font-sans font-bold text-foreground tracking-wider truncate">
+                                    Manage Your Schedule
                                 </h4>
                             </div>
-                            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider bg-foreground/10 border border-border text-foreground px-3 py-1.5 rounded-xl group-hover:bg-foreground group-hover:text-background transition-all whitespace-nowrap ml-2">
-                                View Card <ArrowRight size={10} />
+                            <span className="flex items-center gap-1.5 text-[9px] font-bold tracking-wider bg-foreground/10 border border-border text-foreground px-3 py-1.5 rounded-xl group-hover:bg-foreground group-hover:text-background transition-all whitespace-nowrap ml-2">
+                                View <ArrowRight size={10} />
                             </span>
-                        </Link>
+                        </a>
                     </div>
                 )}
             </div>

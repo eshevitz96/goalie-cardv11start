@@ -48,7 +48,7 @@ export function SplashLoader() {
             top: 0,
             bottom: 0,
             borderRadius: 999,
-            background: "#006747",
+            background: "#00E676",
           }}
         />
         {/* Phase 2: slow creep to 95% — simulates waiting for server */}
@@ -62,7 +62,7 @@ export function SplashLoader() {
             top: 0,
             bottom: 0,
             borderRadius: 999,
-            background: "#006747",
+            background: "#00E676",
           }}
         />
       </div>
@@ -129,7 +129,7 @@ export function InlineLoader({ visible }: { visible: boolean }) {
             inset: 0,
             width: "45%",
             borderRadius: 999,
-            background: "linear-gradient(90deg, transparent, #006747, transparent)",
+            background: "linear-gradient(90deg, transparent, #00E676, transparent)",
           }}
         />
       </div>

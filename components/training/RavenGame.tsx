@@ -288,7 +288,7 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                     ctx.strokeRect(gate.x - 0.5, -1, gateWidth + 1, gapTop + 1);
 
                     // Elite Emerald left edge accent
-                    ctx.strokeStyle = 'rgba(0,103,71,0.6)';
+                    ctx.strokeStyle = 'rgba(0,230,118,0.6)';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.moveTo(gate.x, 0);
@@ -305,7 +305,7 @@ export default function RavenGame({ userId, personalBest, onNewPb }: RavenGamePr
                     ctx.strokeRect(gate.x - 0.5, gapBottom, gateWidth + 1, CANVAS_HEIGHT - gapBottom + 1);
 
                     // Bottom block accent
-                    ctx.strokeStyle = 'rgba(0,103,71,0.6)';
+                    ctx.strokeStyle = 'rgba(0,230,118,0.6)';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.moveTo(gate.x, gapBottom);

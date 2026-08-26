@@ -35,7 +35,7 @@ export default function TextInput({
 
   const sharedClasses = `
     w-full bg-transparent text-foreground text-xl font-bold
-    border-b-2 border-border focus:border-[#006747] focus:outline-none
+    border-b-2 border-border focus:border-[#00E676] focus:outline-none
     transition-colors duration-200 pb-3 min-h-[56px]
     placeholder:text-muted-foreground
     ${className}

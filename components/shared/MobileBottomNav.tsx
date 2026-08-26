@@ -25,11 +25,11 @@ export function MobileBottomNav() {
             href: "/film",
             icon: Video,
         },
-        {
+        /* {
             name: "Training",
             href: "/training",
             icon: Target,
-        },
+        }, */
     ];
 
     return (

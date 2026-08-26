@@ -120,11 +120,12 @@ export function NetDiagram({ onPlot, currentPoint, historyShots = [] }: NetDiagr
           position: 'absolute',
           left: `${currentPoint.x * 100}%`,
           top: `${currentPoint.y * 100}%`,
-          width: '12px', height: '12px',
-          background: '#FFFFFF',
+          width: '14px', height: '14px',
+          background: '#00E676',
           borderRadius: '50%',
           transform: 'translate(-50%, -50%)',
-          boxShadow: '0 0 10px rgba(255,255,255,0.8)',
+          border: '2px solid #020817',
+          boxShadow: '0 0 10px rgba(0, 230, 118, 0.6)',
           pointerEvents: 'none',
           zIndex: 10
         }} />

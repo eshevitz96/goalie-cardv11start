@@ -267,7 +267,7 @@ export default function ProfilePage() {
                             <p className="m-0 text-sm font-medium text-muted-foreground/80 mt-1">{userData?.positionClub}</p>
                         </div>
                         <PerformanceAvatar score={performanceScore} size={56}>
-                            <div className="w-full h-full rounded-full flex items-center justify-center font-bold text-lg bg-[#006747] text-foreground shadow-xl shrink-0">
+                            <div className="w-full h-full rounded-full flex items-center justify-center font-bold text-lg bg-[#00E676] text-black shadow-xl shrink-0">
                                 {userData?.initials}
                             </div>
                         </PerformanceAvatar>
@@ -340,7 +340,7 @@ export default function ProfilePage() {
                             </div>
                             <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shrink-0 ${
                                 subscriptionData.status === 'Active' 
-                                    ? 'bg-[#006747] text-foreground shadow-lg' 
+                                    ? 'bg-[#00E676] text-black shadow-lg' 
                                     : 'bg-muted-foreground/20 text-muted-foreground/80'
                             }`}>
                                 {subscriptionData.status}
@@ -390,7 +390,7 @@ export default function ProfilePage() {
                             <p className="m-0 text-sm font-bold">Top 205 Camp</p>
                             <p className="m-0 text-xs text-muted-foreground/80 mt-0.5">June 14-16 · Registered</p>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-[#006747] text-[#006747] rounded-full shrink-0">
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-[#00E676] text-[#00E676] rounded-full shrink-0">
                             Confirmed
                         </span>
                     </div>

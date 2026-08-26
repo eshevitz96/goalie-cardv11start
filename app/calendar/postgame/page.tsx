@@ -101,7 +101,7 @@ function PostgameContent() {
     try {
       const uid = auth.userId;
       if (uid === "00000000-0000-0000-0000-000000000000") {
-        router.replace("/calendar");
+        window.location.href = "/calendar";
         return;
       }
 
@@ -153,7 +153,7 @@ function PostgameContent() {
         if (postErr) throw postErr;
       }
 
-      router.replace("/calendar");
+      window.location.href = "/calendar";
     } catch (err) {
       console.error("Postgame save failed:", err);
       setStep("next_time");

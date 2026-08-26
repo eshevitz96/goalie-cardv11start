@@ -21,6 +21,7 @@ interface AppState {
   setTitle: (title: string) => void;
   setDate: (date: string) => void;
   addClips: (files: File[]) => void;
+  relinkClip: (clipId: string, file: File) => void;
   removeClip: (clipId: string) => void;
   restoreClip: (clipId: string) => void;
   purgeClip: (clipId: string) => void;
@@ -217,6 +218,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+    const relinkClip = (clipId: string, file: File) => {
+    setClips(prev => prev.map(c => {
+      if (c.id === clipId) {
+        return {
+          ...c,
+          url: URL.createObjectURL(file),
+          file: file,
+          name: file.name,
+          size: file.size
+        };
+      }
+      return c;
+    }));
+  };
+
   const removeClip = (clipId: string) => {
     const clip = clips.find(c => c.id === clipId);
     if (clip) {
@@ -288,7 +304,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           date: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           sport,
           season: '2024-25',
-          updated_at: new Date().toISOString()
         })
         .select('id')
         .single();
@@ -391,11 +406,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const goalsAllowed = totalShots - totalSaves;
         const savePct = totalShots > 0 ? parseFloat((totalSaves / totalShots).toFixed(3)) : 0.0;
 
+        let targetGameId = null;
+
+        // Check if game_session already exists and has a game_id
+        const { data: existingSession } = await supabase
+          .from('game_sessions')
+          .select('game_id')
+          .eq('id', savedReportId)
+          .maybeSingle();
+
+        targetGameId = existingSession?.game_id;
+
+        if (!targetGameId) {
+            // Create a canonical games row to satisfy the not-null constraint
+            const { data: newGame, error: newGameError } = await supabase
+                .from('games')
+                .insert({
+                    opponent_name: title || 'Film Session',
+                    game_date: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                    location: 'Film Room'
+                })
+                .select('id')
+                .single();
+            if (!newGameError && newGame) {
+                targetGameId = newGame.id;
+            }
+        }
+
         const { error: sessionError } = await supabase
           .from('game_sessions')
           .upsert({
             id: savedReportId, // 1:1 Parity
             user_id: pubUser.id, // Must be the public.users.id
+            game_id: targetGameId, // Fixes NOT-NULL constraint
             status: 'complete',
             started_at: date || new Date().toISOString(),
             completed_at: new Date().toISOString(),
@@ -404,7 +447,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             goals_allowed: goalsAllowed,
             save_pct: savePct,
             notes_summary: title || 'Untitled Session',
-            updated_at: new Date().toISOString()
           });
 
         if (sessionError) {
@@ -448,6 +490,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTitle,
     setDate,
     addClips,
+    relinkClip,
     removeClip,
     restoreClip,
     purgeClip,

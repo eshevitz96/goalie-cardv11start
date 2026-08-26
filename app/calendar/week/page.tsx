@@ -125,7 +125,7 @@ export default function WeeklySetupPage() {
 
   const handleBackStep = () => {
     if (step === "week_overview") {
-      router.push("/calendar");
+      window.location.href = "/calendar";
     } else if (step === "mood") {
       setStep("week_overview");
     } else if (step === "focus") {
@@ -263,19 +263,25 @@ export default function WeeklySetupPage() {
             <div className="flex items-center justify-between mt-8">
               {!hasEvents ? (
                 <button 
-                  onClick={() => router.push("/calendar")}
+                  onClick={() => window.location.href = "/calendar"}
                   type="button"
-                  className="text-base font-bold !text-[#006747] hover:text-[#005238] font-bold bg-transparent border-none cursor-pointer flex items-center gap-1"
+                  className="text-base font-bold !text-[#00E676] hover:text-[#00C853] bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors"
                 >
                   Set up your season →
                 </button>
               ) : (
-                <div />
+                <button 
+                  onClick={() => window.location.href = "/calendar"}
+                  type="button"
+                  className="text-sm font-bold text-muted-foreground hover:text-foreground bg-transparent border-none cursor-pointer underline underline-offset-4 decoration-muted-foreground/30 hover:decoration-foreground/50 transition-colors"
+                >
+                  Edit schedule
+                </button>
               )}
               <button 
                 onClick={handleNextStep}
                 type="button"
-                className="px-8 py-3.5 bg-[#006747] hover:bg-[#005238] text-white shadow-md font-extrabold rounded-2xl text-lg cursor-pointer active:scale-[0.97] transition-all"
+                className="px-8 py-3.5 bg-[#00E676] hover:bg-[#00C853] text-black shadow-md font-extrabold rounded-2xl text-lg cursor-pointer active:scale-[0.97] transition-all"
               >
                 Confirm week
               </button>
@@ -315,7 +321,7 @@ export default function WeeklySetupPage() {
                 onClick={saveWeeklyIntention}
                 disabled={saving || !focusText.trim()}
                 type="button"
-                className="px-8 py-3.5 bg-[#006747] hover:bg-[#005238] text-white shadow-md font-extrabold rounded-2xl text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-all flex items-center gap-2"
+                className="px-8 py-3.5 bg-[#00E676] hover:bg-[#00C853] text-black shadow-md font-extrabold rounded-2xl text-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-all flex items-center gap-2"
               >
                 {saving && <Loader2 size={16} className="animate-spin text-white" />}
                 {saving ? "Saving..." : "Done"}
@@ -326,7 +332,7 @@ export default function WeeklySetupPage() {
 
         {step === "confirmation" && (
           <div className="animate-fade-in-up w-full text-center">
-            <div className="w-16 h-16 bg-[#006747] text-[#006747] rounded-full flex items-center justify-center mx-auto mb-8">
+            <div className="w-16 h-16 bg-[#00E676] text-[#00E676] rounded-full flex items-center justify-center mx-auto mb-8">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -338,9 +344,9 @@ export default function WeeklySetupPage() {
               See you on the other side. Focus set for the week. Let&apos;s get to the work.
             </p>
             <button 
-              onClick={() => router.push("/calendar")}
+              onClick={() => window.location.href = "/calendar"}
               type="button"
-              className="w-full py-4 bg-[#006747] hover:bg-[#005238] text-white shadow-md font-extrabold uppercase tracking-wider rounded-2xl cursor-pointer active:scale-[0.97] transition-all"
+              className="w-full py-4 bg-[#00E676] hover:bg-[#00C853] text-black shadow-md font-extrabold uppercase tracking-wider rounded-2xl cursor-pointer active:scale-[0.97] transition-all"
             >
               Back to Calendar
             </button>

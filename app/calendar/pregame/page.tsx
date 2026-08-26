@@ -32,7 +32,7 @@ function PregameContent() {
 
       if (uid === "00000000-0000-0000-0000-000000000000") {
         setSaving(false);
-        router.replace("/calendar");
+        window.location.href = "/calendar";
         return;
       }
 
@@ -80,7 +80,7 @@ function PregameContent() {
         if (prepErr) throw prepErr;
       }
 
-      router.replace("/calendar");
+      window.location.href = "/calendar";
     } catch (err) {
       console.error("Pregame save failed:", err);
     } finally {

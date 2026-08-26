@@ -14,6 +14,7 @@ export default function MainApp() {
   const { clips, activeClipId, setActiveClipId, clearSession, saveReport } = useAppStore();
   
   const activeClip = clips.find(c => c.id === activeClipId);
+  const isVideoOffline = activeClip && activeClip.url && activeClip.url.startsWith('blob:') && !activeClip.file;
 
   const goToLibrary = async () => {
     await saveReport();
@@ -55,7 +56,7 @@ export default function MainApp() {
               ) : activeClip ? (
                 <div className="flex flex-col lg:flex-row gap-6 items-start">
                   <div className="glass-panel flex-1 w-full p-4">
-                    {activeClip.url ? (
+                    {!isVideoOffline && activeClip.url ? (
                       <video 
                         id="active-clip-video"
                         src={activeClip.url} 
@@ -65,9 +66,8 @@ export default function MainApp() {
                         className="w-full rounded-lg bg-black max-h-[500px]"
                       />
                     ) : (
-                      <div className="flex-center flex-col gap-4 p-8 text-center w-full min-h-[300px] rounded-lg bg-[var(--bg-tertiary)] border border-dashed border-[var(--surface-glass-border)]">
-                         <div className="text-red-500 text-xl font-semibold">Video Offline</div>
-                         <UploadDropzone />
+                      <div className="flex flex-col gap-4 p-8 text-center w-full rounded-lg">
+                         <UploadDropzone relinkClipId={activeClip.id} />
                       </div>
                     )}
                     <div className="mt-4 flex justify-between items-center">

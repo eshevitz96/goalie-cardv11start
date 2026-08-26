@@ -323,7 +323,7 @@ export default function TrainingPage() {
             <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full mb-6 flex items-center justify-between border-b border-border pb-4 px-1">
                 <Link href="/dashboard" className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity text-foreground">
                     <ArrowLeft size={16} />
-                    <span className="text-xs font-bold uppercase tracking-wider">Dashboard</span>
+                    <span className="text-xs font-bold  tracking-wider">Dashboard</span>
                 </Link>
                 <BrandLogo textClassName="text-lg font-medium tracking-tight text-foreground select-none pointer-events-none" />
             </div>
@@ -336,7 +336,7 @@ export default function TrainingPage() {
                     <div className="w-full bg-card border border-border rounded-3xl p-6 space-y-4 shadow-xl relative overflow-hidden">
                         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                         <div>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground block mb-1">
+                            <span className="text-[9px] font-bold  tracking-[0.2em] text-foreground block mb-1">
                                 Goalie Card
                             </span>
                             <h3 className="text-lg font-bold text-foreground tracking-tight leading-none">
@@ -363,7 +363,7 @@ export default function TrainingPage() {
                                     className="w-full text-left p-4 bg-muted border border-border hover:border-border hover:border-foreground/40 hover:bg-foreground/5 rounded-2xl transition-all font-bold text-sm text-foreground flex items-center justify-between group cursor-pointer"
                                 >
                                     <span>{roster.goalie_name}</span>
-                                    <span className="text-[9px] font-black uppercase tracking-wider bg-muted border border-border text-muted-foreground px-2.5 py-1.5 rounded-xl group-hover:bg-foreground group-hover:text-background group-hover:text-foreground transition-all font-sans">
+                                    <span className="text-[9px] font-bold  tracking-wider bg-muted border border-border text-muted-foreground px-2.5 py-1.5 rounded-xl group-hover:bg-foreground group-hover:text-background group-hover:text-foreground transition-all font-sans">
                                         View Lessons
                                     </span>
                                 </button>
@@ -372,10 +372,10 @@ export default function TrainingPage() {
                     </div>
                 ) : (
                     <div className="w-full bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center min-h-[160px]">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground block mb-1">
+                        <span className="text-[9px] font-bold  tracking-[0.2em] text-foreground block mb-1">
                             Private Training
                         </span>
-                        <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+                        <h4 className="text-sm font-bold text-foreground  tracking-wider mb-2">
                             No Active Lessons
                         </h4>
                         <p className="text-[11px] text-muted-foreground max-w-xs leading-relaxed">
@@ -390,8 +390,8 @@ export default function TrainingPage() {
                 <button
                     onClick={() => setActiveTab('drills')}
                     className={twMerge(
-                        "py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
-                        activeTab === 'drills' ? "bg-background text-foreground font-black shadow-sm" : "text-muted-foreground hover:text-foreground/70"
+                        "py-3 rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
+                        activeTab === 'drills' ? "bg-background text-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground/70"
                     )}
                 >
                     <BookOpen size={13} />
@@ -400,8 +400,8 @@ export default function TrainingPage() {
                 <button
                     onClick={() => setActiveTab('timer')}
                     className={twMerge(
-                        "py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
-                        activeTab === 'timer' ? "bg-background text-foreground font-black shadow-sm" : "text-muted-foreground hover:text-foreground/70"
+                        "py-3 rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
+                        activeTab === 'timer' ? "bg-background text-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground/70"
                     )}
                 >
                     <Clock size={13} />
@@ -410,8 +410,8 @@ export default function TrainingPage() {
                 <button
                     onClick={() => setActiveTab('game')}
                     className={twMerge(
-                        "py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
-                        activeTab === 'game' ? "bg-background text-foreground font-black shadow-sm" : "text-muted-foreground hover:text-foreground/70"
+                        "py-3 rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
+                        activeTab === 'game' ? "bg-background text-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground/70"
                     )}
                 >
                     <Gamepad2 size={13} />
@@ -421,12 +421,12 @@ export default function TrainingPage() {
 
             {/* Content view panel */}
             <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full flex-1">
-                {/* 1. DRILLS TAB */}
+                {/* 1. Drills TAB */}
                 {activeTab === 'drills' && (
                     <div className="space-y-6">
                         {/* Physical Drills */}
                         <div>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground block mb-3 px-1">Physical Drills</span>
+                            <span className="text-[9px] font-bold  tracking-[0.2em] text-foreground block mb-3 px-1">Physical Drills</span>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {DRILL_CATEGORIES.physical.map(name => {
                                     const details = DRILL_LIBRARY[name];
@@ -446,20 +446,20 @@ export default function TrainingPage() {
                                                 onClick={() => setExpandedDrill(isExpanded ? null : name)}
                                                 className="flex items-center justify-between cursor-pointer"
                                             >
-                                                <h4 className="text-xs font-black uppercase tracking-wider text-foreground">{name}</h4>
+                                                <h4 className="text-xs font-bold  tracking-wider text-foreground">{name}</h4>
                                                 {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                                             </div>
                                             {isExpanded && details && (
                                                 <div className="mt-4 pt-3 border-t border-border space-y-4">
                                                     <div>
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-foreground block mb-1">Key Steps</span>
+                                                        <span className="text-[8px] font-bold  tracking-widest text-foreground block mb-1">Key Steps</span>
                                                         <ol className="list-decimal pl-4 space-y-1 text-xs text-foreground/70 font-medium">
                                                             {details.steps.map((step, i) => <li key={i}>{step}</li>)}
                                                         </ol>
                                                     </div>
                                                     {details.points.length > 0 && (
                                                         <div>
-                                                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Coaching Points</span>
+                                                            <span className="text-[8px] font-bold  tracking-widest text-muted-foreground block mb-1">Coaching Points</span>
                                                             <ul className="list-disc pl-4 space-y-0.5 text-xs text-foreground/50 font-medium">
                                                                 {details.points.map((pt, i) => <li key={i}>{pt}</li>)}
                                                             </ul>
@@ -485,7 +485,7 @@ export default function TrainingPage() {
                                                                     />
                                                                 </svg>
                                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                    <span className="text-xl font-black font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
+                                                                    <span className="text-xl font-bold font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
                                                                 </div>
                                                             </div>
                                                             <div className="flex flex-col gap-2 w-full sm:w-auto min-w-[120px]">
@@ -494,7 +494,7 @@ export default function TrainingPage() {
                                                                         e.stopPropagation();
                                                                         setTimerIsActive(!timerIsActive);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     {timerIsActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
                                                                     {timerIsActive ? 'Pause' : 'Resume'}
@@ -505,7 +505,7 @@ export default function TrainingPage() {
                                                                         setTimerIsActive(false);
                                                                         setTimerDuration(totalDuration);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     <RotateCcw size={12} />
                                                                     Reset
@@ -518,7 +518,7 @@ export default function TrainingPage() {
                                                                         setTotalDuration(300);
                                                                         setTimerDuration(300);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     Done
                                                                 </button>
@@ -530,7 +530,7 @@ export default function TrainingPage() {
                                                                 e.stopPropagation();
                                                                 startDrillTimer(name, details.duration || 5);
                                                             }}
-                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-bold  tracking-widest transition-all"
                                                         >
                                                             Start {details.duration || 5}m Timer
                                                         </button>
@@ -545,7 +545,7 @@ export default function TrainingPage() {
 
                         {/* Mental Drills */}
                         <div className="pt-2">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground block mb-3 px-1">Mental & Breathwork</span>
+                            <span className="text-[9px] font-bold  tracking-[0.2em] text-foreground block mb-3 px-1">Mental & Breathwork</span>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {DRILL_CATEGORIES.mental.map(name => {
                                     const details = DRILL_LIBRARY[name];
@@ -565,20 +565,20 @@ export default function TrainingPage() {
                                                 onClick={() => setExpandedDrill(isExpanded ? null : name)}
                                                 className="flex items-center justify-between cursor-pointer"
                                             >
-                                                <h4 className="text-xs font-black uppercase tracking-wider text-foreground">{name}</h4>
+                                                <h4 className="text-xs font-bold  tracking-wider text-foreground">{name}</h4>
                                                 {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                                             </div>
                                             {isExpanded && details && (
                                                 <div className="mt-4 pt-3 border-t border-border space-y-4">
                                                     <div>
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-foreground block mb-1">Key Steps</span>
+                                                        <span className="text-[8px] font-bold  tracking-widest text-foreground block mb-1">Key Steps</span>
                                                         <ol className="list-decimal pl-4 space-y-1 text-xs text-foreground/70 font-medium">
                                                             {details.steps.map((step, i) => <li key={i}>{step}</li>)}
                                                         </ol>
                                                     </div>
                                                     {details.points.length > 0 && (
                                                         <div>
-                                                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Key Points</span>
+                                                            <span className="text-[8px] font-bold  tracking-widest text-muted-foreground block mb-1">Key Points</span>
                                                             <ul className="list-disc pl-4 space-y-0.5 text-xs text-foreground/50 font-medium">
                                                                 {details.points.map((pt, i) => <li key={i}>{pt}</li>)}
                                                             </ul>
@@ -604,7 +604,7 @@ export default function TrainingPage() {
                                                                     />
                                                                 </svg>
                                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                    <span className="text-xl font-black font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
+                                                                    <span className="text-xl font-bold font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
                                                                 </div>
                                                             </div>
                                                             <div className="flex flex-col gap-2 w-full sm:w-auto min-w-[120px]">
@@ -613,7 +613,7 @@ export default function TrainingPage() {
                                                                         e.stopPropagation();
                                                                         setTimerIsActive(!timerIsActive);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     {timerIsActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
                                                                     {timerIsActive ? 'Pause' : 'Resume'}
@@ -624,7 +624,7 @@ export default function TrainingPage() {
                                                                         setTimerIsActive(false);
                                                                         setTimerDuration(totalDuration);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     <RotateCcw size={12} />
                                                                     Reset
@@ -637,7 +637,7 @@ export default function TrainingPage() {
                                                                         setTotalDuration(300);
                                                                         setTimerDuration(300);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     Done
                                                                 </button>
@@ -649,7 +649,7 @@ export default function TrainingPage() {
                                                                 e.stopPropagation();
                                                                 startDrillTimer(name, details.duration || 5);
                                                             }}
-                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-bold  tracking-widest transition-all"
                                                         >
                                                             Start {details.duration || 5}m Timer
                                                         </button>
@@ -664,7 +664,7 @@ export default function TrainingPage() {
 
                         {/* Video Review */}
                         <div className="pt-2">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground block mb-3 px-1">Video Review</span>
+                            <span className="text-[9px] font-bold  tracking-[0.2em] text-foreground block mb-3 px-1">Video Review</span>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {DRILL_CATEGORIES.video.map(name => {
                                     const details = DRILL_LIBRARY[name];
@@ -684,20 +684,20 @@ export default function TrainingPage() {
                                                 onClick={() => setExpandedDrill(isExpanded ? null : name)}
                                                 className="flex items-center justify-between cursor-pointer"
                                             >
-                                                <h4 className="text-xs font-black uppercase tracking-wider text-foreground">{name}</h4>
+                                                <h4 className="text-xs font-bold  tracking-wider text-foreground">{name}</h4>
                                                 {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                                             </div>
                                             {isExpanded && details && (
                                                 <div className="mt-4 pt-3 border-t border-border space-y-4">
                                                     <div>
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-foreground block mb-1">Key Steps</span>
+                                                        <span className="text-[8px] font-bold  tracking-widest text-foreground block mb-1">Key Steps</span>
                                                         <ol className="list-decimal pl-4 space-y-1 text-xs text-foreground/70 font-medium">
                                                             {details.steps.map((step, i) => <li key={i}>{step}</li>)}
                                                         </ol>
                                                     </div>
                                                     {details.points.length > 0 && (
                                                         <div>
-                                                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Focus Points</span>
+                                                            <span className="text-[8px] font-bold  tracking-widest text-muted-foreground block mb-1">Focus Points</span>
                                                             <ul className="list-disc pl-4 space-y-0.5 text-xs text-foreground/50 font-medium">
                                                                 {details.points.map((pt, i) => <li key={i}>{pt}</li>)}
                                                             </ul>
@@ -723,7 +723,7 @@ export default function TrainingPage() {
                                                                     />
                                                                 </svg>
                                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                    <span className="text-xl font-black font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
+                                                                    <span className="text-xl font-bold font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
                                                                 </div>
                                                             </div>
                                                             <div className="flex flex-col gap-2 w-full sm:w-auto min-w-[120px]">
@@ -732,7 +732,7 @@ export default function TrainingPage() {
                                                                         e.stopPropagation();
                                                                         setTimerIsActive(!timerIsActive);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     {timerIsActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
                                                                     {timerIsActive ? 'Pause' : 'Resume'}
@@ -743,7 +743,7 @@ export default function TrainingPage() {
                                                                         setTimerIsActive(false);
                                                                         setTimerDuration(totalDuration);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     <RotateCcw size={12} />
                                                                     Reset
@@ -756,7 +756,7 @@ export default function TrainingPage() {
                                                                         setTotalDuration(300);
                                                                         setTimerDuration(300);
                                                                     }}
-                                                                    className="w-full py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"
+                                                                    className="w-full py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
                                                                 >
                                                                     Done
                                                                 </button>
@@ -768,7 +768,7 @@ export default function TrainingPage() {
                                                                 e.stopPropagation();
                                                                 startDrillTimer(name, details.duration || 10);
                                                             }}
-                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-bold  tracking-widest transition-all"
                                                         >
                                                             Start {details.duration || 10}m Timer
                                                         </button>
@@ -783,7 +783,7 @@ export default function TrainingPage() {
                     </div>
                 )}
 
-                {/* 2. TIMER TAB */}
+                {/* 2. Timer TAB */}
                 {activeTab === 'timer' && (
                     <div className="flex flex-col items-center justify-center py-6 text-center">
                         {/* Circular Progress Ring HUD */}
@@ -802,11 +802,11 @@ export default function TrainingPage() {
                                 />
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-4xl font-black font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
+                                <span className="text-4xl font-bold font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
                                 {selectedDrill ? (
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-foreground mt-2 max-w-[140px] truncate">{selectedDrill}</span>
+                                    <span className="text-[9px] font-bold  tracking-widest text-foreground mt-2 max-w-[140px] truncate">{selectedDrill}</span>
                                 ) : (
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mt-2">No Drill Selected</span>
+                                    <span className="text-[9px] font-bold  tracking-widest text-muted-foreground mt-2">No Drill Selected</span>
                                 )}
                             </div>
                         </div>
@@ -816,13 +816,13 @@ export default function TrainingPage() {
                             <div className="flex justify-between gap-3">
                                 <button
                                     onClick={() => adjustTimer(-60)}
-                                    className="flex-1 py-2 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border text-[10px] font-bold uppercase tracking-wider rounded-xl"
+                                    className="flex-1 py-2 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border text-[10px] font-bold  tracking-wider rounded-xl"
                                 >
                                     - 1 Min
                                 </button>
                                 <button
                                     onClick={() => adjustTimer(60)}
-                                    className="flex-1 py-2 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border text-[10px] font-bold uppercase tracking-wider rounded-xl"
+                                    className="flex-1 py-2 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border text-[10px] font-bold  tracking-wider rounded-xl"
                                 >
                                     + 1 Min
                                 </button>
@@ -875,7 +875,7 @@ export default function TrainingPage() {
                     </div>
                 )}
 
-                {/* 3. GAME TAB */}
+                {/* 3. Game TAB */}
                 {activeTab === 'game' && (
                     <div className="flex justify-center items-center py-4">
                         <RavenGame 
