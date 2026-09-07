@@ -29,6 +29,7 @@ export default function CalendarPage() {
   const [season, setSeason] = useState<any>(null);
   const [games, setGames] = useState<any[]>([]);
   const [practices, setPractices] = useState<any[]>([]);
+  const [privateSessions, setPrivateSessions] = useState<any[]>([]);
   const [weeklyIntention, setWeeklyIntention] = useState<any>(null);
   
   // Date tracking: offset 0 = current week, -1 = last week, 1 = next week, etc.
@@ -112,6 +113,9 @@ export default function CalendarPage() {
     try {
       const uid = auth.userId;
       
+      const startStr = weekDates[0].toISOString().split("T")[0];
+      const endStr = weekDates[6].toISOString().split("T")[0];
+
       // Developer bypass mock values
       if (uid === "00000000-0000-0000-0000-000000000000") {
         setSeason({
@@ -146,6 +150,14 @@ export default function CalendarPage() {
           notes: "Special teams focus and crease slides."
         }]);
 
+        // Fetch real booked sessions from database
+        const { data: dbSessions } = await supabase
+          .from("sessions")
+          .select("*")
+          .gte("date", startStr + "T00:00:00")
+          .lte("date", endStr + "T23:59:59");
+        setPrivateSessions(dbSessions || []);
+
         setLoading(false);
         return;
       }
@@ -158,35 +170,19 @@ export default function CalendarPage() {
         .single();
       
       const publicUserId = userRes?.id;
-      if (!publicUserId) {
-        setLoading(false);
-        return;
-      }
 
-      const { data: seasonData } = await supabase
-        .from("seasons")
+      // 2. Fetch games for selected week
+      const { data: gamesData } = await supabase
+        .from("game_sessions")
         .select("*")
-        .eq("user_id", publicUserId)
-        .eq("is_active", true)
-        .maybeSingle();
+        .eq("user_id", uid)
+        .gte("scheduled_date", startStr)
+        .lte("scheduled_date", endStr);
+      
+      setGames(gamesData || []);
 
-      setSeason(seasonData);
-
-      if (seasonData) {
-        const startStr = weekDates[0].toISOString().split("T")[0];
-        const endStr = weekDates[6].toISOString().split("T")[0];
-
-        // 2. Fetch games for selected week
-        const { data: gamesData } = await supabase
-          .from("game_sessions")
-          .select("*")
-          .eq("user_id", uid) // Game sessions query by auth user_id matching dashboard
-          .gte("scheduled_date", startStr)
-          .lte("scheduled_date", endStr);
-        
-        setGames(gamesData || []);
-
-        // 3. Fetch practices for selected week
+      // 3. Fetch practices for selected week
+      if (publicUserId) {
         const { data: practicesData } = await supabase
           .from("practices")
           .select("*")
@@ -195,8 +191,29 @@ export default function CalendarPage() {
           .lte("scheduled_date", endStr);
 
         setPractices(practicesData || []);
+      }
 
-        // 4. Fetch weekly intention
+      // 4. Fetch private training sessions for selected week
+      const { data: privData } = await supabase
+        .from("sessions")
+        .select("*")
+        .or(`goalie_id.eq.${uid},goalie_id.eq.${publicUserId || uid},roster_id.eq.${publicUserId || uid}`)
+        .gte("date", startStr + "T00:00:00")
+        .lte("date", endStr + "T23:59:59");
+
+      setPrivateSessions(privData || []);
+
+      if (publicUserId) {
+        const { data: seasonData } = await supabase
+          .from("seasons")
+          .select("*")
+          .eq("user_id", publicUserId)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        setSeason(seasonData);
+
+        // 5. Fetch weekly intention
         const { data: intentionData } = await supabase
           .from("weekly_intentions")
           .select("*")
@@ -856,8 +873,9 @@ export default function CalendarPage() {
                 const dateStr = date.toISOString().split("T")[0];
                 const dayGames = games.filter(g => g.scheduled_date === dateStr);
                 const dayPractices = practices.filter(p => p.scheduled_date === dateStr);
+                const dayPrivateSessions = privateSessions.filter(s => s.date && s.date.startsWith(dateStr));
                 
-                const hasEvents = dayGames.length > 0 || dayPractices.length > 0;
+                const hasEvents = dayGames.length > 0 || dayPractices.length > 0 || dayPrivateSessions.length > 0;
                 const isDayToday = isToday(date);
 
                 return (
@@ -928,7 +946,7 @@ export default function CalendarPage() {
                                   href="/film" 
                                   className="flex items-center gap-1 px-3 py-1.5 bg-muted hover:bg-muted-foreground/20 transition-colors border border-border rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer"
                                 >
-                                  <Video size={12} /> View Film
+                                  <Video size={12} /> Film Breakdown
                                 </a>
                                 
                                 {isGamePast ? (
@@ -985,6 +1003,35 @@ export default function CalendarPage() {
                             </div>
                           </div>
                         ))}
+
+                        {/* Render Private Training Sessions */}
+                        {dayPrivateSessions.map((pSess, pIdx) => {
+                          const timeMatch = pSess.notes?.match(/(\d+:\d+\s*(?:AM|PM)\s*–\s*\d+:\d+\s*(?:AM|PM))/i) || pSess.notes?.match(/(\d+:\d+\s*(?:AM|PM))/i);
+                          const displayTime = timeMatch ? timeMatch[0] : (pSess.start_time ? new Date(pSess.start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : "Private Slot");
+                          
+                          return (
+                            <a 
+                              key={`pSess-${pIdx}`}
+                              href="/dashboard"
+                              className="flex flex-col gap-2.5 p-3 bg-emerald-950/25 hover:bg-emerald-950/40 border border-emerald-500/40 rounded-xl transition-all block group"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex flex-col items-start gap-1">
+                                  <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-[#00E676] text-black rounded-full font-sans">
+                                    ⚡ PRIVATE TRAINING
+                                  </span>
+                                  <p className="m-0 text-sm font-bold leading-tight text-foreground group-hover:text-emerald-400 transition-colors">
+                                    Private Goalie Training
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-foreground/60 pt-0.5">
+                                  <span className="flex items-center gap-1"><Clock size={11} className="text-emerald-400" /> {displayTime}</span>
+                                  <span className="flex items-center gap-1"><MapPin size={11} className="text-emerald-400" /> {pSess.location || "Bell Memorial Park"}</span>
+                                </div>
+                              </div>
+                            </a>
+                          );
+                        })}
                       </div>
                     )}
                     </div>

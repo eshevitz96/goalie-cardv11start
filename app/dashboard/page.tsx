@@ -433,6 +433,28 @@ export default function Dashboard() {
                             }
                         });
                     }
+
+                    // Include private training sessions in activeDays
+                    try {
+                        const { data: privSessions } = await supabase
+                            .from('sessions')
+                            .select('date')
+                            .or(`goalie_id.eq.${goalieProfileId},roster_id.eq.${rosterRes?.id || goalieProfileId}`)
+                            .gte('date', monStr)
+                            .lt('date', nextMonStr);
+
+                        (privSessions || []).forEach(ps => {
+                            if (ps.date) {
+                                const d = new Date(ps.date);
+                                let dayIdx = d.getDay() - 1;
+                                if (dayIdx === -1) dayIdx = 6;
+                                active.add(dayIdx);
+                            }
+                        });
+                    } catch (e) {
+                        console.warn("Failed to query private sessions for activeDays:", e);
+                    }
+
                     setActiveDays(active);
 
                     // Fetch today's scheduled games

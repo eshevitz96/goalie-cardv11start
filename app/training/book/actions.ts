@@ -109,14 +109,18 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             .order('date', { ascending: true });
 
         const bookedCount = existingSessions?.length || 0;
-        const computedRemaining = Math.max(0, packageTotal - bookedCount);
-        const finalLessonsRemaining = balance?.lessons_remaining ?? computedRemaining;
+        const totalAllowance = balance?.lessons_earned ?? packageTotal;
+        const deliveredCount = balance?.lessons_delivered ?? 0;
+        const computedRemaining = Math.max(0, totalAllowance - deliveredCount - bookedCount);
 
         return {
             success: true,
             goalieName,
             email,
-            lessonsRemaining: finalLessonsRemaining,
+            lessonsRemaining: computedRemaining,
+            totalAllowance,
+            bookedCount,
+            deliveredCount,
             existingSessions: existingSessions || []
         };
     } catch (err: any) {

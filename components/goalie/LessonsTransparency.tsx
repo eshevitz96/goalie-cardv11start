@@ -225,11 +225,16 @@ export function LessonsTransparency({
         );
     }
 
+    const completedSessions = sessions.filter(s => isPastSession(s.date) || (s.notes && s.notes.includes('[Session Completed')));
+    const upcomingSessions = sessions.filter(s => !isPastSession(s.date) && (!s.notes || !s.notes.includes('[Session Completed')));
+
     const earnedCount = balance?.lessons_earned ?? (sessions.length > 0 ? 16 : 0);
-    const deliveredCount = balance?.lessons_delivered ?? sessions.filter(s => isPastSession(s.date) || (s.notes && s.notes.includes('[Session Completed'))).length;
-    const remainingCount = balance?.lessons_remaining ?? Math.max(0, earnedCount - deliveredCount);
-    const hasActiveLessons = remainingCount > 0 || sessions.length > 0;
-    const isLowBalance = remainingCount <= 1;
+    const deliveredCount = balance?.lessons_delivered ?? completedSessions.length;
+    const bookedCount = upcomingSessions.length;
+    const availableCount = Math.max(0, (balance?.lessons_remaining ?? (earnedCount - deliveredCount)) - bookedCount);
+
+    const hasActiveLessons = availableCount > 0 || sessions.length > 0;
+    const isLowBalance = availableCount <= 1;
 
     const hasNoPrivateTraining = (balance === null && sessions.length === 0) || (earnedCount === 0 && sessions.length === 0);
 
@@ -246,7 +251,7 @@ export function LessonsTransparency({
                                     Self-Guided Prep
                                 </h3>
                             </div>
-                            <div className="text-[10px] font-bold  tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground">
+                            <div className="text-[10px] font-bold tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground">
                                 Active
                             </div>
                         </button>
@@ -305,7 +310,7 @@ export function LessonsTransparency({
                                         ? "bg-muted border-border text-muted-foreground" 
                                         : "bg-emerald-500 text-black font-extrabold border-transparent"
                                 )}>
-                                    {remainingCount} {remainingCount === 1 ? 'Lesson' : 'Lessons'} Available
+                                    {availableCount} Available to Book {bookedCount > 0 ? `(${bookedCount} Scheduled)` : ''}
                                 </div>
                             ) : (
                                 <div className="text-[10px] font-bold tracking-wider px-3 py-1.5 rounded-full bg-muted border border-border text-muted-foreground italic hidden sm:block">
@@ -323,31 +328,31 @@ export function LessonsTransparency({
                             <div className="grid grid-cols-3 gap-3 h-full pb-2">
                                 <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
                                     <span className="text-[8px] font-bold tracking-widest text-muted-foreground mb-1">
-                                        Total Earned
+                                        Total Package
                                     </span>
                                     <span className="text-base font-bold text-foreground">
-                                        {balance !== null ? earnedCount : "—"}
+                                        {balance !== null ? earnedCount : (sessions.length > 0 ? earnedCount : "—")}
                                     </span>
                                 </div>
                                 <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
                                     <span className="text-[8px] font-bold tracking-widest text-muted-foreground mb-1">
-                                        Delivered
+                                        Booked / Done
                                     </span>
-                                    <span className="text-base font-bold text-foreground">
-                                        {deliveredCount}
+                                    <span className="text-sm font-bold text-foreground truncate">
+                                        {bookedCount > 0 ? `${bookedCount} Booked • ${deliveredCount} Done` : `${deliveredCount} Done`}
                                     </span>
                                 </div>
                                 <div className="bg-muted border border-border rounded-2xl p-3.5 text-center flex flex-col items-center justify-center">
                                     <span className="text-[8px] font-bold tracking-widest text-muted-foreground mb-1">
-                                        Remaining
+                                        Available to Book
                                     </span>
                                     <span className={twMerge(
                                         "text-base font-bold transition-colors",
                                         hasActiveLessons 
-                                            ? (isLowBalance ? "text-muted-foreground" : "text-[#00E676]") 
+                                            ? (isLowBalance ? "text-amber-400" : "text-[#00E676]") 
                                             : "text-muted-foreground"
                                     )}>
-                                        {remainingCount}
+                                        {availableCount}
                                     </span>
                                 </div>
                             </div>
