@@ -128,8 +128,8 @@ export async function POST(req: Request) {
                     status: 'paid',
                     stripe_payment_intent_id: session.payment_intent as string,
                     stripe_customer_id: customerId,
-                    notes: `Stripe Session Completed: ${session.id}`
-                }).eq('id', submissionId).select('athlete_name, email, digital_signature').single();
+                    notes: `Stripe Session Completed: ${session.id} | plan:${metadata.planSelected || 'standard'}`
+                }).eq('id', submissionId).select('athlete_name, email, digital_signature, roster_id').single();
                 
                 if (subError) {
                     console.error("Training submission sync error:", subError);

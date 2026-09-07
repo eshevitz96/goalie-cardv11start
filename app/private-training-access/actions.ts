@@ -104,7 +104,7 @@ export async function createConnectedCard(submissionId: string) {
                 email: sub.email.trim(),
                 athlete_phone: sub.phone,
                 assigned_unique_id: uniqueId,
-                sport: 'Hockey', // Defaulting for TGB
+                sport: 'Lacrosse',
                 is_claimed: true
             })
             .select()

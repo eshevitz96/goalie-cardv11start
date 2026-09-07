@@ -112,6 +112,8 @@ export default function Dashboard() {
                     setIsPro(true);
                     setCredits(3);
                     setPerformanceScore(82);
+                    setResolvedGoalieId("00000000-0000-0000-0000-000000000000");
+                    setHasLessonRecord(true);
                     
                     const localPb = localStorage.getItem('dev_training_pb');
                     setTrainingPb(localPb ? parseInt(localPb, 10) : null);
@@ -262,7 +264,20 @@ export default function Dashboard() {
                         .select("goalie_id")
                         .eq("goalie_id", goalieProfileId)
                         .maybeSingle();
-                    lessonsBalanceRowExists = !!balanceData;
+                    
+                    const { count: userSessionsCount } = await supabase
+                        .from("sessions")
+                        .select("*", { count: 'exact', head: true })
+                        .or(`goalie_id.eq.${goalieProfileId},roster_id.eq.${rosterRes?.id || goalieProfileId}`);
+
+                    const { data: subData } = await supabase
+                        .from("private_training_submissions")
+                        .select("id")
+                        .or(`email.ilike.${auth.userEmail?.trim() || 'none'},roster_id.eq.${rosterRes?.id || '00000000-0000-0000-0000-000000000000'}`)
+                        .eq('payment_status', 'paid')
+                        .maybeSingle();
+
+                    lessonsBalanceRowExists = !!balanceData || ((userSessionsCount ?? 0) > 0) || !!subData;
                 } catch (e) {
                     console.warn("Failed to fetch goalie_lesson_balance:", e);
                 }
@@ -668,10 +683,10 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                                        {/* Today's Action Card & Lessons Transparency (Side-by-Side on Desktop/Tablet if balance exists) */}
+                    {/* Today's Action Card & Lessons Transparency (Side-by-Side only if Private Training Access exists) */}
                     <div className={twMerge(
                         "grid grid-cols-1 gap-6 w-full",
-                        (hasLessonRecord || credits > 0) ? "lg:grid-cols-2" : "grid-cols-1"
+                        hasLessonRecord ? "lg:grid-cols-2" : "grid-cols-1"
                     )}>
                         {/* Today's Action Card */}
                         <a href={actionCard.navHref} className="flex flex-col justify-between transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer h-full min-h-[192px]">
@@ -696,33 +711,48 @@ export default function Dashboard() {
                             </div>
                         </a>
 
-                        {/* Reclaimed Space: Lessons Transparency (Render Gate - FIX 2) */}
-                        {(hasLessonRecord || credits > 0) && resolvedGoalieId && (
-                            <LessonsTransparency goalieProfileId={resolvedGoalieId} />
+                        {/* Lessons Transparency & Scheduling (Only for Private Training clients) */}
+                        {hasLessonRecord && resolvedGoalieId && (
+                            <LessonsTransparency 
+                                goalieProfileId={resolvedGoalieId} 
+                                userEmail={auth.userEmail || undefined}
+                                userRole={auth.userRole || undefined}
+                                goalieName={userData?.display_name || rosterData?.goalie_name || undefined}
+                            />
                         )}
                     </div>
 
-                    {/* Module Tiles Grid (3-Column) */}
-                    <div className="grid grid-cols-2 gap-3 w-full">
-                        <a 
+                    {/* Module Tiles Grid (3-Column with Schedule if Private Training client, otherwise 2-Column Calendar & Film) */}
+                    <div className={twMerge(
+                        "grid gap-3 w-full",
+                        hasLessonRecord ? "grid-cols-3" : "grid-cols-2"
+                    )}>
+                        {hasLessonRecord && (
+                            <Link 
+                                href="/training/book" 
+                                className="flex flex-col items-center justify-center p-4 bg-card border border-border hover:border-emerald-500/60 transition-all hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm group"
+                            >
+                                <Calendar size={24} className="text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
+                                <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Schedule</p>
+                                <p className="m-0 text-[9px] text-muted-foreground mt-1">Book sessions</p>
+                            </Link>
+                        )}
+                        <Link 
                             href="/calendar" 
                             className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
                         >
                             <Calendar size={24} className="text-foreground mb-2" />
                             <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Calendar</p>
                             <p className="m-0 text-[9px] text-muted-foreground mt-1">This week</p>
-                        </a>
-                        <a 
+                        </Link>
+                        <Link 
                             href="/film" 
                             className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
                         >
                             <Video size={24} className="text-foreground mb-2" />
                             <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Film</p>
                             <p className="m-0 text-[9px] text-muted-foreground mt-1">{gamesCount > 0 ? `${gamesCount} games` : 'No games'}</p>
-                        </a>
-                        {/* Training temporarily disabled for production push
-                        <a href="/training" ...>
-                        */}
+                        </Link>
                     </div>
 
 
