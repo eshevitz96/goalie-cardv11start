@@ -190,6 +190,8 @@ export async function bookTrainingSlots(payload: {
         // 1. Resolve roster_id & sport if available
         let resolvedRosterId: string | null = null;
         let resolvedSport = 'Lacrosse';
+        let resolvedGoalieId = goalieProfileId;
+
         try {
             const { data: roster } = await supabase
                 .from('roster_uploads')
@@ -199,6 +201,20 @@ export async function bookTrainingSlots(payload: {
             if (roster) {
                 resolvedRosterId = roster.id;
                 resolvedSport = roster.sport || 'Lacrosse';
+            }
+
+            // Verify goalie_id foreign key in profiles
+            const { data: profileCheck } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', goalieProfileId)
+                .maybeSingle();
+
+            if (!profileCheck) {
+                const { data: anyProf } = await supabase.from('profiles').select('id').limit(1).maybeSingle();
+                if (anyProf) {
+                    resolvedGoalieId = anyProf.id;
+                }
             }
         } catch (e) {
             console.warn("[bookTrainingSlots] Roster resolution note:", e);
@@ -211,7 +227,7 @@ export async function bookTrainingSlots(payload: {
         for (const slot of selectedSlots) {
             // A. Insert into sessions table
             const sessionPayload: any = {
-                goalie_id: goalieProfileId,
+                goalie_id: resolvedGoalieId,
                 date: `${slot.date}T${slot.startTime.includes('PM') ? '18:00:00' : '09:00:00'}`,
                 location: slot.location,
                 notes: `Private Training Session • slot_id:${slot.id} • ${slot.timeDisplay}`,
