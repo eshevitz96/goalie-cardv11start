@@ -48,6 +48,9 @@ function BookTrainingContent() {
         goalieName: string;
         email: string;
         lessonsRemaining: number;
+        totalAllowance?: number;
+        bookedCount?: number;
+        deliveredCount?: number;
     } | null>(null);
 
     // Month Navigation (Default to Sep 2026)
@@ -78,7 +81,10 @@ function BookTrainingContent() {
                 setGoalieProfile({
                     goalieName: profileRes.goalieName,
                     email: profileRes.email,
-                    lessonsRemaining: profileRes.lessonsRemaining
+                    lessonsRemaining: profileRes.lessonsRemaining,
+                    totalAllowance: profileRes.totalAllowance,
+                    bookedCount: profileRes.bookedCount,
+                    deliveredCount: profileRes.deliveredCount
                 });
             }
             setIsLoading(false);
@@ -378,8 +384,13 @@ function BookTrainingContent() {
                         <div>
                             <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/60">Your Balance</p>
                             <h4 className="text-xl font-bold text-foreground">
-                                {goalieProfile?.lessonsRemaining ?? 16} Lessons Remaining
+                                {goalieProfile?.lessonsRemaining ?? 16} Available to Book
                             </h4>
+                            {goalieProfile?.bookedCount !== undefined && goalieProfile.bookedCount > 0 && (
+                                <p className="text-[10px] font-bold text-emerald-500 mt-0.5">
+                                    {goalieProfile.bookedCount} Scheduled • {goalieProfile.totalAllowance || 16} Total Package
+                                </p>
+                            )}
                         </div>
                         <div className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-black uppercase tracking-wider">
                             {selectedSlotIds.length} Selected

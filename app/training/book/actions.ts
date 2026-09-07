@@ -64,24 +64,26 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
         const { data: balance } = await supabase
             .from('goalie_lesson_balance')
             .select('*')
-            .eq('goalie_id', goalieProfileId)
+            .or(`goalie_id.eq.${goalieProfileId},email.ilike.${userEmail?.trim() || 'none'}`)
             .maybeSingle();
 
         // 2. Check roster details
         let goalieName = balance?.goalie_name || "Athlete";
         let email = balance?.email || userEmail || "";
         let rosterId: string | null = null;
+        let linkedUserId: string | null = null;
 
         const { data: roster } = await supabase
             .from('roster_uploads')
             .select('*')
-            .or(`linked_user_id.eq.${goalieProfileId},id.eq.${goalieProfileId},email.ilike.${userEmail?.trim() || 'none'}`)
+            .or(`linked_user_id.eq.${goalieProfileId},id.eq.${goalieProfileId},email.ilike.${userEmail?.trim() || 'none'},guardian_email.ilike.${userEmail?.trim() || 'none'}`)
             .maybeSingle();
 
         if (roster) {
             goalieName = roster.goalie_name || goalieName;
             email = roster.email || roster.guardian_email || email;
             rosterId = roster.id;
+            linkedUserId = roster.linked_user_id;
         }
 
         // 3. Fetch private training registration & package selection
@@ -101,16 +103,32 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             if (match && match[1] === 'monthly') packageTotal = 4;
         }
 
-        // 4. Fetch user's booked sessions
-        const { data: existingSessions } = await supabase
-            .from('sessions')
-            .select('id, date, location, notes')
-            .or(`goalie_id.eq.${goalieProfileId},roster_id.eq.${rosterId || goalieProfileId}`)
-            .order('date', { ascending: true });
+        // 4. Fetch user's booked sessions (or dev sessions if dummy ID)
+        let existingSessions: any[] = [];
+        if (goalieProfileId === '00000000-0000-0000-0000-000000000000') {
+            const { data: devSessions } = await supabase
+                .from('sessions')
+                .select('id, date, location, notes')
+                .order('date', { ascending: true });
+            existingSessions = devSessions || [];
+        } else {
+            const orFilters = [
+                `goalie_id.eq.${goalieProfileId}`,
+                linkedUserId ? `goalie_id.eq.${linkedUserId}` : null,
+                rosterId ? `roster_id.eq.${rosterId}` : null
+            ].filter(Boolean).join(',');
 
-        const bookedCount = existingSessions?.length || 0;
+            const { data: sData } = await supabase
+                .from('sessions')
+                .select('id, date, location, notes')
+                .or(orFilters)
+                .order('date', { ascending: true });
+            existingSessions = sData || [];
+        }
+
         const totalAllowance = balance?.lessons_earned ?? packageTotal;
-        const deliveredCount = balance?.lessons_delivered ?? 0;
+        const deliveredCount = balance?.lessons_delivered ?? existingSessions.filter(s => s.notes && s.notes.includes('[Session Completed')).length;
+        const bookedCount = existingSessions.filter(s => !s.notes || !s.notes.includes('[Session Completed')).length;
         const computedRemaining = Math.max(0, totalAllowance - deliveredCount - bookedCount);
 
         return {
@@ -121,7 +139,7 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             totalAllowance,
             bookedCount,
             deliveredCount,
-            existingSessions: existingSessions || []
+            existingSessions
         };
     } catch (err: any) {
         console.error("[getGoalieBookingProfile] Error:", err);
@@ -130,6 +148,9 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             goalieName: "Athlete",
             email: userEmail || "",
             lessonsRemaining: 16,
+            totalAllowance: 16,
+            bookedCount: 0,
+            deliveredCount: 0,
             existingSessions: []
         };
     }
