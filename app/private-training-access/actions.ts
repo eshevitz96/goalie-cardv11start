@@ -188,49 +188,75 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
             return { error: "Waiver must be completed before payment." };
         }
 
+        const isMonthly = planId === 'monthly';
+        const isSeason = planId === 'season';
+        const isStandard = planId === 'standard';
+        
         const origin = "https://goaliecard.app";
-
-        // ── Plan config ─────────────────────────────────────────────────────
-        // block4: 4 sessions @ $125/session = $500 gross (fees absorbed into price)
-        // block8: 8 sessions @ $115/session = $920 gross (fees absorbed into price)
-        const PLANS: Record<string, { amount: number; name: string; description: string; priceId: string }> = {
-            block4: {
-                amount: 50000, // $500.00 in cents
-                name: 'Private Training — 4 Session Block',
-                description: '4 private goalie training sessions ($125/session). One-time payment.',
-                priceId: process.env.STRIPE_PRICE_BLOCK4 || 'price_1TlKjFGj0SdRYIlhOISWOV1N',
-            },
-            block8: {
-                amount: 92000, // $920.00 in cents
-                name: 'Private Training — 8 Session Block',
-                description: '8 private goalie training sessions ($115/session). One-time payment.',
-                priceId: process.env.STRIPE_PRICE_BLOCK8 || 'price_1TlKjGGj0SdRYIlhMYW8GbwB',
-            },
-        };
-
-        const plan = PLANS[planId];
-        if (!plan) {
+        
+        // Price logic based on plan
+        let baseAmount = 160000;
+        let planName = 'Standard Block (16 Lessons)';
+        let intervalCount = 4;
+        
+        if (planId === 'season') {
+            baseAmount = 240000;
+            planName = 'Season Commitment (24 Lessons)';
+            intervalCount = 6;
+        } else if (planId === 'monthly') {
+            baseAmount = 40000;
+            planName = 'Legacy Member (Monthly Sub)';
+            intervalCount = 1;
+        } else if (planId === 'standard') {
+            baseAmount = 160000;
+            planName = 'Standard Block (16 Lessons)';
+            intervalCount = 4;
+        } else {
             return { error: `Invalid plan selected: ${planId}` };
         }
 
-        // Test mode: use a $1.00 inline price so we can test without real charges
-        const lineItems = isTestMode
-            ? [{
-                price_data: {
-                    currency: 'usd' as const,
-                    product_data: { name: `[TEST] ${plan.name}` },
-                    unit_amount: 100, // $1.00
-                },
-                quantity: 1,
-              }]
-            : [{ price: plan.priceId, quantity: 1 }];
+        // Calculate feeAmount to ensure the payout matches baseAmount exactly.
+        // Formula: Total = (Base + 30) / (1 - 0.053)
+        const totalTargetCents = Math.ceil((baseAmount + 30) / 0.947);
+        let feeAmount = totalTargetCents - baseAmount;
 
-        // 2. Create Embedded Session — one-time payment, no subscription
+        if (isTestMode) {
+            baseAmount = 100;
+            feeAmount = 34;
+        }
+
+        // 2. Create Embedded Session
         const stripe = getStripe();
         const session = await stripe.checkout.sessions.create({
             ui_mode: 'embedded',
-            mode: 'payment',
-            line_items: lineItems,
+            mode: 'subscription', // Recurring subscriptions
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: planName,
+                            description: isMonthly ? 'Recurring monthly training access.' : 
+                                         isSeason ? '24 lesson blocks every 6 months.' : '16 lesson blocks every 4 months.',
+                        },
+                        unit_amount: baseAmount,
+                        recurring: { interval: 'month', interval_count: intervalCount },
+                    },
+                    quantity: 1,
+                },
+                {
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: 'Processing & Admin Fee',
+                            description: 'Standard 2.9% + $0.30 transaction fee',
+                        },
+                        unit_amount: feeAmount,
+                        recurring: { interval: 'month', interval_count: intervalCount },
+                    },
+                    quantity: 1,
+                }
+            ],
             return_url: `${origin}/private-training-access/success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submissionId}`,
             metadata: {
                 submissionId: submission.id,
@@ -238,7 +264,6 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
                 email: submission.email,
                 productType: 'private training access',
                 planSelected: planId,
-                sessions: planId === 'block4' ? '4' : '8',
                 isTestMode: String(isTestMode)
             }
         } as any);
