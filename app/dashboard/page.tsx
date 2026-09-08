@@ -182,19 +182,27 @@ export default function Dashboard() {
                 let gcNumber = "GC-0000";
                 let sport = null;
                 
+                const resolvedName = userResData?.display_name || 
+                                     (userResData?.first_name ? `${userResData.first_name} ${userResData.last_name || ''}`.trim() : null) || 
+                                     rosterRes?.goalie_name || 
+                                     profileRes?.data?.goalie_name || 
+                                     "Goalie";
+
+                fullName = resolvedName;
+                firstName = userResData?.first_name || (resolvedName !== "Goalie" ? resolvedName.split(' ')[0] : "Goalie");
+                const nameParts = resolvedName.split(' ');
+                initials = nameParts.length > 1 ? ((nameParts[0][0] || '') + (nameParts[1][0] || '')).toUpperCase() : (resolvedName.substring(0, 2).toUpperCase() || 'GC');
+
+                const rawSport = userResData?.primary_sport || rosterRes?.sport || profileRes?.data?.sport;
+                sport = normalizeSportDisplay(rawSport);
+
                 if (userResData && !userErr) {
                     publicUserId = userResData.id;
-                    const f = userResData.first_name || "";
-                    const l = userResData.last_name || "";
-                    initials = ((f.charAt(0) || "") + (l.charAt(0) || "")).toUpperCase() || "GC";
-                    fullName = userResData.display_name || `${f} ${l}`.trim() || "Goalie";
-                    firstName = userResData.first_name || userResData.display_name || "Goalie";
                     onboardingCompletedAt = userResData.onboarding_completed_at || null;
                     userCreatedAt = userResData.created_at || null;
-                    onboarded = userResData.onboarding_completed !== false; // False means incomplete
+                    onboarded = userResData.onboarding_completed !== false;
                     teams = userResData.teams || null;
                     handedness = userResData.handedness || null;
-                    sport = normalizeSportDisplay(userResData.primary_sport);
                     if (userResData.gc_number) {
                         gcNumber = 'GC-' + String(userResData.gc_number).padStart(4, '0');
                     }
@@ -206,17 +214,11 @@ export default function Dashboard() {
                 setIsOnboardingCompleted(onboarded);
 
                 // Compute profile completeness
-                let isProfileIncompleteVal = false;
-                if (profileRes && profileRes.data) {
-                    const p = profileRes.data;
-                    const nameEmpty = !p.goalie_name || p.goalie_name.trim() === '';
-                    const sportUnset = !p.sport || p.sport.trim() === '';
-                    const gradYearNull = p.grad_year === null || p.grad_year === undefined;
-                    isProfileIncompleteVal = nameEmpty || sportUnset || gradYearNull;
-                } else {
-                    isProfileIncompleteVal = true;
-                }
-                setIsProfileIncomplete(isProfileIncompleteVal);
+                const hasValidName = resolvedName && resolvedName !== "Goalie" && resolvedName.trim() !== '';
+                const hasValidSport = !!sport;
+                const hasValidGrad = (profileRes?.data?.grad_year !== null && profileRes?.data?.grad_year !== undefined) || 
+                                     (rosterRes?.grad_year !== null && rosterRes?.grad_year !== undefined);
+                setIsProfileIncomplete(!hasValidName || !hasValidSport || !hasValidGrad);
 
 
 
