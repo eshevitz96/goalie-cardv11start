@@ -96,15 +96,22 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             .maybeSingle();
 
         // Determine package allowance from paid plan / roster
-        let packageTotal = 4;
-        if (roster?.lesson_count && Number(roster.lesson_count) > 0) {
-            packageTotal = Number(roster.lesson_count);
-        } else if (submission?.notes && submission.notes.includes('plan:')) {
-            const match = submission.notes.match(/plan:([a-zA-Z0-9]+)/);
-            if (match && match[1] === 'season') packageTotal = 24;
-            if (match && match[1] === 'monthly') packageTotal = 4;
-        } else if (roster?.session_count && Number(roster.session_count) > 0) {
+        const hasPaidAccess = (balance && balance.lessons_earned > 0) || 
+                              (submission && submission.payment_status === 'paid') || 
+                              (roster && roster.payment_status === 'paid' && ((roster.lesson_count || 0) > 0 || (roster.session_count || 0) > 0));
+
+        let packageTotal = 0;
+        if (hasPaidAccess) {
             packageTotal = 4;
+            if (roster?.lesson_count && Number(roster.lesson_count) > 0) {
+                packageTotal = Number(roster.lesson_count);
+            } else if (submission?.notes && submission.notes.includes('plan:')) {
+                const match = submission.notes.match(/plan:([a-zA-Z0-9]+)/);
+                if (match && match[1] === 'season') packageTotal = 24;
+                if (match && match[1] === 'monthly') packageTotal = 4;
+            } else if (roster?.session_count && Number(roster.session_count) > 0) {
+                packageTotal = 4;
+            }
         }
 
         // 4. Fetch user's booked sessions (or dev sessions if dummy ID)
@@ -143,7 +150,8 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             totalAllowance,
             bookedCount,
             deliveredCount,
-            existingSessions
+            existingSessions,
+            hasPaidAccess: !!hasPaidAccess
         };
     } catch (err: any) {
         console.error("[getGoalieBookingProfile] Error:", err);
@@ -151,11 +159,12 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             success: true,
             goalieName: "Athlete",
             email: userEmail || "",
-            lessonsRemaining: 16,
-            totalAllowance: 16,
+            lessonsRemaining: 0,
+            totalAllowance: 0,
             bookedCount: 0,
             deliveredCount: 0,
-            existingSessions: []
+            existingSessions: [],
+            hasPaidAccess: false
         };
     }
 }

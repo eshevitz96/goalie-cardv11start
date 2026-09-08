@@ -15,6 +15,7 @@ import { v11Engine } from "@/lib/v11-engine";
 import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { DigitalSignatureModal } from "@/components/goalie/DigitalSignatureModal";
+import { getGoalieBookingProfile } from "@/app/training/book/actions";
 import { twMerge } from "tailwind-merge";
 
 function normalizeSportDisplay(rawSport: string | null | undefined): string | null {
@@ -257,29 +258,13 @@ export default function Dashboard() {
                 setCredits(creditsVal);
                 setPracticesCount(practicesVal);
 
-                // Fetch goalie_lesson_balance view & private training access (FIX 2)
+                // Fetch private training booking profile & paid access (Server Admin Action)
                 let lessonsBalanceRowExists = false;
                 try {
-                    const { data: balanceData } = await supabase
-                        .from("goalie_lesson_balance")
-                        .select("goalie_id, lessons_earned")
-                        .or(`goalie_id.eq.${goalieProfileId},email.ilike.${auth.userEmail?.trim() || 'none'}`)
-                        .maybeSingle();
-
-                    const { data: subData } = await supabase
-                        .from("private_training_submissions")
-                        .select("*")
-                        .or(`email.ilike.${auth.userEmail?.trim() || 'none'},roster_id.eq.${rosterRes?.id || '00000000-0000-0000-0000-000000000000'}`)
-                        .eq('payment_status', 'paid')
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-
-                    setPaidSubmissionData(subData);
-                    const rosterPaid = rosterRes?.payment_status === 'paid' && ((rosterRes?.lesson_count ?? 0) > 0 || (rosterRes?.session_count ?? 0) > 0);
-                    lessonsBalanceRowExists = ((balanceData?.lessons_earned ?? 0) > 0) || !!subData || rosterPaid;
+                    const bookingProfile = await getGoalieBookingProfile(goalieProfileId, auth.userEmail || undefined);
+                    lessonsBalanceRowExists = bookingProfile.hasPaidAccess || bookingProfile.totalAllowance > 0;
                 } catch (e) {
-                    console.warn("Failed to fetch goalie_lesson_balance:", e);
+                    console.warn("Failed to fetch goalie booking profile:", e);
                 }
                 setHasLessonRecord(lessonsBalanceRowExists);
 
@@ -573,7 +558,7 @@ export default function Dashboard() {
     useEffect(() => {
         fetchData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [auth.userId, refreshTrigger]);
+    }, [auth.userId, auth.userEmail, refreshTrigger]);
 
     if (auth.loading || loading) {
         return (
