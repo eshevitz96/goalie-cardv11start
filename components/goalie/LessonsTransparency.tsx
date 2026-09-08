@@ -228,15 +228,15 @@ export function LessonsTransparency({
     const completedSessions = sessions.filter(s => isPastSession(s.date) || (s.notes && s.notes.includes('[Session Completed')));
     const upcomingSessions = sessions.filter(s => !isPastSession(s.date) && (!s.notes || !s.notes.includes('[Session Completed')));
 
-    const earnedCount = balance?.lessons_earned ?? (sessions.length > 0 ? 16 : 0);
+    const earnedCount = balance?.lessons_earned ?? 0;
     const deliveredCount = balance?.lessons_delivered ?? completedSessions.length;
     const bookedCount = upcomingSessions.length;
     const availableCount = Math.max(0, (balance?.lessons_remaining ?? (earnedCount - deliveredCount)) - bookedCount);
 
-    const hasActiveLessons = availableCount > 0 || sessions.length > 0;
+    const hasActiveLessons = availableCount > 0 || (balance !== null && balance.lessons_earned > 0);
     const isLowBalance = availableCount <= 1;
 
-    const hasNoPrivateTraining = (balance === null && sessions.length === 0) || (earnedCount === 0 && sessions.length === 0);
+    const hasNoPrivateTraining = !balance || balance.lessons_earned === 0;
 
     if (hasNoPrivateTraining) {
         return (

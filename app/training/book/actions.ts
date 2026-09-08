@@ -335,7 +335,7 @@ export async function bookTrainingSlots(payload: {
                         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
                     },
                     body: JSON.stringify({
-                        from: process.env.EMAIL_FROM_ADDRESS || "Goalie Card Private Training <onboarding@resend.dev>",
+                        from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Private Training <onboarding@goaliecard.app>",
                         to: recipients,
                         subject: `Private Training Scheduled: ${athleteName} (${selectedSlots.length} Session${selectedSlots.length > 1 ? 's' : ''})`,
                         html: coachEmailHtml,
@@ -489,7 +489,7 @@ export async function rescheduleTrainingSession(payload: {
                         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
                     },
                     body: JSON.stringify({
-                        from: process.env.EMAIL_FROM_ADDRESS || "Goalie Card Private Training <onboarding@resend.dev>",
+                        from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Private Training <onboarding@goaliecard.app>",
                         to: recipients,
                         subject: subject,
                         html: rescheduleHtml,
@@ -591,7 +591,7 @@ export async function completeTrainingSessionAndNotify(payload: {
                         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
                     },
                     body: JSON.stringify({
-                        from: process.env.EMAIL_FROM_ADDRESS || "Goalie Card Private Training <onboarding@resend.dev>",
+                        from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Private Training <onboarding@goaliecard.app>",
                         to: recipients,
                         subject: `🥅 Lesson Completed & Takeaways: ${resolvedName} (${sessionDateStr})`,
                         html: completionHtml,
@@ -670,7 +670,7 @@ export async function submitSessionTakeaways(payload: {
                         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
                     },
                     body: JSON.stringify({
-                        from: process.env.EMAIL_FROM_ADDRESS || "Goalie Card Private Training <onboarding@resend.dev>",
+                        from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Private Training <onboarding@goaliecard.app>",
                         to: recipients,
                         subject: `📝 Lesson Takeaway Added: ${authorName}`,
                         html: emailHtml,

@@ -261,14 +261,9 @@ export default function Dashboard() {
                 try {
                     const { data: balanceData } = await supabase
                         .from("goalie_lesson_balance")
-                        .select("goalie_id")
-                        .eq("goalie_id", goalieProfileId)
+                        .select("goalie_id, lessons_earned")
+                        .or(`goalie_id.eq.${goalieProfileId},email.ilike.${auth.userEmail?.trim() || 'none'}`)
                         .maybeSingle();
-                    
-                    const { count: userSessionsCount } = await supabase
-                        .from("sessions")
-                        .select("*", { count: 'exact', head: true })
-                        .or(`goalie_id.eq.${goalieProfileId},roster_id.eq.${rosterRes?.id || goalieProfileId}`);
 
                     const { data: subData } = await supabase
                         .from("private_training_submissions")
@@ -277,7 +272,7 @@ export default function Dashboard() {
                         .eq('payment_status', 'paid')
                         .maybeSingle();
 
-                    lessonsBalanceRowExists = !!balanceData || ((userSessionsCount ?? 0) > 0) || !!subData;
+                    lessonsBalanceRowExists = ((balanceData?.lessons_earned ?? 0) > 0) || !!subData;
                 } catch (e) {
                     console.warn("Failed to fetch goalie_lesson_balance:", e);
                 }
