@@ -95,12 +95,16 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             .limit(1)
             .maybeSingle();
 
-        // Determine package allowance from paid plan
-        let packageTotal = 16;
-        if (submission?.notes && submission.notes.includes('plan:')) {
+        // Determine package allowance from paid plan / roster
+        let packageTotal = 4;
+        if (roster?.lesson_count && Number(roster.lesson_count) > 0) {
+            packageTotal = Number(roster.lesson_count);
+        } else if (submission?.notes && submission.notes.includes('plan:')) {
             const match = submission.notes.match(/plan:([a-zA-Z0-9]+)/);
             if (match && match[1] === 'season') packageTotal = 24;
             if (match && match[1] === 'monthly') packageTotal = 4;
+        } else if (roster?.session_count && Number(roster.session_count) > 0) {
+            packageTotal = 4;
         }
 
         // 4. Fetch user's booked sessions (or dev sessions if dummy ID)

@@ -59,6 +59,7 @@ export default function Dashboard() {
     const [credits, setCredits] = useState(0);
     const [showProgress, setShowProgress] = useState(true);
     const [hasLessonRecord, setHasLessonRecord] = useState(false);
+    const [paidSubmissionData, setPaidSubmissionData] = useState<any>(null);
     const [resolvedGoalieId, setResolvedGoalieId] = useState<string | null>(null);
     const [showActionsOverlay, setShowActionsOverlay] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -126,17 +127,17 @@ export default function Dashboard() {
                     return;
                 }
 
-                // 1. Resolve Goalie Profile ID (FIX 1)
+                // 1. Resolve Goalie Profile ID (Flexible email & linked_user_id match)
                 let goalieProfileId = uid;
                 let rosterRes = null;
 
-                if (auth.userRole === 'parent' && auth.userEmail) {
-                    const { data: parentRosters } = await supabase
+                if (auth.userEmail) {
+                    const { data: matchedRosters } = await supabase
                         .from('roster_uploads')
                         .select('*')
-                        .ilike('guardian_email', auth.userEmail);
-                    if (parentRosters && parentRosters.length > 0) {
-                        const activeRoster = parentRosters.find(r => r.linked_user_id) || parentRosters[0];
+                        .or(`guardian_email.ilike.${auth.userEmail.trim()},email.ilike.${auth.userEmail.trim()},linked_user_id.eq.${uid}`);
+                    if (matchedRosters && matchedRosters.length > 0) {
+                        const activeRoster = matchedRosters.find(r => r.linked_user_id) || matchedRosters[0];
                         rosterRes = activeRoster;
                         goalieProfileId = activeRoster.linked_user_id || uid;
                     }
@@ -256,7 +257,7 @@ export default function Dashboard() {
                 setCredits(creditsVal);
                 setPracticesCount(practicesVal);
 
-                // Fetch goalie_lesson_balance view (FIX 2)
+                // Fetch goalie_lesson_balance view & private training access (FIX 2)
                 let lessonsBalanceRowExists = false;
                 try {
                     const { data: balanceData } = await supabase
@@ -267,12 +268,16 @@ export default function Dashboard() {
 
                     const { data: subData } = await supabase
                         .from("private_training_submissions")
-                        .select("id")
+                        .select("*")
                         .or(`email.ilike.${auth.userEmail?.trim() || 'none'},roster_id.eq.${rosterRes?.id || '00000000-0000-0000-0000-000000000000'}`)
                         .eq('payment_status', 'paid')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
                         .maybeSingle();
 
-                    lessonsBalanceRowExists = ((balanceData?.lessons_earned ?? 0) > 0) || !!subData;
+                    setPaidSubmissionData(subData);
+                    const rosterPaid = rosterRes?.payment_status === 'paid' && ((rosterRes?.lesson_count ?? 0) > 0 || (rosterRes?.session_count ?? 0) > 0);
+                    lessonsBalanceRowExists = ((balanceData?.lessons_earned ?? 0) > 0) || !!subData || rosterPaid;
                 } catch (e) {
                     console.warn("Failed to fetch goalie_lesson_balance:", e);
                 }
@@ -735,6 +740,9 @@ export default function Dashboard() {
                                 userEmail={auth.userEmail || undefined}
                                 userRole={auth.userRole || undefined}
                                 goalieName={userData?.display_name || rosterData?.goalie_name || undefined}
+                                rosterId={rosterData?.id || undefined}
+                                paidSubmission={paidSubmissionData}
+                                rosterData={rosterData}
                             />
                         )}
                     </div>

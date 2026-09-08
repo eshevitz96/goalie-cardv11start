@@ -33,6 +33,9 @@ interface LessonsTransparencyProps {
     userEmail?: string;
     userRole?: string;
     goalieName?: string;
+    rosterId?: string;
+    paidSubmission?: any;
+    rosterData?: any;
 }
 
 interface GoalieLessonBalance {
@@ -58,7 +61,10 @@ export function LessonsTransparency({
     goalieProfileId,
     userEmail,
     userRole,
-    goalieName
+    goalieName,
+    rosterId,
+    paidSubmission,
+    rosterData
 }: LessonsTransparencyProps) {
     const [balance, setBalance] = useState<GoalieLessonBalance | null>(null);
     const [sessions, setSessions] = useState<SessionRecord[]>([]);
@@ -98,22 +104,59 @@ export function LessonsTransparency({
             const { data: balanceData, error: balanceErr } = await supabase
                 .from("goalie_lesson_balance")
                 .select("goalie_id, email, goalie_name, lessons_earned, lessons_delivered, lessons_remaining")
-                .eq("goalie_id", goalieProfileId)
+                .or(`goalie_id.eq.${goalieProfileId}${userEmail ? `,email.ilike.${userEmail.trim()}` : ''}`)
                 .maybeSingle();
 
-            if (balanceErr) {
-                console.error("Error fetching goalie_lesson_balance:", balanceErr);
-            } else if (balanceData) {
+            let activeSubmission = paidSubmission;
+            if (!activeSubmission && userEmail) {
+                const { data: sub } = await supabase
+                    .from("private_training_submissions")
+                    .select("*")
+                    .or(`email.ilike.${userEmail.trim()}${rosterId ? `,roster_id.eq.${rosterId}` : ''}`)
+                    .eq('payment_status', 'paid')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                activeSubmission = sub;
+            }
+
+            if (balanceData && balanceData.lessons_earned > 0) {
                 setBalance(balanceData as GoalieLessonBalance);
+            } else if (activeSubmission || (rosterData && rosterData.payment_status === 'paid')) {
+                let packageTotal = 4;
+                if (rosterData?.lesson_count && Number(rosterData.lesson_count) > 0) {
+                    packageTotal = Number(rosterData.lesson_count);
+                } else if (activeSubmission?.notes && activeSubmission.notes.includes('plan:')) {
+                    const match = activeSubmission.notes.match(/plan:([a-zA-Z0-9]+)/);
+                    if (match && match[1] === 'season') packageTotal = 24;
+                    if (match && match[1] === 'monthly') packageTotal = 4;
+                } else if (rosterData?.session_count && Number(rosterData.session_count) > 0) {
+                    packageTotal = 4;
+                }
+
+                setBalance({
+                    goalie_id: goalieProfileId,
+                    email: userEmail || balanceData?.email || '',
+                    goalie_name: goalieName || balanceData?.goalie_name || rosterData?.goalie_name || 'Athlete',
+                    lessons_earned: packageTotal,
+                    lessons_delivered: balanceData?.lessons_delivered || 0,
+                    lessons_remaining: packageTotal - (balanceData?.lessons_delivered || 0)
+                });
             } else {
-                setBalance(null);
+                setBalance(balanceData ? (balanceData as GoalieLessonBalance) : null);
             }
 
             // 2. Fetch history filtering by goalie_id or roster_id
+            const filterOrs = [
+                `goalie_id.eq.${goalieProfileId}`,
+                `roster_id.eq.${goalieProfileId}`,
+                rosterId ? `roster_id.eq.${rosterId}` : null
+            ].filter(Boolean).join(',');
+
             const { data: sessionsData, error: sessionsErr } = await supabase
                 .from("sessions")
                 .select("id, date, location, notes, session_number, lesson_number, start_time")
-                .or(`goalie_id.eq.${goalieProfileId},roster_id.eq.${goalieProfileId}`)
+                .or(filterOrs)
                 .order("date", { ascending: false });
 
             if (sessionsErr) {
@@ -131,7 +174,7 @@ export function LessonsTransparency({
 
     useEffect(() => {
         fetchData();
-    }, [goalieProfileId]);
+    }, [goalieProfileId, rosterId, paidSubmission, rosterData]);
 
     // Check if a session is within 24 hours
     const isWithin24Hours = (sessionDateStr: string) => {
