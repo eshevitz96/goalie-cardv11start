@@ -137,8 +137,8 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             existingSessions = sData || [];
         }
 
-        const totalAllowance = balance?.lessons_earned ?? packageTotal;
-        const deliveredCount = balance?.lessons_delivered ?? existingSessions.filter(s => s.notes && s.notes.includes('[Session Completed')).length;
+        const totalAllowance = (balance?.lessons_earned && balance.lessons_earned > 0) ? balance.lessons_earned : (packageTotal > 0 ? packageTotal : 4);
+        const deliveredCount = (balance?.lessons_delivered && balance.lessons_delivered > 0) ? balance.lessons_delivered : existingSessions.filter(s => s.notes && s.notes.includes('[Session Completed')).length;
         const bookedCount = existingSessions.filter(s => !s.notes || !s.notes.includes('[Session Completed')).length;
         const computedRemaining = Math.max(0, totalAllowance - deliveredCount - bookedCount);
 
