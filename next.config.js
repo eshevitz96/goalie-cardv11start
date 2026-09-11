@@ -2,7 +2,10 @@ const path = require('path');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false,
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion', '@supabase/supabase-js'],
+  },
   outputFileTracingRoot: path.join(__dirname, './'),
   outputFileTracingExcludes: {
     '*': [

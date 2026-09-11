@@ -91,7 +91,7 @@ export function LessonsTransparency({
     // Completion State for Coach
     const [completingSessionId, setCompletingSessionId] = useState<string | null>(null);
 
-    const isCoach = userRole === 'coach' || userEmail === 'e@cmmncreators.com' || (typeof window !== 'undefined' && localStorage.getItem('gc_dev_mode') === 'true');
+    const isCoach = userRole === 'coach' || userRole === 'admin' || userEmail === 'eshevitz96@gmail.com';
 
     const fetchData = async () => {
         if (!goalieProfileId) {
@@ -494,7 +494,7 @@ export function LessonsTransparency({
                                             This session is scheduled within the next 24 hours. Per private training terms, online rescheduling is locked within 24 hours of session start time.
                                         </p>
                                         <p className="text-xs text-amber-200/80 mt-2 font-medium">
-                                            Need an emergency adjustment? Contact Coach Elliott directly at <a href="mailto:e@cmmncreators.com" className="underline font-bold text-amber-300">e@cmmncreators.com</a>.
+                                            Need an emergency adjustment? Contact Coach Elliott directly at <a href="mailto:eshevitz96@gmail.com" className="underline font-bold text-amber-300">eshevitz96@gmail.com</a>.
                                         </p>
                                     </div>
                                 </div>

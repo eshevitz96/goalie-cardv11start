@@ -72,9 +72,14 @@ function EventDetailsController() {
                     if (sessError) throw sessError;
                     if (!session) throw new Error("Session not found");
 
+                    const numberTitle = [
+                        session.session_number ? `S${session.session_number}` : '',
+                        session.lesson_number ? `L${session.lesson_number}` : ''
+                    ].filter(Boolean).join(', ');
+
                     setData({
                         id: session.id,
-                        title: `Session ${session.session_number} • Lesson ${session.lesson_number}`,
+                        title: numberTitle ? `Training ${numberTitle}` : "Training Session",
                         date: session.date,
                         startTime: session.start_time,
                         endTime: session.end_time,

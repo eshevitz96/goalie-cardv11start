@@ -160,7 +160,7 @@ export async function POST(req: Request) {
                             },
                             body: JSON.stringify({
                                 from: fromEmail,
-                                to: ["e@cmmncreators.com", subData.email],
+                                to: ["eshevitz96@gmail.com", subData.email],
                                 subject: `${productTitle} Waiver Confirmation: ${subData.athlete_name}`,
                                 html: `
                                     <h2>${productTitle} Waiver Confirmed</h2>

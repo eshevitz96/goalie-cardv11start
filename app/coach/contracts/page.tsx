@@ -145,7 +145,7 @@ export default function CoachContracts() {
                     <Link href="/coach" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-xs font-bold uppercase tracking-wider mb-4">
                         <ArrowLeft size={14} /> Back to Command Center
                     </Link>
-                    <h1 className="text-3xl font-black tracking-normal">CoachOS</h1>
+                    <h1 className="text-3xl font-black tracking-tight flex items-center gap-2">Coach<span className="text-[#00E676]">Card</span></h1>
                     <p className="text-muted-foreground text-sm mt-1">Define your virtual coaching tiers and deliverables.</p>
                 </div>
                 {!isEditing && (

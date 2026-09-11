@@ -63,16 +63,20 @@ export function useAuth() {
 
             // Fetch user role and sport if authenticated
             let userRole: UserRole | null = null;
+            let userRoles: UserRole[] = [];
             let userSport: string | null = null;
             let resolvedUser = user;
 
             if (resolvedUser) {
                 const { data: profile } = await supabase
                     .from('profiles')
-                    .select('role, sport')
+                    .select('role, roles, sport')
                     .eq('id', resolvedUser.id)
                     .single();
                 userRole = (profile?.role as UserRole) || null;
+                userRoles = Array.isArray(profile?.roles) && profile.roles.length > 0 
+                    ? (profile.roles as UserRole[]) 
+                    : (userRole ? [userRole] : []);
                 userSport = profile?.sport || null;
             }
 
@@ -85,6 +89,7 @@ export function useAuth() {
                 email: "dev@localhost"
               } as any;
               userRole = 'goalie';
+              userRoles = ['goalie'];
               userSport = 'Lacrosse';
             }
 
@@ -99,7 +104,7 @@ export function useAuth() {
                 userEmail: resolvedUser?.email || null,
                 userRole,
                 userSport,
-                userRoles: userRole ? [userRole] : [],
+                userRoles,
                 localId,
                 isAuthenticated: !!resolvedUser || !!localId,
             });

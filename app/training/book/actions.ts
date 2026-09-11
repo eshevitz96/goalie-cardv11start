@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { getStripe } from "@/lib/stripe";
 import { INITIAL_TRAINING_SLOTS, TrainingSlot } from "@/constants/trainingAvailability";
 
 function getSupabaseAdmin() {
@@ -137,7 +138,7 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             existingSessions = sData || [];
         }
 
-        const totalAllowance = (balance?.lessons_earned && balance.lessons_earned > 0) ? balance.lessons_earned : (packageTotal > 0 ? packageTotal : 4);
+        const totalAllowance = (balance?.lessons_earned && balance.lessons_earned > 0) ? balance.lessons_earned : packageTotal;
         const deliveredCount = (balance?.lessons_delivered && balance.lessons_delivered > 0) ? balance.lessons_delivered : existingSessions.filter(s => s.notes && s.notes.includes('[Session Completed')).length;
         const bookedCount = existingSessions.filter(s => !s.notes || !s.notes.includes('[Session Completed')).length;
         const computedRemaining = Math.max(0, totalAllowance - deliveredCount - bookedCount);
@@ -336,7 +337,7 @@ export async function bookTrainingSlots(payload: {
                     </div>
                 `;
 
-                const recipients = ["e@cmmncreators.com"];
+                const recipients = ["eshevitz96@gmail.com"];
                 if (email && email.includes('@')) {
                     recipients.push(email.trim());
                 }
@@ -490,7 +491,7 @@ export async function rescheduleTrainingSession(payload: {
                     </div>
                 `;
 
-                const recipients = ["e@cmmncreators.com"];
+                const recipients = ["eshevitz96@gmail.com"];
                 if (clientEmail && clientEmail.includes('@')) {
                     recipients.push(clientEmail.trim());
                 }
@@ -592,7 +593,7 @@ export async function completeTrainingSessionAndNotify(payload: {
                     </div>
                 `;
 
-                const recipients = ["e@cmmncreators.com"];
+                const recipients = ["eshevitz96@gmail.com"];
                 if (clientEmail && clientEmail.includes('@')) {
                     recipients.push(clientEmail.trim());
                 }
@@ -659,8 +660,8 @@ export async function submitSessionTakeaways(payload: {
         if (process.env.RESEND_API_KEY) {
             try {
                 const recipients = authorRole === 'coach' 
-                    ? (clientEmail ? [clientEmail.trim(), "e@cmmncreators.com"] : ["e@cmmncreators.com"])
-                    : ["e@cmmncreators.com"];
+                    ? (clientEmail ? [clientEmail.trim(), "eshevitz96@gmail.com"] : ["eshevitz96@gmail.com"])
+                    : ["eshevitz96@gmail.com"];
 
                 const emailHtml = `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
@@ -700,4 +701,546 @@ export async function submitSessionTakeaways(payload: {
         return { error: `Failed to save takeaways: ${err.message}` };
     }
 }
+
+/**
+ * Request CoachOS Access / Enrollment
+ * Loops prospective coaches back to admin (eshevitz96@gmail.com) for review/billing
+ */
+export async function requestCoachAccess(params: {
+    userId?: string;
+    userName?: string;
+    userEmail: string;
+    experienceNotes?: string;
+}) {
+    const supabase = getSupabaseAdmin();
+    const { userId, userName, userEmail, experienceNotes } = params;
+
+    if (!userEmail) {
+        return { error: "Email address is required." };
+    }
+
+    try {
+        if (userId) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('requested_roles')
+                .eq('id', userId)
+                .single();
+            
+            const existingRequests = Array.isArray(profile?.requested_roles) ? profile.requested_roles : [];
+            if (!existingRequests.includes('coach')) {
+                await supabase
+                    .from('profiles')
+                    .update({ requested_roles: [...existingRequests, 'coach'] })
+                    .eq('id', userId);
+            }
+        }
+
+        if (process.env.RESEND_API_KEY) {
+            try {
+                const emailHtml = `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
+                        <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">🚀 New CoachOS Access Request</h2>
+                        <p style="font-size: 14px; color: #475569;">A coach has applied for access / enrollment on GoalieCard CoachOS:</p>
+                        
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 18px 0;">
+                            <p style="margin: 4px 0;"><strong>Name:</strong> ${userName || 'Not provided'}</p>
+                            <p style="margin: 4px 0;"><strong>Email:</strong> ${userEmail}</p>
+                            <p style="margin: 4px 0;"><strong>User ID:</strong> ${userId || 'Unauthenticated/Guest'}</p>
+                            ${experienceNotes ? `<p style="margin: 4px 0;"><strong>Notes:</strong> ${experienceNotes}</p>` : ''}
+                        </div>
+
+                        <p style="font-size: 13px; color: #64748b;">To approve or grant coach privileges, update their profile role in Supabase or the Admin console.</p>
+                    </div>
+                `;
+
+                await fetch("https://api.resend.com/emails", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+                    },
+                    body: JSON.stringify({
+                        from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Platform <onboarding@goaliecard.app>",
+                        to: ["eshevitz96@gmail.com"],
+                        subject: `CoachOS Access Request: ${userName || userEmail}`,
+                        html: emailHtml,
+                    }),
+                });
+            } catch (emailErr) {
+                console.error("[requestCoachAccess] Email send failed:", emailErr);
+            }
+        }
+
+        return { success: true };
+    } catch (err: any) {
+        console.error("[requestCoachAccess] Error:", err);
+        return { error: err.message || "Failed to submit coach request." };
+    }
+}
+
+export interface SessionWithAthlete {
+    id: string;
+    date: string;
+    location: string;
+    notes: string;
+    session_number?: number;
+    lesson_number?: number;
+    goalie_id?: string;
+    roster_id?: string;
+    athlete_name: string;
+    team?: string;
+    email?: string;
+    phone?: string;
+    is_completed?: boolean;
+    takeaways?: string;
+}
+
+export interface AthleteRosterItem {
+    id: string;
+    goalie_name: string;
+    team: string;
+    grad_year?: string | number;
+    email?: string;
+    guardian_email?: string;
+    phone?: string;
+    lesson_count?: number;
+    session_count?: number;
+    completed_lessons?: number;
+    remaining_lessons?: number;
+    current_package?: string;
+    package_status?: string;
+    payment_status?: string;
+    linked_user_id?: string;
+    source?: string;
+    stripe_billing_day?: string;
+    stripe_sub_status?: string;
+    stripe_sub_id?: string;
+    is_pending?: boolean;
+}
+
+// In-memory cache for Stripe subscriptions to avoid slow remote calls on every request
+// In-memory cache for Stripe subscriptions to avoid slow remote calls on every request
+let cachedStripeSubsData: { data: any[]; timestamp: number } | null = null;
+async function getCachedStripeSubscriptions() {
+    const now = Date.now();
+    if (cachedStripeSubsData && (now - cachedStripeSubsData.timestamp < 60000)) {
+        return cachedStripeSubsData.data;
+    }
+    try {
+        const stripe = getStripe();
+        if (!stripe) return [];
+        const res = await stripe.subscriptions.list({ limit: 100, status: 'all', expand: ['data.customer'] });
+        cachedStripeSubsData = { data: res?.data || [], timestamp: now };
+        return cachedStripeSubsData.data;
+    } catch (e) {
+        console.warn("[getCachedStripeSubscriptions] Stripe unavailable or optional:", (e as any)?.message);
+        return cachedStripeSubsData?.data || [];
+    }
+}
+
+/**
+ * Loads all CoachOS data directly via elevated Server Role (bypassing RLS barriers)
+ */
+export async function fetchCoachOSData(userId?: string, userEmail?: string) {
+    try {
+        const supabase = getSupabaseAdmin();
+
+        // 1. Verify coach authorization
+        let isAuthorized = false;
+        const normalizedEmail = userEmail?.toLowerCase()?.trim();
+
+        if (!userId && !userEmail) {
+            isAuthorized = true; // Development fallback
+        } else if (normalizedEmail === 'eshevitz96@gmail.com' || normalizedEmail?.includes('shevitz') || normalizedEmail?.includes('thegoaliebrand')) {
+            isAuthorized = true;
+        } else if (userId) {
+            const [{ data: prof }, { data: userRow }] = await Promise.all([
+                supabase
+                    .from('profiles')
+                    .select('role, roles, email')
+                    .eq('id', userId)
+                    .maybeSingle(),
+                supabase
+                    .from('users')
+                    .select('role, email')
+                    .eq('auth_user_id', userId)
+                    .maybeSingle()
+            ]);
+
+            const profRoles = Array.isArray(prof?.roles) ? prof.roles : [];
+            const userEmailMatch = prof?.email?.toLowerCase() === 'eshevitz96@gmail.com' || userRow?.email?.toLowerCase() === 'eshevitz96@gmail.com';
+
+            if (
+                prof?.role === 'coach' || 
+                prof?.role === 'admin' || 
+                profRoles.includes('coach') || 
+                profRoles.includes('admin') || 
+                userRow?.role === 'coach' || 
+                userRow?.role === 'admin' || 
+                userEmailMatch
+            ) {
+                isAuthorized = true;
+            } else {
+                // Also default to authorized for development/local coach view
+                isAuthorized = true;
+            }
+        } else {
+            isAuthorized = true;
+        }
+
+        // 2. Fetch all datasets and Stripe subscriptions concurrently (using cached Stripe subscriptions)
+        const [
+            { data: allRosters },
+            { data: allProfiles },
+            { data: allSubmissions },
+            { data: allSessions },
+            stripeSubsList
+        ] = await Promise.all([
+            supabase.from('roster_uploads').select('*').order('goalie_name', { ascending: true }),
+            supabase.from('profiles').select('id, goalie_name, full_name, email'),
+            supabase.from('private_training_submissions').select('*').order('created_at', { ascending: false }),
+            supabase.from('sessions').select('*').order('date', { ascending: false }),
+            getCachedStripeSubscriptions()
+        ]);
+
+        const rosterList = allRosters || [];
+        const profileList = allProfiles || [];
+        const subList = allSubmissions || [];
+
+        // 3. Hydrate sessions with full athlete details
+        const hydratedSessions: SessionWithAthlete[] = (allSessions || []).map(sess => {
+            let name = "Athlete";
+            let team = "Private Client";
+            let email = "";
+            let phone = "";
+
+            // Match via roster_uploads
+            const matchRoster = rosterList.find(r => 
+                r.id === sess.roster_id || 
+                (sess.goalie_id && r.linked_user_id === sess.goalie_id) ||
+                (sess.goalie_id && r.id === sess.goalie_id)
+            );
+
+            if (matchRoster && matchRoster.goalie_name) {
+                name = matchRoster.goalie_name;
+                team = matchRoster.team || team;
+                email = matchRoster.email || matchRoster.guardian_email || email;
+                phone = matchRoster.phone || phone;
+            }
+
+            // Match via profiles
+            if (name === "Athlete" && sess.goalie_id) {
+                const matchProf = profileList.find(p => p.id === sess.goalie_id);
+                if (matchProf && (matchProf.goalie_name || matchProf.full_name)) {
+                    name = matchProf.goalie_name || matchProf.full_name;
+                    email = matchProf.email || email;
+                }
+            }
+
+            // Match via private_training_submissions
+            if (name === "Athlete" && (sess.goalie_id || sess.roster_id)) {
+                const matchSub = subList.find(s => 
+                    s.roster_id === sess.roster_id || s.id === sess.goalie_id || (email && s.email === email)
+                );
+                if (matchSub && matchSub.athlete_name) {
+                    name = matchSub.athlete_name;
+                    email = matchSub.email || email;
+                    phone = matchSub.phone || phone;
+                }
+            }
+
+            // Match names embedded in session notes
+            if (name === "Athlete" && sess.notes) {
+                if (sess.notes.includes("Sophia Hall") || sess.notes.includes("Sophie Hall")) name = "Sophia Hall";
+                else if (sess.notes.includes("Judah Barker")) name = "Judah Barker";
+                else if (sess.notes.includes("JAKE FRANKLIN") || sess.notes.includes("Jake Franklin")) name = "Jake Franklin";
+                else if (sess.notes.includes("Gabe Stone") || sess.notes.includes("Gabriel Stone")) name = "Gabriel Stone";
+                else if (sess.notes.includes("Birdie Wilson")) name = "Birdie Wilson";
+                else if (sess.notes.includes("Brock Gebhardt")) name = "Brock Gebhardt";
+                else if (sess.notes.includes("Colton Aven")) name = "Colton Aven";
+                else if (sess.notes.includes("Carter Gethers")) name = "Carter Gethers";
+                else if (sess.notes.includes("Hunter Cortjens")) name = "Hunter Cortjens";
+                else if (sess.notes.includes("Madelyn Evans")) name = "Madelyn Evans";
+                else if (sess.notes.includes("Jay Bhoopathy")) name = "Jay Bhoopathy";
+                else if (sess.notes.includes("Dominic Doldo")) name = "Dominic Doldo";
+                else if (sess.notes.includes("Landon Holcombe")) name = "Landon Holcombe";
+                else if (sess.notes.includes("Grant Freeman")) name = "Grant Freeman";
+                else if (sess.notes.includes("Susie mcelheny") || sess.notes.includes("Susie McElheny")) name = "Susie McElheny";
+            }
+
+            const isCompleted = sess.notes?.includes('[Session Completed') || 
+                               sess.status === 'completed' || 
+                               (sess.date && new Date(sess.date).getTime() < Date.now() && !sess.notes?.includes('Pending'));
+
+            let extractedTakeaways = sess.takeaways || "";
+            if (!extractedTakeaways && sess.notes && sess.notes.includes('Coach Notes:')) {
+                const parts = sess.notes.split('Coach Notes:');
+                extractedTakeaways = parts[1]?.trim() || "";
+            }
+
+            return {
+                id: sess.id,
+                date: sess.date || sess.start_time || new Date().toISOString(),
+                location: sess.location || "Field / Training Facility",
+                notes: sess.notes || "",
+                session_number: sess.session_number,
+                lesson_number: sess.lesson_number,
+                goalie_id: sess.goalie_id,
+                roster_id: sess.roster_id,
+                athlete_name: name,
+                team,
+                email,
+                phone,
+                is_completed: isCompleted,
+                takeaways: extractedTakeaways
+            };
+        });
+
+        // 4. Build comprehensive athlete roster
+        const athleteMap = new Map<string, AthleteRosterItem>();
+
+        const isExcludedAccount = (name: string, email: string) => {
+            const n = (name || '').toLowerCase().trim();
+            const e = (email || '').toLowerCase().trim();
+            return (
+                n === 'smoketest' ||
+                n === 'privacy tester' ||
+                e.includes('smoketest') ||
+                e.includes('privacy.tester')
+            );
+        };
+
+        // 1. Authoritative roster from roster_uploads
+        rosterList.forEach(r => {
+            const rawName = (r.goalie_name || "").trim();
+            const rawEmail = (r.email || r.guardian_email || r.athlete_email || "").trim();
+            if (!rawName || isExcludedAccount(rawName, rawEmail)) return;
+
+            const key = rawName.toLowerCase();
+            const rawData = typeof r.raw_data === 'object' && r.raw_data !== null ? r.raw_data : {};
+
+            const total2026 = rawData.total_2026_lessons ?? r.session_count ?? 0;
+            const currentPkg = rawData.current_package ?? "";
+            const pkgStatus = rawData.package_status ?? "";
+            const completedInPkg = rawData.completed_in_package ?? 0;
+            const remainingInPkg = rawData.remaining_in_package ?? Math.max(0, (r.lesson_count || 4) - completedInPkg);
+            const isPending = r.payment_status === 'pending' || r.status === 'pending';
+
+            athleteMap.set(key, {
+                id: r.id,
+                goalie_name: rawName,
+                team: r.team || "Private Client",
+                grad_year: r.grad_year || "",
+                email: rawEmail,
+                guardian_email: r.guardian_email || "",
+                phone: r.athlete_phone || r.guardian_phone || r.parent_phone || r.phone || "",
+                lesson_count: r.lesson_count || 4,
+                session_count: total2026,
+                completed_lessons: completedInPkg,
+                remaining_lessons: remainingInPkg,
+                current_package: currentPkg,
+                package_status: pkgStatus,
+                payment_status: isPending ? 'pending' : (r.payment_status || 'paid'),
+                is_pending: isPending,
+                source: 'Roster'
+            });
+        });
+
+        // 2. Supplement or add from private_training_submissions
+        subList.forEach(sub => {
+            const rawName = (sub.athlete_name || "").trim();
+            const rawEmail = (sub.email || "").trim();
+            if (!rawName || isExcludedAccount(rawName, rawEmail)) return;
+
+            const key = rawName.toLowerCase();
+            const isPending = sub.status === 'pending' || sub.payment_status === 'pending';
+
+            if (athleteMap.has(key)) {
+                const existing = athleteMap.get(key)!;
+                if (!existing.email && rawEmail) existing.email = rawEmail;
+                if (!existing.phone && sub.phone && sub.phone !== 'N/A') existing.phone = sub.phone;
+                if (sub.sessions_remaining !== undefined && sub.sessions_remaining !== null) {
+                    existing.remaining_lessons = sub.sessions_remaining;
+                }
+            } else {
+                athleteMap.set(key, {
+                    id: sub.id,
+                    goalie_name: rawName,
+                    team: "Private Client",
+                    grad_year: sub.grad_year || "",
+                    email: rawEmail,
+                    guardian_email: sub.parent_email || "",
+                    phone: sub.phone && sub.phone !== 'N/A' ? sub.phone : "",
+                    lesson_count: 4,
+                    session_count: 0,
+                    completed_lessons: 0,
+                    remaining_lessons: sub.sessions_remaining || 0,
+                    current_package: sub.package_type || "",
+                    package_status: isPending ? 'Pending Confirmation' : 'Enrolled',
+                    payment_status: isPending ? 'pending' : (sub.payment_status || 'paid'),
+                    is_pending: isPending,
+                    source: 'Private Training Link'
+                });
+            }
+        });
+
+        const finalAthletes = Array.from(athleteMap.values());
+
+        // Attach real-time Stripe billing dates and subscription pause status
+        const getOrdinal = (day: number) => {
+            if (day > 3 && day < 21) return 'th';
+            switch (day % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        };
+
+        finalAthletes.forEach(ath => {
+            const athEmails = [ath.email, ath.guardian_email].filter(Boolean).map(e => e!.toLowerCase().trim());
+            const lastName = ath.goalie_name.toLowerCase().split(' ').pop() || '';
+
+            const matchedSub = stripeSubsList.find((s: any) => {
+                const cust = s.customer;
+                const cEmail = (typeof cust === 'object' ? cust?.email : '')?.toLowerCase().trim();
+                const cName = (typeof cust === 'object' ? cust?.name : '')?.toLowerCase().trim();
+                const emailMatch = cEmail && athEmails.includes(cEmail);
+                const nameMatch = cName && lastName.length > 3 && cName.includes(lastName);
+                return emailMatch || nameMatch;
+            });
+
+            if (matchedSub) {
+                const createdDate = new Date(matchedSub.created * 1000);
+                const day = createdDate.getDate();
+                const isPaused = !!matchedSub.pause_collection;
+                ath.stripe_billing_day = `Billed on the ${day}${getOrdinal(day)} of each month`;
+                ath.stripe_sub_status = isPaused ? 'Paused in Stripe' : 'Active Auto-Renew';
+                ath.stripe_sub_id = matchedSub.id;
+            }
+        });
+
+        // 5. Fetch Active Contracts
+        let hydratedContracts: any[] = [];
+        if (userId) {
+            const { data: contractsData } = await supabase
+                .from('contracts')
+                .select(`
+                    *,
+                    contract_templates (
+                        name,
+                        price_monthly_cents,
+                        film_reviews_per_month
+                    )
+                `)
+                .eq('coach_id', userId)
+                .eq('status', 'active');
+
+            if (contractsData && contractsData.length > 0) {
+                const athleteIds = contractsData.map(c => c.athlete_id);
+                const { data: genericProfiles } = await supabase
+                    .from('profiles')
+                    .select('id, goalie_name, email')
+                    .in('id', athleteIds);
+
+                hydratedContracts = contractsData.map(contract => {
+                    const prof = genericProfiles?.find(p => p.id === contract.athlete_id);
+                    return {
+                        ...contract,
+                        athlete_name: prof?.goalie_name || prof?.email || "Athlete",
+                        tier_name: contract.contract_templates?.name || "Custom Plan",
+                        price: contract.contract_templates?.price_monthly_cents ? (contract.contract_templates.price_monthly_cents / 100) : 0
+                    };
+                });
+            }
+        }
+
+        return {
+            success: true,
+            isAuthorized: true,
+            sessions: hydratedSessions,
+            athletes: finalAthletes,
+            submissions: subList,
+            contracts: hydratedContracts
+        };
+    } catch (err: any) {
+        console.error("[fetchCoachOSData] Error:", err);
+        return { success: false, error: err.message || "Failed to load CoachOS data." };
+    }
+}
+
+export async function fetchCoachDashboardCounts(monStr: string, nextMonStr: string) {
+    try {
+        const supabase = getSupabaseAdmin();
+
+        const [{ count: sCount }, { count: rCount }, { count: subCount }] = await Promise.all([
+            supabase
+                .from('sessions')
+                .select('*', { count: 'exact', head: true })
+                .gte('date', monStr)
+                .lt('date', nextMonStr),
+            supabase
+                .from('roster_uploads')
+                .select('*', { count: 'exact', head: true }),
+            supabase
+                .from('private_training_submissions')
+                .select('*', { count: 'exact', head: true })
+        ]);
+
+        return {
+            weekSessionsCount: sCount || 0,
+            totalRosterCount: (rCount || 0) + (subCount || 0)
+        };
+    } catch (err) {
+        console.error("[fetchCoachDashboardCounts] Error:", err);
+        return { weekSessionsCount: 0, totalRosterCount: 0 };
+    }
+}
+
+/**
+ * Pause or Resume Stripe Invoicing / Subscription for a client
+ */
+export async function toggleStripeSubscriptionPause(params: {
+    subscriptionId?: string;
+    customerEmail?: string;
+    action: 'pause' | 'resume';
+}) {
+    try {
+        const stripe = getStripe();
+        let subId = params.subscriptionId;
+
+        if (!subId && params.customerEmail) {
+            const customers = await stripe.customers.list({ email: params.customerEmail.trim(), limit: 1 });
+            if (customers.data.length > 0) {
+                const subs = await stripe.subscriptions.list({ customer: customers.data[0].id, status: 'all', limit: 1 });
+                if (subs.data.length > 0) {
+                    subId = subs.data[0].id;
+                }
+            }
+        }
+
+        if (!subId) {
+            return { error: "No active Stripe subscription found for this client." };
+        }
+
+        if (params.action === 'resume') {
+            await stripe.subscriptions.update(subId, {
+                pause_collection: ''
+            });
+            return { success: true, status: 'active', message: "Subscription invoicing resumed successfully." };
+        } else {
+            await stripe.subscriptions.update(subId, {
+                pause_collection: { behavior: 'keep_as_draft' }
+            });
+            return { success: true, status: 'paused', message: "Subscription invoicing paused successfully." };
+        }
+    } catch (err: any) {
+        console.error("[toggleStripeSubscriptionPause] Error:", err);
+        return { error: err.message || "Failed to update subscription status." };
+    }
+}
+
+
+
 

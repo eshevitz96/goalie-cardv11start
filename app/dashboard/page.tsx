@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { Loader2, Calendar, Video, Target, ArrowRight } from "lucide-react";
+import { Loader2, Calendar, Video, Target, ArrowRight, Briefcase } from "lucide-react";
 import { isPastSeniorSeason } from "@/utils/role-logic";
 import { GoalieCard } from "@/components/GoalieCard";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
@@ -15,7 +15,7 @@ import { v11Engine } from "@/lib/v11-engine";
 import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { DigitalSignatureModal } from "@/components/goalie/DigitalSignatureModal";
-import { getGoalieBookingProfile } from "@/app/training/book/actions";
+import { getGoalieBookingProfile, fetchCoachDashboardCounts } from "@/app/training/book/actions";
 import { twMerge } from "tailwind-merge";
 
 function normalizeSportDisplay(rawSport: string | null | undefined): string | null {
@@ -60,6 +60,9 @@ export default function Dashboard() {
     const [credits, setCredits] = useState(0);
     const [showProgress, setShowProgress] = useState(true);
     const [hasLessonRecord, setHasLessonRecord] = useState(false);
+    const [isCoachMode, setIsCoachMode] = useState(false);
+    const [coachWeekCount, setCoachWeekCount] = useState(0);
+    const [coachRosterCount, setCoachRosterCount] = useState(0);
     const [paidSubmissionData, setPaidSubmissionData] = useState<any>(null);
     const [resolvedGoalieId, setResolvedGoalieId] = useState<string | null>(null);
     const [showActionsOverlay, setShowActionsOverlay] = useState(false);
@@ -263,8 +266,9 @@ export default function Dashboard() {
                 // Fetch private training booking profile & paid access (Server Admin Action)
                 let lessonsBalanceRowExists = false;
                 try {
+                    const isCoachRole = auth.userRole === 'coach' || auth.userRole === 'admin';
                     const bookingProfile = await getGoalieBookingProfile(goalieProfileId, auth.userEmail || undefined);
-                    lessonsBalanceRowExists = bookingProfile.hasPaidAccess || bookingProfile.totalAllowance > 0;
+                    lessonsBalanceRowExists = !isCoachRole && bookingProfile.hasPaidAccess && (bookingProfile.totalAllowance > 0);
                 } catch (e) {
                     console.warn("Failed to fetch goalie booking profile:", e);
                 }
@@ -346,6 +350,20 @@ export default function Dashboard() {
 
                     const weeklyIntentionText = intentionRes?.intention_text || null;
                     setHasWeeklyIntention(!!weeklyIntentionText);
+
+                    // Fetch Coach Mode status and statistics (strictly enrolled coaches/admins)
+                    const isCoach = auth.userRole === 'coach' || auth.userRole === 'admin' || auth.userRoles?.includes('coach') || auth.userRoles?.includes('admin') || auth.userEmail === 'eshevitz96@gmail.com';
+                    setIsCoachMode(isCoach);
+
+                    if (isCoach) {
+                        try {
+                            const counts = await fetchCoachDashboardCounts(monStr, nextMonStr);
+                            setCoachWeekCount(counts.weekSessionsCount);
+                            setCoachRosterCount(counts.totalRosterCount);
+                        } catch (e) {
+                            console.warn("Error fetching coach dashboard counts:", e);
+                        }
+                    }
 
                     // Open-app overlay actions check (non-blocking with timeout fallback)
                     if (goalieProfileId) {
@@ -692,10 +710,10 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Today's Action Card & Lessons Transparency (Side-by-Side only if Private Training Access exists) */}
+                    {/* Today's Action Card & Coach Mode / Lessons Transparency */}
                     <div className={twMerge(
                         "grid grid-cols-1 gap-6 w-full",
-                        hasLessonRecord ? "lg:grid-cols-2" : "grid-cols-1"
+                        (hasLessonRecord || isCoachMode) ? "lg:grid-cols-2" : "grid-cols-1"
                     )}>
                         {/* Today's Action Card */}
                         <a href={actionCard.navHref} className="flex flex-col justify-between transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer h-full min-h-[192px]">
@@ -720,8 +738,41 @@ export default function Dashboard() {
                             </div>
                         </a>
 
-                        {/* Lessons Transparency & Scheduling (Only for Private Training clients) */}
-                        {hasLessonRecord && resolvedGoalieId && (
+                        {/* Coach Mode Command Center Tile (for Coaches) */}
+                        {isCoachMode ? (
+                            <Link href="/coach" className="flex flex-col justify-between transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer h-full min-h-[192px] group">
+                                <div className="flex flex-col justify-between p-6 h-full bg-card border border-border hover:border-[#00E676]/60 rounded-3xl relative overflow-hidden transition-all shadow-sm">
+                                    <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 85% 15%, rgba(0,230,118,0.14), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
+                                    
+                                    <div className="relative z-10">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[#00E676] bg-[#00E676]/10 px-2 py-0.5 rounded-full">
+                                                CoachCard Command Center
+                                            </span>
+                                            <span className="text-[10px] font-bold text-muted-foreground">
+                                                {coachWeekCount} {coachWeekCount === 1 ? 'Lesson' : 'Lessons'} This Week
+                                            </span>
+                                        </div>
+                                        <h3 className="m-0 mb-1.5 text-xl font-bold tracking-tight leading-tight text-foreground group-hover:text-[#00E676] transition-colors">
+                                            Coaching Roster & Schedule
+                                        </h3>
+                                        <p className="m-0 text-xs text-muted-foreground font-medium leading-relaxed">
+                                            {coachRosterCount > 0 ? `${coachRosterCount} active goalies on roster.` : "Manage athletes & availability."} Tap to view lessons, takeaways, and availability.
+                                        </p>
+                                    </div>
+
+                                    <div className="relative z-10 mt-4 flex items-center justify-between">
+                                        <span className="bg-[#00E676] text-black rounded-full px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] inline-flex items-center gap-2 shadow-sm group-hover:bg-[#00C853] transition-colors">
+                                            Enter Coach Mode <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                                        </span>
+                                        <span className="text-[10px] font-bold text-muted-foreground/80 uppercase tracking-widest">
+                                            Switch View
+                                        </span>
+                                    </div>
+                                </div>
+                            </Link>
+                        ) : hasLessonRecord && resolvedGoalieId ? (
+                            /* Lessons Transparency & Scheduling (Only for Private Training student clients) */
                             <LessonsTransparency 
                                 goalieProfileId={resolvedGoalieId} 
                                 userEmail={auth.userEmail || undefined}
@@ -731,15 +782,24 @@ export default function Dashboard() {
                                 paidSubmission={paidSubmissionData}
                                 rosterData={rosterData}
                             />
-                        )}
+                        ) : null}
                     </div>
 
-                    {/* Module Tiles Grid (3-Column with Schedule if Private Training client, otherwise 2-Column Calendar & Film) */}
+                    {/* Module Tiles Grid (3-Column with Coach Mode or Schedule, otherwise 2-Column Calendar & Film) */}
                     <div className={twMerge(
                         "grid gap-3 w-full",
-                        hasLessonRecord ? "grid-cols-3" : "grid-cols-2"
+                        (hasLessonRecord || isCoachMode) ? "grid-cols-3" : "grid-cols-2"
                     )}>
-                        {hasLessonRecord && (
+                        {isCoachMode ? (
+                            <Link 
+                                href="/coach" 
+                                className="flex flex-col items-center justify-center p-4 bg-card border border-border hover:border-[#00E676]/60 transition-all hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm group"
+                            >
+                                <Briefcase size={24} className="text-[#00E676] mb-2 group-hover:scale-110 transition-transform" />
+                                <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Coach Mode</p>
+                                <p className="m-0 text-[9px] text-muted-foreground mt-1">Roster & schedule</p>
+                            </Link>
+                        ) : hasLessonRecord ? (
                             <Link 
                                 href="/training/book" 
                                 className="flex flex-col items-center justify-center p-4 bg-card border border-border hover:border-emerald-500/60 transition-all hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm group"
@@ -748,7 +808,7 @@ export default function Dashboard() {
                                 <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Schedule</p>
                                 <p className="m-0 text-[9px] text-muted-foreground mt-1">Book sessions</p>
                             </Link>
-                        )}
+                        ) : null}
                         <Link 
                             href="/calendar" 
                             className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
