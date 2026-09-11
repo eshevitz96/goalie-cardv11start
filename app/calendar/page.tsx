@@ -52,7 +52,7 @@ export default function CalendarPage() {
   const [practices, setPractices] = useState<any[]>([]);
   const [privateSessions, setPrivateSessions] = useState<any[]>([]);
   const [weeklyIntention, setWeeklyIntention] = useState<any>(null);
-  const [rosterGoalies, setRosterGoalies] = useState<{ id: string; name: string }[]>([]);
+  const [rosterGoalies, setRosterGoalies] = useState<{ id: string; name: string; linked_user_id?: string | null }[]>([]);
   const [selectedGoalieFilter, setSelectedGoalieFilter] = useState<string>("all");
   const [roleTrackFilter, setRoleTrackFilter] = useState<'all' | 'athlete' | 'coach'>('all');
   const [athleteHockeySessions, setAthleteHockeySessions] = useState<any[]>([]);
@@ -275,7 +275,7 @@ export default function CalendarPage() {
         return name && !name.includes('test') && !name.includes('elliott');
       });
 
-      setRosterGoalies(rosterList.map(r => ({ id: r.id, name: r.goalie_name })));
+      setRosterGoalies(rosterList.map(r => ({ id: r.id, name: r.goalie_name, linked_user_id: r.linked_user_id })));
 
       // 2. Fetch user profile, email & identity if authenticated
       let publicUserId: string | undefined;
@@ -1213,6 +1213,25 @@ export default function CalendarPage() {
         .eq('id', editingLesson.id);
 
       if (error) throw error;
+
+      // Automatically dispatch in-app notification to athlete/parent if location or schedule changed
+      const locationChanged = editingLesson.location && editLessonLocation && editingLesson.location.trim() !== editLessonLocation.trim();
+      const dateChanged = editLessonDate && editingLesson.date && !editingLesson.date.startsWith(editLessonDate);
+      const targetUserId = editingLesson.goalie_id || selectedRoster?.linked_user_id;
+
+      if (locationChanged || dateChanged) {
+        try {
+          await supabase.from('notifications').insert({
+            user_id: targetUserId || null,
+            title: "Training Session Updated 📍",
+            message: `Coach Elliott updated your lesson details${locationChanged ? ` • Location: ${editLessonLocation}` : ''}${dateChanged ? ` • Date: ${editLessonDate}` : ''}`,
+            type: 'schedule',
+            is_read: false
+          });
+        } catch (notifErr) {
+          console.error("Error creating update notification:", notifErr);
+        }
+      }
 
       setEditingLesson(null);
       loadData();
