@@ -53,6 +53,15 @@ function formatFirstInitialLastName(fullName?: string): string {
   return `${firstInitial}. ${lastName}`;
 }
 
+function formatLessonLabel(athleteName?: string, sessionNum?: number | string, lessonNum?: number | string): string {
+  const name = formatFirstInitialLastName(athleteName);
+  const pkgParts = [
+    sessionNum ? `S${sessionNum}` : '',
+    lessonNum ? `L${lessonNum}` : ''
+  ].filter(Boolean).join(', ');
+  return pkgParts ? `${name} ${pkgParts}` : name;
+}
+
 export default function CalendarPage() {
   const auth = useAuth();
   const router = useRouter();
@@ -1979,7 +1988,7 @@ export default function CalendarPage() {
                               COACHING LESSON
                             </span>
                             <h3 className="text-base font-bold text-foreground m-0">
-                              {pSess.athlete_name || (pSess.notes ? pSess.notes.split(' - ')[0] : "Private Goalie Session")}
+                              {formatLessonLabel(pSess.athlete_name, pSess.session_number, pSess.lesson_number)}
                             </h3>
                             {(pSess.session_number || pSess.lesson_number) && (
                               <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">
@@ -2210,7 +2219,7 @@ export default function CalendarPage() {
                                   )}
                                 </div>
                                 <p className="m-0 text-xs font-bold text-foreground leading-tight truncate">
-                                  {formatFirstInitialLastName(pSess.athlete_name)}
+                                  {formatLessonLabel(pSess.athlete_name, pSess.session_number, pSess.lesson_number)}
                                 </p>
                                 <p className="m-0 text-[10px] text-muted-foreground truncate">
                                   {displayTime}
@@ -2355,7 +2364,7 @@ export default function CalendarPage() {
                               title={ps.athlete_name || 'Lesson'}
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                              <span className="truncate">{formatFirstInitialLastName(ps.athlete_name)} {ps.lesson_number ? `L${ps.lesson_number}` : ''}</span>
+                              <span className="truncate">{formatLessonLabel(ps.athlete_name, ps.session_number, ps.lesson_number)}</span>
                             </div>
                           ))}
                           {dayEvents.totalCount > 3 && (
@@ -2382,58 +2391,34 @@ export default function CalendarPage() {
                     {selectedDateEvents.totalCount === 0 ? "No events scheduled" : `${selectedDateEvents.totalCount} Event${selectedDateEvents.totalCount > 1 ? 's' : ''}`}
                   </p>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setCurrentDate(selectedDate);
-                      setViewMode("day");
-                    }}
-                    className="px-3 py-1.5 bg-muted hover:bg-muted-foreground/20 text-xs font-bold text-foreground border border-border rounded-xl transition-colors flex items-center gap-1.5"
-                  >
-                    <Sun size={13} />
-                    <span>Open Day View</span>
-                  </button>
-                  <button
-                    onClick={() => openAddEvent("training", selectedDate)}
-                    className="px-3 py-1.5 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus size={13} />
-                    <span>Add Event</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => openAddEvent("training", selectedDate)}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  <Plus size={13} />
+                  <span>Add Event</span>
+                </button>
               </div>
 
-              {/* Selected Day Event Cards */}
+              {/* Event Cards inside Drawer */}
               {selectedDateEvents.totalCount === 0 ? (
-                <p className="text-xs text-muted-foreground italic py-3 text-center">
-                  No events on this day. Tap "+ Add" to log a training session, game, or practice.
-                </p>
+                <div className="py-8 text-center">
+                  <p className="text-sm font-medium text-muted-foreground m-0">No events on this day.</p>
+                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {/* Pro Hockey Training Sessions (Athlete Track) */}
+                <div className="space-y-3">
+                  {/* Pro Hockey Training Schedule (Athlete Track) */}
                   {selectedDateEvents.hockeySessions.map((hSess, i) => (
                     <div 
                       key={`m-h-${i}`} 
                       onClick={() => openHockeyDetail(hSess)}
                       className="p-3.5 bg-cyan-950/20 hover:bg-cyan-950/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-2xl cursor-pointer transition-all space-y-2"
                     >
-                      <div className="flex items-center justify-between gap-1 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-cyan-400 text-black rounded-md flex items-center gap-1">
-                            <span>🏒</span> NHL PRO TRACK
-                          </span>
-                          {hSess.confidence && (
-                            <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                              hSess.confidence === 'EXACT' 
-                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' 
-                                : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                            }`}>
-                              {hSess.confidence === 'EXACT' ? '✓ EXACT' : '⚡ RECONSTRUCTED'}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[10px] font-bold text-cyan-300 font-mono">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-cyan-400 text-black rounded-md flex items-center gap-1">
+                          <span>🏒</span> NHL PRO TRACK
+                        </span>
+                        <span className="text-[10px] font-bold text-cyan-300">
                           {formatTime(hSess.scheduled_time)}
                         </span>
                       </div>
@@ -2441,18 +2426,9 @@ export default function CalendarPage() {
                       <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
                         <MapPin size={11} className="text-cyan-400" /> {hSess.location || "Ice Arena"}
                       </p>
-                      {hSess.strength && hSess.strength.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {hSess.strength.slice(0, 3).map((st: string, sIdx: number) => (
-                            <span key={sIdx} className="text-[10px] font-medium px-1.5 py-0.5 bg-card border border-border/70 rounded text-foreground">
-                              {st}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {hSess.cues && hSess.cues.length > 0 && (
-                        <p className="text-[11px] font-bold text-cyan-300 bg-cyan-950/40 px-2 py-1 rounded-lg border border-cyan-500/20 m-0">
-                          🎯 {hSess.cues[0]}
+                      {hSess.focus && (
+                        <p className="text-xs text-muted-foreground line-clamp-1 m-0">
+                          <span className="font-semibold text-cyan-300">Focus: </span>{hSess.focus}
                         </p>
                       )}
                       {hSess.athleteReflection && (
@@ -2535,7 +2511,7 @@ export default function CalendarPage() {
                         )}
                       </div>
                       <h4 className="text-sm font-bold text-foreground m-0">
-                        {pSess.athlete_name || (pSess.notes ? pSess.notes.split(' - ')[0] : "Private Goalie Session")}
+                        {formatLessonLabel(pSess.athlete_name, pSess.session_number, pSess.lesson_number)}
                       </h4>
                       <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
                         <MapPin size={11} className="text-[#00E676]" /> {pSess.location || "Bell Memorial Park"}
