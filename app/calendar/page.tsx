@@ -1574,7 +1574,7 @@ export default function CalendarPage() {
             <div>
               <h1 className="text-base sm:text-lg font-black tracking-tight text-foreground flex items-center gap-2 m-0">
                 <CalendarIcon size={18} className="text-[#00E676]" />
-                Goalie Schedule
+                Calendar
               </h1>
             </div>
           </div>
@@ -1623,14 +1623,13 @@ export default function CalendarPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
-        {/* SCHEDULE TRACK SWITCHER */}
+        {/* TRACK SWITCHER BAR */}
         <div className="bg-card border border-border/80 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold shrink-0">
-              <CalendarIcon size={18} />
+            <div className="w-8 h-8 rounded-xl bg-[#00E676]/10 border border-[#00E676]/20 flex items-center justify-center text-[#00E676] font-bold shrink-0">
+              <CalendarIcon size={16} />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base font-black text-foreground uppercase tracking-wider m-0">Schedule</h1>
               <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
                 NHL Pro Prospect
               </span>
