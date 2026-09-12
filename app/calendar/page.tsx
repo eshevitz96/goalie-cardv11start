@@ -527,16 +527,7 @@ export default function CalendarPage() {
           if (targetRoster && s.athlete_name && s.athlete_name.toLowerCase() === targetRoster.goalie_name.toLowerCase()) return true;
           return false;
         }
-        if (isCoach) return true;
-        if (s.goalie_id && (s.goalie_id === uid || s.goalie_id === publicUserId)) return true;
-        if (s.roster_id && matchedRosterIds.includes(s.roster_id)) return true;
-        if (s.notes) {
-          const lowerNotes = s.notes.toLowerCase();
-          for (const kw of nameKeywords) {
-            if (lowerNotes.includes(kw)) return true;
-          }
-        }
-        return false;
+        return true;
       });
 
       setPrivateSessions(userSessions);
