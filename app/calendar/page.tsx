@@ -2245,11 +2245,101 @@ export default function CalendarPage() {
                   const isCellToday = isToday(cell.date);
                   const isCellSelected = formatDateKey(selectedDate) === dateKey;
 
+                  // Aggregate all day events
+                  const cellEvents: Array<{
+                    id: string;
+                    title: string;
+                    badgeColor: string;
+                    dotColor: string;
+                    onClick: (e: React.MouseEvent) => void;
+                  }> = [];
+
+                  dayEvents.hockeySessions.forEach((h, i) => {
+                    cellEvents.push({
+                      id: `h-${i}`,
+                      title: h.title,
+                      badgeColor: "bg-cyan-500/15 hover:bg-cyan-500/25 border-cyan-500/30 hover:border-cyan-400 text-cyan-300",
+                      dotColor: "bg-cyan-400",
+                      onClick: (e) => { e.stopPropagation(); openHockeyDetail(h); }
+                    });
+                  });
+
+                  dayEvents.games.forEach((g, i) => {
+                    cellEvents.push({
+                      id: `g-${i}`,
+                      title: g.opponent || "Game",
+                      badgeColor: "bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 hover:border-amber-400 text-amber-300",
+                      dotColor: "bg-amber-400",
+                      onClick: (e) => {
+                        e.stopPropagation();
+                        setEditingGame(g);
+                        setEditGameOpponent(g.opponent || "");
+                        setEditGameLocation(g.location || "");
+                        setEditGameDate(g.scheduled_date || "");
+                        setEditGameTime(g.scheduled_time ? g.scheduled_time.substring(0, 5) : "");
+                        setEditGameType(g.game_type || "game");
+                        setEditGameError("");
+                        setGameDeleteConfirm(false);
+                      }
+                    });
+                  });
+
+                  dayEvents.practices.forEach((p, i) => {
+                    cellEvents.push({
+                      id: `p-${i}`,
+                      title: "Practice",
+                      badgeColor: "bg-blue-500/20 hover:bg-blue-500/30 border-blue-500/30 hover:border-blue-400 text-blue-300",
+                      dotColor: "bg-blue-400",
+                      onClick: (e) => {
+                        e.stopPropagation();
+                        setEditingPractice(p);
+                        setEditPracticeDate(p.scheduled_date || "");
+                        setEditPracticeTime(p.scheduled_time ? p.scheduled_time.substring(0, 5) : "");
+                        setEditPracticeLocation(p.location || "");
+                        setEditPracticeNotes(p.notes || "");
+                        setEditPracticeError("");
+                        setPracticeDeleteConfirm(false);
+                      }
+                    });
+                  });
+
+                  dayEvents.privateSessions.forEach((ps, i) => {
+                    cellEvents.push({
+                      id: `priv-${i}`,
+                      title: formatLessonLabel(ps.athlete_name, ps.session_number, ps.lesson_number),
+                      badgeColor: "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 hover:border-emerald-400 text-emerald-300",
+                      dotColor: "bg-emerald-400",
+                      onClick: (e) => { e.stopPropagation(); openEditLesson(ps); }
+                    });
+                  });
+
+                  const maxVisibleChips = 3;
+                  const visibleChips = cellEvents.slice(0, maxVisibleChips);
+                  const hiddenCount = cellEvents.length - visibleChips.length;
+
+                  const handleCellClick = () => {
+                    if (isCellSelected) {
+                      setCurrentDate(cell.date);
+                      setViewMode("day");
+                    } else {
+                      setSelectedDate(cell.date);
+                      setCurrentDate(cell.date);
+                    }
+                  };
+
+                  const handleJumpToDay = (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    setCurrentDate(cell.date);
+                    setSelectedDate(cell.date);
+                    setViewMode("day");
+                  };
+
                   return (
                     <div
                       key={idx}
-                      onClick={() => setSelectedDate(cell.date)}
-                      className={`min-h-[74px] sm:min-h-[108px] p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                      onClick={handleCellClick}
+                      onDoubleClick={handleJumpToDay}
+                      className={`min-h-[74px] sm:min-h-[108px] p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between select-none ${
                         !cell.isCurrentMonth 
                           ? "opacity-30 bg-muted/20 border-transparent hover:opacity-60" 
                           : isCellSelected
@@ -2260,11 +2350,16 @@ export default function CalendarPage() {
                       }`}
                     >
                       <div className="flex items-center justify-between px-1 pt-0.5 mb-1">
-                        <span className={`text-xs sm:text-sm font-bold leading-none ${
-                          isCellToday ? "text-[#00E676] font-black" : cell.isCurrentMonth ? "text-foreground" : "text-muted-foreground"
-                        }`}>
-                          {cell.date.getDate()}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={handleJumpToDay}
+                          title="Open Day View"
+                          className={`text-xs sm:text-sm font-bold leading-none p-1 -m-1 rounded-lg hover:bg-muted hover:text-[#00E676] transition-colors cursor-pointer flex items-center gap-1 ${
+                            isCellToday ? "text-[#00E676] font-black" : cell.isCurrentMonth ? "text-foreground" : "text-muted-foreground"
+                          }`}
+                        >
+                          <span>{cell.date.getDate()}</span>
+                        </button>
                         {isCellToday && (
                           <span className="w-1.5 h-1.5 rounded-full bg-[#00E676]"></span>
                         )}
@@ -2274,87 +2369,34 @@ export default function CalendarPage() {
                       <div className="mt-1 space-y-1">
                         {/* Mobile dots view */}
                         <div className="flex flex-wrap gap-1 sm:hidden">
-                          {dayEvents.hockeySessions.map((_, i) => (
-                            <span key={`mh-${i}`} className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                          ))}
-                          {dayEvents.games.map((_, i) => (
-                            <span key={`mg-${i}`} className="w-1.5 h-1.5 rounded-full bg-[#00E676]"></span>
-                          ))}
-                          {dayEvents.practices.map((_, i) => (
-                            <span key={`mp-${i}`} className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                          ))}
-                          {dayEvents.privateSessions.map((_, i) => (
-                            <span key={`mpriv-${i}`} className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                          {cellEvents.map((evt, i) => (
+                            <span key={`mdot-${i}`} className={`w-1.5 h-1.5 rounded-full ${evt.dotColor}`}></span>
                           ))}
                         </div>
 
                         {/* Desktop chips */}
                         <div className="hidden sm:flex flex-col gap-1">
-                          {dayEvents.hockeySessions.slice(0, 1).map((h, i) => (
+                          {visibleChips.map((evt) => (
                             <div 
-                              key={`h-${i}`} 
-                              onClick={(e) => { e.stopPropagation(); openHockeyDetail(h); }}
-                              className="px-1.5 py-0.5 bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400 text-cyan-300 text-[9px] font-bold rounded-md truncate flex items-center gap-1 cursor-pointer transition-colors" 
-                              title={h.title}
+                              key={evt.id} 
+                              onClick={evt.onClick}
+                              className={`px-1.5 py-0.5 border text-[9px] font-bold rounded-md truncate flex items-center gap-1 cursor-pointer transition-colors ${evt.badgeColor}`} 
+                              title={evt.title}
                             >
-                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-                              <span className="truncate">{h.title}</span>
+                              <span className={`w-1.5 h-1.5 rounded-full ${evt.dotColor} shrink-0`} />
+                              <span className="truncate">{evt.title}</span>
                             </div>
                           ))}
-                          {dayEvents.games.slice(0, 1).map((g, i) => (
-                            <div 
-                              key={`g-${i}`} 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingGame(g);
-                                setEditGameOpponent(g.opponent || "");
-                                setEditGameLocation(g.location || "");
-                                setEditGameDate(g.scheduled_date || "");
-                                setEditGameTime(g.scheduled_time ? g.scheduled_time.substring(0, 5) : "");
-                                setEditGameType(g.game_type || "game");
-                                setEditGameError("");
-                                setGameDeleteConfirm(false);
-                              }}
-                              className="px-1.5 py-0.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 hover:border-amber-400 text-amber-300 text-[9px] font-bold rounded-md truncate flex items-center gap-1 cursor-pointer transition-colors"
+                          {hiddenCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleJumpToDay}
+                              title={`View all ${cellEvents.length} events for ${cell.date.toLocaleDateString()}`}
+                              className="w-full text-left px-1.5 py-0.5 mt-0.5 bg-muted/80 hover:bg-[#00E676]/20 text-muted-foreground hover:text-[#00E676] border border-border/50 hover:border-[#00E676]/40 rounded text-[9px] font-bold flex items-center justify-between transition-all cursor-pointer group"
                             >
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                              <span className="truncate">{g.opponent}</span>
-                            </div>
-                          ))}
-                          {dayEvents.practices.slice(0, 1).map((p, i) => (
-                            <div 
-                              key={`p-${i}`} 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingPractice(p);
-                                setEditPracticeDate(p.scheduled_date || "");
-                                setEditPracticeTime(p.scheduled_time ? p.scheduled_time.substring(0, 5) : "");
-                                setEditPracticeLocation(p.location || "");
-                                setEditPracticeNotes(p.notes || "");
-                                setEditPracticeError("");
-                                setPracticeDeleteConfirm(false);
-                              }}
-                              className="px-1.5 py-0.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 hover:border-blue-400 text-blue-300 text-[9px] font-bold rounded-md truncate flex items-center gap-1 cursor-pointer transition-colors"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-                              <span>Practice</span>
-                            </div>
-                          ))}
-                          {dayEvents.privateSessions.slice(0, 3).map((ps, i) => (
-                            <div 
-                              key={`priv-${i}`} 
-                              onClick={(e) => { e.stopPropagation(); openEditLesson(ps); }}
-                              className="px-1.5 py-0.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 hover:border-emerald-400 text-emerald-300 text-[9px] font-bold rounded-md truncate flex items-center gap-1 cursor-pointer transition-colors" 
-                              title={ps.athlete_name || 'Lesson'}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                              <span className="truncate">{formatLessonLabel(ps.athlete_name, ps.session_number, ps.lesson_number)}</span>
-                            </div>
-                          ))}
-                          {dayEvents.totalCount > 3 && (
-                            <span className="text-[8px] font-bold text-muted-foreground pl-1">
-                              +{dayEvents.totalCount - 3} more
-                            </span>
+                              <span>+{hiddenCount} more</span>
+                              <span className="text-[8px] opacity-0 group-hover:opacity-100 transition-opacity font-extrabold text-[#00E676]">Day View →</span>
+                            </button>
                           )}
                         </div>
                       </div>
@@ -2365,7 +2407,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Selected Day Agenda Drawer (Bottom of month view) */}
-            <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+            <div id="selected-day-drawer" className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-border">
                 <div>
                   <h3 className="text-base font-bold text-foreground m-0">
@@ -2375,13 +2417,26 @@ export default function CalendarPage() {
                     {selectedDateEvents.totalCount === 0 ? "No events scheduled" : `${selectedDateEvents.totalCount} Event${selectedDateEvents.totalCount > 1 ? 's' : ''}`}
                   </p>
                 </div>
-                <button
-                  onClick={() => openAddEvent("training", selectedDate)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                >
-                  <Plus size={13} />
-                  <span>Add Event</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setCurrentDate(selectedDate);
+                      setViewMode("day");
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl border border-border transition-colors cursor-pointer"
+                    title="Open full timeline in Day View"
+                  >
+                    <CalendarDays size={13} className="text-[#00E676]" />
+                    <span>Day Timeline</span>
+                  </button>
+                  <button
+                    onClick={() => openAddEvent("training", selectedDate)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Plus size={13} />
+                    <span>Add Event</span>
+                  </button>
+                </div>
               </div>
 
               {/* Event Cards inside Drawer */}
