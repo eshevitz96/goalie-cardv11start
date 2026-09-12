@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { ATHLETE_TRAINING_HISTORY, ATHLETE_PROFILE_METRICS } from "@/lib/athleteTrainingHistory";
 import { getCalendarPrivateLessons, fetchCoachOSData, saveCalendarLessonUpdate, deleteCalendarLesson, createCalendarPrivateLesson } from "@/app/training/book/actions";
+import { useToast } from "@/context/ToastContext";
 
 type ViewMode = "day" | "week" | "month" | "year";
 
@@ -48,8 +49,8 @@ function formatFirstInitialLastName(fullName?: string): string {
   const trimmed = fullName.trim();
   const parts = trimmed.split(/\s+/);
   if (parts.length === 1) return parts[0];
-  const firstInitial = parts[0][0].toUpperCase();
-  const lastName = parts.slice(1).join(" ");
+  const firstInitial = parts[0].charAt(0).toUpperCase();
+  const lastName = parts[parts.length - 1];
   return `${firstInitial}. ${lastName}`;
 }
 
@@ -65,6 +66,7 @@ function formatLessonLabel(athleteName?: string, sessionNum?: number | string, l
 export default function CalendarPage() {
   const auth = useAuth();
   const router = useRouter();
+  const toast = useToast();
 
   const [loading, setLoading] = useState(true);
   const [season, setSeason] = useState<any>(null);
@@ -649,11 +651,65 @@ export default function CalendarPage() {
     }
   }, [viewMode, currentDate, weekDates]);
 
+  // Helper to distinguish training/workouts from actual games
+  const isTrainingItem = (item: any) => {
+    if (!item) return false;
+    if (item.game_type === 'training') return true;
+    const opp = (item.opponent || item.opponent_name || item.title || '').toLowerCase();
+    const loc = (item.location || '').toLowerCase();
+    if (
+      opp.includes('leg day') ||
+      opp.includes('training') ||
+      opp.includes('workout') ||
+      opp.includes('strength') ||
+      opp.includes('s&c') ||
+      opp.includes('upper body') ||
+      opp.includes('lower body') ||
+      opp.includes('squat') ||
+      opp.includes('deadlift') ||
+      opp.includes('plyo') ||
+      opp.includes('mobility') ||
+      opp.includes('conditioning') ||
+      loc.includes('gym') ||
+      loc.includes('fitness') ||
+      loc.includes('weight room')
+    ) {
+      return true;
+    }
+    return false;
+  };
+
   // Aggregate events for a specific date key (YYYY-MM-DD)
   const getEventsForDate = (dateStr: string) => {
-    const dayGames = (roleTrackFilter === 'coach') ? [] : games.filter(g => g.scheduled_date === dateStr);
+    const allDayGames = (roleTrackFilter === 'coach') ? [] : games.filter(g => g.scheduled_date === dateStr);
+    const dayGames = allDayGames.filter(g => !isTrainingItem(g));
+    const customTraining = allDayGames.filter(g => isTrainingItem(g)).map(g => {
+      let parsedNotes: any = null;
+      if (g.notes && g.notes.startsWith('{')) {
+        try { parsedNotes = JSON.parse(g.notes); } catch {}
+      }
+      return {
+        id: g.id,
+        title: g.opponent || "Athlete Training",
+        focus: g.opponent || "Training",
+        scheduled_date: g.scheduled_date,
+        scheduled_time: g.scheduled_time,
+        location: g.location || "Gym / Training Facility",
+        strength: parsedNotes?.strength || (g.notes && !g.notes.startsWith('{') ? [g.notes] : []),
+        athletic: parsedNotes?.athletic || [],
+        cues: parsedNotes?.cues || [],
+        notes: parsedNotes?.notes || (g.notes && !g.notes.startsWith('{') ? g.notes : ''),
+        confidence: 'EXACT',
+        phase: 'Athlete Training Log',
+        isCustom: true
+      };
+    });
+
     const dayPractices = (roleTrackFilter === 'coach') ? [] : practices.filter(p => p.scheduled_date === dateStr);
-    const dayHockey = (roleTrackFilter === 'coach') ? [] : athleteHockeySessions.filter(h => h.scheduled_date === dateStr);
+    const dayHockey = (roleTrackFilter === 'coach') ? [] : [
+      ...athleteHockeySessions.filter(h => h.scheduled_date === dateStr),
+      ...customTraining
+    ];
     
     const dayPrivate = (roleTrackFilter === 'athlete') ? [] : privateSessions.filter(s => {
       const sDate = s.date || s.start_time;
@@ -3804,7 +3860,7 @@ export default function CalendarPage() {
               </div>
             )}
 
-            <div className="pt-2 flex justify-end">
+            <div className="pt-2 flex flex-col gap-2">
               <button 
                 type="button" 
                 onClick={() => setSelectedHockeySession(null)}
@@ -3812,6 +3868,24 @@ export default function CalendarPage() {
               >
                 Close
               </button>
+              {selectedHockeySession.id && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await supabase.from('games').delete().eq('id', selectedHockeySession.id);
+                      setGames(prev => prev.filter(g => g.id !== selectedHockeySession.id));
+                      setSelectedHockeySession(null);
+                      toast.success("Training session removed.");
+                    } catch (err) {
+                      console.error("Failed to delete training session:", err);
+                    }
+                  }}
+                  className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                >
+                  Delete Training Session
+                </button>
+              )}
             </div>
           </div>
         </div>

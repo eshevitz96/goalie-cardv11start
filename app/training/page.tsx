@@ -329,7 +329,34 @@ export default function TrainingPage() {
                     supabase.from('weekly_intentions').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle()
                 ]);
 
-                const todayGames = games || [];
+                const isTrainingItem = (item: any) => {
+                    if (!item) return false;
+                    if (item.game_type === 'training') return true;
+                    const opp = (item.opponent || item.opponent_name || item.title || '').toLowerCase();
+                    const loc = (item.location || '').toLowerCase();
+                    if (
+                        opp.includes('leg day') ||
+                        opp.includes('training') ||
+                        opp.includes('workout') ||
+                        opp.includes('strength') ||
+                        opp.includes('s&c') ||
+                        opp.includes('upper body') ||
+                        opp.includes('lower body') ||
+                        opp.includes('squat') ||
+                        opp.includes('deadlift') ||
+                        opp.includes('plyo') ||
+                        opp.includes('mobility') ||
+                        opp.includes('conditioning') ||
+                        loc.includes('gym') ||
+                        loc.includes('fitness') ||
+                        loc.includes('weight room')
+                    ) {
+                        return true;
+                    }
+                    return false;
+                };
+
+                const todayGames = (games || []).filter((g: any) => !isTrainingItem(g));
                 const todayPractices = practices || [];
                 const allLessons = privateRes?.success ? (privateRes.sessions || []) : [];
                 const todayLessons = allLessons.filter((s: any) => s.date && s.date.startsWith(todayKey));
