@@ -1241,6 +1241,104 @@ export async function toggleStripeSubscriptionPause(params: {
     }
 }
 
+/**
+ * Loads all private lacrosse lessons & roster athletes for the calendar with high reliability
+ */
+export async function getCalendarPrivateLessons() {
+    try {
+        const supabase = getSupabaseAdmin();
+        const [
+            { data: allRosters },
+            { data: allProfiles },
+            { data: allSessions }
+        ] = await Promise.all([
+            supabase.from('roster_uploads').select('*').order('goalie_name', { ascending: true }),
+            supabase.from('profiles').select('id, goalie_name, full_name, email'),
+            supabase.from('sessions').select('*').order('date', { ascending: false })
+        ]);
+
+        const rosterList = allRosters || [];
+        const profileList = allProfiles || [];
+
+        const hydrated = (allSessions || []).map(sess => {
+            let name = "Athlete";
+            let team = "Private Client";
+            let email = "";
+
+            const matchRoster = rosterList.find(r => 
+                r.id === sess.roster_id || 
+                (sess.goalie_id && r.linked_user_id === sess.goalie_id) ||
+                (sess.goalie_id && r.id === sess.goalie_id)
+            );
+
+            if (matchRoster && matchRoster.goalie_name) {
+                name = matchRoster.goalie_name;
+                team = matchRoster.team || team;
+                email = matchRoster.email || matchRoster.guardian_email || email;
+            }
+
+            if (name === "Athlete" && sess.goalie_id) {
+                const matchProf = profileList.find(p => p.id === sess.goalie_id);
+                if (matchProf && (matchProf.goalie_name || matchProf.full_name)) {
+                    name = matchProf.goalie_name || matchProf.full_name;
+                    email = matchProf.email || email;
+                }
+            }
+
+            if (name === "Athlete" && sess.notes) {
+                if (sess.notes.includes("Sophia Hall") || sess.notes.includes("Sophie Hall")) name = "Sophia Hall";
+                else if (sess.notes.includes("Judah Barker")) name = "Judah Barker";
+                else if (sess.notes.includes("JAKE FRANKLIN") || sess.notes.includes("Jake Franklin")) name = "Jake Franklin";
+                else if (sess.notes.includes("Gabe Stone") || sess.notes.includes("Gabriel Stone")) name = "Gabriel Stone";
+                else if (sess.notes.includes("Birdie Wilson")) name = "Birdie Wilson";
+                else if (sess.notes.includes("Brock Gebhardt")) name = "Brock Gebhardt";
+                else if (sess.notes.includes("Colton Aven")) name = "Colton Aven";
+                else if (sess.notes.includes("Carter Gethers")) name = "Carter Gethers";
+                else if (sess.notes.includes("Hunter Cortjens")) name = "Hunter Cortjens";
+                else if (sess.notes.includes("Madelyn Evans")) name = "Madelyn Evans";
+                else if (sess.notes.includes("Jay Bhoopathy")) name = "Jay Bhoopathy";
+                else if (sess.notes.includes("Dominic Doldo")) name = "Dominic Doldo";
+                else if (sess.notes.includes("Landon Holcombe")) name = "Landon Holcombe";
+                else if (sess.notes.includes("Grant Freeman")) name = "Grant Freeman";
+                else if (sess.notes.includes("Susie mcelheny") || sess.notes.includes("Susie McElheny")) name = "Susie McElheny";
+            }
+
+            return {
+                id: sess.id,
+                date: sess.date || sess.start_time || new Date().toISOString(),
+                start_time: sess.start_time || sess.date,
+                location: sess.location || "Field / Training Facility",
+                notes: sess.notes || "",
+                session_number: sess.session_number,
+                lesson_number: sess.lesson_number,
+                goalie_id: sess.goalie_id,
+                roster_id: sess.roster_id,
+                athlete_name: name,
+                team,
+                email,
+                sport: "Lacrosse"
+            };
+        });
+
+        const athletes = rosterList
+            .filter(r => r.goalie_name && !r.goalie_name.toLowerCase().includes('test') && !r.goalie_name.toLowerCase().includes('elliott'))
+            .map(r => ({
+                id: r.id,
+                goalie_name: r.goalie_name,
+                email: r.email || r.guardian_email || "",
+                guardian_email: r.guardian_email || "",
+                athlete_email: r.athlete_email || r.email || "",
+                linked_user_id: r.linked_user_id || r.id,
+                team: r.team || "Private Client"
+            }));
+
+        return { success: true, sessions: hydrated, athletes };
+    } catch (e: any) {
+        console.error("getCalendarPrivateLessons error:", e);
+        return { success: false, error: e?.message || "Failed to load calendar private lessons", sessions: [], athletes: [] };
+    }
+}
+
 
 
 

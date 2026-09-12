@@ -39,9 +39,19 @@ import {
   Trash2
 } from "lucide-react";
 import { ATHLETE_TRAINING_HISTORY, ATHLETE_PROFILE_METRICS } from "@/lib/athleteTrainingHistory";
-import { fetchCoachOSData } from "@/app/training/book/actions";
+import { getCalendarPrivateLessons, fetchCoachOSData } from "@/app/training/book/actions";
 
 type ViewMode = "day" | "week" | "month" | "year";
+
+function formatFirstInitialLastName(fullName?: string): string {
+  if (!fullName) return "Athlete";
+  const trimmed = fullName.trim();
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  const firstInitial = parts[0][0].toUpperCase();
+  const lastName = parts.slice(1).join(" ");
+  return `${firstInitial}. ${lastName}`;
+}
 
 export default function CalendarPage() {
   const auth = useAuth();
@@ -269,38 +279,20 @@ export default function CalendarPage() {
       const uid = auth.userId;
       const { startStr, endStr } = queryRange;
 
-      // 1. Fetch coach roster & private training sessions from authoritative server action
-      const coachData = await fetchCoachOSData(uid || undefined, auth.userEmail || undefined);
+      // 1. Fetch coach roster & private training sessions from instantaneous server action
+      const coachData = await getCalendarPrivateLessons();
       let rosterList: any[] = [];
       let allSessionsData: any[] = [];
 
       if (coachData?.success && coachData.athletes && coachData.athletes.length > 0) {
-        rosterList = coachData.athletes.map((a: any) => ({
-          id: a.id,
-          goalie_name: a.goalie_name,
-          email: a.email,
-          guardian_email: a.guardian_email,
-          athlete_email: a.email,
-          linked_user_id: a.id,
-          team: a.team
-        }));
+        rosterList = coachData.athletes;
         allSessionsData = coachData.sessions || [];
       } else {
-        const { data: allRosters } = await supabase
-          .from("roster_uploads")
-          .select("id, goalie_name, email, guardian_email, athlete_email, linked_user_id, team")
-          .order("goalie_name", { ascending: true });
-
-        rosterList = (allRosters || []).filter(r => {
-          const name = (r.goalie_name || '').toLowerCase();
-          return name && !name.includes('test') && !name.includes('elliott');
-        });
-
-        const { data: rawSess } = await supabase
-          .from("sessions")
-          .select("id, date, start_time, end_time, location, notes, session_number, lesson_number, goalie_id, roster_id, is_active")
-          .order("date", { ascending: true });
-        allSessionsData = rawSess || [];
+        const fallback = await fetchCoachOSData(uid || undefined, auth.userEmail || undefined);
+        if (fallback?.success && fallback.athletes && fallback.athletes.length > 0) {
+          rosterList = fallback.athletes;
+          allSessionsData = fallback.sessions || [];
+        }
       }
 
       setRosterGoalies(rosterList.map(r => ({ id: r.id, name: r.goalie_name, linked_user_id: r.linked_user_id })));
@@ -2218,7 +2210,7 @@ export default function CalendarPage() {
                                   )}
                                 </div>
                                 <p className="m-0 text-xs font-bold text-foreground leading-tight truncate">
-                                  {pSess.athlete_name || (pSess.notes ? pSess.notes.split(' - ')[0] : "Private Goalie Session")}
+                                  {formatFirstInitialLastName(pSess.athlete_name)}
                                 </p>
                                 <p className="m-0 text-[10px] text-muted-foreground truncate">
                                   {displayTime}
@@ -2355,7 +2347,7 @@ export default function CalendarPage() {
                               <span>Practice</span>
                             </div>
                           ))}
-                          {dayEvents.privateSessions.slice(0, 2).map((ps, i) => (
+                          {dayEvents.privateSessions.slice(0, 3).map((ps, i) => (
                             <div 
                               key={`priv-${i}`} 
                               onClick={(e) => { e.stopPropagation(); openEditLesson(ps); }}
@@ -2363,7 +2355,7 @@ export default function CalendarPage() {
                               title={ps.athlete_name || 'Lesson'}
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                              <span className="truncate">{ps.athlete_name ? ps.athlete_name.split(' ')[0] : 'Lesson'} {ps.lesson_number ? `L${ps.lesson_number}` : ''}</span>
+                              <span className="truncate">{formatFirstInitialLastName(ps.athlete_name)} {ps.lesson_number ? `L${ps.lesson_number}` : ''}</span>
                             </div>
                           ))}
                           {dayEvents.totalCount > 3 && (
