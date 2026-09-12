@@ -172,9 +172,16 @@ export default function CalendarPage() {
   const [editLessonLessonNum, setEditLessonLessonNum] = useState<number | string>("");
   const [editLessonError, setEditLessonError] = useState("");
   const [lessonDeleteConfirm, setLessonDeleteConfirm] = useState(false);
-
-  // Pro Goalie Training (Athlete Track) Details Modal State
-  const [selectedHockeySession, setSelectedHockeySession] = useState<any>(null);
+  // Edit Training Session Form States
+  const [editingTraining, setEditingTraining] = useState<any>(null);
+  const [editTrainingFocus, setEditTrainingFocus] = useState("");
+  const [editTrainingDate, setEditTrainingDate] = useState("");
+  const [editTrainingTime, setEditTrainingTime] = useState("");
+  const [editTrainingLocation, setEditTrainingLocation] = useState("");
+  const [editTrainingStrength, setEditTrainingStrength] = useState("");
+  const [editTrainingNotes, setEditTrainingNotes] = useState("");
+  const [editTrainingError, setEditTrainingError] = useState("");
+  const [trainingDeleteConfirm, setTrainingDeleteConfirm] = useState(false);
 
   const [dbSaving, setDbSaving] = useState(false);
 
@@ -1348,8 +1355,175 @@ export default function CalendarPage() {
     }
   };
 
+  // Training Session Handlers
+  const openEditTraining = (game: any) => {
+    setEditingTraining(game);
+    const focusTitle = game.opponent || game.opponent_name || game.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training Session";
+    setEditTrainingFocus(focusTitle);
+    setEditTrainingDate(game.scheduled_date || game.game_date || game.date || "");
+    const rawTime = game.scheduled_time || game.time || "11:00";
+    setEditTrainingTime(rawTime.length >= 5 ? rawTime.substring(0, 5) : "11:00");
+    setEditTrainingLocation(game.location || "");
+    
+    let parsedNotes: any = null;
+    if (game.notes && typeof game.notes === 'string') {
+      try { parsedNotes = JSON.parse(game.notes); } catch {}
+    }
+    const strengthList = parsedNotes?.strength || game.strength || [];
+    const notesText = parsedNotes?.notes || game.coachNotes || (game.notes && !game.notes.startsWith('{') ? game.notes : '');
+
+    setEditTrainingStrength(Array.isArray(strengthList) ? strengthList.join(', ') : (strengthList || ''));
+    setEditTrainingNotes(notesText || '');
+    setEditTrainingError("");
+    setTrainingDeleteConfirm(false);
+  };
+
+  const handleUpdateTraining = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTraining || !editTrainingFocus || !editTrainingDate || !editTrainingTime) return;
+    setEditTrainingError("");
+    setDbSaving(true);
+    try {
+      const uid = auth.userId;
+      const formattedTime = editTrainingTime.includes(":") && editTrainingTime.split(":").length === 2 ? editTrainingTime + ":00" : editTrainingTime;
+      
+      const trainingPayload = {
+        strength: editTrainingStrength ? editTrainingStrength.split(',').map(s => s.trim()).filter(Boolean) : [],
+        notes: editTrainingNotes || ""
+      };
+      const notesJson = JSON.stringify(trainingPayload);
+
+      const isSyntheticId = typeof editingTraining.id === 'string' && (editingTraining.id.startsWith('hockey-') || editingTraining.id.startsWith('ath-'));
+
+      if (uid === "00000000-0000-0000-0000-000000000000" || isSyntheticId) {
+        if (isSyntheticId) {
+          setAthleteHockeySessions(prev => prev.filter(h => h.id !== editingTraining.id));
+        }
+
+        if (uid !== "00000000-0000-0000-0000-000000000000") {
+          const { data: userRes } = await supabase
+            .from("users")
+            .select("id")
+            .eq("auth_user_id", uid)
+            .single();
+          const publicUserId = userRes?.id;
+
+          const { data: gameData } = await supabase
+            .from("games")
+            .insert({
+              season_id: season?.id,
+              opponent_name: editTrainingFocus,
+              game_date: editTrainingDate,
+              location: editTrainingLocation || "TBD",
+              notes: notesJson
+            })
+            .select()
+            .single();
+
+          if (gameData && publicUserId) {
+            await supabase
+              .from("game_sessions")
+              .insert({
+                user_id: publicUserId,
+                season_id: season?.id,
+                game_id: gameData.id,
+                opponent: editTrainingFocus,
+                location: editTrainingLocation || "TBD",
+                scheduled_date: editTrainingDate,
+                scheduled_time: formattedTime,
+                game_type: "training",
+                status: "draft",
+                notes: notesJson
+              });
+          }
+        }
+
+        const updatedGames = [
+          ...games.filter(g => g.id !== editingTraining.id),
+          {
+            id: isSyntheticId ? `custom-${Date.now()}` : editingTraining.id,
+            opponent: editTrainingFocus,
+            location: editTrainingLocation || "TBD",
+            scheduled_date: editTrainingDate,
+            scheduled_time: formattedTime,
+            game_type: "training",
+            notes: notesJson
+          }
+        ];
+        setGames(updatedGames);
+        setEditingTraining(null);
+        setDbSaving(false);
+        toast.success("Training session updated.");
+        loadData();
+        return;
+      }
+
+      await supabase
+        .from("game_sessions")
+        .update({
+          opponent: editTrainingFocus,
+          location: editTrainingLocation || "TBD",
+          scheduled_date: editTrainingDate,
+          scheduled_time: formattedTime,
+          game_type: "training",
+          notes: notesJson
+        })
+        .eq("id", editingTraining.id);
+
+      await supabase
+        .from("games")
+        .update({
+          opponent_name: editTrainingFocus,
+          game_date: editTrainingDate,
+          location: editTrainingLocation || "TBD",
+          notes: notesJson
+        })
+        .eq("id", editingTraining.id);
+
+      setEditingTraining(null);
+      toast.success("Training session updated.");
+      loadData();
+    } catch (err: any) {
+      setEditTrainingError(err?.message || "Failed to update training session.");
+    } finally {
+      setDbSaving(false);
+    }
+  };
+
+  const handleDeleteTraining = async () => {
+    if (!editingTraining) return;
+    setDbSaving(true);
+    try {
+      const uid = auth.userId;
+      const isSyntheticId = typeof editingTraining.id === 'string' && (editingTraining.id.startsWith('hockey-') || editingTraining.id.startsWith('ath-'));
+
+      if (isSyntheticId) {
+        setAthleteHockeySessions(prev => prev.filter(h => h.id !== editingTraining.id));
+      }
+
+      if (uid === "00000000-0000-0000-0000-000000000000") {
+        setGames(games.filter((g) => g.id !== editingTraining.id));
+        setEditingTraining(null);
+        setDbSaving(false);
+        return;
+      }
+
+      await supabase.from("game_sessions").delete().eq("id", editingTraining.id);
+      await supabase.from("games").delete().eq("id", editingTraining.id);
+
+      setGames(prev => prev.filter(g => g.id !== editingTraining.id));
+      setEditingTraining(null);
+      loadData();
+      toast.success("Training session removed.");
+    } catch (err: any) {
+      setEditTrainingError("Failed to delete training session.");
+    } finally {
+      setDbSaving(false);
+    }
+  };
+
   const openHockeyDetail = (sess: any) => {
-    setSelectedHockeySession(sess);
+    openEditTraining(sess);
   };
 
   // Open Unified Add Event modal pre-filling selected date and initial tab
@@ -1721,80 +1895,34 @@ export default function CalendarPage() {
                     const notesText = parsedNotes?.notes || (game.notes && !game.notes.startsWith('{') ? game.notes : '');
 
                     if (game.game_type === 'training') {
+                      const summaryItems = [
+                        strengthList.length > 0 ? strengthList.slice(0, 2).join(", ") : null,
+                        notesText || null
+                      ].filter(Boolean);
+
                       return (
                         <div
                           key={`day-g-${gIdx}`}
-                          onClick={() => {
-                            openHockeyDetail({
-                              id: game.id,
-                              title: game.opponent || "Athlete Training",
-                              scheduled_date: game.scheduled_date,
-                              scheduled_time: game.scheduled_time,
-                              location: game.location || "Gym / Training Facility",
-                              strength: strengthList,
-                              athletic: athleticList,
-                              cues: cuesList,
-                              notes: notesText,
-                              confidence: 'EXACT',
-                              phase: 'Athlete Training Log'
-                            });
-                          }}
-                          className="p-4 bg-cyan-950/20 hover:bg-cyan-950/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-2xl transition-all cursor-pointer space-y-3"
+                          onClick={() => openEditTraining(game)}
+                          className="p-4 bg-muted/40 hover:bg-muted/70 border border-border rounded-2xl transition-all cursor-pointer space-y-2"
                         >
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div className="flex items-center gap-2.5">
-                              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-cyan-400 text-black rounded-lg flex items-center gap-1">
-                                <span>🏒</span> ATHLETE TRAINING
+                              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-[#00E676] text-black rounded-lg">
+                                TRAINING
                               </span>
-                              <h3 className="text-base font-bold text-foreground m-0">{game.opponent}</h3>
+                              <h3 className="text-base font-bold text-foreground m-0">{game.opponent || "Athlete Training"}</h3>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1.5"><Clock size={13} className="text-cyan-400" /> {formatTime(game.scheduled_time)}</span>
-                              <span className="flex items-center gap-1.5"><MapPin size={13} className="text-cyan-400" /> {game.location || "Gym / Facility"}</span>
+                              <span className="flex items-center gap-1.5"><Clock size={13} className="text-[#00E676]" /> {formatTime(game.scheduled_time)}</span>
+                              <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#00E676]" /> {game.location || "Gym / Facility"}</span>
                             </div>
                           </div>
 
-                          {strengthList.length > 0 && (
-                            <div className="space-y-1 pt-1">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Strength Protocols & Loads:</span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {strengthList.map((st: string, sIdx: number) => (
-                                  <span key={sIdx} className="text-xs font-semibold px-2 py-1 bg-card border border-border/80 rounded-lg text-foreground">
-                                    {st}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {athleticList.length > 0 && (
-                            <div className="space-y-1 pt-1">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Athletic Drills:</span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {athleticList.map((ath: string, aIdx: number) => (
-                                  <span key={aIdx} className="text-xs font-semibold px-2 py-1 bg-cyan-950/40 border border-cyan-500/20 text-cyan-200 rounded-lg">
-                                    {ath}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {cuesList.length > 0 && (
-                            <div className="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-start gap-2">
-                              <Target size={14} className="text-cyan-400 mt-0.5 shrink-0" />
-                              <div className="space-y-0.5">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block">Performance Cues:</span>
-                                {cuesList.map((cue: string, cIdx: number) => (
-                                  <p key={cIdx} className="text-xs font-bold text-cyan-200 m-0">• {cue}</p>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {notesText && (
-                            <div className="p-2.5 bg-card/60 rounded-xl border border-border/50 text-xs text-muted-foreground">
-                              <span className="font-bold text-cyan-300">Notes: </span>{notesText}
+                          {summaryItems.length > 0 && (
+                            <div className="p-3 bg-card/60 rounded-xl border border-border/50 text-xs text-muted-foreground mt-2">
+                              <span className="font-bold text-foreground">Focus / Notes: </span>
+                              {summaryItems.join(" • ")}
                             </div>
                           )}
                         </div>
@@ -1892,124 +2020,35 @@ export default function CalendarPage() {
                   ))}
 
                   {/* Pro Hockey Training Sessions (Athlete Track) */}
-                  {selectedDateEvents.hockeySessions.map((hSess, hIdx) => (
-                    <div
-                      key={`day-hockey-${hIdx}`}
-                      onClick={() => openHockeyDetail(hSess)}
-                      className="p-4 bg-cyan-950/20 hover:bg-cyan-950/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-2xl transition-all cursor-pointer space-y-3"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-cyan-400 text-black rounded-lg flex items-center gap-1">
-                            <span>🏒</span> NHL PRO TRACK
-                          </span>
-                          {hSess.confidence && (
-                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                              hSess.confidence === 'EXACT' 
-                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' 
-                                : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                            }`}>
-                              {hSess.confidence === 'EXACT' ? '✓ EXACT DATE' : '⚡ RECONSTRUCTED'}
+                  {selectedDateEvents.hockeySessions.map((hSess, hIdx) => {
+                    const summaryText = hSess.focus || (hSess.strength && hSess.strength.slice(0, 2).join(", ")) || (hSess.recovery && hSess.recovery.slice(0, 2).join(", "));
+                    return (
+                      <div
+                        key={`day-hockey-${hIdx}`}
+                        onClick={() => openEditTraining(hSess)}
+                        className="p-4 bg-muted/40 hover:bg-muted/70 border border-border rounded-2xl transition-all cursor-pointer space-y-2"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-[#00E676] text-black rounded-lg">
+                              TRAINING
                             </span>
-                          )}
-                          {hSess.phase && (
-                            <span className="text-[9px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                              {hSess.phase}
-                            </span>
-                          )}
+                            <h3 className="text-base font-bold text-foreground m-0">{hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training Session"}</h3>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1.5"><Clock size={13} className="text-[#00E676]" /> {formatTime(hSess.scheduled_time)}</span>
+                            <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#00E676]" /> {hSess.location || "Gym / Facility"}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1.5"><Clock size={13} className="text-cyan-400" /> {formatTime(hSess.scheduled_time)}</span>
-                          <span className="flex items-center gap-1.5"><MapPin size={13} className="text-cyan-400" /> {hSess.location || "Ice Arena"}</span>
-                        </div>
+                        {summaryText && (
+                          <div className="p-3 bg-card/60 rounded-xl border border-border/50 text-xs text-muted-foreground mt-2">
+                            <span className="font-bold text-foreground">Focus: </span>
+                            {summaryText}
+                          </div>
+                        )}
                       </div>
-
-                      <h3 className="text-base font-bold text-foreground m-0">
-                        {hSess.title}
-                      </h3>
-
-                      {/* Warm-up / Mobility */}
-                      {hSess.warmup && (
-                        <p className="text-xs text-muted-foreground m-0">
-                          <span className="font-bold text-cyan-300">Warm-up: </span>{hSess.warmup}
-                        </p>
-                      )}
-
-                      {/* Strength Exercises */}
-                      {hSess.strength && hSess.strength.length > 0 && (
-                        <div className="space-y-1 pt-1">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Strength & Loads:</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {hSess.strength.map((st: string, sIdx: number) => (
-                              <span key={sIdx} className="text-xs font-semibold px-2 py-1 bg-card border border-border/80 rounded-lg text-foreground">
-                                {st}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Athletic & Balance */}
-                      {(hSess.athletic || hSess.balance) && (
-                        <div className="space-y-1 pt-1">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Athletic & Balance:</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {hSess.athletic?.map((ath: string, aIdx: number) => (
-                              <span key={`ath-${aIdx}`} className="text-xs font-semibold px-2 py-1 bg-cyan-950/40 border border-cyan-500/20 text-cyan-200 rounded-lg">
-                                {ath}
-                              </span>
-                            ))}
-                            {hSess.balance?.map((bal: string, bIdx: number) => (
-                              <span key={`bal-${bIdx}`} className="text-xs font-semibold px-2 py-1 bg-purple-950/40 border border-purple-500/20 text-purple-200 rounded-lg">
-                                ⚖️ {bal}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Cues Box */}
-                      {hSess.cues && hSess.cues.length > 0 && (
-                        <div className="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-start gap-2">
-                          <Target size={14} className="text-cyan-400 mt-0.5 shrink-0" />
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block">Performance Cues:</span>
-                            {hSess.cues.map((cue: string, cIdx: number) => (
-                              <p key={cIdx} className="text-xs font-bold text-cyan-200 m-0">{cue}</p>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Athlete Reflection */}
-                      {hSess.athleteReflection && (
-                        <div className="p-2.5 bg-card/70 border border-border/80 rounded-xl text-xs italic text-foreground">
-                          <span className="font-bold not-italic text-emerald-400">Athlete Reflection: </span>
-                          "{hSess.athleteReflection}"
-                        </div>
-                      )}
-
-                      {/* Coach Notes */}
-                      {(hSess.coachNotes || hSess.notes) && (
-                        <div className="p-3 bg-card/60 rounded-xl border border-border/50 text-xs text-muted-foreground">
-                          {hSess.coachNotes ? (
-                            <>
-                              <span className="font-bold text-cyan-300">Coach Alpha: </span>
-                              {hSess.coachNotes}
-                              {hSess.notes && hSess.notes !== hSess.coachNotes && (
-                                <p className="mt-1 pt-1 border-t border-border/30 text-muted-foreground m-0">{hSess.notes}</p>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <span className="font-bold text-cyan-300">Log Notes: </span>
-                              {hSess.notes}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Private Training Sessions (Lacrosse Coach Track) */}
                   {selectedDateEvents.privateSessions.map((pSess, pIdx) => {
@@ -2062,19 +2101,22 @@ export default function CalendarPage() {
         {/* ======================================================== */}
         {/* 2. WEEK VIEW */}
         {/* ======================================================== */}
+        {/* ======================================================== */}
+        {/* 2. WEEK VIEW */}
+        {/* ======================================================== */}
         {viewMode === "week" && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground m-0">
-                7-Day Schedule
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground m-0">
+                7-Day Overview
               </p>
               <span className="text-xs text-muted-foreground font-medium">
-                {games.length + practices.length + privateSessions.length} total events this week
+                {weekDates.reduce((sum, d) => sum + getEventsForDate(formatDateKey(d)).totalCount, 0)} events this week
               </span>
             </div>
 
             {/* 7-Day Responsive Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-2.5">
               {weekDates.map((date, idx) => {
                 const dateStr = formatDateKey(date);
                 const dayEvents = getEventsForDate(dateStr);
@@ -2083,25 +2125,25 @@ export default function CalendarPage() {
                 return (
                   <div 
                     key={idx}
-                    className={`rounded-[20px] p-3.5 sm:p-4 border transition-all flex flex-col min-h-[180px] ${
+                    className={`rounded-[22px] p-3 sm:p-3.5 border transition-all flex flex-col min-h-[160px] ${
                       isDayToday 
-                        ? "bg-card border-[#00E676]/40 shadow-md ring-1 ring-[#00E676]/20" 
-                        : "bg-card border-border/60 hover:border-border"
+                        ? "bg-card border-[#00E676]/40 shadow-sm ring-1 ring-[#00E676]/20" 
+                        : "bg-card/60 border-border/50 hover:border-border/80"
                     }`}
                   >
                     {/* Day Card Header */}
-                    <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-border/50">
+                    <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-border/40">
                       <div>
-                        <p className={`m-0 text-xs font-black uppercase tracking-widest ${isDayToday ? "text-[#00E676]" : "text-muted-foreground"}`}>
+                        <p className={`m-0 text-[10px] font-bold uppercase tracking-widest ${isDayToday ? "text-[#00E676]" : "text-muted-foreground"}`}>
                           {date.toLocaleDateString("en-US", { weekday: "short" })}
                         </p>
-                        <p className={`m-0 text-lg font-bold tracking-tight ${isDayToday ? "text-foreground font-black" : "text-foreground/80"}`}>
+                        <p className={`m-0 text-base sm:text-lg font-bold tracking-tight ${isDayToday ? "text-foreground font-black" : "text-foreground/90"}`}>
                           {date.getDate()}
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
                         {isDayToday && (
-                          <span className="w-2 h-2 rounded-full bg-[#00E676] animate-pulse"></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#00E676] animate-pulse"></span>
                         )}
                         <button
                           onClick={() => {
@@ -2109,8 +2151,8 @@ export default function CalendarPage() {
                             setSelectedDate(date);
                             setViewMode("day");
                           }}
-                          className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded-md text-[10px] font-bold"
-                          title="Zoom into day view"
+                          className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+                          title="Open Day View"
                         >
                           <Sun size={12} />
                         </button>
@@ -2118,18 +2160,39 @@ export default function CalendarPage() {
                     </div>
 
                     {/* Events in Day */}
-                    <div className="flex-1 flex flex-col gap-2.5">
+                    <div className="flex-1 flex flex-col gap-2">
                       {dayEvents.totalCount === 0 ? (
-                        <div className="flex-1 flex items-center justify-center opacity-30 text-center py-4">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Rest</span>
+                        <div className="flex-1 flex items-center justify-center text-center py-6">
+                          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/40">Rest</span>
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          {/* Games */}
+                        <div className="space-y-1.5">
+                          {/* Games & Training */}
                           {dayEvents.games.map((game, gIdx) => {
-                            const today = new Date();
-                            const gameDateObj = new Date(game.scheduled_date);
-                            const isGamePast = gameDateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                            const isTraining = game.game_type === 'training';
+
+                            if (isTraining) {
+                              return (
+                                <div 
+                                  key={`week-g-${gIdx}`} 
+                                  onClick={() => openEditTraining(game)}
+                                  className="p-2.5 bg-[#00E676]/5 hover:bg-[#00E676]/10 border border-[#00E676]/20 hover:border-[#00E676]/40 rounded-xl cursor-pointer transition-all space-y-1"
+                                >
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-[#00E676] text-black rounded-md">
+                                      TRAINING
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground font-medium">
+                                      {formatTime(game.scheduled_time)}
+                                    </span>
+                                  </div>
+                                  <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">{game.opponent || "Workout"}</p>
+                                  {game.location && (
+                                    <p className="m-0 text-[10px] text-muted-foreground truncate">{game.location}</p>
+                                  )}
+                                </div>
+                              );
+                            }
 
                             return (
                               <div 
@@ -2144,41 +2207,17 @@ export default function CalendarPage() {
                                   setEditGameError("");
                                   setGameDeleteConfirm(false);
                                 }}
-                                className="p-2.5 bg-muted/60 hover:bg-muted border border-border rounded-xl cursor-pointer transition-all space-y-1.5"
+                                className="p-2.5 bg-muted/30 hover:bg-muted/60 border border-border/50 hover:border-border/80 rounded-xl cursor-pointer transition-all space-y-1"
                               >
-                                <div className="flex items-start justify-between gap-1">
-                                  <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-[#00E676] text-black rounded-md">
-                                    {game.game_type || "GAME"}
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-[#00E676] text-black rounded-md">
+                                    GAME
                                   </span>
-                                  <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-0.5">
-                                    <Clock size={10} /> {formatTime(game.scheduled_time)}
+                                  <span className="text-[10px] text-muted-foreground font-medium">
+                                    {formatTime(game.scheduled_time)}
                                   </span>
                                 </div>
-                                <p className="m-0 text-xs font-bold leading-snug line-clamp-2">{game.opponent}</p>
-                                
-                                <div className="flex items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
-                                  {isGamePast ? (
-                                    <Link 
-                                      href={`/calendar/postgame?date=${game.scheduled_date}`} 
-                                      className="text-[9px] font-bold uppercase px-2 py-0.5 bg-muted hover:bg-muted-foreground/20 border border-border rounded-md text-foreground transition-colors"
-                                    >
-                                      Debrief
-                                    </Link>
-                                  ) : (
-                                    <Link 
-                                      href={`/calendar/pregame?date=${game.scheduled_date}`} 
-                                      className="text-[9px] font-bold uppercase px-2 py-0.5 bg-[#00E676] text-black hover:bg-[#00C853] rounded-md transition-colors"
-                                    >
-                                      Prepare
-                                    </Link>
-                                  )}
-                                  <Link
-                                    href="/film"
-                                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 hover:bg-muted-foreground/20 text-muted-foreground rounded-md"
-                                  >
-                                    Film
-                                  </Link>
-                                </div>
+                                <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">{game.opponent}</p>
                               </div>
                             );
                           })}
@@ -2196,45 +2235,47 @@ export default function CalendarPage() {
                                 setEditPracticeError("");
                                 setPracticeDeleteConfirm(false);
                               }}
-                              className="p-2.5 bg-muted/40 hover:bg-muted/70 border border-border/60 rounded-xl cursor-pointer transition-all space-y-1"
+                              className="p-2.5 bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 hover:border-blue-500/30 rounded-xl cursor-pointer transition-all space-y-1"
                             >
                               <div className="flex items-center justify-between gap-1">
-                                <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded-md">
+                                <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded-md">
                                   PRACTICE
                                 </span>
-                                <span className="text-[10px] text-muted-foreground font-semibold">
+                                <span className="text-[10px] text-muted-foreground font-medium">
                                   {formatTime(practice.scheduled_time)}
                                 </span>
                               </div>
-                              <p className="m-0 text-xs font-bold text-foreground/90 leading-tight">Team Practice</p>
+                              <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">Team Practice</p>
                             </div>
                           ))}
 
-                          {/* Pro Hockey Training Sessions (Athlete Track) */}
+                          {/* Pro Training Sessions (Athlete Track) */}
                           {dayEvents.hockeySessions.map((hSess, hIdx) => (
                             <div 
-                              key={`week-hsess-${hIdx}`}
+                              key={`week-hsess-${hIdx}`} 
                               onClick={() => openHockeyDetail(hSess)}
-                              className="p-2.5 bg-cyan-950/25 hover:bg-cyan-950/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl transition-all cursor-pointer space-y-1"
+                              className="p-2.5 bg-[#00E676]/5 hover:bg-[#00E676]/10 border border-[#00E676]/20 hover:border-[#00E676]/40 rounded-xl transition-all cursor-pointer space-y-1"
                             >
                               <div className="flex items-center justify-between gap-1">
-                                <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-cyan-400 text-black rounded-md">
-                                  🏒 PRO HOCKEY
+                                <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-[#00E676] text-black rounded-md">
+                                  TRAINING
                                 </span>
-                                <span className="text-[9px] text-cyan-300 font-bold truncate">
+                                <span className="text-[10px] text-muted-foreground font-medium truncate">
                                   {formatTime(hSess.scheduled_time)}
                                 </span>
                               </div>
-                              <p className="m-0 text-xs font-bold text-foreground leading-tight truncate">
-                                {hSess.title}
+                              <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">
+                                {hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training"}
                               </p>
-                              <p className="m-0 text-[10px] text-muted-foreground truncate">
-                                {hSess.location || "Ice Arena"}
-                              </p>
+                              {hSess.location && (
+                                <p className="m-0 text-[10px] text-muted-foreground truncate">
+                                  {hSess.location}
+                                </p>
+                              )}
                             </div>
                           ))}
 
-                          {/* Private Training (Lacrosse Coach Track) */}
+                          {/* Private Coaching Lessons */}
                           {dayEvents.privateSessions.map((pSess, pIdx) => {
                             const timeMatch = pSess.notes?.match(/(\d+:\d+\s*(?:AM|PM)\s*–\s*\d+:\d+\s*(?:AM|PM))/i) || pSess.notes?.match(/(\d+:\d+\s*(?:AM|PM))/i);
                             const displayTime = timeMatch ? timeMatch[0] : (pSess.start_time ? new Date(pSess.start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : "Private Slot");
@@ -2243,14 +2284,14 @@ export default function CalendarPage() {
                               <div 
                                 key={`week-psess-${pIdx}`}
                                 onClick={() => openEditLesson(pSess)}
-                                className="p-2.5 bg-emerald-950/25 hover:bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-400/60 rounded-xl transition-all cursor-pointer space-y-1"
+                                className="p-2.5 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl transition-all cursor-pointer space-y-1"
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-[#00E676] text-black rounded-md">
+                                  <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-[#00E676] text-black rounded-md">
                                     COACHING
                                   </span>
                                   {(pSess.session_number || pSess.lesson_number) && (
-                                    <span className="text-[9px] text-emerald-400 font-bold truncate font-mono">
+                                    <span className="text-[9px] text-[#00E676] font-bold truncate font-mono">
                                       {[
                                         pSess.session_number ? `S${pSess.session_number}` : '',
                                         pSess.lesson_number ? `L${pSess.lesson_number}` : ''
@@ -2258,7 +2299,7 @@ export default function CalendarPage() {
                                     </span>
                                   )}
                                 </div>
-                                <p className="m-0 text-xs font-bold text-foreground leading-tight truncate">
+                                <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">
                                   {formatLessonLabel(pSess.athlete_name, pSess.session_number, pSess.lesson_number)}
                                 </p>
                                 <p className="m-0 text-[10px] text-muted-foreground truncate">
@@ -2313,29 +2354,36 @@ export default function CalendarPage() {
                   dayEvents.hockeySessions.forEach((h, i) => {
                     cellEvents.push({
                       id: `h-${i}`,
-                      title: h.title,
-                      badgeColor: "bg-cyan-500/15 hover:bg-cyan-500/25 border-cyan-500/30 hover:border-cyan-400 text-cyan-300",
-                      dotColor: "bg-cyan-400",
-                      onClick: (e) => { e.stopPropagation(); openHockeyDetail(h); }
+                      title: h.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training",
+                      badgeColor: "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 hover:border-emerald-400 text-emerald-300",
+                      dotColor: "bg-[#00E676]",
+                      onClick: (e) => { e.stopPropagation(); openEditTraining(h); }
                     });
                   });
 
                   dayEvents.games.forEach((g, i) => {
+                    const isTraining = g.game_type === 'training';
                     cellEvents.push({
                       id: `g-${i}`,
-                      title: g.opponent || "Game",
-                      badgeColor: "bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 hover:border-amber-400 text-amber-300",
-                      dotColor: "bg-amber-400",
+                      title: g.opponent || (isTraining ? "Training" : "Game"),
+                      badgeColor: isTraining 
+                        ? "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 hover:border-emerald-400 text-emerald-300"
+                        : "bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 hover:border-amber-400 text-amber-300",
+                      dotColor: isTraining ? "bg-[#00E676]" : "bg-amber-400",
                       onClick: (e) => {
                         e.stopPropagation();
-                        setEditingGame(g);
-                        setEditGameOpponent(g.opponent || "");
-                        setEditGameLocation(g.location || "");
-                        setEditGameDate(g.scheduled_date || "");
-                        setEditGameTime(g.scheduled_time ? g.scheduled_time.substring(0, 5) : "");
-                        setEditGameType(g.game_type || "game");
-                        setEditGameError("");
-                        setGameDeleteConfirm(false);
+                        if (isTraining) {
+                          openEditTraining(g);
+                        } else {
+                          setEditingGame(g);
+                          setEditGameOpponent(g.opponent || "");
+                          setEditGameLocation(g.location || "");
+                          setEditGameDate(g.scheduled_date || "");
+                          setEditGameTime(g.scheduled_time ? g.scheduled_time.substring(0, 5) : "");
+                          setEditGameType(g.game_type || "game");
+                          setEditGameError("");
+                          setGameDeleteConfirm(false);
+                        }
                       }
                     });
                   });
@@ -2502,63 +2550,60 @@ export default function CalendarPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Pro Hockey Training Schedule (Athlete Track) */}
+                  {/* Pro Training Schedule (Athlete Track) */}
                   {selectedDateEvents.hockeySessions.map((hSess, i) => (
                     <div 
                       key={`m-h-${i}`} 
-                      onClick={() => openHockeyDetail(hSess)}
-                      className="p-3.5 bg-cyan-950/20 hover:bg-cyan-950/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-2xl cursor-pointer transition-all space-y-2"
+                      onClick={() => openEditTraining(hSess)}
+                      className="p-3 bg-muted/40 hover:bg-muted/70 border border-border rounded-xl cursor-pointer transition-all space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-cyan-400 text-black rounded-md flex items-center gap-1">
-                          <span>🏒</span> NHL PRO TRACK
+                        <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-[#00E676] text-black rounded-md">
+                          TRAINING
                         </span>
-                        <span className="text-[10px] font-bold text-cyan-300">
+                        <span className="text-[10px] font-bold text-muted-foreground">
                           {formatTime(hSess.scheduled_time)}
                         </span>
                       </div>
-                      <h4 className="text-sm font-bold text-foreground m-0">{hSess.title}</h4>
+                      <h4 className="text-sm font-bold text-foreground m-0">{hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training Session"}</h4>
                       <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
-                        <MapPin size={11} className="text-cyan-400" /> {hSess.location || "Ice Arena"}
+                        <MapPin size={11} /> {hSess.location || "Gym / Facility"}
                       </p>
-                      {hSess.focus && (
-                        <p className="text-xs text-muted-foreground line-clamp-1 m-0">
-                          <span className="font-semibold text-cyan-300">Focus: </span>{hSess.focus}
-                        </p>
-                      )}
-                      {hSess.athleteReflection && (
-                        <p className="text-[11px] text-emerald-300 italic pt-1 border-t border-border/40 m-0">
-                          "{hSess.athleteReflection}"
-                        </p>
-                      )}
                     </div>
                   ))}
 
-                  {/* Games */}
-                  {selectedDateEvents.games.map((game, i) => (
-                    <div 
-                      key={`m-g-${i}`} 
-                      onClick={() => {
-                        setEditingGame(game);
-                        setEditGameOpponent(game.opponent || "");
-                        setEditGameLocation(game.location || "");
-                        setEditGameDate(game.scheduled_date || "");
-                        setEditGameTime(game.scheduled_time ? game.scheduled_time.substring(0, 5) : "");
-                        setEditGameType(game.game_type || "game");
-                        setEditGameError("");
-                        setGameDeleteConfirm(false);
-                      }}
-                      className="p-3 bg-muted/40 hover:bg-muted/70 border border-border hover:border-border/80 rounded-xl cursor-pointer transition-all space-y-1.5"
-                    >
-                      <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-[#00E676] text-black rounded-md">
-                        {game.game_type || "GAME"}
-                      </span>
-                      <h4 className="text-sm font-bold text-foreground m-0">{game.opponent}</h4>
-                      <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
-                        <Clock size={11} /> {formatTime(game.scheduled_time)} • <MapPin size={11} /> {game.location || "Home"}
-                      </p>
-                    </div>
-                  ))}
+                  {/* Games & Training */}
+                  {selectedDateEvents.games.map((game, i) => {
+                    const isTraining = game.game_type === 'training';
+                    return (
+                      <div 
+                        key={`m-g-${i}`} 
+                        onClick={() => {
+                          if (isTraining) {
+                            openEditTraining(game);
+                          } else {
+                            setEditingGame(game);
+                            setEditGameOpponent(game.opponent || "");
+                            setEditGameLocation(game.location || "");
+                            setEditGameDate(game.scheduled_date || "");
+                            setEditGameTime(game.scheduled_time ? game.scheduled_time.substring(0, 5) : "");
+                            setEditGameType(game.game_type || "game");
+                            setEditGameError("");
+                            setGameDeleteConfirm(false);
+                          }
+                        }}
+                        className="p-3 bg-muted/40 hover:bg-muted/70 border border-border hover:border-border/80 rounded-xl cursor-pointer transition-all space-y-1.5"
+                      >
+                        <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-[#00E676] text-black rounded-md">
+                          {isTraining ? "TRAINING" : (game.game_type || "GAME")}
+                        </span>
+                        <h4 className="text-sm font-bold text-foreground m-0">{game.opponent}</h4>
+                        <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
+                          <Clock size={11} /> {formatTime(game.scheduled_time)} • <MapPin size={11} /> {game.location || "Gym / Facility"}
+                        </p>
+                      </div>
+                    );
+                  })}
 
                   {/* Practices */}
                   {selectedDateEvents.practices.map((practice, i) => (
@@ -2793,7 +2838,7 @@ export default function CalendarPage() {
                 onClick={() => setAddModalTab('training')}
                 className={`py-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
                   addModalTab === 'training'
-                    ? "bg-cyan-400 text-black shadow-xs font-black"
+                    ? "bg-[#00E676] text-black shadow-xs font-black"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -2937,7 +2982,7 @@ export default function CalendarPage() {
                   <button 
                     type="submit" 
                     disabled={dbSaving}
-                    className="flex-1 py-3 bg-cyan-400 hover:bg-cyan-300 text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2"
                   >
                     {dbSaving && <Loader2 size={12} className="animate-spin" />}
                     Add Training Session
@@ -3711,185 +3756,171 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* Pro Goalie Training (Athlete Track) Details Modal */}
-      {selectedHockeySession && (
+      {/* Edit Training Session Modal */}
+      {editingTraining && (
         <div 
           onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedHockeySession(null);
+            if (e.target === e.currentTarget) setEditingTraining(null);
           }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
         >
-          <div className="bg-card border border-border rounded-[32px] p-6 max-w-xl w-full shadow-2xl animate-fade-in cursor-default space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-card border border-border rounded-[32px] p-6 max-w-lg w-full shadow-2xl animate-fade-in cursor-default space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 bg-cyan-400 text-black rounded-lg flex items-center gap-1">
-                    <span>🏒</span> NHL PRO TRACK
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 bg-[#00E676] text-black rounded-lg">
+                    TRAINING
                   </span>
-                  <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 rounded-lg">
-                    ICE HOCKEY
+                  <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 rounded-lg">
+                    WORKOUT
                   </span>
-                  {selectedHockeySession.confidence && (
-                    <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                      selectedHockeySession.confidence === 'EXACT' 
-                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' 
-                        : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    }`}>
-                      {selectedHockeySession.confidence === 'EXACT' ? '✓ EXACT DATE' : '⚡ RECONSTRUCTED'}
-                    </span>
-                  )}
                 </div>
-                <h3 className="text-lg font-bold tracking-tight text-foreground m-0">{selectedHockeySession.title}</h3>
+                <h3 className="text-lg font-bold tracking-tight text-foreground m-0">Edit Training Session</h3>
               </div>
               <button 
-                onClick={() => setSelectedHockeySession(null)} 
+                onClick={() => setEditingTraining(null)} 
                 className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Date & Location Bar */}
-            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground bg-muted/60 p-3 rounded-xl border border-border">
-              <span className="flex items-center gap-1.5 font-medium text-foreground">
-                <Clock size={14} className="text-cyan-400" />
-                {selectedHockeySession.scheduled_date} • {formatTime(selectedHockeySession.scheduled_time)}
-              </span>
-              <span className="flex items-center gap-1.5 font-medium text-foreground">
-                <MapPin size={14} className="text-cyan-400" />
-                {selectedHockeySession.location || "Ice Arena / Gym"}
-              </span>
-            </div>
+            <form onSubmit={handleUpdateTraining} className="space-y-4">
+              {/* Workout Focus */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Workout Focus / Title</label>
+                <input 
+                  type="text" 
+                  value={editTrainingFocus}
+                  onChange={(e) => setEditTrainingFocus(e.target.value)}
+                  placeholder="e.g. Leg Day, Explosive Power, Mobility..."
+                  required
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                />
+              </div>
 
-            {/* Cues Box */}
-            {selectedHockeySession.cues && selectedHockeySession.cues.length > 0 && (
-              <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-2xl space-y-1">
-                <div className="flex items-center gap-1.5 text-cyan-400 text-xs font-black uppercase tracking-wider">
-                  <Target size={14} /> Performance Cues
+              {/* Date & Time */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
+                  <input 
+                    type="date" 
+                    value={editTrainingDate}
+                    onChange={(e) => setEditTrainingDate(e.target.value)}
+                    required
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  />
                 </div>
-                {selectedHockeySession.cues.map((cue: string, cIdx: number) => (
-                  <p key={cIdx} className="text-xs font-bold text-cyan-200 m-0 pl-1">• {cue}</p>
-                ))}
-              </div>
-            )}
-
-            {/* Warmup */}
-            {selectedHockeySession.warmup && (
-              <div className="p-3 bg-card rounded-xl border border-border space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 block">Warm-up & Prep</span>
-                <p className="text-xs text-foreground m-0">{selectedHockeySession.warmup}</p>
-              </div>
-            )}
-
-            {/* Strength Protocols */}
-            {selectedHockeySession.strength && selectedHockeySession.strength.length > 0 && (
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">Strength & Power Protocol</span>
-                <div className="flex flex-wrap gap-2">
-                  {selectedHockeySession.strength.map((st: string, sIdx: number) => (
-                    <span key={sIdx} className="text-xs font-medium px-3 py-1.5 bg-muted border border-border rounded-xl text-foreground">
-                      {st}
-                    </span>
-                  ))}
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
+                  <input 
+                    type="time" 
+                    value={editTrainingTime}
+                    onChange={(e) => setEditTrainingTime(e.target.value)}
+                    required
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  />
                 </div>
               </div>
-            )}
 
-            {/* Athletic & Plyometric Movement */}
-            {selectedHockeySession.athletic && selectedHockeySession.athletic.length > 0 && (
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">Athletic Speed & Agility</span>
-                <div className="flex flex-wrap gap-2">
-                  {selectedHockeySession.athletic.map((ath: string, aIdx: number) => (
-                    <span key={aIdx} className="text-xs font-medium px-3 py-1.5 bg-cyan-950/40 border border-cyan-500/30 text-cyan-200 rounded-xl">
-                      {ath}
-                    </span>
-                  ))}
-                </div>
+              {/* Location */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location / Facility</label>
+                <input 
+                  type="text" 
+                  value={editTrainingLocation}
+                  onChange={(e) => setEditTrainingLocation(e.target.value)}
+                  placeholder="e.g. Gym / Training Facility"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                />
               </div>
-            )}
 
-            {/* Core & Balance */}
-            {(selectedHockeySession.core || selectedHockeySession.balance) && (
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">Core & Stability</span>
-                <div className="flex flex-wrap gap-2">
-                  {selectedHockeySession.core?.map((c: string, cIdx: number) => (
-                    <span key={`core-${cIdx}`} className="text-xs font-medium px-3 py-1.5 bg-muted border border-border rounded-xl text-foreground">
-                      {c}
-                    </span>
-                  ))}
-                  {selectedHockeySession.balance?.map((bal: string, bIdx: number) => (
-                    <span key={`bal-${bIdx}`} className="text-xs font-medium px-3 py-1.5 bg-purple-950/40 border border-purple-500/30 text-purple-200 rounded-xl">
-                      ⚖️ {bal}
-                    </span>
-                  ))}
-                </div>
+              {/* Strength & Conditioning Protocols */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Strength Protocols (comma separated)</label>
+                <input 
+                  type="text" 
+                  value={editTrainingStrength}
+                  onChange={(e) => setEditTrainingStrength(e.target.value)}
+                  placeholder="e.g. Back Squat 4x5, Box Jumps 3x5, Hip Thrusts"
+                  className="w-full text-sm font-medium bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                />
               </div>
-            )}
 
-            {/* Recovery */}
-            {selectedHockeySession.recovery && selectedHockeySession.recovery.length > 0 && (
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">Recovery Protocol</span>
-                <div className="flex flex-wrap gap-2">
-                  {selectedHockeySession.recovery.map((rec: string, rIdx: number) => (
-                    <span key={rIdx} className="text-xs font-medium px-3 py-1.5 bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 rounded-xl">
-                      {rec}
-                    </span>
-                  ))}
-                </div>
+              {/* Directives / Notes */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Directives / Notes</label>
+                <textarea 
+                  rows={3}
+                  value={editTrainingNotes}
+                  onChange={(e) => setEditTrainingNotes(e.target.value)}
+                  placeholder="Key cues, focus points, recovery targets..."
+                  className="w-full text-sm font-medium bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none resize-none leading-relaxed"
+                />
               </div>
-            )}
 
-            {/* Athlete Reflection */}
-            {selectedHockeySession.athleteReflection && (
-              <div className="p-3 bg-card rounded-xl border border-border space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block">Athlete Reflection</span>
-                <p className="text-xs italic text-foreground m-0">"{selectedHockeySession.athleteReflection}"</p>
-              </div>
-            )}
-
-            {/* Coach Alpha Strategic Notes */}
-            {(selectedHockeySession.coachNotes || selectedHockeySession.notes) && (
-              <div className="p-3 bg-muted/60 rounded-xl border border-border space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 block">Coach Alpha Directives</span>
-                <p className="text-xs text-muted-foreground m-0 whitespace-pre-wrap leading-relaxed">
-                  {selectedHockeySession.coachNotes || selectedHockeySession.notes}
-                </p>
-              </div>
-            )}
-
-            <div className="pt-2 flex flex-col gap-2">
-              <button 
-                type="button" 
-                onClick={() => setSelectedHockeySession(null)}
-                className="w-full py-3 bg-cyan-400 hover:bg-cyan-300 text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
-              >
-                Close
-              </button>
-              {selectedHockeySession.id && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await supabase.from('games').delete().eq('id', selectedHockeySession.id);
-                      setGames(prev => prev.filter(g => g.id !== selectedHockeySession.id));
-                      setSelectedHockeySession(null);
-                      toast.success("Training session removed.");
-                    } catch (err) {
-                      console.error("Failed to delete training session:", err);
-                    }
-                  }}
-                  className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
-                >
-                  Delete Training Session
-                </button>
+              {editTrainingError && (
+                <p className="text-xs text-red-400 font-medium">{editTrainingError}</p>
               )}
-            </div>
+
+              <div className="flex gap-3 mt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setEditingTraining(null)}
+                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={dbSaving}
+                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {dbSaving && <Loader2 size={12} className="animate-spin" />}
+                  Save Changes
+                </button>
+              </div>
+
+              {/* Red double-tap Delete section */}
+              <div className="border-t border-border pt-4 mt-4 text-center">
+                {!trainingDeleteConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => setTrainingDeleteConfirm(true)}
+                    className="text-xs text-red-500 hover:text-red-400 font-semibold transition-colors cursor-pointer bg-transparent border-none outline-none"
+                  >
+                    Delete training session
+                  </button>
+                ) : (
+                  <div className="space-y-3 animate-fade-in">
+                    <p className="m-0 text-xs text-muted-foreground/80 font-medium">Are you sure? This cannot be undone.</p>
+                    <div className="flex justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setTrainingDeleteConfirm(false)}
+                        className="px-4 py-1.5 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                      >
+                        Nevermind
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeleteTraining}
+                        disabled={dbSaving}
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        {dbSaving && <Loader2 size={10} className="animate-spin" />}
+                        Confirm Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </form>
           </div>
         </div>
       )}
+
+
 
       <MobileBottomNav />
     </div>
