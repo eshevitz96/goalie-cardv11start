@@ -13,6 +13,8 @@ import { twMerge } from 'tailwind-merge';
 import { useToast } from '@/context/ToastContext';
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { LessonsTransparency } from '@/components/goalie/LessonsTransparency';
+import { ATHLETE_TRAINING_HISTORY, ATHLETE_PROFILE_METRICS } from '@/lib/athleteTrainingHistory';
+import { getCalendarPrivateLessons } from '@/app/training/book/actions';
 
 const DRILL_CATEGORIES = {
     physical: [
@@ -194,6 +196,158 @@ export default function TrainingPage() {
     const completedRegimenItems = Object.values(regimenChecklist).filter(Boolean).length;
     const totalRegimenItems = Object.keys(regimenChecklist).length;
     const regimenProgressPercent = Math.round((completedRegimenItems / totalRegimenItems) * 100);
+
+    // Schedule Context & Training Memory State (Calendar <-> Training intelligence)
+    const [scheduleAwareness, setScheduleAwareness] = useState<{
+        todayKey: string;
+        todayFormatted: string;
+        hasGameToday: boolean;
+        gameTitle?: string;
+        hasPracticeToday: boolean;
+        lessonsCountToday: number;
+        lessonSummary?: string;
+        weeklyIntention: string;
+        lastWorkout: {
+            date: string;
+            title: string;
+            strengthSummary?: string;
+            cues?: string[];
+            reflection?: string;
+        };
+        adaptivePrescription: {
+            category: 'game_day' | 'coaching_heavy' | 'overload_day' | 'active_recovery';
+            badge: string;
+            title: string;
+            rationale: string;
+            primaryFocus: string;
+            recommendedMinutes: number;
+            drills: string[];
+            cues: string[];
+        };
+    }>({
+        todayKey: "2026-09-12",
+        todayFormatted: "Saturday, Sep 12",
+        hasGameToday: false,
+        hasPracticeToday: false,
+        lessonsCountToday: 1,
+        lessonSummary: "Susie McElheny S12, L4 • 10:30 AM",
+        weeklyIntention: "Maintain high hands and explode on bounce shots.",
+        lastWorkout: {
+            date: "Sep 11, 2026",
+            title: "Lower Body Power & Single-Leg Stability",
+            strengthSummary: "Trap bar deadlifts (4x5), Bulgarian split squats (3x8/leg), rotational med ball slams",
+            cues: ["Sit into edges.", "Arrive set.", "Push the floor away."],
+            reflection: "Joints and adductor feeling durable. Explosion off crease reset is sharp."
+        },
+        adaptivePrescription: {
+            category: 'coaching_heavy',
+            badge: 'Active Performance & Flush',
+            title: 'Crease Movement & Visual Neuro-Speed',
+            rationale: 'You have private coaching lessons on the field/ice today. Keep your nervous system fast and fresh with visual reaction and hip mobility without fatiguing heavy axial loading.',
+            primaryFocus: 'Reaction & Crease Movement',
+            recommendedMinutes: 25,
+            drills: ['Raven Reaction Test (3 rounds)', '5-Point Arc Shuffles (4 sets x 30s)', '90/90 Hip Flow & Frog Flushes'],
+            cues: ['Arrive set before release.', 'Track into the pocket.', 'Soft hands.']
+        }
+    });
+
+    // Fetch live calendar schedule context & workout memory
+    useEffect(() => {
+        const loadScheduleAndMemory = async () => {
+            try {
+                const now = new Date();
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+                const todayFormatted = now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+
+                // 1. Fetch today's games, practices, private lessons, and intention
+                const [{ data: games }, { data: practices }, privateRes, { data: intentionData }] = await Promise.all([
+                    supabase.from('games').select('*').eq('scheduled_date', todayKey),
+                    supabase.from('practices').select('*').eq('scheduled_date', todayKey),
+                    getCalendarPrivateLessons(),
+                    supabase.from('weekly_intentions').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle()
+                ]);
+
+                const todayGames = games || [];
+                const todayPractices = practices || [];
+                const allLessons = privateRes?.success ? (privateRes.sessions || []) : [];
+                const todayLessons = allLessons.filter((s: any) => s.date && s.date.startsWith(todayKey));
+
+                const hasGame = todayGames.length > 0;
+                const hasPractice = todayPractices.length > 0;
+                const lessonCount = todayLessons.length;
+                const gameTitle = hasGame ? `${todayGames[0].opponent || 'Game'} (${todayGames[0].scheduled_time?.slice(0, 5) || 'Today'})` : undefined;
+                const lessonSummary = lessonCount > 0 ? `${todayLessons[0].athlete_name || 'Lesson'} • ${lessonCount} Session${lessonCount > 1 ? 's' : ''}` : undefined;
+                const weeklyIntention = intentionData?.intention_text || "Maintain high hands and explode on bounce shots.";
+
+                // 2. Fetch latest workout from ATHLETE_TRAINING_HISTORY or sessions
+                const latestHistory = ATHLETE_TRAINING_HISTORY[ATHLETE_TRAINING_HISTORY.length - 1];
+                const lastWorkout = {
+                    date: latestHistory ? new Date(latestHistory.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recent",
+                    title: latestHistory?.title || "Lower Body Power & Crease Stability",
+                    strengthSummary: latestHistory?.strength?.join(', ') || "Trap bar deadlifts, split squats, core stabilization",
+                    cues: latestHistory?.cues || ATHLETE_PROFILE_METRICS.currentCues.slice(0, 3),
+                    reflection: latestHistory?.notes || "Movement quality and hip adductor durability feeling solid."
+                };
+
+                // 3. Compute dynamic intelligent recommendation
+                let category: 'game_day' | 'coaching_heavy' | 'overload_day' | 'active_recovery' = 'overload_day';
+                let badge = 'Strength & Crease Power';
+                let title = 'Power Output & Crease Speed';
+                let rationale = 'Open training day with no taxing game collisions. Optimal window for Pillar 1 Strength loading and explosive Pillar 2 crease footwork.';
+                let primaryFocus = 'Strength & Crease Footwork';
+                let recommendedMinutes = 45;
+                let drills = ['Trap Bar Jumps (4 sets x 5 reps)', 'Bulgarian Split Squats (3 sets x 8 reps/leg)', '5-Point Arc Shuffles (5 sets x 30s)', 'Raven Reaction (3 rounds)'];
+                let cues = ['Sit into edges.', 'Push the floor away.', 'Arrive set.'];
+
+                if (hasGame) {
+                    category = 'game_day';
+                    badge = 'Game Day Priming';
+                    title = 'Neuro-Visual Speed & Hip Primer';
+                    rationale = `Game scheduled today against ${gameTitle}. Zero heavy axial loading to keep fast-twitch snap fresh. Focus strictly on visual reaction, hip/groin flow, and 4-4-4-4 box breathing.`;
+                    primaryFocus = 'Reaction & Recovery';
+                    recommendedMinutes = 20;
+                    drills = ['Raven Reaction Test (score > 100)', '2-Ball Wall Ball Switches (50 catches)', '90/90 Hip Flow & Frog Flushes', 'Box Breathing Reset'];
+                    cues = ['Track ball into the pocket.', 'Soft hands.', 'Stay square to release channel.'];
+                } else if (lessonCount >= 2 || (lessonCount === 1 && hasPractice)) {
+                    category = 'coaching_heavy';
+                    badge = 'Active Movement & Flush';
+                    title = 'Crease Movement & Visual Reaction';
+                    rationale = `You have ${lessonCount} coaching session(s) and on-field duties today. Protect your hips and lower back with high-frequency reaction drills and mobility flushes.`;
+                    primaryFocus = 'Crease Movement & Reaction';
+                    recommendedMinutes = 25;
+                    drills = ['Raven Reaction Test (3 rounds)', '5-Point Arc Shuffles (4 sets x 30s)', '90/90 Hip Flow', 'Rotational Med Ball Slams (4x6)'];
+                    cues = ['Arrive set.', 'No false steps.', 'Stick into edges.'];
+                }
+
+                setScheduleAwareness({
+                    todayKey,
+                    todayFormatted,
+                    hasGameToday: hasGame,
+                    gameTitle,
+                    hasPracticeToday: hasPractice,
+                    lessonsCountToday: lessonCount,
+                    lessonSummary,
+                    weeklyIntention,
+                    lastWorkout,
+                    adaptivePrescription: {
+                        category,
+                        badge,
+                        title,
+                        rationale,
+                        primaryFocus,
+                        recommendedMinutes,
+                        drills,
+                        cues
+                    }
+                });
+            } catch (err) {
+                console.error("Error loading schedule context:", err);
+            }
+        };
+
+        loadScheduleAndMemory();
+    }, [activeUserId]);
 
     // Timer state
     const [timerIsActive, setTimerIsActive] = useState(false);
@@ -449,76 +603,143 @@ export default function TrainingPage() {
             <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full flex-1">
                 {/* 0. Regimen & Plan TAB */}
                 {activeTab === 'regimen' && (
-                    <div className="space-y-8">
-                        {/* Header Hero Banner */}
-                        <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
-                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 85% 20%, rgba(0,230,118,0.15), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
-                            <div className="relative z-10 space-y-4">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="space-y-6">
+                        {/* 1. Schedule <-> Training Intelligent Prescription Card */}
+                        <div className="bg-card border border-border rounded-3xl p-6 sm:p-7 relative overflow-hidden shadow-sm space-y-4">
+                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 85% 15%, rgba(0,230,118,0.12), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
+                            
+                            <div className="relative z-10 space-y-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[9px] font-black uppercase tracking-[0.2em] px-2.5 py-1 bg-[#00E676] text-black rounded-md flex items-center gap-1.5">
-                                            <Sparkles size={11} /> ELITE GOALIE BLUEPRINT
-                                        </span>
-                                        <span className="text-[9px] font-bold tracking-widest px-2.5 py-1 bg-muted border border-border text-muted-foreground rounded-md">
-                                            D1 / COLLEGE COMMIT STANDARD
+                                        <span className="w-2 h-2 rounded-full bg-[#00E676] animate-pulse" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#00E676]">
+                                            Calendar Connected • {scheduleAwareness.todayFormatted}
                                         </span>
                                     </div>
-                                    <span className="text-xs font-bold text-[#00E676] flex items-center gap-1">
-                                        <Flame size={14} /> Peak Performance Protocol
+                                    <span className="text-xs font-bold text-muted-foreground">
+                                        {scheduleAwareness.hasGameToday ? (
+                                            <span className="text-amber-300 font-black">⚔️ Game Day ({scheduleAwareness.gameTitle})</span>
+                                        ) : scheduleAwareness.lessonsCountToday > 0 ? (
+                                            <span className="text-emerald-300 font-black">🥅 {scheduleAwareness.lessonsCountToday} Coaching Session Today</span>
+                                        ) : (
+                                            <span>🏋️ Open Training Window</span>
+                                        )}
                                     </span>
                                 </div>
 
-                                <div>
-                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground m-0">
-                                        High-Performance Training Regimen
-                                    </h2>
-                                    <p className="text-sm text-muted-foreground font-medium mt-1 leading-relaxed max-w-3xl">
-                                        A structured development system built for high-level goalies, college commits, and pro prospects. Plan your strength protocols, master crease movements, sharpen visual neuro-reaction, and stay committed every week.
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-[#00E676] text-black rounded-md">
+                                            {scheduleAwareness.adaptivePrescription.badge}
+                                        </span>
+                                        <h2 className="text-xl sm:text-2xl font-black text-foreground m-0 tracking-tight">
+                                            {scheduleAwareness.adaptivePrescription.title}
+                                        </h2>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground font-medium leading-relaxed max-w-3xl pt-1 m-0">
+                                        {scheduleAwareness.adaptivePrescription.rationale}
                                     </p>
                                 </div>
 
-                                <div className="flex flex-wrap items-center gap-3 pt-2">
+                                {/* Today's Prescribed Drills */}
+                                <div className="bg-muted/40 border border-border/60 rounded-2xl p-3.5 space-y-2">
+                                    <span className="text-[9px] font-black uppercase tracking-wider text-foreground/70 block">
+                                        Today's Prescribed Focus ({scheduleAwareness.adaptivePrescription.recommendedMinutes} Min)
+                                    </span>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        {scheduleAwareness.adaptivePrescription.drills.map((drill, idx) => (
+                                            <div key={idx} className="p-2.5 bg-card border border-border/70 rounded-xl text-xs font-semibold text-foreground flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-[#00E676] shrink-0" />
+                                                <span className="truncate">{drill}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3 pt-1">
                                     <button
                                         onClick={() => router.push('/calendar')}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+                                        className="flex items-center gap-2 px-4 py-2 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
                                     >
-                                        <Calendar size={14} />
-                                        <span>Log Workout on Calendar</span>
-                                        <ArrowRight size={13} />
+                                        <Calendar size={13} />
+                                        <span>Log to Calendar</span>
+                                        <ArrowRight size={12} />
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('game')}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
+                                        className="flex items-center gap-2 px-3.5 py-2 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
                                     >
-                                        <Gamepad2 size={14} className="text-cyan-400" />
-                                        <span>Raven Reaction Test</span>
+                                        <Gamepad2 size={13} className="text-cyan-400" />
+                                        <span>Raven Reaction</span>
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('timer')}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
+                                        className="flex items-center gap-2 px-3.5 py-2 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
                                     >
-                                        <Clock size={14} className="text-amber-400" />
-                                        <span>Interval Timer</span>
+                                        <Clock size={13} className="text-amber-400" />
+                                        <span>Timer</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Daily Training Accountability Checklist */}
+                        {/* 2. Performance Memory & Body Notes Card */}
+                        <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between pb-3 border-b border-border">
+                                <div className="flex items-center gap-2">
+                                    <Activity size={15} className="text-[#00E676]" />
+                                    <h3 className="text-sm font-bold text-foreground m-0 uppercase tracking-wider">Performance Memory & Long-Term Notes</h3>
+                                </div>
+                                <span className="text-[10px] font-bold text-muted-foreground">Continuity Engine</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                                {/* Memory: Weekly Intention */}
+                                <div className="p-3.5 bg-muted/40 border border-border/60 rounded-2xl space-y-1.5">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Active Intention</span>
+                                    <p className="font-bold text-foreground leading-snug m-0">"{scheduleAwareness.weeklyIntention}"</p>
+                                </div>
+
+                                {/* Memory: Last Workout */}
+                                <div className="p-3.5 bg-muted/40 border border-border/60 rounded-2xl space-y-1.5">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Last Session Logged</span>
+                                    <p className="font-bold text-foreground leading-snug m-0">{scheduleAwareness.lastWorkout.title}</p>
+                                    <p className="text-[10px] text-muted-foreground leading-tight m-0">{scheduleAwareness.lastWorkout.date}</p>
+                                </div>
+
+                                {/* Memory: Body Feedback & Readiness */}
+                                <div className="p-3.5 bg-muted/40 border border-border/60 rounded-2xl space-y-1.5">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Body & Joint Readiness</span>
+                                    <p className="font-semibold text-emerald-300 leading-snug m-0">{scheduleAwareness.lastWorkout.reflection}</p>
+                                </div>
+                            </div>
+
+                            {/* Active Technical Cues */}
+                            <div className="pt-1 flex flex-wrap items-center gap-2">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Active Cues:</span>
+                                {scheduleAwareness.lastWorkout.cues?.map((cue, idx) => (
+                                    <span key={idx} className="text-[10px] font-bold px-2.5 py-1 bg-muted rounded-lg border border-border text-foreground">
+                                        {cue}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 3. Daily Goalie Commitment Checklist */}
                         <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border">
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <CheckCircle2 size={16} className="text-[#00E676]" />
-                                        <h3 className="text-base font-bold text-foreground m-0">Daily Goalie Commitment Checklist</h3>
+                                        <h3 className="text-base font-bold text-foreground m-0">Daily Commitment Checklist</h3>
                                     </div>
                                     <p className="text-xs text-muted-foreground m-0 mt-0.5">
-                                        Track your daily non-negotiables to build elite habits and sustain peak competitive shape.
+                                        Simple daily execution to build consistency and keep your body ready.
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs font-black font-mono text-[#00E676] bg-[#00E676]/10 px-2.5 py-1 rounded-lg">
-                                        {completedRegimenItems} / {totalRegimenItems} Completed ({regimenProgressPercent}%)
+                                        {completedRegimenItems} / {totalRegimenItems} Done ({regimenProgressPercent}%)
                                     </span>
                                 </div>
                             </div>
@@ -536,26 +757,26 @@ export default function TrainingPage() {
                                 {[
                                     {
                                         id: 'mobility',
-                                        title: '1. Hip & Groin Mobility Primer (10 Min)',
-                                        desc: '90/90 hip switches, Cossack squats, butterfly groin openers, ankle dorsiflexion.',
+                                        title: '1. Mobility (10 Min)',
+                                        desc: '90/90 hip switches, Cossack squats, groin openers, ankle dorsiflexion.',
                                         icon: '🧘'
                                     },
                                     {
                                         id: 'reaction',
-                                        title: '2. Hand-Eye & Neuro-Visual Drills (15 Min)',
-                                        desc: 'Raven reaction test (target score 100+), 2-ball wall ball, color-call tennis drops.',
+                                        title: '2. Reaction (15 Min)',
+                                        desc: 'Raven reaction test (target score 100+), 2-ball wall ball, tennis drops.',
                                         icon: '🎯'
                                     },
                                     {
                                         id: 'strength',
-                                        title: '3. Strength Protocol & Crease Work (45 Min)',
-                                        desc: 'Trap bar explosive jumps, rear foot split squats, rotational med ball slams, 5-point arc pushes.',
+                                        title: '3. Strength & Crease (45 Min)',
+                                        desc: 'Trap bar jumps, split squats, rotational med ball slams, 5-point arc pushes.',
                                         icon: '🏋️'
                                     },
                                     {
                                         id: 'reflection',
-                                        title: '4. Workout Log & Mental Debrief (5 Min)',
-                                        desc: 'Log sets, reps, weight loads, and mental focal cues on your Goalie Card schedule.',
+                                        title: '4. Reflection (5 Min)',
+                                        desc: 'Log sets, reps, load, and focal cues directly on your Goalie Card schedule.',
                                         icon: '📝'
                                     }
                                 ].map((item) => {
@@ -594,15 +815,15 @@ export default function TrainingPage() {
                             </div>
                         </div>
 
-                        {/* 4 Pillars of Elite Goalie Training */}
+                        {/* 4. The 4 Pillars (Clean, Simplified Titles) */}
                         <div className="space-y-4">
                             <div>
                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#00E676] block mb-1">
-                                    Complete Blueprint
+                                    Core Blueprint
                                 </span>
-                                <h3 className="text-lg font-bold text-foreground m-0">The 4 Pillars of Goalie Athletic Mastery</h3>
+                                <h3 className="text-lg font-bold text-foreground m-0">The 4 Pillars</h3>
                                 <p className="text-xs text-muted-foreground m-0 mt-0.5">
-                                    What high-level, varsity, and college commit goalies execute during in-season and off-season cycles.
+                                    Direct protocols executed by collegiate and serious goalies.
                                 </p>
                             </div>
 
@@ -611,19 +832,16 @@ export default function TrainingPage() {
                                 <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-blue-500/15 text-blue-300 border border-blue-500/30 rounded-md">
-                                            Pillar 1 • Strength & Power
+                                            1. Strength
                                         </span>
                                         <span className="text-xs font-bold text-muted-foreground">3x / Week</span>
                                     </div>
-                                    <h4 className="text-sm font-bold text-foreground m-0">Explosive Triple Extension & Core Bracing</h4>
-                                    <p className="text-xs text-muted-foreground leading-relaxed m-0">
-                                        Build the raw kinetic power to explode across the crease and absorb high-velocity shots without losing postural stability.
-                                    </p>
+                                    <h4 className="text-sm font-bold text-foreground m-0">Power, Single-Leg & Core</h4>
                                     <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
-                                        <p className="font-semibold text-foreground m-0">• Trap Bar Deadlift / Jump Shrugs: <span className="text-muted-foreground font-normal">4 sets x 5 reps (Heavy & Explosive)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Bulgarian Split Squats: <span className="text-muted-foreground font-normal">3 sets x 8 reps/leg (Deceleration control)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Rotational Med Ball Slams: <span className="text-muted-foreground font-normal">4 sets x 6 reps/side (Shot reaction power)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Pallof Press & Deadbugs: <span className="text-muted-foreground font-normal">3 sets x 30s holds (Crease anti-rotation)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Trap Bar Deadlift / Jump Shrugs: <span className="text-muted-foreground font-normal">4 sets x 5 reps (Explosive)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Bulgarian Split Squats: <span className="text-muted-foreground font-normal">3 sets x 8 reps/leg</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Rotational Med Ball Slams: <span className="text-muted-foreground font-normal">4 sets x 6 reps/side</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Pallof Holds & Deadbugs: <span className="text-muted-foreground font-normal">3 sets x 30s</span></p>
                                     </div>
                                 </div>
 
@@ -631,19 +849,16 @@ export default function TrainingPage() {
                                 <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-md">
-                                            Pillar 2 • Crease Mechanics
+                                            2. Movement
                                         </span>
                                         <span className="text-xs font-bold text-muted-foreground">4x / Week</span>
                                     </div>
-                                    <h4 className="text-sm font-bold text-foreground m-0">Footwork Speed, Angles & Pipe Resets</h4>
-                                    <p className="text-xs text-muted-foreground leading-relaxed m-0">
-                                        Short, sharp, and decisive crease navigation that eliminates extra steps and keeps your chest square to every release point.
-                                    </p>
+                                    <h4 className="text-sm font-bold text-foreground m-0">Crease Footwork & Angles</h4>
                                     <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
-                                        <p className="font-semibold text-foreground m-0">• 5-Point Arc Shuffles: <span className="text-muted-foreground font-normal">5 sets x 30s (Holding compact stance)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Stick-Side / Off-Stick Drop Steps: <span className="text-muted-foreground font-normal">4 sets x 10 reps (Zero false step)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Pipe-to-Pipe Explosive Resets: <span className="text-muted-foreground font-normal">6 sets x 4 reps (Beating backdoor feeds)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Low Bounce Explosion: <span className="text-muted-foreground font-normal">4 sets x 8 reps (Driving top hand to the ball)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• 5-Point Arc Shuffles: <span className="text-muted-foreground font-normal">5 sets x 30s</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Drop Steps (Stick & Off-Stick): <span className="text-muted-foreground font-normal">4 sets x 10 reps</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Pipe-to-Pipe Resets: <span className="text-muted-foreground font-normal">6 sets x 4 reps</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Low Bounce Explosion: <span className="text-muted-foreground font-normal">4 sets x 8 reps</span></p>
                                     </div>
                                 </div>
 
@@ -651,19 +866,16 @@ export default function TrainingPage() {
                                 <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 rounded-md">
-                                            Pillar 3 • Hand-Eye & Reaction
+                                            3. Reaction
                                         </span>
                                         <span className="text-xs font-bold text-muted-foreground">Daily / 15m</span>
                                     </div>
-                                    <h4 className="text-sm font-bold text-foreground m-0">Neuro-Visual Tracking & Pocket Reaction</h4>
-                                    <p className="text-xs text-muted-foreground leading-relaxed m-0">
-                                        Train your visual processing speed to pick up ball rotation from the shooter's release channel and catch clean with soft hands.
-                                    </p>
+                                    <h4 className="text-sm font-bold text-foreground m-0">Visual Tracking & Hand-Eye</h4>
                                     <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
-                                        <p className="font-semibold text-foreground m-0">• Raven Reaction Protocol: <span className="text-muted-foreground font-normal">3 rounds daily (Target score &gt; 100)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• 2-Ball Wall Ball Switches: <span className="text-muted-foreground font-normal">3 sets x 50 catches (Tracking with eyes only)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Numbered Tennis Ball Drops: <span className="text-muted-foreground font-normal">4 sets x 10 drops (Peripheral awareness)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Juggling & Strobe Tracking: <span className="text-muted-foreground font-normal">5 minutes pre-game activation</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Raven Reaction Test: <span className="text-muted-foreground font-normal">3 rounds (Score &gt; 100)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• 2-Ball Wall Ball Switches: <span className="text-muted-foreground font-normal">3 sets x 50 catches</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Numbered Tennis Ball Drops: <span className="text-muted-foreground font-normal">4 sets x 10 drops</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Juggling & Strobe Tracking: <span className="text-muted-foreground font-normal">5 min activation</span></p>
                                     </div>
                                 </div>
 
@@ -671,19 +883,16 @@ export default function TrainingPage() {
                                 <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-md">
-                                            Pillar 4 • Mobility & Mindset
+                                            4. Recovery
                                         </span>
-                                        <span className="text-xs font-bold text-muted-foreground">Daily / Post-Work</span>
+                                        <span className="text-xs font-bold text-muted-foreground">Daily</span>
                                     </div>
-                                    <h4 className="text-sm font-bold text-foreground m-0">Hip Durability, Recovery & Game Poise</h4>
-                                    <p className="text-xs text-muted-foreground leading-relaxed m-0">
-                                        Protect your hips and groin from overuse injuries while mastering the neutral mental state required to erase bad goals instantly.
-                                    </p>
+                                    <h4 className="text-sm font-bold text-foreground m-0">Hips, Mindset & Longevity</h4>
                                     <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
-                                        <p className="font-semibold text-foreground m-0">• 90/90 Hip Flow & Frog Stretch: <span className="text-muted-foreground font-normal">10 min post-training (Deep hip capsule release)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Ankle Dorsiflexion & Tibialis: <span className="text-muted-foreground font-normal">3 sets x 15 reps (Achilles & knee longevity)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• 4-4-4-4 Box Breathing: <span className="text-muted-foreground font-normal">5 min pre-game & between quarters</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Clutch Save Visualization: <span className="text-muted-foreground font-normal">Mentally rehearsing 1-on-1 step-down saves</span></p>
+                                        <p className="font-semibold text-foreground m-0">• 90/90 Hip Flow & Frog Stretch: <span className="text-muted-foreground font-normal">10 min post-work</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Ankle Dorsiflexion & Tibialis: <span className="text-muted-foreground font-normal">3 sets x 15 reps</span></p>
+                                        <p className="font-semibold text-foreground m-0">• 4-4-4-4 Box Breathing: <span className="text-muted-foreground font-normal">5 min pre/post work</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Clutch Save Visualization: <span className="text-muted-foreground font-normal">Rehearse step-downs</span></p>
                                     </div>
                                 </div>
                             </div>
