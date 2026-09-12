@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/utils/supabase/client';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Play, Pause, RotateCcw, ChevronDown, ChevronUp, BookOpen, Clock, Gamepad2, Dumbbell, Target, Sparkles, CheckCircle2, Flame, Shield, ArrowRight, Activity, Calendar, Trophy } from 'lucide-react';
+import { ArrowLeft, Loader2, Play, Pause, RotateCcw, ChevronDown, ChevronUp, BookOpen, Clock, Gamepad2, Dumbbell, Target, Sparkles, CheckCircle2, Flame, Shield, ArrowRight, Activity, Calendar, Trophy, FileText, Edit3, X, Check } from 'lucide-react';
 import RavenGame from '@/components/training/RavenGame';
 import { DRILL_LIBRARY } from '@/lib/drill-library';
 import { MobileBottomNav } from '@/components/shared/MobileBottomNav';
@@ -197,6 +197,54 @@ export default function TrainingPage() {
     const totalRegimenItems = Object.keys(regimenChecklist).length;
     const regimenProgressPercent = Math.round((completedRegimenItems / totalRegimenItems) * 100);
 
+    // Season Contract & Goalie Commitment State
+    const [contractModalOpen, setContractModalOpen] = useState(false);
+    const [seasonContract, setSeasonContract] = useState<{
+        season: string;
+        team: string;
+        level: string;
+        primaryGoal: string;
+        technicalGoal: string;
+        recoveryGoal: string;
+        signedDate: string;
+        signedBy: string;
+    }>({
+        season: "2026–2027 Season",
+        team: "Atlanta Gladiators / Prep",
+        level: "College / Semi-Pro",
+        primaryGoal: "Dominate crease depth and hold edges on low-angle releases.",
+        technicalGoal: "Arrive set before shot release with zero wasted slide motion.",
+        recoveryGoal: "Daily 90/90 hip capsule flow & active tissue recovery.",
+        signedDate: "Sep 12, 2026",
+        signedBy: "Elliott Shevitz"
+    });
+    const [editForm, setEditForm] = useState(seasonContract);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('goalie_season_contract');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                setSeasonContract(parsed);
+                setEditForm(parsed);
+            }
+        } catch (e) {
+            console.error("Error loading season contract:", e);
+        }
+    }, []);
+
+    const handleSaveContract = (e: React.FormEvent) => {
+        e.preventDefault();
+        setSeasonContract(editForm);
+        try {
+            localStorage.setItem('goalie_season_contract', JSON.stringify(editForm));
+            toast.success("Season Contract & Goals saved.");
+        } catch (e) {
+            console.error("Error saving contract:", e);
+        }
+        setContractModalOpen(false);
+    };
+
     // Schedule Context & Training Memory State (Calendar <-> Training intelligence)
     const [scheduleAwareness, setScheduleAwareness] = useState<{
         todayKey: string;
@@ -242,11 +290,11 @@ export default function TrainingPage() {
         adaptivePrescription: {
             category: 'coaching_heavy',
             badge: 'Active Performance & Flush',
-            title: 'Crease Movement & Visual Neuro-Speed',
+            title: 'Crease Movement & Visual Speed',
             rationale: 'You have private coaching lessons on the field/ice today. Keep your nervous system fast and fresh with visual reaction and hip mobility without fatiguing heavy axial loading.',
             primaryFocus: 'Reaction & Crease Movement',
             recommendedMinutes: 25,
-            drills: ['Raven Reaction Test (3 rounds)', '5-Point Arc Shuffles (4 sets x 30s)', '90/90 Hip Flow & Frog Flushes'],
+            drills: ['Reaction (3 rounds)', '5-Point Arc Shuffles (4 sets x 30s)', '90/90 Hip Flow & Frog Flushes'],
             cues: ['Arrive set before release.', 'Track into the pocket.', 'Soft hands.']
         }
     });
@@ -297,7 +345,7 @@ export default function TrainingPage() {
                 let rationale = 'Open training day with no taxing game collisions. Optimal window for Pillar 1 Strength loading and explosive Pillar 2 crease footwork.';
                 let primaryFocus = 'Strength & Crease Footwork';
                 let recommendedMinutes = 45;
-                let drills = ['Trap Bar Jumps (4 sets x 5 reps)', 'Bulgarian Split Squats (3 sets x 8 reps/leg)', '5-Point Arc Shuffles (5 sets x 30s)', 'Raven Reaction (3 rounds)'];
+                let drills = ['Trap Bar Jumps (4 sets x 5 reps)', 'Bulgarian Split Squats (3 sets x 8 reps/leg)', '5-Point Arc Shuffles (5 sets x 30s)', 'Reaction (3 rounds)'];
                 let cues = ['Sit into edges.', 'Push the floor away.', 'Arrive set.'];
 
                 if (hasGame) {
@@ -307,16 +355,16 @@ export default function TrainingPage() {
                     rationale = `Game scheduled today against ${gameTitle}. Zero heavy axial loading to keep fast-twitch snap fresh. Focus strictly on visual reaction, hip/groin flow, and 4-4-4-4 box breathing.`;
                     primaryFocus = 'Reaction & Recovery';
                     recommendedMinutes = 20;
-                    drills = ['Raven Reaction Test (score > 100)', '2-Ball Wall Ball Switches (50 catches)', '90/90 Hip Flow & Frog Flushes', 'Box Breathing Reset'];
+                    drills = ['Reaction (3 rounds)', '2-Ball Wall Ball Switches (50 catches)', '90/90 Hip Flow & Frog Flushes', 'Box Breathing Reset'];
                     cues = ['Track ball into the pocket.', 'Soft hands.', 'Stay square to release channel.'];
                 } else if (lessonCount >= 2 || (lessonCount === 1 && hasPractice)) {
                     category = 'coaching_heavy';
                     badge = 'Active Movement & Flush';
-                    title = 'Crease Movement & Visual Reaction';
+                    title = 'Crease Movement & Visual Speed';
                     rationale = `You have ${lessonCount} coaching session(s) and on-field duties today. Protect your hips and lower back with high-frequency reaction drills and mobility flushes.`;
                     primaryFocus = 'Crease Movement & Reaction';
                     recommendedMinutes = 25;
-                    drills = ['Raven Reaction Test (3 rounds)', '5-Point Arc Shuffles (4 sets x 30s)', '90/90 Hip Flow', 'Rotational Med Ball Slams (4x6)'];
+                    drills = ['Reaction (3 rounds)', '5-Point Arc Shuffles (4 sets x 30s)', '90/90 Hip Flow', 'Rotational Med Ball Slams (4x6)'];
                     cues = ['Arrive set.', 'No false steps.', 'Stick into edges.'];
                 }
 
@@ -585,7 +633,7 @@ export default function TrainingPage() {
                     )}
                 >
                     <Clock size={13} />
-                    Interval Timer
+                    Timer
                 </button>
                 <button
                     onClick={() => setActiveTab('game')}
@@ -595,7 +643,7 @@ export default function TrainingPage() {
                     )}
                 >
                     <Gamepad2 size={13} />
-                    Raven Reaction
+                    Reaction
                 </button>
             </div>
 
@@ -670,7 +718,7 @@ export default function TrainingPage() {
                                         className="flex items-center gap-2 px-3.5 py-2 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
                                     >
                                         <Gamepad2 size={13} className="text-cyan-400" />
-                                        <span>Raven Reaction</span>
+                                        <span>Reaction</span>
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('timer')}
@@ -683,14 +731,84 @@ export default function TrainingPage() {
                             </div>
                         </div>
 
-                        {/* 2. Performance Memory & Body Notes Card */}
+                        {/* 2. Season Contract & Goalie Commitment Card */}
+                        <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between pb-3 border-b border-border">
+                                <div className="flex items-center gap-2">
+                                    <Trophy size={16} className="text-[#00E676]" />
+                                    <h3 className="text-sm font-bold text-foreground m-0 uppercase tracking-wider">Season Contract & Goals</h3>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setEditForm(seasonContract);
+                                        setContractModalOpen(true);
+                                    }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
+                                >
+                                    <Edit3 size={12} />
+                                    <span>Edit Contract</span>
+                                </button>
+                            </div>
+
+                            {/* Adaptive Philosophy Direct Notice */}
+                            <div className="p-3.5 bg-muted/40 border border-border/60 rounded-2xl flex items-start gap-3 text-xs leading-relaxed text-muted-foreground">
+                                <Shield size={16} className="text-[#00E676] shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-semibold text-foreground m-0">We train with your season, not against it.</p>
+                                    <p className="m-0 mt-0.5 text-[11px]">
+                                        If you miss a day, have an overtime game, or need rest, your plan automatically adapts without penalties or broken streaks. You set the goals; the system supports you.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Team & Level Badges + Season Goals */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="p-3 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Team</span>
+                                    <p className="font-bold text-foreground m-0 truncate">{seasonContract.team || 'Unassigned'}</p>
+                                </div>
+                                <div className="p-3 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Level</span>
+                                    <p className="font-bold text-foreground m-0 truncate">{seasonContract.level || 'Competitive'}</p>
+                                </div>
+                                <div className="p-3 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Season Term</span>
+                                    <p className="font-bold text-foreground m-0 truncate">{seasonContract.season || '2026–2027'}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="p-3.5 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Primary Season Goal</span>
+                                    <p className="font-semibold text-foreground leading-snug m-0">"{seasonContract.primaryGoal}"</p>
+                                </div>
+                                <div className="p-3.5 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Technical Focus</span>
+                                    <p className="font-semibold text-foreground leading-snug m-0">"{seasonContract.technicalGoal}"</p>
+                                </div>
+                                <div className="p-3.5 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Longevity / Recovery</span>
+                                    <p className="font-semibold text-foreground leading-snug m-0">"{seasonContract.recoveryGoal}"</p>
+                                </div>
+                            </div>
+
+                            {/* Goalie Signature Status */}
+                            <div className="pt-1 flex flex-wrap items-center justify-between text-xs text-muted-foreground border-t border-border pt-3">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle2 size={14} className="text-[#00E676]" />
+                                    <span className="font-medium">Signed Commitment: <span className="text-foreground font-bold">{seasonContract.signedBy}</span></span>
+                                </div>
+                                <span className="font-mono text-[11px]">{seasonContract.signedDate}</span>
+                            </div>
+                        </div>
+
+                        {/* 3. Performance Memory Card */}
                         <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
                             <div className="flex items-center justify-between pb-3 border-b border-border">
                                 <div className="flex items-center gap-2">
                                     <Activity size={15} className="text-[#00E676]" />
-                                    <h3 className="text-sm font-bold text-foreground m-0 uppercase tracking-wider">Performance Memory & Long-Term Notes</h3>
+                                    <h3 className="text-sm font-bold text-foreground m-0 uppercase tracking-wider">Performance Memory</h3>
                                 </div>
-                                <span className="text-[10px] font-bold text-muted-foreground">Continuity Engine</span>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
@@ -725,17 +843,12 @@ export default function TrainingPage() {
                             </div>
                         </div>
 
-                        {/* 3. Daily Goalie Commitment Checklist */}
+                        {/* 4. Daily Goalie Commitment Checklist */}
                         <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <CheckCircle2 size={16} className="text-[#00E676]" />
-                                        <h3 className="text-base font-bold text-foreground m-0">Daily Commitment Checklist</h3>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground m-0 mt-0.5">
-                                        Simple daily execution to build consistency and keep your body ready.
-                                    </p>
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle2 size={16} className="text-[#00E676]" />
+                                    <h3 className="text-base font-bold text-foreground m-0">Daily Commitment</h3>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs font-black font-mono text-[#00E676] bg-[#00E676]/10 px-2.5 py-1 rounded-lg">
@@ -764,7 +877,7 @@ export default function TrainingPage() {
                                     {
                                         id: 'reaction',
                                         title: '2. Reaction (15 Min)',
-                                        desc: 'Raven reaction test (target score 100+), 2-ball wall ball, tennis drops.',
+                                        desc: 'Visual reaction drills, 2-ball wall ball, numbered tennis ball drops.',
                                         icon: '🎯'
                                     },
                                     {
@@ -815,17 +928,9 @@ export default function TrainingPage() {
                             </div>
                         </div>
 
-                        {/* 4. The 4 Pillars (Clean, Simplified Titles) */}
+                        {/* 5. The 4 Pillars (Clean Titles) */}
                         <div className="space-y-4">
-                            <div>
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#00E676] block mb-1">
-                                    Core Blueprint
-                                </span>
-                                <h3 className="text-lg font-bold text-foreground m-0">The 4 Pillars</h3>
-                                <p className="text-xs text-muted-foreground m-0 mt-0.5">
-                                    Direct protocols executed by collegiate and serious goalies.
-                                </p>
-                            </div>
+                            <h3 className="text-lg font-bold text-foreground m-0">The 4 Pillars</h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Pillar 1 */}
@@ -872,10 +977,10 @@ export default function TrainingPage() {
                                     </div>
                                     <h4 className="text-sm font-bold text-foreground m-0">Visual Tracking & Hand-Eye</h4>
                                     <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
-                                        <p className="font-semibold text-foreground m-0">• Raven Reaction Test: <span className="text-muted-foreground font-normal">3 rounds (Score &gt; 100)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Reaction Drill: <span className="text-muted-foreground font-normal">3 rounds</span></p>
                                         <p className="font-semibold text-foreground m-0">• 2-Ball Wall Ball Switches: <span className="text-muted-foreground font-normal">3 sets x 50 catches</span></p>
                                         <p className="font-semibold text-foreground m-0">• Numbered Tennis Ball Drops: <span className="text-muted-foreground font-normal">4 sets x 10 drops</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Juggling & Strobe Tracking: <span className="text-muted-foreground font-normal">5 min activation</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Juggling & Tracking: <span className="text-muted-foreground font-normal">5 min activation</span></p>
                                     </div>
                                 </div>
 
@@ -1365,6 +1470,140 @@ export default function TrainingPage() {
                     </div>
                 )}
             </div>
+
+            {/* Season Contract & Goals Modal */}
+            {contractModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-7 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between pb-3 border-b border-border">
+                            <div className="flex items-center gap-2">
+                                <Trophy size={18} className="text-[#00E676]" />
+                                <h3 className="text-base font-bold text-foreground m-0">Season Contract & Goals</h3>
+                            </div>
+                            <button
+                                onClick={() => setContractModalOpen(false)}
+                                className="p-1 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveContract} className="space-y-4">
+                            {/* Season & Team & Level */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Season</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.season}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, season: e.target.value }))}
+                                        placeholder="e.g. 2026–2027"
+                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:border-[#00E676]"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Team</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.team}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, team: e.target.value }))}
+                                        placeholder="e.g. Varsity / Prep"
+                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:border-[#00E676]"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Level</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.level}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, level: e.target.value }))}
+                                        placeholder="e.g. College / Committed"
+                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:border-[#00E676]"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Goals */}
+                            <div className="space-y-3 pt-1">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Primary Season Goal</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.primaryGoal}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, primaryGoal: e.target.value }))}
+                                        placeholder="e.g. Dominate crease depth and hold edges on low-angle releases."
+                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-[#00E676]"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Technical / Movement Focus</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.technicalGoal}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, technicalGoal: e.target.value }))}
+                                        placeholder="e.g. Arrive set before shot release with zero wasted slide motion."
+                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-[#00E676]"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Recovery & Joint Longevity Goal</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.recoveryGoal}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, recoveryGoal: e.target.value }))}
+                                        placeholder="e.g. Daily 90/90 hip capsule flow & active tissue recovery."
+                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-[#00E676]"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Goalie Signature */}
+                            <div className="space-y-1 pt-1">
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Goalie Signature</label>
+                                <input
+                                    type="text"
+                                    value={editForm.signedBy}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, signedBy: e.target.value }))}
+                                    placeholder="Your Full Name"
+                                    className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-bold text-foreground focus:outline-none focus:border-[#00E676]"
+                                    required
+                                />
+                            </div>
+
+                            {/* Commitment Agreement */}
+                            <div className="p-3 bg-muted/40 border border-border rounded-xl text-[11px] text-muted-foreground leading-relaxed">
+                                <span className="font-semibold text-foreground block mb-0.5">The Goalie Commitment:</span>
+                                "I commit to the daily process over outcome. This system trains with my season, not against it. When games or life shift my schedule, the plan adapts with me."
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                                <button
+                                    type="button"
+                                    onClick={() => setContractModalOpen(false)}
+                                    className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                                >
+                                    <Check size={14} />
+                                    <span>Sign & Save Contract</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Mobile Bottom Navigation */}
             <MobileBottomNav />
