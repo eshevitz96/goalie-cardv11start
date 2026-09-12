@@ -368,7 +368,7 @@ export default function CoachDashboard() {
                 sessionId: activeTakeawaySession.id,
                 takeaways: takeawayText,
                 authorRole: 'coach',
-                authorName: 'Coach Elliott',
+                authorName: userFullName || 'Coach',
                 clientEmail: activeTakeawaySession.email
             });
 

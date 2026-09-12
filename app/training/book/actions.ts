@@ -649,7 +649,7 @@ export async function submitSessionTakeaways(payload: {
 
         const existingNotes = session.notes || '';
         const displayName = authorRole === 'coach' 
-            ? (authorName === 'Coach' || !authorName ? 'Coach Elliott' : authorName)
+            ? (authorName && authorName.trim() !== 'Coach' ? authorName : 'Coach')
             : (authorName || 'Athlete/Parent');
 
         const dateStr = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
