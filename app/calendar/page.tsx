@@ -2919,7 +2919,7 @@ export default function CalendarPage() {
                       type="text" 
                       value={lessonAthleteName}
                       onChange={(e) => setLessonAthleteName(e.target.value)}
-                      placeholder="e.g. Susie McElheny"
+                      placeholder="e.g. Athlete Name"
                       required
                       className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none mt-2"
                     />

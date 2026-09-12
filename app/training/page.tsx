@@ -216,7 +216,7 @@ export default function TrainingPage() {
         technicalGoal: "Arrive set before shot release with zero wasted slide motion.",
         recoveryGoal: "Daily 90/90 hip capsule flow & active tissue recovery.",
         signedDate: "Sep 12, 2026",
-        signedBy: "Elliott Shevitz"
+        signedBy: "Goalie"
     });
     const [editForm, setEditForm] = useState(seasonContract);
 
@@ -232,6 +232,19 @@ export default function TrainingPage() {
             console.error("Error loading season contract:", e);
         }
     }, []);
+
+    const updateContractField = (field: keyof typeof seasonContract, value: string) => {
+        setSeasonContract(prev => {
+            const next = { ...prev, [field]: value };
+            try {
+                localStorage.setItem('goalie_season_contract', JSON.stringify(next));
+            } catch (e) {
+                console.error("Error saving contract field:", e);
+            }
+            return next;
+        });
+        setEditForm(prev => ({ ...prev, [field]: value }));
+    };
 
     const handleSaveContract = (e: React.FormEvent) => {
         e.preventDefault();
@@ -278,7 +291,7 @@ export default function TrainingPage() {
         hasGameToday: false,
         hasPracticeToday: false,
         lessonsCountToday: 1,
-        lessonSummary: "Susie McElheny S12, L4 • 10:30 AM",
+        lessonSummary: "Coaching Session • 10:30 AM",
         weeklyIntention: "Maintain high hands and explode on bounce shots.",
         lastWorkout: {
             date: "Sep 11, 2026",
@@ -761,19 +774,37 @@ export default function TrainingPage() {
                                 </div>
                             </div>
 
-                            {/* Team & Level Badges + Season Goals */}
+                            {/* Team & Level Badges + Season Goals (Direct Inline Inputs) */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                                <div className="p-3 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Team</span>
-                                    <p className="font-bold text-foreground m-0 truncate">{seasonContract.team || 'Unassigned'}</p>
+                                <div className="p-3 bg-muted/40 border border-border/60 hover:border-border rounded-2xl space-y-1 transition-colors">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Team</label>
+                                    <input
+                                        type="text"
+                                        value={seasonContract.team}
+                                        onChange={(e) => updateContractField('team', e.target.value)}
+                                        placeholder="Type your team..."
+                                        className="w-full bg-transparent font-bold text-foreground text-xs focus:outline-none focus:text-[#00E676] placeholder:text-muted-foreground/40 border-b border-transparent focus:border-[#00E676] transition-colors py-0.5"
+                                    />
                                 </div>
-                                <div className="p-3 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Level</span>
-                                    <p className="font-bold text-foreground m-0 truncate">{seasonContract.level || 'Competitive'}</p>
+                                <div className="p-3 bg-muted/40 border border-border/60 hover:border-border rounded-2xl space-y-1 transition-colors">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Level</label>
+                                    <input
+                                        type="text"
+                                        value={seasonContract.level}
+                                        onChange={(e) => updateContractField('level', e.target.value)}
+                                        placeholder="Type your level (e.g. College / Varsity)..."
+                                        className="w-full bg-transparent font-bold text-foreground text-xs focus:outline-none focus:text-[#00E676] placeholder:text-muted-foreground/40 border-b border-transparent focus:border-[#00E676] transition-colors py-0.5"
+                                    />
                                 </div>
-                                <div className="p-3 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Season Term</span>
-                                    <p className="font-bold text-foreground m-0 truncate">{seasonContract.season || '2026–2027'}</p>
+                                <div className="p-3 bg-muted/40 border border-border/60 hover:border-border rounded-2xl space-y-1 transition-colors">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Season Term</label>
+                                    <input
+                                        type="text"
+                                        value={seasonContract.season}
+                                        onChange={(e) => updateContractField('season', e.target.value)}
+                                        placeholder="Type season (e.g. 2026–2027)..."
+                                        className="w-full bg-transparent font-bold text-foreground text-xs focus:outline-none focus:text-[#00E676] placeholder:text-muted-foreground/40 border-b border-transparent focus:border-[#00E676] transition-colors py-0.5"
+                                    />
                                 </div>
                             </div>
 
