@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/utils/supabase/client';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Play, Pause, RotateCcw, ChevronDown, ChevronUp, BookOpen, Clock, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Play, Pause, RotateCcw, ChevronDown, ChevronUp, BookOpen, Clock, Gamepad2, Dumbbell, Target, Sparkles, CheckCircle2, Flame, Shield, ArrowRight, Activity, Calendar, Trophy } from 'lucide-react';
 import RavenGame from '@/components/training/RavenGame';
 import { DRILL_LIBRARY } from '@/lib/drill-library';
 import { MobileBottomNav } from '@/components/shared/MobileBottomNav';
@@ -175,9 +175,25 @@ export default function TrainingPage() {
     }, [activeUserId, activeAuthLoading, auth.userRole, auth.userEmail]);
 
 
-    // Redesign tabs state: 'drills' | 'timer' | 'game'
-    const [activeTab, setActiveTab] = useState<'drills' | 'timer' | 'game'>('drills');
+    // Tabs state: 'regimen' | 'drills' | 'timer' | 'game'
+    const [activeTab, setActiveTab] = useState<'regimen' | 'drills' | 'timer' | 'game'>('regimen');
     const [expandedDrill, setExpandedDrill] = useState<string | null>(null);
+
+    // Daily Training Regimen Checklist State
+    const [regimenChecklist, setRegimenChecklist] = useState<{ [key: string]: boolean }>({
+        mobility: false,
+        reaction: false,
+        strength: false,
+        reflection: false
+    });
+
+    const toggleRegimenItem = (key: string) => {
+        setRegimenChecklist(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const completedRegimenItems = Object.values(regimenChecklist).filter(Boolean).length;
+    const totalRegimenItems = Object.keys(regimenChecklist).length;
+    const regimenProgressPercent = Math.round((completedRegimenItems / totalRegimenItems) * 100);
 
     // Timer state
     const [timerIsActive, setTimerIsActive] = useState(false);
@@ -386,41 +402,295 @@ export default function TrainingPage() {
             </div>
 
             {/* Segmented Control Selector Tabs */}
-            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full mb-8 grid grid-cols-3 p-1 bg-muted border border-border rounded-2xl gap-1 shrink-0">
+            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full mb-8 grid grid-cols-2 sm:grid-cols-4 p-1 bg-muted border border-border rounded-2xl gap-1 shrink-0">
+                <button
+                    onClick={() => setActiveTab('regimen')}
+                    className={twMerge(
+                        "py-3 rounded-xl text-[10px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
+                        activeTab === 'regimen' ? "bg-background text-foreground font-black shadow-sm text-[#00E676]" : "text-muted-foreground hover:text-foreground/70"
+                    )}
+                >
+                    <Dumbbell size={13} className={activeTab === 'regimen' ? "text-[#00E676]" : ""} />
+                    Regimen & Plan
+                </button>
                 <button
                     onClick={() => setActiveTab('drills')}
                     className={twMerge(
-                        "py-3 rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
+                        "py-3 rounded-xl text-[10px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
                         activeTab === 'drills' ? "bg-background text-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground/70"
                     )}
                 >
                     <BookOpen size={13} />
-                    Drills
+                    Drill Library
                 </button>
                 <button
                     onClick={() => setActiveTab('timer')}
                     className={twMerge(
-                        "py-3 rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
+                        "py-3 rounded-xl text-[10px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
                         activeTab === 'timer' ? "bg-background text-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground/70"
                     )}
                 >
                     <Clock size={13} />
-                    Timer
+                    Interval Timer
                 </button>
                 <button
                     onClick={() => setActiveTab('game')}
                     className={twMerge(
-                        "py-3 rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
+                        "py-3 rounded-xl text-[10px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
                         activeTab === 'game' ? "bg-background text-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground/70"
                     )}
                 >
                     <Gamepad2 size={13} />
-                    Game
+                    Raven Reaction
                 </button>
             </div>
 
             {/* Content view panel */}
             <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full flex-1">
+                {/* 0. Regimen & Plan TAB */}
+                {activeTab === 'regimen' && (
+                    <div className="space-y-8">
+                        {/* Header Hero Banner */}
+                        <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
+                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 85% 20%, rgba(0,230,118,0.15), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
+                            <div className="relative z-10 space-y-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-black uppercase tracking-[0.2em] px-2.5 py-1 bg-[#00E676] text-black rounded-md flex items-center gap-1.5">
+                                            <Sparkles size={11} /> ELITE GOALIE BLUEPRINT
+                                        </span>
+                                        <span className="text-[9px] font-bold tracking-widest px-2.5 py-1 bg-muted border border-border text-muted-foreground rounded-md">
+                                            D1 / COLLEGE COMMIT STANDARD
+                                        </span>
+                                    </div>
+                                    <span className="text-xs font-bold text-[#00E676] flex items-center gap-1">
+                                        <Flame size={14} /> Peak Performance Protocol
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground m-0">
+                                        High-Performance Training Regimen
+                                    </h2>
+                                    <p className="text-sm text-muted-foreground font-medium mt-1 leading-relaxed max-w-3xl">
+                                        A structured development system built for high-level goalies, college commits, and pro prospects. Plan your strength protocols, master crease movements, sharpen visual neuro-reaction, and stay committed every week.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3 pt-2">
+                                    <button
+                                        onClick={() => router.push('/calendar')}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+                                    >
+                                        <Calendar size={14} />
+                                        <span>Log Workout on Calendar</span>
+                                        <ArrowRight size={13} />
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('game')}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
+                                    >
+                                        <Gamepad2 size={14} className="text-cyan-400" />
+                                        <span>Raven Reaction Test</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('timer')}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
+                                    >
+                                        <Clock size={14} className="text-amber-400" />
+                                        <span>Interval Timer</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Daily Training Accountability Checklist */}
+                        <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle2 size={16} className="text-[#00E676]" />
+                                        <h3 className="text-base font-bold text-foreground m-0">Daily Goalie Commitment Checklist</h3>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground m-0 mt-0.5">
+                                        Track your daily non-negotiables to build elite habits and sustain peak competitive shape.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-black font-mono text-[#00E676] bg-[#00E676]/10 px-2.5 py-1 rounded-lg">
+                                        {completedRegimenItems} / {totalRegimenItems} Completed ({regimenProgressPercent}%)
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full bg-[#00E676] transition-all duration-500 rounded-full"
+                                    style={{ width: `${regimenProgressPercent}%` }}
+                                />
+                            </div>
+
+                            {/* Checklist items */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                {[
+                                    {
+                                        id: 'mobility',
+                                        title: '1. Hip & Groin Mobility Primer (10 Min)',
+                                        desc: '90/90 hip switches, Cossack squats, butterfly groin openers, ankle dorsiflexion.',
+                                        icon: '🧘'
+                                    },
+                                    {
+                                        id: 'reaction',
+                                        title: '2. Hand-Eye & Neuro-Visual Drills (15 Min)',
+                                        desc: 'Raven reaction test (target score 100+), 2-ball wall ball, color-call tennis drops.',
+                                        icon: '🎯'
+                                    },
+                                    {
+                                        id: 'strength',
+                                        title: '3. Strength Protocol & Crease Work (45 Min)',
+                                        desc: 'Trap bar explosive jumps, rear foot split squats, rotational med ball slams, 5-point arc pushes.',
+                                        icon: '🏋️'
+                                    },
+                                    {
+                                        id: 'reflection',
+                                        title: '4. Workout Log & Mental Debrief (5 Min)',
+                                        desc: 'Log sets, reps, weight loads, and mental focal cues on your Goalie Card schedule.',
+                                        icon: '📝'
+                                    }
+                                ].map((item) => {
+                                    const isChecked = !!regimenChecklist[item.id];
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            onClick={() => toggleRegimenItem(item.id)}
+                                            className={twMerge(
+                                                "p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none",
+                                                isChecked 
+                                                    ? "bg-[#00E676]/10 border-[#00E676]/50 shadow-xs" 
+                                                    : "bg-muted/40 hover:bg-muted/70 border-border hover:border-border/80"
+                                            )}
+                                        >
+                                            <div className={twMerge(
+                                                "w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 mt-0.5 transition-colors",
+                                                isChecked ? "bg-[#00E676] border-[#00E676] text-black" : "border-muted-foreground/40 bg-card"
+                                            )}>
+                                                {isChecked && <CheckCircle2 size={13} className="stroke-[3]" />}
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <h4 className={twMerge(
+                                                    "text-xs font-bold leading-tight transition-colors",
+                                                    isChecked ? "text-foreground line-through opacity-80" : "text-foreground"
+                                                )}>
+                                                    {item.title}
+                                                </h4>
+                                                <p className="text-[11px] text-muted-foreground leading-relaxed m-0">
+                                                    {item.desc}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 4 Pillars of Elite Goalie Training */}
+                        <div className="space-y-4">
+                            <div>
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#00E676] block mb-1">
+                                    Complete Blueprint
+                                </span>
+                                <h3 className="text-lg font-bold text-foreground m-0">The 4 Pillars of Goalie Athletic Mastery</h3>
+                                <p className="text-xs text-muted-foreground m-0 mt-0.5">
+                                    What high-level, varsity, and college commit goalies execute during in-season and off-season cycles.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Pillar 1 */}
+                                <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-blue-500/15 text-blue-300 border border-blue-500/30 rounded-md">
+                                            Pillar 1 • Strength & Power
+                                        </span>
+                                        <span className="text-xs font-bold text-muted-foreground">3x / Week</span>
+                                    </div>
+                                    <h4 className="text-sm font-bold text-foreground m-0">Explosive Triple Extension & Core Bracing</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed m-0">
+                                        Build the raw kinetic power to explode across the crease and absorb high-velocity shots without losing postural stability.
+                                    </p>
+                                    <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
+                                        <p className="font-semibold text-foreground m-0">• Trap Bar Deadlift / Jump Shrugs: <span className="text-muted-foreground font-normal">4 sets x 5 reps (Heavy & Explosive)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Bulgarian Split Squats: <span className="text-muted-foreground font-normal">3 sets x 8 reps/leg (Deceleration control)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Rotational Med Ball Slams: <span className="text-muted-foreground font-normal">4 sets x 6 reps/side (Shot reaction power)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Pallof Press & Deadbugs: <span className="text-muted-foreground font-normal">3 sets x 30s holds (Crease anti-rotation)</span></p>
+                                    </div>
+                                </div>
+
+                                {/* Pillar 2 */}
+                                <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-md">
+                                            Pillar 2 • Crease Mechanics
+                                        </span>
+                                        <span className="text-xs font-bold text-muted-foreground">4x / Week</span>
+                                    </div>
+                                    <h4 className="text-sm font-bold text-foreground m-0">Footwork Speed, Angles & Pipe Resets</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed m-0">
+                                        Short, sharp, and decisive crease navigation that eliminates extra steps and keeps your chest square to every release point.
+                                    </p>
+                                    <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
+                                        <p className="font-semibold text-foreground m-0">• 5-Point Arc Shuffles: <span className="text-muted-foreground font-normal">5 sets x 30s (Holding compact stance)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Stick-Side / Off-Stick Drop Steps: <span className="text-muted-foreground font-normal">4 sets x 10 reps (Zero false step)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Pipe-to-Pipe Explosive Resets: <span className="text-muted-foreground font-normal">6 sets x 4 reps (Beating backdoor feeds)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Low Bounce Explosion: <span className="text-muted-foreground font-normal">4 sets x 8 reps (Driving top hand to the ball)</span></p>
+                                    </div>
+                                </div>
+
+                                {/* Pillar 3 */}
+                                <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 rounded-md">
+                                            Pillar 3 • Hand-Eye & Reaction
+                                        </span>
+                                        <span className="text-xs font-bold text-muted-foreground">Daily / 15m</span>
+                                    </div>
+                                    <h4 className="text-sm font-bold text-foreground m-0">Neuro-Visual Tracking & Pocket Reaction</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed m-0">
+                                        Train your visual processing speed to pick up ball rotation from the shooter's release channel and catch clean with soft hands.
+                                    </p>
+                                    <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
+                                        <p className="font-semibold text-foreground m-0">• Raven Reaction Protocol: <span className="text-muted-foreground font-normal">3 rounds daily (Target score &gt; 100)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• 2-Ball Wall Ball Switches: <span className="text-muted-foreground font-normal">3 sets x 50 catches (Tracking with eyes only)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Numbered Tennis Ball Drops: <span className="text-muted-foreground font-normal">4 sets x 10 drops (Peripheral awareness)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Juggling & Strobe Tracking: <span className="text-muted-foreground font-normal">5 minutes pre-game activation</span></p>
+                                    </div>
+                                </div>
+
+                                {/* Pillar 4 */}
+                                <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-md">
+                                            Pillar 4 • Mobility & Mindset
+                                        </span>
+                                        <span className="text-xs font-bold text-muted-foreground">Daily / Post-Work</span>
+                                    </div>
+                                    <h4 className="text-sm font-bold text-foreground m-0">Hip Durability, Recovery & Game Poise</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed m-0">
+                                        Protect your hips and groin from overuse injuries while mastering the neutral mental state required to erase bad goals instantly.
+                                    </p>
+                                    <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
+                                        <p className="font-semibold text-foreground m-0">• 90/90 Hip Flow & Frog Stretch: <span className="text-muted-foreground font-normal">10 min post-training (Deep hip capsule release)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Ankle Dorsiflexion & Tibialis: <span className="text-muted-foreground font-normal">3 sets x 15 reps (Achilles & knee longevity)</span></p>
+                                        <p className="font-semibold text-foreground m-0">• 4-4-4-4 Box Breathing: <span className="text-muted-foreground font-normal">5 min pre-game & between quarters</span></p>
+                                        <p className="font-semibold text-foreground m-0">• Clutch Save Visualization: <span className="text-muted-foreground font-normal">Mentally rehearsing 1-on-1 step-down saves</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* 1. Drills TAB */}
                 {activeTab === 'drills' && (
                     <div className="space-y-6">

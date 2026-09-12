@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { Loader2, Calendar, Video, Target, ArrowRight, Briefcase } from "lucide-react";
+import { Loader2, Calendar, Video, Target, ArrowRight, Briefcase, Dumbbell, Flame } from "lucide-react";
 import { isPastSeniorSeason } from "@/utils/role-logic";
 import { GoalieCard } from "@/components/GoalieCard";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
@@ -785,11 +785,22 @@ export default function Dashboard() {
                         ) : null}
                     </div>
 
-                    {/* Module Tiles Grid (3-Column with Coach Mode or Schedule, otherwise 2-Column Calendar & Film) */}
+                    {/* Module Tiles Grid (Training, Coach Mode/Schedule, Calendar, Film) */}
                     <div className={twMerge(
                         "grid gap-3 w-full",
-                        (hasLessonRecord || isCoachMode) ? "grid-cols-3" : "grid-cols-2"
+                        (hasLessonRecord || isCoachMode) ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"
                     )}>
+                        {/* 1. Athlete Training Regimen & Drills */}
+                        <Link 
+                            href="/training" 
+                            className="flex flex-col items-center justify-center p-4 bg-card border border-border hover:border-[#00E676]/60 transition-all hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm group"
+                        >
+                            <Dumbbell size={24} className="text-[#00E676] mb-2 group-hover:scale-110 transition-transform" />
+                            <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Training</p>
+                            <p className="m-0 text-[9px] text-muted-foreground mt-1">Regimen & drills</p>
+                        </Link>
+
+                        {/* 2. Coach Mode or Schedule */}
                         {isCoachMode ? (
                             <Link 
                                 href="/coach" 
@@ -809,14 +820,18 @@ export default function Dashboard() {
                                 <p className="m-0 text-[9px] text-muted-foreground mt-1">Book sessions</p>
                             </Link>
                         ) : null}
+
+                        {/* 3. Calendar & Logs */}
                         <Link 
                             href="/calendar" 
                             className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
                         >
                             <Calendar size={24} className="text-foreground mb-2" />
                             <p className="m-0 text-[10px] font-black uppercase tracking-[0.1em] text-foreground">Calendar</p>
-                            <p className="m-0 text-[9px] text-muted-foreground mt-1">This week</p>
+                            <p className="m-0 text-[9px] text-muted-foreground mt-1">Schedule & logs</p>
                         </Link>
+
+                        {/* 4. Film Analysis */}
                         <Link 
                             href="/film" 
                             className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
