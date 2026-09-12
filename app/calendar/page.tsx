@@ -39,6 +39,7 @@ import {
   Trash2
 } from "lucide-react";
 import { ATHLETE_TRAINING_HISTORY, ATHLETE_PROFILE_METRICS } from "@/lib/athleteTrainingHistory";
+import { fetchCoachOSData } from "@/app/training/book/actions";
 
 type ViewMode = "day" | "week" | "month" | "year";
 
@@ -264,16 +265,39 @@ export default function CalendarPage() {
       const uid = auth.userId;
       const { startStr, endStr } = queryRange;
 
-      // 1. Fetch roster_uploads for goalie names & matching
-      const { data: allRosters } = await supabase
-        .from("roster_uploads")
-        .select("id, goalie_name, email, guardian_email, athlete_email, linked_user_id, team")
-        .order("goalie_name", { ascending: true });
+      // 1. Fetch coach roster & private training sessions from authoritative server action
+      const coachData = await fetchCoachOSData(uid || undefined, auth.userEmail || undefined);
+      let rosterList: any[] = [];
+      let allSessionsData: any[] = [];
 
-      const rosterList = (allRosters || []).filter(r => {
-        const name = (r.goalie_name || '').toLowerCase();
-        return name && !name.includes('test') && !name.includes('elliott');
-      });
+      if (coachData?.success && coachData.athletes && coachData.athletes.length > 0) {
+        rosterList = coachData.athletes.map((a: any) => ({
+          id: a.id,
+          goalie_name: a.goalie_name,
+          email: a.email,
+          guardian_email: a.guardian_email,
+          athlete_email: a.email,
+          linked_user_id: a.id,
+          team: a.team
+        }));
+        allSessionsData = coachData.sessions || [];
+      } else {
+        const { data: allRosters } = await supabase
+          .from("roster_uploads")
+          .select("id, goalie_name, email, guardian_email, athlete_email, linked_user_id, team")
+          .order("goalie_name", { ascending: true });
+
+        rosterList = (allRosters || []).filter(r => {
+          const name = (r.goalie_name || '').toLowerCase();
+          return name && !name.includes('test') && !name.includes('elliott');
+        });
+
+        const { data: rawSess } = await supabase
+          .from("sessions")
+          .select("id, date, start_time, end_time, location, notes, session_number, lesson_number, goalie_id, roster_id, is_active")
+          .order("date", { ascending: true });
+        allSessionsData = rawSess || [];
+      }
 
       setRosterGoalies(rosterList.map(r => ({ id: r.id, name: r.goalie_name, linked_user_id: r.linked_user_id })));
 
@@ -466,32 +490,25 @@ export default function CalendarPage() {
 
       setAthleteHockeySessions(hockeySchedule);
 
-      // 5. Fetch private training sessions (lacrosse coaching lessons)
-      const { data: allSessionsData, error: sessError } = await supabase
-        .from("sessions")
-        .select("id, date, start_time, end_time, location, notes, session_number, lesson_number, goalie_id, roster_id, is_active")
-        .order("date", { ascending: true });
-
-      if (sessError) {
-        console.error("Error fetching sessions in calendar:", sessError);
-      }
-
+      // 5. Process private training sessions (lacrosse coaching lessons)
       // Hydrate all sessions with real athlete names
-      const hydrated = (allSessionsData || []).map(sess => {
-        let name = "Private Client";
-        if (sess.roster_id) {
-          const m = rosterList.find(r => r.id === sess.roster_id);
-          if (m && m.goalie_name) name = m.goalie_name;
-        }
-        if (name === "Private Client" && sess.goalie_id) {
-          const m = rosterList.find(r => r.linked_user_id === sess.goalie_id || r.id === sess.goalie_id);
-          if (m && m.goalie_name) name = m.goalie_name;
-        }
-        if (name === "Private Client" && sess.notes) {
-          for (const r of rosterList) {
-            if (sess.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
-              name = r.goalie_name;
-              break;
+      const hydrated = allSessionsData.map(sess => {
+        let name = sess.athlete_name || "Private Client";
+        if (name === "Private Client" || name === "Athlete") {
+          if (sess.roster_id) {
+            const m = rosterList.find(r => r.id === sess.roster_id);
+            if (m && m.goalie_name) name = m.goalie_name;
+          }
+          if ((name === "Private Client" || name === "Athlete") && sess.goalie_id) {
+            const m = rosterList.find(r => r.linked_user_id === sess.goalie_id || r.id === sess.goalie_id);
+            if (m && m.goalie_name) name = m.goalie_name;
+          }
+          if ((name === "Private Client" || name === "Athlete") && sess.notes) {
+            for (const r of rosterList) {
+              if (sess.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
+                name = r.goalie_name;
+                break;
+              }
             }
           }
         }
@@ -638,14 +655,21 @@ export default function CalendarPage() {
     const dayHockey = (roleTrackFilter === 'coach') ? [] : athleteHockeySessions.filter(h => h.scheduled_date === dateStr);
     
     const dayPrivate = (roleTrackFilter === 'athlete') ? [] : privateSessions.filter(s => {
-      if (!s.date) return false;
-      if (s.date.startsWith(dateStr)) return true;
+      const sDate = s.date || s.start_time;
+      if (!sDate) return false;
+      if (typeof sDate === 'string') {
+        if (sDate.startsWith(dateStr) || sDate.slice(0, 10) === dateStr) return true;
+      }
       try {
-        const d = new Date(s.date);
-        return !isNaN(d.getTime()) && formatDateKey(d) === dateStr;
+        const d = new Date(sDate);
+        if (!isNaN(d.getTime())) {
+          if (formatDateKey(d) === dateStr) return true;
+          if (d.toISOString().slice(0, 10) === dateStr) return true;
+        }
       } catch {
         return false;
       }
+      return false;
     });
 
     return {
