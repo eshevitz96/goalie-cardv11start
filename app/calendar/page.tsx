@@ -115,6 +115,10 @@ export default function CalendarPage() {
   const [trainingTime, setTrainingTime] = useState("");
   const [trainingFocus, setTrainingFocus] = useState("");
   const [trainingLocation, setTrainingLocation] = useState("");
+  const [trainingStrength, setTrainingStrength] = useState("");
+  const [trainingAthletic, setTrainingAthletic] = useState("");
+  const [trainingCues, setTrainingCues] = useState("");
+  const [trainingNotes, setTrainingNotes] = useState("");
 
   // Edit Game Form States
   const [editingGame, setEditingGame] = useState<any>(null);
@@ -672,11 +676,15 @@ export default function CalendarPage() {
     };
   };
 
+  // Active date key for current view mode
+  const activeDateKey = useMemo(() => {
+    return viewMode === "day" ? formatDateKey(currentDate) : formatDateKey(selectedDate);
+  }, [viewMode, currentDate, selectedDate]);
+
   // Selected date events
   const selectedDateEvents = useMemo(() => {
-    const dateKey = formatDateKey(selectedDate);
-    return getEventsForDate(dateKey);
-  }, [selectedDate, games, practices, privateSessions, athleteHockeySessions, roleTrackFilter]);
+    return getEventsForDate(activeDateKey);
+  }, [activeDateKey, games, practices, privateSessions, athleteHockeySessions, roleTrackFilter]);
 
   // Actions
   const handleCreateSeason = async (e: React.FormEvent) => {
@@ -791,6 +799,14 @@ export default function CalendarPage() {
         .single();
       const publicUserId = userRes?.id;
       
+      const trainingPayload = {
+        strength: trainingStrength ? trainingStrength.split(',').map(s => s.trim()).filter(Boolean) : [],
+        athletic: trainingAthletic ? trainingAthletic.split(',').map(s => s.trim()).filter(Boolean) : [],
+        cues: trainingCues ? trainingCues.split(',').map(s => s.trim()).filter(Boolean) : [],
+        notes: trainingNotes || ""
+      };
+      const notesJson = JSON.stringify(trainingPayload);
+
       if (uid === "00000000-0000-0000-0000-000000000000" || !publicUserId) {
         const newTraining = {
           id: String(Date.now()),
@@ -798,10 +814,18 @@ export default function CalendarPage() {
           scheduled_date: trainingDate,
           scheduled_time: trainingTime + ":00",
           location: trainingLocation || "TBD",
-          game_type: "training"
+          game_type: "training",
+          notes: notesJson
         };
         setGames([...games, newTraining]);
         setShowTrainingModal(false);
+        setShowUnifiedAddModal(false);
+        setTrainingFocus("");
+        setTrainingLocation("");
+        setTrainingStrength("");
+        setTrainingAthletic("");
+        setTrainingCues("");
+        setTrainingNotes("");
         setDbSaving(false);
         return;
       }
@@ -812,7 +836,8 @@ export default function CalendarPage() {
           season_id: season?.id,
           opponent_name: trainingFocus || "Training",
           game_date: trainingDate,
-          location: trainingLocation || "TBD"
+          location: trainingLocation || "TBD",
+          notes: notesJson
         })
         .select()
         .single();
@@ -830,7 +855,8 @@ export default function CalendarPage() {
           scheduled_date: trainingDate,
           scheduled_time: trainingTime + ":00",
           game_type: "training",
-          status: "draft"
+          status: "draft",
+          notes: notesJson
         })
         .select()
         .single();
@@ -841,6 +867,10 @@ export default function CalendarPage() {
       setShowUnifiedAddModal(false);
       setTrainingFocus("");
       setTrainingLocation("");
+      setTrainingStrength("");
+      setTrainingAthletic("");
+      setTrainingCues("");
+      setTrainingNotes("");
     } catch (err: any) {
       console.error("Add training error:", err);
     } finally {
@@ -1378,25 +1408,20 @@ export default function CalendarPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
-        {/* DUAL-ROLE ATHLETE & COACH TRACK SWITCHER */}
-        <div className="bg-gradient-to-r from-cyan-950/30 via-card to-emerald-950/30 border border-border/80 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        {/* SCHEDULE TRACK SWITCHER */}
+        <div className="bg-card border border-border/80 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold shrink-0">
-              <Activity size={20} />
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold shrink-0">
+              <CalendarIcon size={18} />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-black text-foreground uppercase tracking-wider">Dual-Role Schedule</span>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
-                  NHL Pro Prospect
-                </span>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-                  CoachCard • The Goalie Brand
-                </span>
-              </div>
-              <p className="text-[11px] text-muted-foreground m-0 mt-0.5">
-                Manage your personal pro hockey training alongside your lacrosse coaching lessons.
-              </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base font-black text-foreground uppercase tracking-wider m-0">Schedule</h1>
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
+                NHL Pro Prospect
+              </span>
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                CoachCard • The Goalie Brand
+              </span>
             </div>
           </div>
 
@@ -1639,11 +1664,101 @@ export default function CalendarPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Games */}
+                  {/* Games & Custom Training */}
                   {selectedDateEvents.games.map((game, gIdx) => {
                     const today = new Date();
                     const gameDateObj = new Date(game.scheduled_date);
                     const isGamePast = gameDateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+                    let parsedNotes: any = null;
+                    if (game.notes && typeof game.notes === 'string') {
+                      try { parsedNotes = JSON.parse(game.notes); } catch {}
+                    }
+                    const strengthList = parsedNotes?.strength || (game.notes && !game.notes.startsWith('{') ? [game.notes] : []);
+                    const athleticList = parsedNotes?.athletic || [];
+                    const cuesList = parsedNotes?.cues || [];
+                    const notesText = parsedNotes?.notes || (game.notes && !game.notes.startsWith('{') ? game.notes : '');
+
+                    if (game.game_type === 'training') {
+                      return (
+                        <div
+                          key={`day-g-${gIdx}`}
+                          onClick={() => {
+                            openHockeyDetail({
+                              id: game.id,
+                              title: game.opponent || "Athlete Training",
+                              scheduled_date: game.scheduled_date,
+                              scheduled_time: game.scheduled_time,
+                              location: game.location || "Gym / Training Facility",
+                              strength: strengthList,
+                              athletic: athleticList,
+                              cues: cuesList,
+                              notes: notesText,
+                              confidence: 'EXACT',
+                              phase: 'Athlete Training Log'
+                            });
+                          }}
+                          className="p-4 bg-cyan-950/20 hover:bg-cyan-950/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-2xl transition-all cursor-pointer space-y-3"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-cyan-400 text-black rounded-lg flex items-center gap-1">
+                                <span>🏒</span> ATHLETE TRAINING
+                              </span>
+                              <h3 className="text-base font-bold text-foreground m-0">{game.opponent}</h3>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1.5"><Clock size={13} className="text-cyan-400" /> {formatTime(game.scheduled_time)}</span>
+                              <span className="flex items-center gap-1.5"><MapPin size={13} className="text-cyan-400" /> {game.location || "Gym / Facility"}</span>
+                            </div>
+                          </div>
+
+                          {strengthList.length > 0 && (
+                            <div className="space-y-1 pt-1">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Strength Protocols & Loads:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {strengthList.map((st: string, sIdx: number) => (
+                                  <span key={sIdx} className="text-xs font-semibold px-2 py-1 bg-card border border-border/80 rounded-lg text-foreground">
+                                    {st}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {athleticList.length > 0 && (
+                            <div className="space-y-1 pt-1">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Athletic Drills:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {athleticList.map((ath: string, aIdx: number) => (
+                                  <span key={aIdx} className="text-xs font-semibold px-2 py-1 bg-cyan-950/40 border border-cyan-500/20 text-cyan-200 rounded-lg">
+                                    {ath}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {cuesList.length > 0 && (
+                            <div className="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-start gap-2">
+                              <Target size={14} className="text-cyan-400 mt-0.5 shrink-0" />
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block">Performance Cues:</span>
+                                {cuesList.map((cue: string, cIdx: number) => (
+                                  <p key={cIdx} className="text-xs font-bold text-cyan-200 m-0">• {cue}</p>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {notesText && (
+                            <div className="p-2.5 bg-card/60 rounded-xl border border-border/50 text-xs text-muted-foreground">
+                              <span className="font-bold text-cyan-300">Notes: </span>{notesText}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
 
                     return (
                       <div
@@ -2697,12 +2812,54 @@ export default function CalendarPage() {
                   />
                 </div>
                 <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Strength Protocols & Loads (Comma-separated)</label>
+                  <input 
+                    type="text" 
+                    value={trainingStrength}
+                    onChange={(e) => setTrainingStrength(e.target.value)}
+                    placeholder="e.g. Smith front squat: 55 lb/side, RDL: 70 lb (3x8), DB Press: 60 lb"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Athletic / Plyo Drills</label>
+                    <input 
+                      type="text" 
+                      value={trainingAthletic}
+                      onChange={(e) => setTrainingAthletic(e.target.value)}
+                      placeholder="e.g. Skater bounds 3x5, Box jumps"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Performance Cues</label>
+                    <input 
+                      type="text" 
+                      value={trainingCues}
+                      onChange={(e) => setTrainingCues(e.target.value)}
+                      placeholder="e.g. GET LOW → LOAD → PUSH → STICK"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Workout Reflections / Notes</label>
+                  <input 
+                    type="text" 
+                    value={trainingNotes}
+                    onChange={(e) => setTrainingNotes(e.target.value)}
+                    placeholder="e.g. Felt explosive out of stance, smooth hip hinge"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  />
+                </div>
+                <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                   <input 
                     type="text" 
                     value={trainingLocation}
                     onChange={(e) => setTrainingLocation(e.target.value)}
-                    placeholder="e.g. The Ice / Performance Gym"
+                    placeholder="e.g. The Ice / Planet Fitness / Studio"
                     className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
                   />
                 </div>
