@@ -1339,6 +1339,288 @@ export async function getCalendarPrivateLessons() {
     }
 }
 
+/**
+ * Elevated server action to update private coaching lessons, save coach takeaways,
+ * and dispatch instant email/in-app notifications to athlete/parent and coach.
+ */
+export async function saveCalendarLessonUpdate(payload: {
+    id: string;
+    date: string;
+    startTime?: string;
+    location?: string;
+    notes?: string;
+    rosterId?: string | null;
+    sessionNumber?: number | string | null;
+    lessonNumber?: number | string | null;
+    athleteName?: string;
+    clientEmail?: string;
+}) {
+    try {
+        const supabase = getSupabaseAdmin();
+        const {
+            id,
+            date,
+            startTime,
+            location,
+            notes,
+            rosterId,
+            sessionNumber,
+            lessonNumber,
+            athleteName,
+            clientEmail
+        } = payload;
+
+        let isoDate = date;
+        if (!date.includes('T')) {
+            const timePart = startTime ? (startTime.includes(':') && startTime.split(':').length === 2 ? startTime + ':00' : startTime) : '09:00:00';
+            isoDate = `${date}T${timePart}`;
+        }
+
+        const updateData: any = {
+            date: isoDate,
+            start_time: isoDate,
+            location: location || "Field / Training Facility",
+            notes: notes || "",
+        };
+
+        if (rosterId && rosterId !== 'custom') {
+            updateData.roster_id = rosterId;
+        }
+        if (sessionNumber !== undefined && sessionNumber !== null && sessionNumber !== "") {
+            updateData.session_number = Number(sessionNumber);
+        }
+        if (lessonNumber !== undefined && lessonNumber !== null && lessonNumber !== "") {
+            updateData.lesson_number = Number(lessonNumber);
+        }
+
+        const { data: updatedSession, error: updateError } = await supabase
+            .from('sessions')
+            .update(updateData)
+            .eq('id', id)
+            .select('*')
+            .single();
+
+        if (updateError) {
+            console.error("[saveCalendarLessonUpdate] DB Update Error:", updateError);
+            return { success: false, error: updateError.message };
+        }
+
+        // Resolve client email for takeaway notifications
+        let resolvedEmail = clientEmail || "";
+        let resolvedGoalieName = athleteName || "Athlete";
+        let targetUserId: string | null = null;
+
+        if (rosterId && rosterId !== 'custom') {
+            const { data: rData } = await supabase
+                .from('roster_uploads')
+                .select('goalie_name, email, guardian_email, athlete_email, linked_user_id')
+                .eq('id', rosterId)
+                .maybeSingle();
+
+            if (rData) {
+                if (!resolvedEmail) {
+                    resolvedEmail = rData.email || rData.guardian_email || rData.athlete_email || "";
+                }
+                if (resolvedGoalieName === "Athlete" && rData.goalie_name) {
+                    resolvedGoalieName = rData.goalie_name;
+                }
+                targetUserId = rData.linked_user_id;
+            }
+        }
+
+        // If takeaway notes are present, dispatch email via Resend
+        if (notes && notes.trim().length > 0 && process.env.RESEND_API_KEY) {
+            try {
+                const sNum = updateData.session_number !== undefined ? updateData.session_number : (updatedSession?.session_number || 1);
+                const lNum = updateData.lesson_number !== undefined ? updateData.lesson_number : (updatedSession?.lesson_number || 1);
+                const sessionLabel = `S${sNum}, L${lNum}`;
+                
+                let formattedDate = isoDate;
+                try {
+                    formattedDate = new Date(isoDate).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+                } catch {
+                    formattedDate = isoDate.slice(0, 10);
+                }
+
+                const takeawayEmailHtml = `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <div style="text-align: center; margin-bottom: 24px;">
+                            <span style="display: inline-block; background: #00E676; color: #000000; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Coach Takeaways & Feedback</span>
+                            <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 8px 0 4px;">🥅 Session Debrief: ${resolvedGoalieName}</h2>
+                            <p style="font-size: 14px; color: #64748b; margin: 0;">${sessionLabel} • ${formattedDate}</p>
+                        </div>
+
+                        <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #00E676;">
+                            <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">📍 Session Location</p>
+                            <p style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a;">${location || 'Field / Training Facility'}</p>
+                        </div>
+
+                        <div style="background: #0f172a; color: #ffffff; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+                            <h3 style="font-size: 14px; font-weight: 800; color: #00E676; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 12px;">Coach Elliott's Notes & Key Focal Points:</h3>
+                            <p style="font-size: 14px; line-height: 1.6; color: #e2e8f0; margin: 0; white-space: pre-wrap;">${notes}</p>
+                        </div>
+
+                        <div style="text-align: center; margin: 28px 0 12px;">
+                            <a href="https://goaliecard.com/calendar" style="display: inline-block; background: #00E676; color: #000000; font-size: 13px; font-weight: 800; text-decoration: none; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;">View Goalie Card & Schedule</a>
+                        </div>
+
+                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0 16px;" />
+                        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">The Goalie Brand • Goalie Card Coaching System • Coach Elliott Shevitz</p>
+                    </div>
+                `;
+
+                const recipients = ["eshevitz96@gmail.com"];
+                if (resolvedEmail && resolvedEmail.includes('@') && !recipients.includes(resolvedEmail.trim())) {
+                    recipients.push(resolvedEmail.trim());
+                }
+
+                await fetch("https://api.resend.com/emails", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+                    },
+                    body: JSON.stringify({
+                        from: process.env.EMAIL_FROM_ADDRESS || "Elliott Shevitz <coach@goaliecard.com>",
+                        to: recipients,
+                        subject: `🥅 Coach Takeaways: ${resolvedGoalieName} (${sessionLabel})`,
+                        html: takeawayEmailHtml,
+                    }),
+                });
+            } catch (emailErr) {
+                console.error("[saveCalendarLessonUpdate] Email Send Error:", emailErr);
+            }
+        }
+
+        // Create in-app notification if user is linked
+        if (targetUserId) {
+            try {
+                await supabase.from('notifications').insert({
+                    user_id: targetUserId,
+                    title: `Coach Takeaways Added 🥅`,
+                    message: `Coach Elliott added takeaways and session feedback for your training on ${date}.`,
+                    type: 'takeaway',
+                    is_read: false
+                });
+            } catch (notifErr) {
+                console.error("[saveCalendarLessonUpdate] Notification Insert Error:", notifErr);
+            }
+        }
+
+        return { success: true, session: updatedSession };
+    } catch (err: any) {
+        console.error("[saveCalendarLessonUpdate] Server Error:", err);
+        return { success: false, error: err?.message || "Failed to save lesson update." };
+    }
+}
+
+/**
+ * Elevated server action to delete private coaching lessons.
+ */
+export async function deleteCalendarLesson(id: string) {
+    try {
+        const supabase = getSupabaseAdmin();
+        const { error } = await supabase
+            .from('sessions')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("[deleteCalendarLesson] DB Delete Error:", error);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    } catch (err: any) {
+        console.error("[deleteCalendarLesson] Server Error:", err);
+        return { success: false, error: err?.message || "Failed to delete coaching lesson." };
+    }
+}
+
+export async function createCalendarPrivateLesson(payload: {
+    date: string;
+    startTime?: string;
+    location?: string;
+    notes?: string;
+    rosterId?: string | null;
+    sessionNumber?: number | string | null;
+    lessonNumber?: number | string | null;
+    athleteName?: string;
+}) {
+    try {
+        const supabase = getSupabaseAdmin();
+        const {
+            date,
+            startTime,
+            location,
+            notes,
+            rosterId,
+            sessionNumber,
+            lessonNumber,
+            athleteName
+        } = payload;
+
+        let isoDate = date;
+        if (!date.includes('T')) {
+            const timePart = startTime ? (startTime.includes(':') && startTime.split(':').length === 2 ? startTime + ':00' : startTime) : '09:00:00';
+            isoDate = `${date}T${timePart}`;
+        }
+
+        const name = athleteName || "Private Athlete";
+        const formattedNotes = notes ? `${name} - ${notes}` : name;
+
+        const insertData: any = {
+            date: isoDate,
+            start_time: isoDate,
+            location: location || "Field / Training Facility",
+            notes: formattedNotes,
+            sport: "Lacrosse"
+        };
+
+        if (rosterId && rosterId !== 'custom') {
+            insertData.roster_id = rosterId;
+            // Also link goalie_id if roster row has linked_user_id
+            const { data: rRow } = await supabase
+                .from('roster_uploads')
+                .select('linked_user_id')
+                .eq('id', rosterId)
+                .maybeSingle();
+            if (rRow?.linked_user_id) {
+                insertData.goalie_id = rRow.linked_user_id;
+            }
+        }
+
+        if (sessionNumber !== undefined && sessionNumber !== null && sessionNumber !== "") {
+            insertData.session_number = Number(sessionNumber);
+        }
+        if (lessonNumber !== undefined && lessonNumber !== null && lessonNumber !== "") {
+            insertData.lesson_number = Number(lessonNumber);
+        }
+
+        const { data: createdSession, error } = await supabase
+            .from('sessions')
+            .insert(insertData)
+            .select('*')
+            .single();
+
+        if (error) {
+            console.error("[createCalendarPrivateLesson] DB Insert Error:", error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true, session: createdSession };
+    } catch (err: any) {
+        console.error("[createCalendarPrivateLesson] Server Error:", err);
+        return { success: false, error: err?.message || "Failed to create coaching lesson." };
+    }
+}
+
+
+
 
 
 

@@ -39,7 +39,7 @@ import {
   Trash2
 } from "lucide-react";
 import { ATHLETE_TRAINING_HISTORY, ATHLETE_PROFILE_METRICS } from "@/lib/athleteTrainingHistory";
-import { getCalendarPrivateLessons, fetchCoachOSData } from "@/app/training/book/actions";
+import { getCalendarPrivateLessons, fetchCoachOSData, saveCalendarLessonUpdate, deleteCalendarLesson, createCalendarPrivateLesson } from "@/app/training/book/actions";
 
 type ViewMode = "day" | "week" | "month" | "year";
 
@@ -72,7 +72,7 @@ export default function CalendarPage() {
   const [practices, setPractices] = useState<any[]>([]);
   const [privateSessions, setPrivateSessions] = useState<any[]>([]);
   const [weeklyIntention, setWeeklyIntention] = useState<any>(null);
-  const [rosterGoalies, setRosterGoalies] = useState<{ id: string; name: string; linked_user_id?: string | null }[]>([]);
+  const [rosterGoalies, setRosterGoalies] = useState<{ id: string; name: string; email?: string; linked_user_id?: string | null }[]>([]);
   const [selectedGoalieFilter, setSelectedGoalieFilter] = useState<string>("all");
   const [roleTrackFilter, setRoleTrackFilter] = useState<'all' | 'athlete' | 'coach'>('all');
   const [athleteHockeySessions, setAthleteHockeySessions] = useState<any[]>([]);
@@ -304,7 +304,12 @@ export default function CalendarPage() {
         }
       }
 
-      setRosterGoalies(rosterList.map(r => ({ id: r.id, name: r.goalie_name, linked_user_id: r.linked_user_id })));
+      setRosterGoalies(rosterList.map(r => ({ 
+        id: r.id, 
+        name: r.goalie_name, 
+        email: r.email || r.guardian_email || r.athlete_email || "",
+        linked_user_id: r.linked_user_id 
+      })));
 
       // 2. Fetch user profile, email & identity if authenticated
       let publicUserId: string | undefined;
@@ -1003,22 +1008,20 @@ export default function CalendarPage() {
     try {
       const selectedRoster = rosterGoalies.find(g => g.id === lessonRosterId);
       const athleteName = selectedRoster ? selectedRoster.name : (lessonAthleteName || "Private Athlete");
-      const isoDate = `${lessonDate}T${lessonTime.includes(':') && lessonTime.split(':').length === 2 ? lessonTime + ':00' : lessonTime}`;
       
-      const { data, error } = await supabase
-        .from('sessions')
-        .insert({
-          date: isoDate,
-          start_time: isoDate,
-          location: lessonLocation || "Field / Training Facility",
-          notes: `${athleteName}${lessonNotes ? ` - ${lessonNotes}` : ''}`.trim(),
-          roster_id: lessonRosterId && lessonRosterId !== 'custom' ? lessonRosterId : null,
-          lesson_number: lessonNumber ? Number(lessonNumber) : null
-        })
-        .select()
-        .single();
+      const res = await createCalendarPrivateLesson({
+        date: lessonDate,
+        startTime: lessonTime,
+        location: lessonLocation || "Field / Training Facility",
+        notes: lessonNotes,
+        rosterId: lessonRosterId && lessonRosterId !== 'custom' ? lessonRosterId : null,
+        lessonNumber: lessonNumber ? Number(lessonNumber) : null,
+        athleteName
+      });
 
-      if (error) throw error;
+      if (!res.success) {
+        throw new Error(res.error || "Failed to create coaching lesson.");
+      }
       
       setShowUnifiedAddModal(false);
       setLessonAthleteName("");
@@ -1026,7 +1029,7 @@ export default function CalendarPage() {
       setLessonNotes("");
       setLessonLocation("");
       setLessonNumber("");
-      loadData();
+      await loadData();
     } catch (err: any) {
       console.error("Create lesson error:", err);
       alert("Error creating lesson: " + (err?.message || "Unknown error"));
@@ -1243,44 +1246,27 @@ export default function CalendarPage() {
     try {
       const selectedRoster = rosterGoalies.find(g => g.id === editLessonRosterId);
       const athleteName = selectedRoster ? selectedRoster.name : (editLessonAthleteName || "Private Athlete");
-      const isoDate = `${editLessonDate}T${editLessonTime.includes(':') && editLessonTime.split(':').length === 2 ? editLessonTime + ':00' : editLessonTime}`;
+      const clientEmail = selectedRoster?.email || editingLesson.email || "";
 
-      const { error } = await supabase
-        .from('sessions')
-        .update({
-          date: isoDate,
-          start_time: isoDate,
-          location: editLessonLocation || "Field / Training Facility",
-          notes: editLessonNotes || athleteName,
-          roster_id: editLessonRosterId && editLessonRosterId !== 'custom' ? editLessonRosterId : null,
-          session_number: editLessonSessionNum ? Number(editLessonSessionNum) : null,
-          lesson_number: editLessonLessonNum ? Number(editLessonLessonNum) : null
-        })
-        .eq('id', editingLesson.id);
+      const res = await saveCalendarLessonUpdate({
+        id: editingLesson.id,
+        date: editLessonDate,
+        startTime: editLessonTime,
+        location: editLessonLocation || "Field / Training Facility",
+        notes: editLessonNotes || athleteName,
+        rosterId: editLessonRosterId && editLessonRosterId !== 'custom' ? editLessonRosterId : null,
+        sessionNumber: editLessonSessionNum ? Number(editLessonSessionNum) : null,
+        lessonNumber: editLessonLessonNum ? Number(editLessonLessonNum) : null,
+        athleteName,
+        clientEmail
+      });
 
-      if (error) throw error;
-
-      // Automatically dispatch in-app notification to athlete/parent if location or schedule changed
-      const locationChanged = editingLesson.location && editLessonLocation && editingLesson.location.trim() !== editLessonLocation.trim();
-      const dateChanged = editLessonDate && editingLesson.date && !editingLesson.date.startsWith(editLessonDate);
-      const targetUserId = editingLesson.goalie_id || selectedRoster?.linked_user_id;
-
-      if (locationChanged || dateChanged) {
-        try {
-          await supabase.from('notifications').insert({
-            user_id: targetUserId || null,
-            title: "Training Session Updated 📍",
-            message: `Coach Elliott updated your lesson details${locationChanged ? ` • Location: ${editLessonLocation}` : ''}${dateChanged ? ` • Date: ${editLessonDate}` : ''}`,
-            type: 'schedule',
-            is_read: false
-          });
-        } catch (notifErr) {
-          console.error("Error creating update notification:", notifErr);
-        }
+      if (!res.success) {
+        throw new Error(res.error || "Failed to update coaching lesson.");
       }
 
       setEditingLesson(null);
-      loadData();
+      await loadData();
     } catch (err: any) {
       setEditLessonError(err?.message || "Failed to update coaching lesson.");
     } finally {
@@ -1292,15 +1278,13 @@ export default function CalendarPage() {
     if (!editingLesson) return;
     setDbSaving(true);
     try {
-      const { error } = await supabase
-        .from('sessions')
-        .delete()
-        .eq('id', editingLesson.id);
-
-      if (error) throw error;
+      const res = await deleteCalendarLesson(editingLesson.id);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to delete coaching lesson.");
+      }
 
       setEditingLesson(null);
-      loadData();
+      await loadData();
     } catch (err: any) {
       setEditLessonError(err?.message || "Failed to delete coaching lesson.");
     } finally {
