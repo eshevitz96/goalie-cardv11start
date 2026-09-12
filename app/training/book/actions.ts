@@ -648,7 +648,12 @@ export async function submitSessionTakeaways(payload: {
         }
 
         const existingNotes = session.notes || '';
-        const takeawayEntry = `\n\n[Takeaways by ${authorName} (${authorRole}) on ${new Date().toLocaleDateString()}]:\n${takeaways}`;
+        const displayName = authorRole === 'coach' 
+            ? (authorName === 'Coach' || !authorName ? 'Coach Elliott' : authorName)
+            : (authorName || 'Athlete/Parent');
+
+        const dateStr = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+        const takeawayEntry = `\n\n[Takeaways by ${displayName} on ${dateStr}]:\n${takeaways}`;
         const updatedNotes = `${existingNotes}${takeawayEntry}`.trim();
 
         await supabase
@@ -666,7 +671,7 @@ export async function submitSessionTakeaways(payload: {
                 const emailHtml = `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
                         <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">📝 New Lesson Takeaway Added</h2>
-                        <p style="font-size: 14px; color: #475569;"><strong>${authorName}</strong> (${authorRole}) posted new reflection takeaways for session on ${session.date ? new Date(session.date).toLocaleDateString() : 'Recent Session'}:</p>
+                        <p style="font-size: 14px; color: #475569;"><strong>${displayName}</strong> posted new reflection takeaways for session on ${session.date ? new Date(session.date).toLocaleDateString() : 'Recent Session'}:</p>
                         
                         <div style="background: #f8fafc; border-left: 4px solid #00E676; padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 14px; color: #1e293b; line-height: 1.6;">
                             ${takeaways.replace(/\n/g, '<br/>')}
