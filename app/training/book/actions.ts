@@ -312,15 +312,15 @@ export async function bookTrainingSlots(payload: {
                 const sessionListHtml = selectedSlots.map((s, idx) => `
                     <div style="background: #f8fafc; border-left: 4px solid #00E676; padding: 12px 16px; margin-bottom: 12px; border-radius: 6px;">
                         <p style="margin: 0; font-size: 14px; font-weight: bold; color: #0f172a;">Session ${idx + 1}: ${new Date(s.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                        <p style="margin: 4px 0 0; font-size: 13px; color: #475569;">⏰ <strong>Time:</strong> ${s.timeDisplay}</p>
-                        <p style="margin: 4px 0 0; font-size: 13px; color: #475569;">📍 <strong>Location:</strong> ${s.location}</p>
-                        <p style="margin: 8px 0 0;"><a href="${createGoogleCalendarUrl(s, athleteName)}" style="display: inline-block; font-size: 11px; font-weight: bold; color: #0284c7; text-decoration: none; background: #e0f2fe; padding: 4px 10px; border-radius: 4px;">📅 + Add to Google Calendar</a></p>
+                        <p style="margin: 4px 0 0; font-size: 13px; color: #475569;"><strong>Time:</strong> ${s.timeDisplay}</p>
+                        <p style="margin: 4px 0 0; font-size: 13px; color: #475569;"><strong>Location:</strong> ${s.location}</p>
+                        <p style="margin: 8px 0 0;"><a href="${createGoogleCalendarUrl(s, athleteName)}" style="display: inline-block; font-size: 11px; font-weight: bold; color: #0284c7; text-decoration: none; background: #e0f2fe; padding: 4px 10px; border-radius: 4px;">+ Add to Google Calendar</a></p>
                     </div>
                 `).join('');
 
                 const coachEmailHtml = `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
-                        <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">🥅 New Private Training Scheduled!</h2>
+                        <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">New Private Training Scheduled</h2>
                         <p style="font-size: 15px; color: #475569; margin-top: 0;"><strong>${athleteName}</strong> has just booked <strong>${selectedSlots.length}</strong> private training session(s).</p>
                         
                         <div style="background: #f1f5f9; padding: 14px 18px; border-radius: 8px; margin-bottom: 24px;">
@@ -357,6 +357,21 @@ export async function bookTrainingSlots(payload: {
                 });
             } catch (emailErr) {
                 console.error("[bookTrainingSlots] Failed to dispatch email:", emailErr);
+            }
+        }
+
+        // 3. Dispatch In-App Notification if user ID exists
+        if (goalieProfileId && goalieProfileId !== '00000000-0000-0000-0000-000000000000') {
+            try {
+                await supabase.from('notifications').insert({
+                    user_id: goalieProfileId,
+                    title: 'Private Training Confirmed',
+                    message: `${selectedSlots.length} private training session(s) confirmed with Coach Elliott.`,
+                    type: 'schedule',
+                    is_read: false
+                });
+            } catch (notifErr) {
+                console.warn("[bookTrainingSlots] In-app notification skipped:", notifErr);
             }
         }
 
@@ -457,29 +472,29 @@ export async function rescheduleTrainingSession(payload: {
         if (process.env.RESEND_API_KEY) {
             try {
                 const isCoachInitiated = requestedBy === 'coach';
-                const subject = `🔄 Private Training Rescheduled: ${resolvedName} ➔ ${targetSlot.date} (${targetSlot.timeDisplay})`;
+                const subject = `Private Training Rescheduled: ${resolvedName} -> ${targetSlot.date} (${targetSlot.timeDisplay})`;
                 
                 const rescheduleHtml = `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
-                        <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">🔄 Private Training Rescheduled</h2>
+                        <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">Private Training Rescheduled</h2>
                         <p style="font-size: 15px; color: #475569; margin-top: 0;">
                             The private training session for <strong>${resolvedName}</strong> has been moved ${isCoachInitiated ? 'by <strong>Coach Elliott</strong>' : 'by the client'}.
                         </p>
                         
                         <div style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 14px 18px; border-radius: 8px; margin: 20px 0;">
                             <p style="margin: 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b;">Previous Schedule</p>
-                            <p style="margin: 4px 0 0; font-size: 14px; color: #64748b; text-decoration: line-through;">📅 ${oldDateDisplay} • 📍 ${oldLocation}</p>
+                            <p style="margin: 4px 0 0; font-size: 14px; color: #64748b; text-decoration: line-through;">${oldDateDisplay} • ${oldLocation}</p>
                             
                             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;" />
                             
                             <p style="margin: 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #0284c7;">New Updated Schedule</p>
-                            <p style="margin: 4px 0 0; font-size: 16px; font-weight: bold; color: #0f172a;">📅 ${new Date(targetSlot.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                            <p style="margin: 4px 0 0; font-size: 14px; color: #334155;">⏰ <strong>Time:</strong> ${targetSlot.timeDisplay}</p>
-                            <p style="margin: 4px 0 0; font-size: 14px; color: #334155;">📍 <strong>Location:</strong> ${targetSlot.location}</p>
+                            <p style="margin: 4px 0 0; font-size: 16px; font-weight: bold; color: #0f172a;">${new Date(targetSlot.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                            <p style="margin: 4px 0 0; font-size: 14px; color: #334155;"><strong>Time:</strong> ${targetSlot.timeDisplay}</p>
+                            <p style="margin: 4px 0 0; font-size: 14px; color: #334155;"><strong>Location:</strong> ${targetSlot.location}</p>
                         </div>
 
                         <div style="margin: 24px 0;">
-                            <a href="${newCalUrl}" style="display: inline-block; background: #00E676; color: #000000; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 6px; text-decoration: none;">📅 Update Google Calendar</a>
+                            <a href="${newCalUrl}" style="display: inline-block; background: #00E676; color: #000000; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 6px; text-decoration: none;">Update Google Calendar</a>
                         </div>
 
                         <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
@@ -568,7 +583,7 @@ export async function completeTrainingSessionAndNotify(payload: {
             try {
                 const completionHtml = `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
-                        <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">🥅 Great Work Today! Lesson Completed</h2>
+                        <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">Lesson Completed: Debrief & Takeaways</h2>
                         <p style="font-size: 15px; color: #475569; margin-top: 0;">
                             Private training session with <strong>${resolvedName}</strong> on <strong>${sessionDateStr}</strong> at <strong>${sessionLocation}</strong> is officially wrapped.
                         </p>
@@ -581,11 +596,11 @@ export async function completeTrainingSessionAndNotify(payload: {
                         ` : ''}
 
                         <div style="background: #f8fafc; padding: 18px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
-                            <h3 style="margin: 0 0 8px; font-size: 15px; font-weight: 700; color: #0f172a;">📝 Key Takeaways & Reflection</h3>
+                            <h3 style="margin: 0 0 8px; font-size: 15px; font-weight: 700; color: #0f172a;">Key Takeaways & Reflection</h3>
                             <p style="margin: 0 0 16px; font-size: 13px; color: #64748b; line-height: 1.5;">
                                 Documenting what clicked during training cements your muscle memory and helps direct film analysis. Tap below to add your takeaways in Goalie Card.
                             </p>
-                            <a href="https://goaliecard.com/dashboard" style="display: inline-block; background: #00E676; color: #000000; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 6px; text-decoration: none;">📝 Add Lesson Takeaways in Dashboard</a>
+                            <a href="https://goaliecard.com/dashboard" style="display: inline-block; background: #00E676; color: #000000; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 6px; text-decoration: none;">Add Lesson Takeaways in Dashboard</a>
                         </div>
 
                         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
@@ -607,7 +622,7 @@ export async function completeTrainingSessionAndNotify(payload: {
                     body: JSON.stringify({
                         from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Private Training <onboarding@goaliecard.app>",
                         to: recipients,
-                        subject: `🥅 Lesson Completed & Takeaways: ${resolvedName} (${sessionDateStr})`,
+                        subject: `Lesson Completed & Takeaways: ${resolvedName} (${sessionDateStr})`,
                         html: completionHtml,
                     }),
                 });
@@ -670,7 +685,7 @@ export async function submitSessionTakeaways(payload: {
 
                 const emailHtml = `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
-                        <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">📝 New Lesson Takeaway Added</h2>
+                        <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">New Lesson Takeaway Added</h2>
                         <p style="font-size: 14px; color: #475569;"><strong>${displayName}</strong> posted new reflection takeaways for session on ${session.date ? new Date(session.date).toLocaleDateString() : 'Recent Session'}:</p>
                         
                         <div style="background: #f8fafc; border-left: 4px solid #00E676; padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 14px; color: #1e293b; line-height: 1.6;">
@@ -691,7 +706,7 @@ export async function submitSessionTakeaways(payload: {
                     body: JSON.stringify({
                         from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Private Training <onboarding@goaliecard.app>",
                         to: recipients,
-                        subject: `📝 Lesson Takeaway Added: ${authorName}`,
+                        subject: `Lesson Takeaway Added: ${authorName}`,
                         html: emailHtml,
                     }),
                 });
@@ -745,7 +760,7 @@ export async function requestCoachAccess(params: {
             try {
                 const emailHtml = `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
-                        <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">🚀 New CoachOS Access Request</h2>
+                        <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">New CoachOS Access Request</h2>
                         <p style="font-size: 14px; color: #475569;">A coach has applied for access / enrollment on GoalieCard CoachOS:</p>
                         
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 18px 0;">
@@ -1456,12 +1471,12 @@ export async function saveCalendarLessonUpdate(payload: {
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
                         <div style="text-align: center; margin-bottom: 24px;">
                             <span style="display: inline-block; background: #00E676; color: #000000; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Coach Takeaways & Feedback</span>
-                            <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 8px 0 4px;">🥅 Session Debrief: ${resolvedGoalieName}</h2>
+                            <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 8px 0 4px;">Session Debrief: ${resolvedGoalieName}</h2>
                             <p style="font-size: 14px; color: #64748b; margin: 0;">${sessionLabel} • ${formattedDate}</p>
                         </div>
 
                         <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #00E676;">
-                            <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">📍 Session Location</p>
+                            <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">Session Location</p>
                             <p style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a;">${location || 'Field / Training Facility'}</p>
                         </div>
 
@@ -1493,7 +1508,7 @@ export async function saveCalendarLessonUpdate(payload: {
                     body: JSON.stringify({
                         from: process.env.EMAIL_FROM_ADDRESS || "Elliott Shevitz <coach@goaliecard.com>",
                         to: recipients,
-                        subject: `🥅 Coach Takeaways: ${resolvedGoalieName} (${sessionLabel})`,
+                        subject: `Coach Takeaways: ${resolvedGoalieName} (${sessionLabel})`,
                         html: takeawayEmailHtml,
                     }),
                 });
@@ -1507,7 +1522,7 @@ export async function saveCalendarLessonUpdate(payload: {
             try {
                 await supabase.from('notifications').insert({
                     user_id: targetUserId,
-                    title: `Coach Takeaways Added 🥅`,
+                    title: `Coach Takeaways Added`,
                     message: `Coach Elliott added takeaways and session feedback for your training on ${date}.`,
                     type: 'takeaway',
                     is_read: false

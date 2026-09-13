@@ -53,9 +53,13 @@ function BookTrainingContent() {
         deliveredCount?: number;
     } | null>(null);
 
-    // Month Navigation (Default to Sep 2026)
-    const [currentMonthDate, setCurrentMonthDate] = useState(new Date(2026, 8, 1)); // Month index 8 = September
-    const [selectedDateStr, setSelectedDateStr] = useState<string>("2026-09-09");
+    // Month Navigation
+    const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
+    const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
+        const d = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    });
     const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
     const [bookedResult, setBookedResult] = useState<{
         bookedSlots: TrainingSlot[];
@@ -74,8 +78,16 @@ function BookTrainingContent() {
                 getGoalieBookingProfile(activeUid, auth.userEmail || undefined)
             ]);
 
-            if (slotsRes.slots) {
+            if (slotsRes.slots && slotsRes.slots.length > 0) {
                 setSlots(slotsRes.slots);
+                // Find first upcoming available slot
+                const todayIso = new Date().toISOString().split('T')[0];
+                const nextAvailable = slotsRes.slots.find(s => !s.isBooked && s.date >= todayIso) || slotsRes.slots[0];
+                if (nextAvailable) {
+                    setSelectedDateStr(nextAvailable.date);
+                    const [y, m, d] = nextAvailable.date.split('-').map(Number);
+                    setCurrentMonthDate(new Date(y, m - 1, 1));
+                }
             }
             if (profileRes.success) {
                 setGoalieProfile({

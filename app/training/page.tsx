@@ -726,11 +726,11 @@ export default function TrainingPage() {
                                     </div>
                                     <span className="text-xs font-bold text-muted-foreground">
                                         {scheduleAwareness.hasGameToday ? (
-                                            <span className="text-amber-300 font-black">⚔️ Game Day ({scheduleAwareness.gameTitle})</span>
+                                            <span className="text-amber-300 font-black">Game Day ({scheduleAwareness.gameTitle})</span>
                                         ) : scheduleAwareness.lessonsCountToday > 0 ? (
-                                            <span className="text-emerald-300 font-black">🥅 {scheduleAwareness.lessonsCountToday} Coaching Session Today</span>
+                                            <span className="text-emerald-300 font-black">{scheduleAwareness.lessonsCountToday} Coaching Session Today</span>
                                         ) : (
-                                            <span>🏋️ Open Training Window</span>
+                                            <span>Open Training Window</span>
                                         )}
                                     </span>
                                 </div>
@@ -949,26 +949,22 @@ export default function TrainingPage() {
                                     {
                                         id: 'mobility',
                                         title: '1. Mobility (10 Min)',
-                                        desc: '90/90 hip switches, Cossack squats, groin openers, ankle dorsiflexion.',
-                                        icon: '🧘'
+                                        desc: '90/90 hip switches, Cossack squats, groin openers, ankle dorsiflexion.'
                                     },
                                     {
                                         id: 'reaction',
                                         title: '2. Reaction (15 Min)',
-                                        desc: 'Visual reaction drills, 2-ball wall ball, numbered tennis ball drops.',
-                                        icon: '🎯'
+                                        desc: 'Visual reaction drills, 2-ball wall ball, numbered tennis ball drops.'
                                     },
                                     {
                                         id: 'strength',
                                         title: '3. Strength & Crease (45 Min)',
-                                        desc: 'Trap bar jumps, split squats, rotational med ball slams, 5-point arc pushes.',
-                                        icon: '🏋️'
+                                        desc: 'Trap bar jumps, split squats, rotational med ball slams, 5-point arc pushes.'
                                     },
                                     {
                                         id: 'reflection',
                                         title: '4. Reflection (5 Min)',
-                                        desc: 'Log sets, reps, load, and focal cues directly on your Goalie Card schedule.',
-                                        icon: '📝'
+                                        desc: 'Log sets, reps, load, and focal cues directly on your Goalie Card schedule.'
                                     }
                                 ].map((item) => {
                                     const isChecked = !!regimenChecklist[item.id];
