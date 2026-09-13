@@ -18,21 +18,21 @@ const PACKAGES = [
     { 
         id: 2, 
         name: "Standard 4-Pack Block", 
-        basePrice: 500, 
-        fee: 15.10, 
-        totalPrice: 515.10, 
-        description: "4 private training sessions with tailored debriefs",
-        saves: 0, 
+        basePrice: 400, 
+        fee: 12.26, 
+        totalPrice: 412.26, 
+        description: "4 private training sessions with tailored debriefs ($100/lesson)",
+        saves: 100, 
         recommended: true 
     },
     { 
         id: 3, 
         name: "Pro 10-Pack Block", 
-        basePrice: 1200, 
-        fee: 35.90, 
-        totalPrice: 1235.90, 
-        description: "10 private training sessions with full analytics",
-        saves: 50 
+        basePrice: 950, 
+        fee: 28.50, 
+        totalPrice: 978.50, 
+        description: "10 private training sessions with full analytics ($95/lesson)",
+        saves: 300 
     },
 ];
 
