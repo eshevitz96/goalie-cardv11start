@@ -21,6 +21,7 @@ const WEEKLY_TEMPLATE = [
     // Wednesday (3)
     { dayOfWeek: 3, startTime: '3:00 PM', endTime: '4:00 PM', timeDisplay: '3:00 PM – 4:00 PM', location: 'Bell Memorial Park' },
     { dayOfWeek: 3, startTime: '4:00 PM', endTime: '5:00 PM', timeDisplay: '4:00 PM – 5:00 PM', location: 'Bell Memorial Park' },
+    { dayOfWeek: 3, startTime: '5:00 PM', endTime: '6:00 PM', timeDisplay: '5:00 PM – 6:00 PM', location: 'Bell Memorial Park' },
     
     // Thursday (4)
     { dayOfWeek: 4, startTime: '6:00 PM', endTime: '7:00 PM', timeDisplay: '6:00 PM – 7:00 PM', location: 'Milton' },
@@ -82,8 +83,8 @@ export function generateTrainingSlots(startDate: Date, endDate: Date): TrainingS
     return slots;
 }
 
-// Pre-generate slots from Sep 13, 2026 through Dec 31, 2026
+// Pre-generate slots starting from Sep 14, 2026 (omitting Sep 13) through Dec 31, 2026
 export const INITIAL_TRAINING_SLOTS: TrainingSlot[] = generateTrainingSlots(
-    new Date(2026, 8, 13), // Sep 13, 2026 (Today)
+    new Date(2026, 8, 14), // Sep 14, 2026 (Starts Monday, no slots for Sep 13)
     new Date(2026, 11, 31) // Dec 31, 2026
 );
