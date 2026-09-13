@@ -33,7 +33,7 @@ export function CoachesCorner({ activeGoalie, userRole = 'goalie', isOwner = fal
             if (!result.success) {
                 toast.error(result.error || 'Failed to log lesson');
             } else {
-                toast.success(`Lesson logged ✅  — ${result.newBalance} credits remaining`);
+                toast.success(`Lesson logged — ${result.newBalance} credits remaining`);
             }
         } catch (err: any) {
             toast.error(err.message);

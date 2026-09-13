@@ -21,7 +21,9 @@ import {
     Lock,
     Shield,
     Check,
-    Download
+    Download,
+    Zap,
+    CreditCard
 } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
@@ -1010,7 +1012,7 @@ export default function CoachDashboard() {
                                                                             </span>
                                                                         ) : isActiveStripe ? (
                                                                             <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 flex items-center gap-1">
-                                                                                <span>⚡</span> Auto-Renew
+                                                                                <Zap size={10} /> Auto-Renew
                                                                             </span>
                                                                         ) : athlete.payment_status ? (
                                                                             <span className={clsx(
@@ -1037,7 +1039,7 @@ export default function CoachDashboard() {
                                                                     isPaused ? "bg-amber-500/5 border-amber-500/20 text-amber-300" : "bg-emerald-500/5 border-emerald-500/20 text-emerald-300"
                                                                 )}>
                                                                     <div className="flex items-center gap-1.5">
-                                                                        <span>🗓️</span>
+                                                                        <Calendar size={12} />
                                                                         <span className="font-semibold">{athlete.stripe_billing_day}</span>
                                                                     </div>
                                                                     {isPaused && (
@@ -1046,7 +1048,7 @@ export default function CoachDashboard() {
                                                                 </div>
                                                             ) : (
                                                                 <div className="p-2.5 rounded-xl border border-border/40 bg-muted/30 text-[11px] mb-3 flex items-center gap-1.5 text-muted-foreground">
-                                                                    <span>💳</span>
+                                                                    <CreditCard size={12} />
                                                                     <span>Direct / Offline Package</span>
                                                                 </div>
                                                             )}

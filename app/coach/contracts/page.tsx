@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { ArrowLeft, Plus, Edit2, CheckCircle2, XCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Edit2, CheckCircle2, XCircle, Trash2, FileText } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
 
@@ -260,8 +260,8 @@ export default function CoachContracts() {
                         </div>
                     ) : templates.length === 0 ? (
                         <div className="col-span-full bg-card border border-border rounded-[24px] p-12 text-center flex flex-col items-center">
-                            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                                <span className="text-2xl">📋</span>
+                            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4 text-muted-foreground">
+                                <FileText size={28} />
                             </div>
                             <h3 className="text-xl font-bold mb-2">No Contract Tiers Yet</h3>
                             <p className="text-muted-foreground text-sm max-w-sm mb-6">Create your first virtual coaching tier to allow athletes to subscribe to your services.</p>

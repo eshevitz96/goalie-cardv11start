@@ -508,7 +508,7 @@ export async function updateAssignedCoaches(rosterId: string, coachIds: string[]
         if (roster?.linked_user_id && coachIds.length > 0) {
             await supabaseAdmin.from('notifications').insert({
                 user_id: roster.linked_user_id,
-                title: "Pro Coach Assigned 🤝",
+                title: "Pro Coach Assigned",
                 message: "You've been officially added to a Pro Coach's Goalie Card roster. Request your baseline film review now.",
                 type: "alert"
             });
@@ -609,7 +609,7 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
         if (shots.length >= 3) {
             await supabaseAdmin.from('notifications').insert({
                 user_id: roster.linked_user_id,
-                title: "Film Processing Complete 🎬",
+                title: "Film Processing Complete",
                 message: `Your newest game film has finished processing. You logged a ${index} Performance Index. Check your updated Season Data.`,
                 type: "alert"
             });
@@ -617,7 +617,7 @@ export async function syncShotEvents(rosterId: string, eventId: string, shots: a
             if (index >= 80) {
                 await supabaseAdmin.from('notifications').insert({
                     user_id: roster.linked_user_id,
-                    title: "Milestone Met! 🏆",
+                    title: "Milestone Met!",
                     message: "You just logged an 80+ Performance Index rating. Keep building the foundation.",
                     type: "alert"
                 });
@@ -655,7 +655,7 @@ export async function followGoalie(targetGoalieId: string) {
         // Trigger Notification to Target
         await supabaseAdmin.from('notifications').insert({
             user_id: targetGoalieId,
-            title: "New Follower! 🏒",
+            title: "New Follower",
             message: "Another elite goalie is now observing your performance trajectory.",
             type: "social"
         });

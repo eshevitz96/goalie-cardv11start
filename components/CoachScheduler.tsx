@@ -191,7 +191,7 @@ export function CoachScheduler() {
         setNotifying(true);
         try {
             const { error } = await supabase.from('notifications').insert({
-                title: "New Private Training Schedule Dropped! 📅",
+                title: "New Private Training Schedule Published",
                 message: `Coach Elliott has published availability for the week. Book your private goalie sessions now!`,
                 type: "schedule"
             });

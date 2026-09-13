@@ -68,7 +68,7 @@ export function BetaFeedback({ rosterId, userId, userRole }: BetaFeedbackProps) 
                     >
                         <div className="p-4 bg-primary/10 border-b border-border flex justify-between items-center">
                             <h3 className="font-bold text-foreground flex items-center gap-2">
-                                <span className="text-xl">🚀</span> Beta Feedback
+                                <MessageSquare size={18} className="text-[#00E676]" /> Beta Feedback
                             </h3>
                             <button
                                 onClick={() => setIsOpen(false)}

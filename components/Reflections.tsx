@@ -100,7 +100,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
             if (user && !rosterId.startsWith('demo-')) {
                 await supabase.from('notifications').insert({
                     user_id: user.id,
-                    title: "⚠️ Wellness Check Suggestion",
+                    title: "Wellness Check Suggestion",
                     message: `Goalie entry flagged for keywords: "${found.join(', ')}". Please check in with them.`,
                     type: 'alert'
                 });

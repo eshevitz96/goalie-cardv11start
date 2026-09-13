@@ -34,7 +34,7 @@ export function CreditManager({ rosterId, goalieName, currentCredits, onCreditsA
             if (!result.success) {
                 toast.error("Failed: " + result.error);
             } else {
-                toast.success(`✅ Added ${amount} credits to ${goalieName}`);
+                toast.success(`Added ${amount} credits to ${goalieName}`);
                 setDescription("");
                 onCreditsAdded?.();
             }

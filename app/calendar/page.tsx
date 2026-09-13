@@ -1718,7 +1718,7 @@ export default function CalendarPage() {
                   className="bg-muted border border-border text-foreground text-xs font-bold px-3 py-1.5 rounded-xl focus:outline-none focus:border-[#00E676] max-w-[150px] sm:max-w-[200px] truncate"
                   title="Filter calendar by athlete"
                 >
-                  <option value="all">👥 All Goalies ({rosterGoalies.length})</option>
+                  <option value="all">All Goalies ({rosterGoalies.length})</option>
                   {rosterGoalies.map(g => (
                     <option key={g.id} value={g.id}>{g.name}</option>
                   ))}
