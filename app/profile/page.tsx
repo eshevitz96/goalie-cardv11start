@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { ArrowLeft, Plus, Calendar, ToggleLeft, Loader2, LogOut, Edit2 } from "lucide-react";
+import { ArrowLeft, Plus, Calendar, ToggleLeft, ToggleRight, Loader2, LogOut, Edit2, MapPin } from "lucide-react";
 import { PerformanceAvatar } from "@/components/ui/PerformanceAvatar";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
@@ -20,6 +20,8 @@ export default function ProfilePage() {
     const [portalLoading, setPortalLoading] = useState(false);
     const [portalError, setPortalError] = useState<string | null>(null);
     const [performanceScore, setPerformanceScore] = useState(0);
+    const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+    const [isPublicProfile, setIsPublicProfile] = useState<boolean>(false);
 
     useEffect(() => {
         if (!auth.loading && !auth.isAuthenticated) {
@@ -195,6 +197,26 @@ export default function ProfilePage() {
                     }
                 } else {
                     setSubscriptionData(null);
+                }
+
+                // 4. Fetch real events & commitments for the athlete
+                const todayStr = new Date().toISOString().split('T')[0];
+                const { data: userGames } = await supabase
+                    .from('games')
+                    .select('*')
+                    .gte('scheduled_date', todayStr)
+                    .order('scheduled_date', { ascending: true })
+                    .limit(4);
+
+                if (userGames && userGames.length > 0) {
+                    setUpcomingEvents(userGames);
+                } else {
+                    const { data: recentGames } = await supabase
+                        .from('games')
+                        .select('*')
+                        .order('scheduled_date', { ascending: false })
+                        .limit(3);
+                    setUpcomingEvents(recentGames || []);
                 }
 
             } catch (err) {
@@ -377,61 +399,109 @@ export default function ProfilePage() {
 
                     {/* Right Column (Events, Visibility, Connections) */}
                     <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-3">
-                        {/* Events & Commitments Placeholder */}
-                <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
-                    <div className="flex items-center justify-between mb-4">
-                        <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Events & commitments</p>
-                        <Plus size={18} className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors" />
-                    </div>
-                    
-                    <div className="flex items-center gap-4 py-3 border-b border-border">
-                        <Calendar size={22} className="text-muted-foreground shrink-0" />
-                        <div className="flex-1">
-                            <p className="m-0 text-sm font-bold">Top 205 Camp</p>
-                            <p className="m-0 text-xs text-muted-foreground/80 mt-0.5">June 14-16 · Registered</p>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-[#00E676] text-[#00E676] rounded-full shrink-0">
-                            Confirmed
-                        </span>
-                    </div>
+                        {/* Events & Commitments */}
+                        <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
+                            <div className="flex items-center justify-between mb-4">
+                                <p className="m-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Events & commitments</p>
+                                <Link href="/calendar" className="p-1 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground" title="Open Full Calendar">
+                                    <Plus size={18} />
+                                </Link>
+                            </div>
+                            
+                            {upcomingEvents.length === 0 ? (
+                                <div className="py-6 text-center">
+                                    <Calendar size={24} className="mx-auto text-muted-foreground/40 mb-2" />
+                                    <p className="text-xs font-bold text-foreground m-0">No upcoming events scheduled</p>
+                                    <p className="text-[11px] text-muted-foreground m-0 mt-0.5">Add games, tournaments, or camps to your schedule.</p>
+                                    <Link 
+                                        href="/calendar" 
+                                        className="inline-flex items-center gap-1.5 mt-3 px-3.5 py-2 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold rounded-xl transition-colors"
+                                    >
+                                        <Plus size={13} />
+                                        <span>Add to Calendar</span>
+                                    </Link>
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    {upcomingEvents.map((evt, idx) => {
+                                        const isTraining = evt.game_type === 'training';
+                                        const isPractice = evt.game_type === 'practice';
+                                        const evtDate = evt.scheduled_date ? new Date(evt.scheduled_date + 'T00:00:00') : null;
+                                        const dateFormatted = evtDate ? evtDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Scheduled";
 
-                    <div className="flex items-center gap-4 py-3 pt-4">
-                        <Calendar size={22} className="text-muted-foreground shrink-0" />
-                        <div className="flex-1">
-                            <p className="m-0 text-sm font-bold">Showcase Tournament</p>
-                            <p className="m-0 text-xs text-muted-foreground/80 mt-0.5">July 22-24 · Open</p>
+                                        return (
+                                            <div key={evt.id || idx} className="flex items-center justify-between gap-3 py-3 border-b border-border/50 last:border-0">
+                                                <div className="flex items-center gap-3.5 min-w-0">
+                                                    <div className="p-2.5 rounded-xl bg-muted text-muted-foreground shrink-0">
+                                                        <Calendar size={18} />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="m-0 text-sm font-bold text-foreground truncate">{evt.opponent || evt.title || "Scheduled Event"}</p>
+                                                        <p className="m-0 text-xs text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                                                            <span>{dateFormatted}</span>
+                                                            {evt.location && (
+                                                                <>
+                                                                    <span>•</span>
+                                                                    <span className="flex items-center gap-0.5 truncate">
+                                                                        <MapPin size={10} className="text-[#00E676] shrink-0" />
+                                                                        {evt.location}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shrink-0 ${
+                                                    isTraining
+                                                        ? 'bg-amber-400 text-black font-black'
+                                                        : isPractice
+                                                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 font-black'
+                                                            : 'bg-rose-500 text-white font-black'
+                                                }`}>
+                                                    {isTraining ? 'Training' : isPractice ? 'Practice' : 'Game'}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-muted-foreground/20 text-foreground rounded-full shrink-0">
-                            Register
-                        </span>
-                    </div>
-                </div>
 
-                {/* Recruiting Visibility */}
-                <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
-                    <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Recruiting visibility</p>
-                    <div className="flex items-center justify-between mb-2">
-                        <p className="m-0 text-sm font-bold">Public profile</p>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Off</span>
-                            <ToggleLeft size={24} className="text-muted-foreground/50" />
+                        {/* Recruiting Visibility */}
+                        <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
+                            <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Recruiting visibility</p>
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="m-0 text-sm font-bold">Public profile</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPublicProfile(prev => !prev)}
+                                    className="flex items-center gap-2 cursor-pointer group"
+                                >
+                                    <span className={`text-[10px] font-black uppercase tracking-widest ${isPublicProfile ? 'text-[#00E676]' : 'text-muted-foreground'}`}>
+                                        {isPublicProfile ? 'On' : 'Off'}
+                                    </span>
+                                    {isPublicProfile ? (
+                                        <ToggleRight size={26} className="text-[#00E676] transition-colors" />
+                                    ) : (
+                                        <ToggleLeft size={26} className="text-muted-foreground/50 transition-colors" />
+                                    )}
+                                </button>
+                            </div>
+                            <p className="m-0 text-xs text-muted-foreground leading-relaxed font-medium">
+                                Turn on to allow verified college coaches to view your profile, save percentage, and approved highlight clips.
+                            </p>
                         </div>
-                    </div>
-                    <p className="m-0 text-xs text-muted-foreground leading-relaxed font-medium">
-                        Turn on to allow verified college coaches to view your profile, save percentage, and approved highlight clips.
-                    </p>
-                </div>
 
-                {/* Public Connections Placeholder */}
-                <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
-                    <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Public Connections</p>
-                    <div className="rounded-[24px] p-4 bg-muted border border-border flex flex-col gap-2">
-                        <p className="m-0 text-sm font-bold text-foreground">Goalie Connections</p>
-                        <p className="m-0 text-xs text-muted-foreground leading-relaxed font-medium">
-                            Connect with other goalies, share cards, and build your network. (Coming Soon)
-                        </p>
-                    </div>
-                </div>
+                        {/* Public Connections */}
+                        <div className="rounded-[32px] p-6 bg-card border border-border shadow-sm mb-3">
+                            <p className="m-0 mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Public Connections</p>
+                            <div className="rounded-[24px] p-4 bg-muted border border-border flex flex-col gap-2">
+                                <p className="m-0 text-sm font-bold text-foreground">Goalie Network</p>
+                                <p className="m-0 text-xs text-muted-foreground leading-relaxed font-medium">
+                                    Connect with other goalies, share cards, and build your recruiting network.
+                                </p>
+                            </div>
+                        </div>
 
                 
                     </div>
