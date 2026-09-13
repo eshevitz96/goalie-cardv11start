@@ -119,6 +119,7 @@ function BookTrainingContent() {
             dayNumber: number;
             dateStr: string;
             isCurrentMonth: boolean;
+            isPast: boolean;
             availableSlotCount: number;
             hasSelected: boolean;
         } | null)[] = [];
