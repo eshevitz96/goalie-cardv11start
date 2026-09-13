@@ -42,7 +42,7 @@ export function useParentData() {
             let rosterData = await rosterService.fetchByEmailOrId(emailToSearch, localId);
 
             // DEMO FALLBACK - Allow developers/admins to bypass the 'No Card' screen
-            const ADMIN_EMAILS = ['thegoaliebrand@gmail.com', 'eshevitz96@gmail.com'];
+            const ADMIN_EMAILS = ['thegoaliebrand@gmail.com', 'eshevitz96@gmail.com', 'e@cmmncreators.com'];
             const isDevAdmin = emailToSearch && ADMIN_EMAILS.includes(emailToSearch.toLowerCase());
 
             if ((!rosterData || rosterData.length === 0) && (localId || isDevAdmin)) {

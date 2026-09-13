@@ -4,6 +4,22 @@ import { createClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe";
 import { INITIAL_TRAINING_SLOTS, TrainingSlot } from "@/constants/trainingAvailability";
 
+export const COACH_NOTIFICATION_EMAILS = [
+    "eshevitz96@gmail.com",
+    "e@cmmncreators.com"
+];
+
+export function getCoachNotificationRecipients(clientEmail?: string): string[] {
+    const recipients = [...COACH_NOTIFICATION_EMAILS];
+    if (clientEmail && clientEmail.includes('@')) {
+        const trimmed = clientEmail.trim();
+        if (!recipients.some(r => r.toLowerCase() === trimmed.toLowerCase())) {
+            recipients.push(trimmed);
+        }
+    }
+    return recipients;
+}
+
 function getSupabaseAdmin() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -337,10 +353,7 @@ export async function bookTrainingSlots(payload: {
                     </div>
                 `;
 
-                const recipients = ["eshevitz96@gmail.com"];
-                if (email && email.includes('@')) {
-                    recipients.push(email.trim());
-                }
+                const recipients = getCoachNotificationRecipients(email);
 
                 await fetch("https://api.resend.com/emails", {
                     method: "POST",
@@ -506,10 +519,7 @@ export async function rescheduleTrainingSession(payload: {
                     </div>
                 `;
 
-                const recipients = ["eshevitz96@gmail.com"];
-                if (clientEmail && clientEmail.includes('@')) {
-                    recipients.push(clientEmail.trim());
-                }
+                const recipients = getCoachNotificationRecipients(clientEmail);
 
                 await fetch("https://api.resend.com/emails", {
                     method: "POST",
@@ -608,10 +618,7 @@ export async function completeTrainingSessionAndNotify(payload: {
                     </div>
                 `;
 
-                const recipients = ["eshevitz96@gmail.com"];
-                if (clientEmail && clientEmail.includes('@')) {
-                    recipients.push(clientEmail.trim());
-                }
+                const recipients = getCoachNotificationRecipients(clientEmail);
 
                 await fetch("https://api.resend.com/emails", {
                     method: "POST",
@@ -680,8 +687,8 @@ export async function submitSessionTakeaways(payload: {
         if (process.env.RESEND_API_KEY) {
             try {
                 const recipients = authorRole === 'coach' 
-                    ? (clientEmail ? [clientEmail.trim(), "eshevitz96@gmail.com"] : ["eshevitz96@gmail.com"])
-                    : ["eshevitz96@gmail.com"];
+                    ? getCoachNotificationRecipients(clientEmail)
+                    : [...COACH_NOTIFICATION_EMAILS];
 
                 const emailHtml = `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
@@ -782,7 +789,7 @@ export async function requestCoachAccess(params: {
                     },
                     body: JSON.stringify({
                         from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Platform <onboarding@goaliecard.app>",
-                        to: ["eshevitz96@gmail.com"],
+                        to: COACH_NOTIFICATION_EMAILS,
                         subject: `CoachOS Access Request: ${userName || userEmail}`,
                         html: emailHtml,
                     }),
@@ -1494,10 +1501,7 @@ export async function saveCalendarLessonUpdate(payload: {
                     </div>
                 `;
 
-                const recipients = ["eshevitz96@gmail.com"];
-                if (resolvedEmail && resolvedEmail.includes('@') && !recipients.includes(resolvedEmail.trim())) {
-                    recipients.push(resolvedEmail.trim());
-                }
+                const recipients = getCoachNotificationRecipients(resolvedEmail);
 
                 await fetch("https://api.resend.com/emails", {
                     method: "POST",
