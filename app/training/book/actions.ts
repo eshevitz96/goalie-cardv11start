@@ -3,6 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe";
 import { INITIAL_TRAINING_SLOTS, TrainingSlot } from "@/constants/trainingAvailability";
+import { extractTakeawaysFromNotes } from "@/lib/utils";
 
 const COACH_NOTIFICATION_EMAILS = [
     "eshevitz96@gmail.com",
@@ -138,7 +139,10 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
                 .from('sessions')
                 .select('id, date, location, notes')
                 .order('date', { ascending: true });
-            existingSessions = devSessions || [];
+            existingSessions = (devSessions || []).map(s => ({
+                ...s,
+                takeaways: extractTakeawaysFromNotes(s.notes)
+            }));
         } else {
             const orFilters = [
                 `goalie_id.eq.${goalieProfileId}`,
@@ -151,7 +155,10 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
                 .select('id, date, location, notes')
                 .or(orFilters)
                 .order('date', { ascending: true });
-            existingSessions = sData || [];
+            existingSessions = (sData || []).map(s => ({
+                ...s,
+                takeaways: extractTakeawaysFromNotes(s.notes)
+            }));
         }
 
         const totalAllowance = (balance?.lessons_earned && balance.lessons_earned > 0) ? balance.lessons_earned : packageTotal;
@@ -675,8 +682,14 @@ export async function submitSessionTakeaways(payload: {
             : (authorName || 'Athlete/Parent');
 
         const dateStr = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
-        const takeawayEntry = `\n\n[Takeaways by ${displayName} on ${dateStr}]:\n${takeaways}`;
-        const updatedNotes = `${existingNotes}${takeawayEntry}`.trim();
+        const takeawayEntry = `[Takeaways by ${displayName} on ${dateStr}]:\n${takeaways}`;
+        
+        let baseNotes = existingNotes;
+        if (baseNotes.includes('[Takeaways by')) {
+            const idx = baseNotes.indexOf('[Takeaways by');
+            baseNotes = baseNotes.substring(0, idx).trim();
+        }
+        const updatedNotes = baseNotes ? `${baseNotes}\n\n${takeawayEntry}`.trim() : takeawayEntry.trim();
 
         await supabase
             .from('sessions')
@@ -1000,11 +1013,7 @@ export async function fetchCoachOSData(userId?: string, userEmail?: string) {
                                sess.status === 'completed' || 
                                (sess.date && new Date(sess.date).getTime() < Date.now() && !sess.notes?.includes('Pending'));
 
-            let extractedTakeaways = sess.takeaways || "";
-            if (!extractedTakeaways && sess.notes && sess.notes.includes('Coach Notes:')) {
-                const parts = sess.notes.split('Coach Notes:');
-                extractedTakeaways = parts[1]?.trim() || "";
-            }
+            const extractedTakeaways = extractTakeawaysFromNotes(sess.notes) || sess.takeaways || "";
 
             return {
                 id: sess.id,
@@ -1343,7 +1352,8 @@ export async function getCalendarPrivateLessons() {
                 athlete_name: name,
                 team,
                 email,
-                sport: "Lacrosse"
+                sport: "Lacrosse",
+                takeaways: extractTakeawaysFromNotes(sess.notes) || sess.takeaways || ""
             };
         });
 

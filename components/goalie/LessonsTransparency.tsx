@@ -28,6 +28,7 @@ import {
     submitSessionTakeaways,
     getGoalieBookingProfile
 } from "@/app/training/book/actions";
+import { extractTakeawaysFromNotes } from "@/lib/utils";
 
 interface LessonsTransparencyProps {
     goalieProfileId: string | null;
@@ -56,6 +57,7 @@ interface SessionRecord {
     session_number?: number;
     lesson_number?: number;
     start_time?: string;
+    takeaways?: string;
 }
 
 export function LessonsTransparency({ 
@@ -399,11 +401,19 @@ export function LessonsTransparency({
                                                 <span className="truncate">{session.location || "Bell Memorial Park"}</span>
                                             </div>
 
-                                            {session.notes && (
-                                                <p className="text-xs text-zinc-300 bg-zinc-950/60 border-l-2 border-emerald-500/50 p-2 rounded-r-lg mt-1 leading-relaxed italic font-medium whitespace-pre-line">
-                                                    "{session.notes}"
-                                                </p>
-                                            )}
+                                            {(() => {
+                                                const extractedTakeaway = session.takeaways || extractTakeawaysFromNotes(session.notes);
+                                                return extractedTakeaway ? (
+                                                    <div className="bg-zinc-950/80 border border-emerald-500/30 rounded-lg p-2.5 mt-1">
+                                                        <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                                            <FileText size={10} /> Coach Takeaways
+                                                        </div>
+                                                        <p className="text-xs text-zinc-200 italic leading-relaxed whitespace-pre-line font-medium">
+                                                            "{extractedTakeaway}"
+                                                        </p>
+                                                    </div>
+                                                ) : null;
+                                            })()}
 
                                             <div className="flex items-center gap-2 pt-1 flex-wrap">
                                                 {!isPast && !isCompleted && (
@@ -427,13 +437,14 @@ export function LessonsTransparency({
 
                                                 <button
                                                     onClick={() => {
+                                                        const existingT = session.takeaways || extractTakeawaysFromNotes(session.notes);
                                                         setTakeawaySession(session);
-                                                        setTakeawayText("");
+                                                        setTakeawayText(existingT || "");
                                                     }}
                                                     className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 flex items-center gap-1 transition-all"
                                                 >
                                                     <FileText size={10} />
-                                                    {session.notes && session.notes.includes('[Takeaways') ? "Edit Takeaways" : "+ Add Takeaway"}
+                                                    {(session.takeaways || extractTakeawaysFromNotes(session.notes)) ? "Edit Takeaways" : "+ Add Takeaway"}
                                                 </button>
 
                                                 {isCoach && !isCompleted && (

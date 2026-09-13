@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { ATHLETE_TRAINING_HISTORY, ATHLETE_PROFILE_METRICS } from "@/lib/athleteTrainingHistory";
 import { getCalendarPrivateLessons, fetchCoachOSData, saveCalendarLessonUpdate, deleteCalendarLesson, createCalendarPrivateLesson } from "@/app/training/book/actions";
+import { extractTakeawaysFromNotes } from "@/lib/utils";
 import { useToast } from "@/context/ToastContext";
 
 type ViewMode = "day" | "week" | "month" | "year";
@@ -2216,12 +2217,15 @@ export default function CalendarPage() {
                             <span className="flex items-center gap-1.5"><MapPin size={13} className="text-emerald-400" /> {pSess.location || "Bell Memorial Park"}</span>
                           </div>
                         </div>
-                        {pSess.notes && (
-                          <div className="p-3 bg-card/60 rounded-xl border border-border/50 text-xs text-muted-foreground mt-2">
-                            <span className="font-bold text-foreground">Coach Takeaways: </span>
-                            {pSess.notes}
-                          </div>
-                        )}
+                        {(() => {
+                          const t = pSess.takeaways || extractTakeawaysFromNotes(pSess.notes);
+                          return t ? (
+                            <div className="p-3 bg-card/60 rounded-xl border border-border/50 text-xs text-muted-foreground mt-2">
+                              <span className="font-bold text-foreground">Coach Takeaways: </span>
+                              {t}
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                     );
                   })}
@@ -2818,11 +2822,14 @@ export default function CalendarPage() {
                         <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
                           <MapPin size={11} className="text-[#00E676]" /> {pSess.location || "Bell Memorial Park"}
                         </p>
-                        {pSess.notes && (
-                          <p className="text-[11px] text-muted-foreground line-clamp-2 italic pt-1 border-t border-border/40">
-                            "{pSess.notes}"
-                          </p>
-                        )}
+                        {(() => {
+                          const t = pSess.takeaways || extractTakeawaysFromNotes(pSess.notes);
+                          return t ? (
+                            <p className="text-[11px] text-muted-foreground line-clamp-2 italic pt-1 border-t border-border/40">
+                              "{t}"
+                            </p>
+                          ) : null;
+                        })()}
                       </div>
                     );
                   })}
