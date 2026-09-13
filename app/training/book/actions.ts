@@ -696,11 +696,37 @@ export async function submitSessionTakeaways(payload: {
             .update({ notes: updatedNotes })
             .eq('id', sessionId);
 
+        // Auto-resolve client email if not explicitly provided
+        let targetEmail = clientEmail || '';
+        if (!targetEmail || !targetEmail.includes('@')) {
+            if (session.roster_id) {
+                const { data: r } = await supabase
+                    .from('roster_uploads')
+                    .select('email, guardian_email, athlete_email')
+                    .eq('id', session.roster_id)
+                    .maybeSingle();
+                if (r) targetEmail = r.email || r.guardian_email || r.athlete_email || '';
+            }
+            if (!targetEmail && session.notes) {
+                const { data: rosters } = await supabase
+                    .from('roster_uploads')
+                    .select('goalie_name, email, guardian_email, athlete_email');
+                if (rosters) {
+                    for (const r of rosters) {
+                        if (r.goalie_name && session.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
+                            targetEmail = r.email || r.guardian_email || r.athlete_email || '';
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         // Notify other party
         if (process.env.RESEND_API_KEY) {
             try {
                 const recipients = authorRole === 'coach' 
-                    ? getCoachNotificationRecipients(clientEmail)
+                    ? getCoachNotificationRecipients(targetEmail)
                     : [...COACH_NOTIFICATION_EMAILS];
 
                 const emailHtml = `
@@ -710,6 +736,10 @@ export async function submitSessionTakeaways(payload: {
                         
                         <div style="background: #f8fafc; border-left: 4px solid #00E676; padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 14px; color: #1e293b; line-height: 1.6;">
                             ${takeaways.replace(/\n/g, '<br/>')}
+                        </div>
+
+                        <div style="margin-top: 24px;">
+                            <a href="https://goaliecard.app/dashboard" style="display: inline-block; background: #00E676; color: #000; font-weight: 700; font-size: 13px; text-decoration: none; padding: 10px 18px; border-radius: 8px;">View in Goalie Card</a>
                         </div>
 
                         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
@@ -726,7 +756,7 @@ export async function submitSessionTakeaways(payload: {
                     body: JSON.stringify({
                         from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Private Training <onboarding@goaliecard.app>",
                         to: recipients,
-                        subject: `Lesson Takeaway Added: ${authorName}`,
+                        subject: `Lesson Takeaway Added: ${authorName || displayName}`,
                         html: emailHtml,
                     }),
                 });
@@ -1007,6 +1037,14 @@ export async function fetchCoachOSData(userId?: string, userEmail?: string) {
                 else if (sess.notes.includes("Landon Holcombe")) name = "Landon Holcombe";
                 else if (sess.notes.includes("Grant Freeman")) name = "Grant Freeman";
                 else if (sess.notes.includes("Susie mcelheny") || sess.notes.includes("Susie McElheny")) name = "Susie McElheny";
+            }
+
+            if (name !== "Athlete" && !email) {
+                const matchByName = rosterList.find(r => r.goalie_name && r.goalie_name.toLowerCase() === name.toLowerCase());
+                if (matchByName) {
+                    email = matchByName.email || matchByName.guardian_email || matchByName.athlete_email || "";
+                    phone = matchByName.phone || matchByName.guardian_phone || phone;
+                }
             }
 
             const isCompleted = sess.notes?.includes('[Session Completed') || 
@@ -1337,6 +1375,13 @@ export async function getCalendarPrivateLessons() {
                 else if (sess.notes.includes("Landon Holcombe")) name = "Landon Holcombe";
                 else if (sess.notes.includes("Grant Freeman")) name = "Grant Freeman";
                 else if (sess.notes.includes("Susie mcelheny") || sess.notes.includes("Susie McElheny")) name = "Susie McElheny";
+            }
+
+            if (name !== "Athlete" && !email) {
+                const matchByName = rosterList.find(r => r.goalie_name && r.goalie_name.toLowerCase() === name.toLowerCase());
+                if (matchByName) {
+                    email = matchByName.email || matchByName.guardian_email || matchByName.athlete_email || "";
+                }
             }
 
             return {
