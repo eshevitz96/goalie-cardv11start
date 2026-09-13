@@ -8,22 +8,29 @@ import { useState } from "react";
 const PACKAGES = [
     { 
         id: 1, 
+        name: "Monthly 4-Pack Membership", 
+        basePrice: 400, 
+        fee: 12.26, 
+        totalPrice: 412.26, 
+        billingType: "Recurring Monthly",
+        isRecurring: true,
+        mode: "subscription",
+        badge: "Monthly Membership",
+        description: "Billed monthly • 4 private training sessions per billing cycle ($100/lesson)",
+        recommended: true 
+    },
+    { 
+        id: 2, 
         name: "Single Private Session", 
         basePrice: 125, 
         fee: 4.04, 
         totalPrice: 129.04, 
-        description: "1-on-1 private goalie training session (60 mins)",
-        saves: 0 
-    },
-    { 
-        id: 2, 
-        name: "Standard 4-Pack Block", 
-        basePrice: 400, 
-        fee: 12.26, 
-        totalPrice: 412.26, 
-        description: "4 private training sessions with tailored debriefs ($100/lesson)",
-        saves: 100, 
-        recommended: true 
+        billingType: "One-Time Payment",
+        isRecurring: false,
+        mode: "payment",
+        badge: "Pay-As-You-Go",
+        description: "One-time session • 1-on-1 private goalie training session (60 mins)",
+        recommended: false 
     },
     { 
         id: 3, 
@@ -31,8 +38,12 @@ const PACKAGES = [
         basePrice: 950, 
         fee: 28.50, 
         totalPrice: 978.50, 
-        description: "10 private training sessions with full analytics ($95/lesson)",
-        saves: 300 
+        billingType: "One-Time Payment",
+        isRecurring: false,
+        mode: "payment",
+        badge: "10-Lesson Block",
+        description: "One-time payment • 10 private training sessions with full analytics ($95/lesson)",
+        recommended: false 
     },
 ];
 
@@ -52,6 +63,7 @@ export default function RenewSession() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     planId: `private_${currentPkg.id}`,
+                    mode: currentPkg.mode,
                     amount: Math.round(currentPkg.totalPrice * 100),
                     packageName: currentPkg.name,
                     baseAmount: currentPkg.basePrice,
@@ -97,9 +109,11 @@ export default function RenewSession() {
                                     : "bg-black border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700"
                                 }`}
                         >
-                            {pack.recommended && (
-                                <div className="absolute -top-3 left-6 px-3 py-1 bg-[#00E676] text-black text-[10px] font-black uppercase tracking-widest rounded-full">
-                                    Most Popular
+                            {pack.badge && (
+                                <div className={`absolute -top-3 left-6 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${
+                                    pack.isRecurring ? "bg-[#00E676] text-black" : "bg-zinc-800 text-zinc-300 border border-zinc-700"
+                                }`}>
+                                    {pack.badge}
                                 </div>
                             )}
                             <div className="flex justify-between items-center">
@@ -112,8 +126,10 @@ export default function RenewSession() {
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="text-right">
-                                        <div className="text-xl font-bold font-mono text-white">${pack.totalPrice.toFixed(2)}</div>
-                                        <div className="text-[10px] text-zinc-400 font-medium">total with fee</div>
+                                        <div className="text-xl font-bold font-mono text-white">
+                                            ${pack.totalPrice.toFixed(2)}{pack.isRecurring ? '/mo' : ''}
+                                        </div>
+                                        <div className="text-[10px] text-zinc-400 font-medium">{pack.billingType}</div>
                                     </div>
                                     <div className={`w-6 h-6 rounded-full border flex items-center justify-center ${selectedPack === pack.id ? "bg-[#00E676] border-[#00E676] text-black font-bold" : "border-zinc-600"
                                         }`}>
