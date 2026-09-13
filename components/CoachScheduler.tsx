@@ -149,25 +149,15 @@ export function CoachScheduler() {
             const startDateTime = new Date(`${dateToUse}T${timeToUse}`);
             const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60 * 1000);
 
-            // Robust insert handling: attempts location column, falls back if schema differences exist
+            // Robust insert handling: inserts base fields
             const { error } = await supabase.from('coach_availability').insert({
                 coach_id: user.id,
                 start_time: startDateTime.toISOString(),
                 end_time: endDateTime.toISOString(),
-                location: locToUse,
-                notes: `Location: ${locToUse}`
+                is_booked: false
             });
 
-            if (error && error.message?.toLowerCase().includes('location')) {
-                // Fallback if DB table does not have 'location' column
-                const { error: fbErr } = await supabase.from('coach_availability').insert({
-                    coach_id: user.id,
-                    start_time: startDateTime.toISOString(),
-                    end_time: endDateTime.toISOString(),
-                    notes: `Location: ${locToUse}`
-                });
-                if (fbErr) throw fbErr;
-            } else if (error) {
+            if (error) {
                 throw error;
             }
 
@@ -218,15 +208,22 @@ export function CoachScheduler() {
             satDate.setDate(currentWeekMonday.getDate() + 5);
             const satStr = satDate.toISOString().split('T')[0];
 
+            const sunDate = new Date(currentWeekMonday);
+            sunDate.setDate(currentWeekMonday.getDate() + 6);
+            const sunStr = sunDate.toISOString().split('T')[0];
+
             const templateSlots = [
-                { date: wedStr, time: "15:00", location: "Bell Memorial Park" },
-                { date: wedStr, time: "16:00", location: "Bell Memorial Park" },
-                { date: thuStr, time: "18:00", location: "Milton" },
-                { date: thuStr, time: "19:00", location: "Milton" },
-                { date: friStr, time: "18:00", location: "Lambert" },
-                { date: friStr, time: "19:00", location: "Lambert" },
-                { date: satStr, time: "09:00", location: "Milton" },
-                { date: satStr, time: "10:00", location: "Milton" }
+                { date: wedStr, time: "15:30", location: "Bell Memorial Park" },
+                { date: wedStr, time: "16:30", location: "Bell Memorial Park" },
+                { date: thuStr, time: "16:30", location: "Milton" },
+                { date: thuStr, time: "17:30", location: "Milton" },
+                { date: thuStr, time: "18:30", location: "Milton" },
+                { date: friStr, time: "17:30", location: "Lambert" },
+                { date: friStr, time: "18:30", location: "Lambert" },
+                { date: satStr, time: "09:00", location: "Bell Memorial Park" },
+                { date: satStr, time: "10:00", location: "Bell Memorial Park" },
+                { date: sunStr, time: "18:00", location: "Lambert" },
+                { date: sunStr, time: "19:00", location: "Lambert" }
             ];
 
             const inserts = templateSlots.map(ts => {
@@ -236,18 +233,16 @@ export function CoachScheduler() {
                     coach_id: user.id,
                     start_time: s.toISOString(),
                     end_time: e.toISOString(),
-                    location: ts.location,
-                    notes: `Location: ${ts.location}`
+                    is_booked: false
                 };
             });
 
             const { error } = await supabase.from('coach_availability').insert(inserts);
-            if (error && error.message?.toLowerCase().includes('location')) {
-                const fallbackInserts = inserts.map(({ location, ...rest }) => rest);
-                await supabase.from('coach_availability').insert(fallbackInserts);
+            if (error) {
+                throw error;
             }
 
-            setActionSuccess("Standard 8-slot weekly template added!");
+            setActionSuccess("Standard 11-slot weekly template added!");
             setTimeout(() => setActionSuccess(null), 3000);
             await fetchSlots();
         } catch (err: any) {
@@ -287,19 +282,23 @@ export function CoachScheduler() {
             const match = slot.notes.match(/Location:\s*([^\n;]+)/i);
             if (match && match[1]) return match[1].trim();
         }
-        return "Bell Memorial Park";
+        return "Training Facility";
     };
 
-    // Filter slots for a given Date object (YYYY-MM-DD)
+    // Filter slots for a given Date object (YYYY-MM-DD) in local browser time
     const getSlotsForDay = (day: Date) => {
         const y = day.getFullYear();
         const m = String(day.getMonth() + 1).padStart(2, '0');
         const d = String(day.getDate()).padStart(2, '0');
-        const dateStr = `${y}-${m}-${d}`;
+        const targetDateStr = `${y}-${m}-${d}`;
 
         return slots.filter(s => {
             if (!s.start_time) return false;
-            return s.start_time.startsWith(dateStr);
+            const slotDate = new Date(s.start_time);
+            const sy = slotDate.getFullYear();
+            const sm = String(slotDate.getMonth() + 1).padStart(2, '0');
+            const sd = String(slotDate.getDate()).padStart(2, '0');
+            return `${sy}-${sm}-${sd}` === targetDateStr;
         });
     };
 
