@@ -825,8 +825,37 @@ export default function CoachDashboard() {
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {filteredSessions.map((sess) => {
-                                        const sessDate = new Date(sess.date);
-                                        const isToday = new Date().toDateString() === sessDate.toDateString();
+                                        const rawDate = (sess as any).start_time || sess.date;
+                                        let dateDisplay = "Scheduled";
+                                        let timeDisplay = "TBD";
+                                        let isToday = false;
+
+                                        if (rawDate) {
+                                            const [datePart, timeWithOffset] = rawDate.split("T");
+                                            if (datePart) {
+                                                const [y, m, d] = datePart.split("-").map(Number);
+                                                const localD = new Date(y, m - 1, d);
+                                                dateDisplay = localD.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                                                isToday = new Date().toDateString() === localD.toDateString();
+                                            }
+
+                                            // Time parsing: check notes first, then ISO time
+                                            const notesTimeMatch = sess.notes ? sess.notes.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)(?:\s*–\s*\d{1,2}:\d{2}\s*(?:AM|PM))?)/i) : null;
+                                            if (notesTimeMatch && notesTimeMatch[1]) {
+                                                timeDisplay = notesTimeMatch[1];
+                                            } else if (timeWithOffset) {
+                                                const [hStr, mStr] = timeWithOffset.split(":");
+                                                let h = parseInt(hStr, 10);
+                                                const min = parseInt(mStr, 10);
+                                                if (!isNaN(h) && !isNaN(min)) {
+                                                    const isPM = h >= 12;
+                                                    let displayHour = h % 12;
+                                                    if (displayHour === 0) displayHour = 12;
+                                                    const padM = String(min).padStart(2, "0");
+                                                    timeDisplay = `${displayHour}:${padM} ${isPM ? "PM" : "AM"}`;
+                                                }
+                                            }
+                                        }
 
                                         return (
                                             <div 
@@ -842,7 +871,7 @@ export default function CoachDashboard() {
                                                         <div className="flex items-center gap-2">
                                                             <div className="px-2.5 py-1 bg-muted rounded-lg text-xs font-bold text-foreground flex items-center gap-1.5">
                                                                 <Calendar size={12} className="text-[#00E676]" />
-                                                                {sessDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                                {dateDisplay}
                                                             </div>
                                                             {isToday && (
                                                                 <span className="bg-[#00E676] text-black text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
@@ -888,7 +917,7 @@ export default function CoachDashboard() {
                                                             </div>
                                                             <div className="flex items-center gap-1.5 shrink-0">
                                                                 <Clock size={13} className="text-muted-foreground shrink-0" />
-                                                                <span>{sessDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                <span>{timeDisplay}</span>
                                                             </div>
                                                         </div>
                                                     </div>

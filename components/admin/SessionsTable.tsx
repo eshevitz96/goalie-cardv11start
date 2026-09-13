@@ -29,12 +29,40 @@ export function SessionsTable({ sessions, setSessions }: SessionsTableProps) {
                         </tr>
                     </thead>
                     <tbody>
-                        {sessions.map((session, i) => (
-                            <tr key={i} className="border-b border-white/5 hover:bg-white/5">
-                                <td className="p-4 font-mono text-zinc-400">
-                                    {new Date(session.date).toLocaleDateString()}
-                                    <div className="text-xs text-zinc-600">{new Date(session.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                                </td>
+                        {sessions.map((session, i) => {
+                            const rawDate = session.start_time || session.date;
+                            let dateDisplay = "Scheduled";
+                            let timeDisplay = "TBD";
+
+                            if (rawDate) {
+                                const [datePart, timeWithOffset] = rawDate.split("T");
+                                if (datePart) {
+                                    const [y, m, d] = datePart.split("-").map(Number);
+                                    dateDisplay = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                                }
+                                const notesTimeMatch = session.notes ? session.notes.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)(?:\s*–\s*\d{1,2}:\d{2}\s*(?:AM|PM))?)/i) : null;
+                                if (notesTimeMatch && notesTimeMatch[1]) {
+                                    timeDisplay = notesTimeMatch[1];
+                                } else if (timeWithOffset) {
+                                    const [hStr, mStr] = timeWithOffset.split(":");
+                                    let h = parseInt(hStr, 10);
+                                    const min = parseInt(mStr, 10);
+                                    if (!isNaN(h) && !isNaN(min)) {
+                                        const isPM = h >= 12;
+                                        let displayHour = h % 12;
+                                        if (displayHour === 0) displayHour = 12;
+                                        const padM = String(min).padStart(2, "0");
+                                        timeDisplay = `${displayHour}:${padM} ${isPM ? "PM" : "AM"}`;
+                                    }
+                                }
+                            }
+
+                            return (
+                                <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+                                    <td className="p-4 font-mono text-zinc-400">
+                                        {dateDisplay}
+                                        <div className="text-xs text-zinc-600">{timeDisplay}</div>
+                                    </td>
                                 <td className="p-4">
                                     <div className="font-bold">{session.roster?.goalie_name || "Unknown"}</div>
                                     <div className="text-xs text-primary font-mono">{session.roster?.assigned_unique_id}</div>
@@ -67,7 +95,8 @@ export function SessionsTable({ sessions, setSessions }: SessionsTableProps) {
                                     </button>
                                 </td>
                             </tr>
-                        ))}
+                        );
+                    })}
                     </tbody>
                 </table>
                 {sessions.length === 0 && (
