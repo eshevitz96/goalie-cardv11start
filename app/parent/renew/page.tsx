@@ -6,14 +6,69 @@ import Link from "next/link";
 import { useState } from "react";
 
 const PACKAGES = [
-    { id: 1, name: "Single Session", price: 150, saves: 0 },
-    { id: 2, name: "Standard 4-Pack", price: 500, saves: 100, recommended: true },
-    { id: 3, name: "Pro 10-Pack", price: 1200, saves: 300 },
+    { 
+        id: 1, 
+        name: "Single Private Session", 
+        basePrice: 125, 
+        fee: 4.04, 
+        totalPrice: 129.04, 
+        description: "1-on-1 private goalie training session (60 mins)",
+        saves: 0 
+    },
+    { 
+        id: 2, 
+        name: "Standard 4-Pack Block", 
+        basePrice: 500, 
+        fee: 15.10, 
+        totalPrice: 515.10, 
+        description: "4 private training sessions with tailored debriefs",
+        saves: 0, 
+        recommended: true 
+    },
+    { 
+        id: 3, 
+        name: "Pro 10-Pack Block", 
+        basePrice: 1200, 
+        fee: 35.90, 
+        totalPrice: 1235.90, 
+        description: "10 private training sessions with full analytics",
+        saves: 50 
+    },
 ];
 
 export default function RenewSession() {
-    const [selectedPack, setSelectedPack] = useState(2);
+    const [selectedPack, setSelectedPack] = useState(1);
     const [waiverAccepted, setWaiverAccepted] = useState(false);
+    const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+    const currentPkg = PACKAGES.find(p => p.id === selectedPack) || PACKAGES[0];
+
+    const handleCheckout = async () => {
+        if (!waiverAccepted) return;
+        setIsCheckingOut(true);
+        try {
+            const res = await fetch("/api/stripe/checkout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    planId: `private_${currentPkg.id}`,
+                    amount: Math.round(currentPkg.totalPrice * 100),
+                    packageName: currentPkg.name,
+                    baseAmount: currentPkg.basePrice,
+                    feeAmount: currentPkg.fee
+                })
+            });
+            const data = await res.json();
+            if (data?.url) {
+                window.location.href = data.url;
+            } else {
+                alert("Redirecting to checkout...");
+            }
+        } catch (err: any) {
+            console.error("Checkout error:", err);
+            setIsCheckingOut(false);
+        }
+    };
 
     return (
         <main className="min-h-screen bg-black text-white p-4 md:p-8">
@@ -27,7 +82,7 @@ export default function RenewSession() {
                         <ArrowLeft size={20} />
                     </Link>
                     <h1 className="text-2xl font-black italic tracking-tighter">
-                        RENEW <span className="text-primary">SESSIONS</span>
+                        TRAINING <span className="text-[#00E676]">PACKAGES & RENEWALS</span>
                     </h1>
                 </div>
 
@@ -38,23 +93,29 @@ export default function RenewSession() {
                             key={pack.id}
                             onClick={() => setSelectedPack(pack.id)}
                             className={`relative p-6 border rounded-3xl cursor-pointer transition-all ${selectedPack === pack.id
-                                    ? "bg-zinc-900 border-primary shadow-lg shadow-primary/10"
+                                    ? "bg-zinc-900 border-[#00E676] shadow-lg shadow-[#00E676]/10"
                                     : "bg-black border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700"
                                 }`}
                         >
                             {pack.recommended && (
-                                <div className="absolute -top-3 left-6 px-3 py-1 bg-primary text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
-                                    Best Value
+                                <div className="absolute -top-3 left-6 px-3 py-1 bg-[#00E676] text-black text-[10px] font-black uppercase tracking-widest rounded-full">
+                                    Most Popular
                                 </div>
                             )}
                             <div className="flex justify-between items-center">
-                                <div>
+                                <div className="space-y-1">
                                     <h3 className={`font-bold text-lg ${selectedPack === pack.id ? 'text-white' : 'text-zinc-300'}`}>{pack.name}</h3>
-                                    {pack.saves > 0 && <span className="text-xs font-bold text-green-500">Save ${pack.saves}</span>}
+                                    <p className="text-xs text-zinc-400">{pack.description}</p>
+                                    <p className="text-[11px] text-zinc-500 font-mono">
+                                        ${pack.basePrice} rate + ${pack.fee.toFixed(2)} card fee
+                                    </p>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    <div className="text-xl font-bold font-mono">${pack.price}</div>
-                                    <div className={`w-6 h-6 rounded-full border flex items-center justify-center ${selectedPack === pack.id ? "bg-primary border-primary text-white" : "border-zinc-600"
+                                    <div className="text-right">
+                                        <div className="text-xl font-bold font-mono text-white">${pack.totalPrice.toFixed(2)}</div>
+                                        <div className="text-[10px] text-zinc-400 font-medium">total with fee</div>
+                                    </div>
+                                    <div className={`w-6 h-6 rounded-full border flex items-center justify-center ${selectedPack === pack.id ? "bg-[#00E676] border-[#00E676] text-black font-bold" : "border-zinc-600"
                                         }`}>
                                         {selectedPack === pack.id && <Check size={14} />}
                                     </div>
@@ -93,11 +154,12 @@ export default function RenewSession() {
                     </label>
 
                     <button
-                        disabled={!waiverAccepted}
-                        className="w-full py-4 bg-white text-black rounded-xl font-bold shadow-lg hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                        onClick={handleCheckout}
+                        disabled={!waiverAccepted || isCheckingOut}
+                        className="w-full py-4 bg-[#00E676] text-black rounded-xl font-bold text-sm uppercase tracking-wider shadow-lg hover:bg-[#00E676]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                     >
                         <CreditCard size={18} />
-                        Pay ${PACKAGES.find(p => p.id === selectedPack)?.price}
+                        {isCheckingOut ? "Connecting to Checkout..." : `Pay $${currentPkg.totalPrice.toFixed(2)} (${currentPkg.name})`}
                     </button>
                 </div>
             </div>
