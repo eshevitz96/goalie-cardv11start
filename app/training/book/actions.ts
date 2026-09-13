@@ -4,12 +4,12 @@ import { createClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe";
 import { INITIAL_TRAINING_SLOTS, TrainingSlot } from "@/constants/trainingAvailability";
 
-export const COACH_NOTIFICATION_EMAILS = [
+const COACH_NOTIFICATION_EMAILS = [
     "eshevitz96@gmail.com",
     "e@cmmncreators.com"
 ];
 
-export function getCoachNotificationRecipients(clientEmail?: string): string[] {
+function getCoachNotificationRecipients(clientEmail?: string): string[] {
     const recipients = [...COACH_NOTIFICATION_EMAILS];
     if (clientEmail && clientEmail.includes('@')) {
         const trimmed = clientEmail.trim();
