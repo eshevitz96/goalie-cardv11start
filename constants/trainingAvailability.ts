@@ -19,9 +19,9 @@ export interface TrainingSlot {
  */
 const WEEKLY_TEMPLATE = [
     // Wednesday (3)
+    { dayOfWeek: 3, startTime: '2:00 PM', endTime: '3:00 PM', timeDisplay: '2:00 PM – 3:00 PM', location: 'Bell Memorial Park' },
     { dayOfWeek: 3, startTime: '3:00 PM', endTime: '4:00 PM', timeDisplay: '3:00 PM – 4:00 PM', location: 'Bell Memorial Park' },
     { dayOfWeek: 3, startTime: '4:00 PM', endTime: '5:00 PM', timeDisplay: '4:00 PM – 5:00 PM', location: 'Bell Memorial Park' },
-    { dayOfWeek: 3, startTime: '5:00 PM', endTime: '6:00 PM', timeDisplay: '5:00 PM – 6:00 PM', location: 'Bell Memorial Park' },
     
     // Thursday (4)
     { dayOfWeek: 4, startTime: '6:00 PM', endTime: '7:00 PM', timeDisplay: '6:00 PM – 7:00 PM', location: 'Milton' },
