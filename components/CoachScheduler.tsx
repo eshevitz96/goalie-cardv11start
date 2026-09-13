@@ -11,7 +11,6 @@ import {
     MapPin, 
     ChevronLeft, 
     ChevronRight, 
-    Sparkles, 
     Check, 
     CalendarDays, 
     List
@@ -19,18 +18,21 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 const PRESET_LOCATIONS = [
-    "Bell Memorial Park",
+    "Bell Mem",
     "Milton",
     "Lambert",
-    "Alpharetta",
     "Custom"
 ];
 
 const PRESET_TIMES = [
     { label: "3:00 PM", value: "15:00" },
+    { label: "3:30 PM", value: "15:30" },
     { label: "4:00 PM", value: "16:00" },
+    { label: "4:30 PM", value: "16:30" },
     { label: "5:00 PM", value: "17:00" },
+    { label: "5:30 PM", value: "17:30" },
     { label: "6:00 PM", value: "18:00" },
+    { label: "6:30 PM", value: "18:30" },
     { label: "7:00 PM", value: "19:00" }
 ];
 
@@ -59,9 +61,9 @@ export function CoachScheduler() {
         const today = new Date();
         return today.toISOString().split('T')[0];
     });
-    const [selectedTime, setSelectedTime] = useState<string>("17:00");
+    const [selectedTime, setSelectedTime] = useState<string>("16:30");
     const [durationMinutes, setDurationMinutes] = useState<number>(60);
-    const [selectedLocation, setSelectedLocation] = useState<string>("Bell Memorial Park");
+    const [selectedLocation, setSelectedLocation] = useState<string>("Bell Mem");
     const [customLocation, setCustomLocation] = useState<string>("");
     const [isCustomLoc, setIsCustomLoc] = useState<boolean>(false);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -182,74 +184,6 @@ export function CoachScheduler() {
             }
         } catch (err) {
             console.error("Error deleting slot:", err);
-        }
-    };
-
-    // 1-Click: Apply Standard Weekly Template
-    const handleApplyStandardTemplate = async () => {
-        setLoading(true);
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            const wedDate = new Date(currentWeekMonday);
-            wedDate.setDate(currentWeekMonday.getDate() + 2);
-            const wedStr = wedDate.toISOString().split('T')[0];
-
-            const thuDate = new Date(currentWeekMonday);
-            thuDate.setDate(currentWeekMonday.getDate() + 3);
-            const thuStr = thuDate.toISOString().split('T')[0];
-
-            const friDate = new Date(currentWeekMonday);
-            friDate.setDate(currentWeekMonday.getDate() + 4);
-            const friStr = friDate.toISOString().split('T')[0];
-
-            const satDate = new Date(currentWeekMonday);
-            satDate.setDate(currentWeekMonday.getDate() + 5);
-            const satStr = satDate.toISOString().split('T')[0];
-
-            const sunDate = new Date(currentWeekMonday);
-            sunDate.setDate(currentWeekMonday.getDate() + 6);
-            const sunStr = sunDate.toISOString().split('T')[0];
-
-            const templateSlots = [
-                { date: wedStr, time: "15:30", location: "Bell Memorial Park" },
-                { date: wedStr, time: "16:30", location: "Bell Memorial Park" },
-                { date: thuStr, time: "16:30", location: "Milton" },
-                { date: thuStr, time: "17:30", location: "Milton" },
-                { date: thuStr, time: "18:30", location: "Milton" },
-                { date: friStr, time: "17:30", location: "Lambert" },
-                { date: friStr, time: "18:30", location: "Lambert" },
-                { date: satStr, time: "09:00", location: "Bell Memorial Park" },
-                { date: satStr, time: "10:00", location: "Bell Memorial Park" },
-                { date: sunStr, time: "18:00", location: "Lambert" },
-                { date: sunStr, time: "19:00", location: "Lambert" }
-            ];
-
-            const inserts = templateSlots.map(ts => {
-                const s = new Date(`${ts.date}T${ts.time}`);
-                const e = new Date(s.getTime() + 60 * 60 * 1000);
-                return {
-                    coach_id: user.id,
-                    start_time: s.toISOString(),
-                    end_time: e.toISOString(),
-                    is_booked: false
-                };
-            });
-
-            const { error } = await supabase.from('coach_availability').insert(inserts);
-            if (error) {
-                throw error;
-            }
-
-            setActionSuccess("Standard 11-slot weekly template added!");
-            setTimeout(() => setActionSuccess(null), 3000);
-            await fetchSlots();
-        } catch (err: any) {
-            console.error("Error applying template:", err);
-            alert("Failed to apply standard template: " + err.message);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -391,19 +325,10 @@ export function CoachScheduler() {
 
             {/* QUICK ADD & LOCATION BUILDER BAR */}
             <div className="bg-muted/40 border border-border/80 rounded-2xl p-4 sm:p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                         <Plus size={13} className="text-[#00E676]" /> Add Training Slot
                     </span>
-                    <button
-                        type="button"
-                        onClick={handleApplyStandardTemplate}
-                        disabled={loading}
-                        className="text-[11px] font-bold text-[#00E676] hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                        <Sparkles size={12} />
-                        <span>Apply Standard 8-Slot Weekly Template</span>
-                    </button>
                 </div>
 
                 {/* 1. Location Selection */}
@@ -436,7 +361,7 @@ export function CoachScheduler() {
                         <div className="mt-2.5">
                             <input
                                 type="text"
-                                placeholder="Enter custom facility or field name (e.g. Alpharetta High Turf)..."
+                                placeholder="Enter custom facility or field name (e.g. Field Name)..."
                                 value={customLocation}
                                 onChange={(e) => setCustomLocation(e.target.value)}
                                 className="w-full bg-card border border-border focus:border-[#00E676] rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none transition-colors"
