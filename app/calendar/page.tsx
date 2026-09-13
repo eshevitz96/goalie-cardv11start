@@ -686,6 +686,119 @@ export default function CalendarPage() {
     return false;
   };
 
+  // Activity Style Resolver for cohesive category color-coding across all calendar views
+  const getActivityStyle = (item: any) => {
+    if (!item) {
+      return {
+        category: 'strength',
+        tag: 'WORKOUT',
+        chipClass: 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/35 hover:border-amber-400 text-amber-300',
+        dotClass: 'bg-amber-400',
+        tagClass: 'bg-amber-400 text-black font-black',
+        cardClass: 'bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40',
+        accentColor: '#F59E0B'
+      };
+    }
+
+    // 1. Coaching Lessons / Client Bookings (Coach Track - Lacrosse) -> Emerald #00E676
+    if (item.athlete_name || item.session_number || item.lesson_number || item.roster_id) {
+      return {
+        category: 'coaching',
+        tag: 'COACHING',
+        chipClass: 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/35 hover:border-emerald-400 text-emerald-300',
+        dotClass: 'bg-[#00E676]',
+        tagClass: 'bg-[#00E676] text-black font-black',
+        cardClass: 'bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40',
+        accentColor: '#00E676'
+      };
+    }
+
+    // 2. Team Practices -> Royal Blue
+    if (item.game_type === 'practice' || (item.notes && item.opponent === 'Team Practice')) {
+      return {
+        category: 'practice',
+        tag: 'PRACTICE',
+        chipClass: 'bg-blue-500/20 hover:bg-blue-500/30 border-blue-500/35 hover:border-blue-400 text-blue-300',
+        dotClass: 'bg-blue-400',
+        tagClass: 'bg-blue-500/20 text-blue-400 border border-blue-500/30 font-black',
+        cardClass: 'bg-blue-500/5 hover:bg-blue-500/10 border-blue-500/20 hover:border-blue-500/30',
+        accentColor: '#60A5FA'
+      };
+    }
+
+    // 3. Competitive Matches / Games -> Bold Rose
+    if (item.game_type === 'game' || item.game_type === 'match') {
+      return {
+        category: 'game',
+        tag: 'GAME',
+        chipClass: 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/35 hover:border-rose-400 text-rose-300',
+        dotClass: 'bg-rose-400',
+        tagClass: 'bg-rose-500 text-white font-black',
+        cardClass: 'bg-rose-500/5 hover:bg-rose-500/10 border-rose-500/20 hover:border-rose-500/30',
+        accentColor: '#F43F5E'
+      };
+    }
+
+    const title = (item.title || item.opponent || item.opponent_name || '').toLowerCase();
+    const type = (item.type || '').toLowerCase();
+    const focus = (item.focus || '').toLowerCase();
+
+    // 4. Active Recovery, Mobility & Yoga -> Purple / Violet
+    if (
+      type === 'recovery' || 
+      title.includes('recovery') || 
+      title.includes('yoga') || 
+      title.includes('mobility') || 
+      title.includes('stretch') ||
+      focus.includes('recovery') ||
+      focus.includes('mobility')
+    ) {
+      return {
+        category: 'recovery',
+        tag: 'RECOVERY',
+        chipClass: 'bg-purple-500/15 hover:bg-purple-500/25 border-purple-500/35 hover:border-purple-400 text-purple-300',
+        dotClass: 'bg-purple-400',
+        tagClass: 'bg-purple-500/20 text-purple-300 border border-purple-500/30 font-black',
+        cardClass: 'bg-purple-500/5 hover:bg-purple-500/10 border-purple-500/20 hover:border-purple-500/40',
+        accentColor: '#A855F7'
+      };
+    }
+
+    // 5. On-Ice Training, Hockey Skates, Stick-and-Puck -> Electric Ice Cyan
+    if (
+      type === 'on_ice' || 
+      title.includes('ice') || 
+      title.includes('skate') || 
+      title.includes('compete') || 
+      title.includes('stick-and-puck') || 
+      title.includes('stick-and-p') || 
+      title.includes('stick and puck') ||
+      title.includes('on-ice') || 
+      title.includes('hockey')
+    ) {
+      return {
+        category: 'on_ice',
+        tag: 'ON-ICE',
+        chipClass: 'bg-cyan-500/15 hover:bg-cyan-500/25 border-cyan-500/35 hover:border-cyan-400 text-cyan-300',
+        dotClass: 'bg-cyan-400',
+        tagClass: 'bg-cyan-400 text-black font-black',
+        cardClass: 'bg-cyan-500/5 hover:bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40',
+        accentColor: '#22D3EE'
+      };
+    }
+
+    // 6. Off-Ice Strength, Gym Workouts, Leg Day, Power -> Warm Amber / Gold
+    return {
+      category: 'strength',
+      tag: 'STRENGTH',
+      chipClass: 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/35 hover:border-amber-400 text-amber-300',
+      dotClass: 'bg-amber-400',
+      tagClass: 'bg-amber-400 text-black font-black',
+      cardClass: 'bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40',
+      accentColor: '#F59E0B'
+    };
+  };
+
   // Aggregate events for a specific date key (YYYY-MM-DD)
   const getEventsForDate = (dateStr: string) => {
     const allDayGames = (roleTrackFilter === 'coach') ? [] : games.filter(g => g.scheduled_date === dateStr);
@@ -1898,6 +2011,7 @@ export default function CalendarPage() {
                     const today = new Date();
                     const gameDateObj = new Date(game.scheduled_date);
                     const isGamePast = gameDateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                    const style = getActivityStyle(game);
 
                     let parsedNotes: any = null;
                     if (game.notes && typeof game.notes === 'string') {
@@ -1918,18 +2032,18 @@ export default function CalendarPage() {
                         <div
                           key={`day-g-${gIdx}`}
                           onClick={() => openEditTraining(game)}
-                          className="p-4 bg-muted/40 hover:bg-muted/70 border border-border rounded-2xl transition-all cursor-pointer space-y-2"
+                          className={`p-4 ${style.cardClass} rounded-2xl transition-all cursor-pointer space-y-2`}
                         >
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div className="flex items-center gap-2.5">
-                              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-[#00E676] text-black rounded-lg">
-                                TRAINING
+                              <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 ${style.tagClass} rounded-lg`}>
+                                {style.tag}
                               </span>
                               <h3 className="text-base font-bold text-foreground m-0">{game.opponent || "Athlete Training"}</h3>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1.5"><Clock size={13} className="text-[#00E676]" /> {formatTime(game.scheduled_time)}</span>
-                              <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#00E676]" /> {game.location || "Gym / Facility"}</span>
+                              <span className="flex items-center gap-1.5"><Clock size={13} className="text-muted-foreground" /> {formatTime(game.scheduled_time)}</span>
+                              <span className="flex items-center gap-1.5"><MapPin size={13} className="text-muted-foreground" /> {game.location || "Gym / Facility"}</span>
                             </div>
                           </div>
 
@@ -1956,18 +2070,18 @@ export default function CalendarPage() {
                           setEditGameError("");
                           setGameDeleteConfirm(false);
                         }}
-                        className="p-4 bg-muted/40 hover:bg-muted/70 border border-border rounded-2xl transition-all cursor-pointer space-y-3"
+                        className={`p-4 ${style.cardClass} rounded-2xl transition-all cursor-pointer space-y-3`}
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center gap-2.5">
-                            <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-[#00E676] text-black rounded-lg">
-                              {game.game_type || "GAME"}
+                            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 ${style.tagClass} rounded-lg`}>
+                              {style.tag}
                             </span>
                             <h3 className="text-base font-bold text-foreground m-0">{game.opponent}</h3>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1.5"><Clock size={13} className="text-[#00E676]" /> {formatTime(game.scheduled_time)}</span>
-                            <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#00E676]" /> {game.location || "Home Field"}</span>
+                            <span className="flex items-center gap-1.5"><Clock size={13} className="text-muted-foreground" /> {formatTime(game.scheduled_time)}</span>
+                            <span className="flex items-center gap-1.5"><MapPin size={13} className="text-muted-foreground" /> {game.location || "Home Field"}</span>
                           </div>
                         </div>
 
@@ -1988,7 +2102,7 @@ export default function CalendarPage() {
                           ) : (
                             <Link
                               href={`/calendar/pregame?date=${game.scheduled_date}`}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00E676] hover:bg-[#00C853] text-black rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
                             >
                               <Clock size={13} /> Pre-Game Routine
                             </Link>
@@ -1999,59 +2113,63 @@ export default function CalendarPage() {
                   })}
 
                   {/* Practices */}
-                  {selectedDateEvents.practices.map((practice, pIdx) => (
-                    <div
-                      key={`day-p-${pIdx}`}
-                      onClick={() => {
-                        setEditingPractice(practice);
-                        setEditPracticeDate(practice.scheduled_date || "");
-                        setEditPracticeTime(practice.scheduled_time ? practice.scheduled_time.substring(0, 5) : "");
-                        setEditPracticeLocation(practice.location || "");
-                        setEditPracticeNotes(practice.notes || "");
-                        setEditPracticeError("");
-                        setPracticeDeleteConfirm(false);
-                      }}
-                      className="p-4 bg-muted/40 hover:bg-muted/70 border border-border rounded-2xl transition-all cursor-pointer space-y-2"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg">
-                            PRACTICE
-                          </span>
-                          <h3 className="text-base font-bold text-foreground m-0">Team Practice</h3>
+                  {selectedDateEvents.practices.map((practice, pIdx) => {
+                    const style = getActivityStyle(practice);
+                    return (
+                      <div
+                        key={`day-p-${pIdx}`}
+                        onClick={() => {
+                          setEditingPractice(practice);
+                          setEditPracticeDate(practice.scheduled_date || "");
+                          setEditPracticeTime(practice.scheduled_time ? practice.scheduled_time.substring(0, 5) : "");
+                          setEditPracticeLocation(practice.location || "");
+                          setEditPracticeNotes(practice.notes || "");
+                          setEditPracticeError("");
+                          setPracticeDeleteConfirm(false);
+                        }}
+                        className={`p-4 ${style.cardClass} rounded-2xl transition-all cursor-pointer space-y-2`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 ${style.tagClass} rounded-lg`}>
+                              {style.tag}
+                            </span>
+                            <h3 className="text-base font-bold text-foreground m-0">Team Practice</h3>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1.5"><Clock size={13} className="text-blue-400" /> {formatTime(practice.scheduled_time)}</span>
+                            <span className="flex items-center gap-1.5"><MapPin size={13} className="text-blue-400" /> {practice.location || "Practice Turf"}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1.5"><Clock size={13} className="text-blue-400" /> {formatTime(practice.scheduled_time)}</span>
-                          <span className="flex items-center gap-1.5"><MapPin size={13} className="text-blue-400" /> {practice.location || "Practice Turf"}</span>
-                        </div>
+                        {practice.notes && (
+                          <p className="text-xs text-muted-foreground italic flex items-center gap-1.5 pt-1 m-0">
+                            <FileText size={13} /> Notes: {practice.notes}
+                          </p>
+                        )}
                       </div>
-                      {practice.notes && (
-                        <p className="text-xs text-muted-foreground italic flex items-center gap-1.5 pt-1 m-0">
-                          <FileText size={13} /> Notes: {practice.notes}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Pro Hockey Training Sessions (Athlete Track) */}
                   {selectedDateEvents.hockeySessions.map((hSess, hIdx) => {
+                    const style = getActivityStyle(hSess);
                     const summaryText = hSess.focus || (hSess.strength && hSess.strength.slice(0, 2).join(", ")) || (hSess.recovery && hSess.recovery.slice(0, 2).join(", "));
                     return (
                       <div
                         key={`day-hockey-${hIdx}`}
                         onClick={() => openEditTraining(hSess)}
-                        className="p-4 bg-muted/40 hover:bg-muted/70 border border-border rounded-2xl transition-all cursor-pointer space-y-2"
+                        className={`p-4 ${style.cardClass} rounded-2xl transition-all cursor-pointer space-y-2`}
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center gap-2.5">
-                            <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-[#00E676] text-black rounded-lg">
-                              TRAINING
+                            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 ${style.tagClass} rounded-lg`}>
+                              {style.tag}
                             </span>
                             <h3 className="text-base font-bold text-foreground m-0">{hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training Session"}</h3>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1.5"><Clock size={13} className="text-[#00E676]" /> {formatTime(hSess.scheduled_time)}</span>
-                            <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#00E676]" /> {hSess.location || "Gym / Facility"}</span>
+                            <span className="flex items-center gap-1.5"><Clock size={13} className="text-muted-foreground" /> {formatTime(hSess.scheduled_time)}</span>
+                            <span className="flex items-center gap-1.5"><MapPin size={13} className="text-muted-foreground" /> {hSess.location || "Gym / Facility"}</span>
                           </div>
                         </div>
                         {summaryText && (
@@ -2066,6 +2184,7 @@ export default function CalendarPage() {
 
                   {/* Private Training Sessions (Lacrosse Coach Track) */}
                   {selectedDateEvents.privateSessions.map((pSess, pIdx) => {
+                    const style = getActivityStyle(pSess);
                     const timeMatch = pSess.notes?.match(/(\d+:\d+\s*(?:AM|PM)\s*–\s*\d+:\d+\s*(?:AM|PM))/i) || pSess.notes?.match(/(\d+:\d+\s*(?:AM|PM))/i);
                     const displayTime = timeMatch ? timeMatch[0] : (pSess.start_time ? new Date(pSess.start_time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Private Slot");
 
@@ -2073,12 +2192,12 @@ export default function CalendarPage() {
                       <div
                         key={`day-priv-${pIdx}`}
                         onClick={() => openEditLesson(pSess)}
-                        className="p-4 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-400/60 rounded-2xl transition-all cursor-pointer space-y-2"
+                        className={`p-4 ${style.cardClass} rounded-2xl transition-all cursor-pointer space-y-2`}
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center gap-2.5">
-                            <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-[#00E676] text-black rounded-lg">
-                              COACHING LESSON
+                            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 ${style.tagClass} rounded-lg`}>
+                              {style.tag}
                             </span>
                             <h3 className="text-base font-bold text-foreground m-0">
                               {formatLessonLabel(pSess.athlete_name, pSess.session_number, pSess.lesson_number)}
@@ -2093,8 +2212,8 @@ export default function CalendarPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1.5"><Clock size={13} className="text-[#00E676]" /> {displayTime}</span>
-                            <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#00E676]" /> {pSess.location || "Bell Memorial Park"}</span>
+                            <span className="flex items-center gap-1.5"><Clock size={13} className="text-emerald-400" /> {displayTime}</span>
+                            <span className="flex items-center gap-1.5"><MapPin size={13} className="text-emerald-400" /> {pSess.location || "Bell Memorial Park"}</span>
                           </div>
                         </div>
                         {pSess.notes && (
@@ -2184,17 +2303,18 @@ export default function CalendarPage() {
                           {/* Games & Training */}
                           {dayEvents.games.map((game, gIdx) => {
                             const isTraining = game.game_type === 'training';
+                            const style = getActivityStyle(game);
 
                             if (isTraining) {
                               return (
                                 <div 
                                   key={`week-g-${gIdx}`} 
                                   onClick={() => openEditTraining(game)}
-                                  className="p-2.5 bg-[#00E676]/5 hover:bg-[#00E676]/10 border border-[#00E676]/20 hover:border-[#00E676]/40 rounded-xl cursor-pointer transition-all space-y-1"
+                                  className={`p-2.5 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1`}
                                 >
                                   <div className="flex items-center justify-between gap-1">
-                                    <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-[#00E676] text-black rounded-md">
-                                      TRAINING
+                                    <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 ${style.tagClass} rounded-md`}>
+                                      {style.tag}
                                     </span>
                                     <span className="text-[10px] text-muted-foreground font-medium">
                                       {formatTime(game.scheduled_time)}
@@ -2221,11 +2341,11 @@ export default function CalendarPage() {
                                   setEditGameError("");
                                   setGameDeleteConfirm(false);
                                 }}
-                                className="p-2.5 bg-muted/30 hover:bg-muted/60 border border-border/50 hover:border-border/80 rounded-xl cursor-pointer transition-all space-y-1"
+                                className={`p-2.5 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1`}
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-[#00E676] text-black rounded-md">
-                                    GAME
+                                  <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 ${style.tagClass} rounded-md`}>
+                                    {style.tag}
                                   </span>
                                   <span className="text-[10px] text-muted-foreground font-medium">
                                     {formatTime(game.scheduled_time)}
@@ -2237,60 +2357,67 @@ export default function CalendarPage() {
                           })}
 
                           {/* Practices */}
-                          {dayEvents.practices.map((practice, pIdx) => (
-                            <div 
-                              key={`week-p-${pIdx}`} 
-                              onClick={() => {
-                                setEditingPractice(practice);
-                                setEditPracticeDate(practice.scheduled_date || "");
-                                setEditPracticeTime(practice.scheduled_time ? practice.scheduled_time.substring(0, 5) : "");
-                                setEditPracticeLocation(practice.location || "");
-                                setEditPracticeNotes(practice.notes || "");
-                                setEditPracticeError("");
-                                setPracticeDeleteConfirm(false);
-                              }}
-                              className="p-2.5 bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 hover:border-blue-500/30 rounded-xl cursor-pointer transition-all space-y-1"
-                            >
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded-md">
-                                  PRACTICE
-                                </span>
-                                <span className="text-[10px] text-muted-foreground font-medium">
-                                  {formatTime(practice.scheduled_time)}
-                                </span>
+                          {dayEvents.practices.map((practice, pIdx) => {
+                            const style = getActivityStyle(practice);
+                            return (
+                              <div 
+                                key={`week-p-${pIdx}`} 
+                                onClick={() => {
+                                  setEditingPractice(practice);
+                                  setEditPracticeDate(practice.scheduled_date || "");
+                                  setEditPracticeTime(practice.scheduled_time ? practice.scheduled_time.substring(0, 5) : "");
+                                  setEditPracticeLocation(practice.location || "");
+                                  setEditPracticeNotes(practice.notes || "");
+                                  setEditPracticeError("");
+                                  setPracticeDeleteConfirm(false);
+                                }}
+                                className={`p-2.5 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1`}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 ${style.tagClass} rounded-md`}>
+                                    {style.tag}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground font-medium">
+                                    {formatTime(practice.scheduled_time)}
+                                  </span>
+                                </div>
+                                <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">Team Practice</p>
                               </div>
-                              <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">Team Practice</p>
-                            </div>
-                          ))}
+                            );
+                          })}
 
                           {/* Pro Training Sessions (Athlete Track) */}
-                          {dayEvents.hockeySessions.map((hSess, hIdx) => (
-                            <div 
-                              key={`week-hsess-${hIdx}`} 
-                              onClick={() => openHockeyDetail(hSess)}
-                              className="p-2.5 bg-[#00E676]/5 hover:bg-[#00E676]/10 border border-[#00E676]/20 hover:border-[#00E676]/40 rounded-xl transition-all cursor-pointer space-y-1"
-                            >
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-[#00E676] text-black rounded-md">
-                                  TRAINING
-                                </span>
-                                <span className="text-[10px] text-muted-foreground font-medium truncate">
-                                  {formatTime(hSess.scheduled_time)}
-                                </span>
-                              </div>
-                              <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">
-                                {hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training"}
-                              </p>
-                              {hSess.location && (
-                                <p className="m-0 text-[10px] text-muted-foreground truncate">
-                                  {hSess.location}
+                          {dayEvents.hockeySessions.map((hSess, hIdx) => {
+                            const style = getActivityStyle(hSess);
+                            return (
+                              <div 
+                                key={`week-hsess-${hIdx}`} 
+                                onClick={() => openEditTraining(hSess)}
+                                className={`p-2.5 ${style.cardClass} rounded-xl transition-all cursor-pointer space-y-1`}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 ${style.tagClass} rounded-md`}>
+                                    {style.tag}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground font-medium truncate">
+                                    {formatTime(hSess.scheduled_time)}
+                                  </span>
+                                </div>
+                                <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">
+                                  {hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training"}
                                 </p>
-                              )}
-                            </div>
-                          ))}
+                                {hSess.location && (
+                                  <p className="m-0 text-[10px] text-muted-foreground truncate">
+                                    {hSess.location}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
 
                           {/* Private Coaching Lessons */}
                           {dayEvents.privateSessions.map((pSess, pIdx) => {
+                            const style = getActivityStyle(pSess);
                             const timeMatch = pSess.notes?.match(/(\d+:\d+\s*(?:AM|PM)\s*–\s*\d+:\d+\s*(?:AM|PM))/i) || pSess.notes?.match(/(\d+:\d+\s*(?:AM|PM))/i);
                             const displayTime = timeMatch ? timeMatch[0] : (pSess.start_time ? new Date(pSess.start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : "Private Slot");
 
@@ -2298,11 +2425,11 @@ export default function CalendarPage() {
                               <div 
                                 key={`week-psess-${pIdx}`}
                                 onClick={() => openEditLesson(pSess)}
-                                className="p-2.5 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl transition-all cursor-pointer space-y-1"
+                                className={`p-2.5 ${style.cardClass} rounded-xl transition-all cursor-pointer space-y-1`}
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 bg-[#00E676] text-black rounded-md">
-                                    COACHING
+                                  <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 ${style.tagClass} rounded-md`}>
+                                    {style.tag}
                                   </span>
                                   {(pSess.session_number || pSess.lesson_number) && (
                                     <span className="text-[9px] text-[#00E676] font-bold truncate font-mono">
@@ -2366,24 +2493,24 @@ export default function CalendarPage() {
                   }> = [];
 
                   dayEvents.hockeySessions.forEach((h, i) => {
+                    const style = getActivityStyle(h);
                     cellEvents.push({
                       id: `h-${i}`,
                       title: h.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training",
-                      badgeColor: "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 hover:border-emerald-400 text-emerald-300",
-                      dotColor: "bg-[#00E676]",
+                      badgeColor: style.chipClass,
+                      dotColor: style.dotClass,
                       onClick: (e) => { e.stopPropagation(); openEditTraining(h); }
                     });
                   });
 
                   dayEvents.games.forEach((g, i) => {
                     const isTraining = g.game_type === 'training';
+                    const style = getActivityStyle(g);
                     cellEvents.push({
                       id: `g-${i}`,
                       title: g.opponent || (isTraining ? "Training" : "Game"),
-                      badgeColor: isTraining 
-                        ? "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 hover:border-emerald-400 text-emerald-300"
-                        : "bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 hover:border-amber-400 text-amber-300",
-                      dotColor: isTraining ? "bg-[#00E676]" : "bg-amber-400",
+                      badgeColor: style.chipClass,
+                      dotColor: style.dotClass,
                       onClick: (e) => {
                         e.stopPropagation();
                         if (isTraining) {
@@ -2403,11 +2530,12 @@ export default function CalendarPage() {
                   });
 
                   dayEvents.practices.forEach((p, i) => {
+                    const style = getActivityStyle(p);
                     cellEvents.push({
                       id: `p-${i}`,
                       title: "Practice",
-                      badgeColor: "bg-blue-500/20 hover:bg-blue-500/30 border-blue-500/30 hover:border-blue-400 text-blue-300",
-                      dotColor: "bg-blue-400",
+                      badgeColor: style.chipClass,
+                      dotColor: style.dotClass,
                       onClick: (e) => {
                         e.stopPropagation();
                         setEditingPractice(p);
@@ -2422,11 +2550,12 @@ export default function CalendarPage() {
                   });
 
                   dayEvents.privateSessions.forEach((ps, i) => {
+                    const style = getActivityStyle(ps);
                     cellEvents.push({
                       id: `priv-${i}`,
                       title: formatLessonLabel(ps.athlete_name, ps.session_number, ps.lesson_number),
-                      badgeColor: "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 hover:border-emerald-400 text-emerald-300",
-                      dotColor: "bg-emerald-400",
+                      badgeColor: style.chipClass,
+                      dotColor: style.dotClass,
                       onClick: (e) => { e.stopPropagation(); openEditLesson(ps); }
                     });
                   });
@@ -2565,30 +2694,34 @@ export default function CalendarPage() {
               ) : (
                 <div className="space-y-3">
                   {/* Pro Training Schedule (Athlete Track) */}
-                  {selectedDateEvents.hockeySessions.map((hSess, i) => (
-                    <div 
-                      key={`m-h-${i}`} 
-                      onClick={() => openEditTraining(hSess)}
-                      className="p-3 bg-muted/40 hover:bg-muted/70 border border-border rounded-xl cursor-pointer transition-all space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-[#00E676] text-black rounded-md">
-                          TRAINING
-                        </span>
-                        <span className="text-[10px] font-bold text-muted-foreground">
-                          {formatTime(hSess.scheduled_time)}
-                        </span>
+                  {selectedDateEvents.hockeySessions.map((hSess, i) => {
+                    const style = getActivityStyle(hSess);
+                    return (
+                      <div 
+                        key={`m-h-${i}`} 
+                        onClick={() => openEditTraining(hSess)}
+                        className={`p-3 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1.5`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 ${style.tagClass} rounded-md`}>
+                            {style.tag}
+                          </span>
+                          <span className="text-[10px] font-bold text-muted-foreground">
+                            {formatTime(hSess.scheduled_time)}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-foreground m-0">{hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training Session"}</h4>
+                        <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
+                          <MapPin size={11} /> {hSess.location || "Gym / Facility"}
+                        </p>
                       </div>
-                      <h4 className="text-sm font-bold text-foreground m-0">{hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training Session"}</h4>
-                      <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
-                        <MapPin size={11} /> {hSess.location || "Gym / Facility"}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Games & Training */}
                   {selectedDateEvents.games.map((game, i) => {
                     const isTraining = game.game_type === 'training';
+                    const style = getActivityStyle(game);
                     return (
                       <div 
                         key={`m-g-${i}`} 
@@ -2606,77 +2739,93 @@ export default function CalendarPage() {
                             setGameDeleteConfirm(false);
                           }
                         }}
-                        className="p-3 bg-muted/40 hover:bg-muted/70 border border-border hover:border-border/80 rounded-xl cursor-pointer transition-all space-y-1.5"
+                        className={`p-3 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1.5`}
                       >
-                        <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-[#00E676] text-black rounded-md">
-                          {isTraining ? "TRAINING" : (game.game_type || "GAME")}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 ${style.tagClass} rounded-md`}>
+                            {style.tag}
+                          </span>
+                          <span className="text-[10px] font-bold text-muted-foreground">
+                            {formatTime(game.scheduled_time)}
+                          </span>
+                        </div>
                         <h4 className="text-sm font-bold text-foreground m-0">{game.opponent}</h4>
                         <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
-                          <Clock size={11} /> {formatTime(game.scheduled_time)} • <MapPin size={11} /> {game.location || "Gym / Facility"}
+                          <MapPin size={11} /> {game.location || "Gym / Facility"}
                         </p>
                       </div>
                     );
                   })}
 
                   {/* Practices */}
-                  {selectedDateEvents.practices.map((practice, i) => (
-                    <div 
-                      key={`m-p-${i}`} 
-                      onClick={() => {
-                        setEditingPractice(practice);
-                        setEditPracticeDate(practice.scheduled_date || "");
-                        setEditPracticeTime(practice.scheduled_time ? practice.scheduled_time.substring(0, 5) : "");
-                        setEditPracticeLocation(practice.location || "");
-                        setEditPracticeNotes(practice.notes || "");
-                        setEditPracticeError("");
-                        setPracticeDeleteConfirm(false);
-                      }}
-                      className="p-3 bg-muted/40 hover:bg-muted/70 border border-border hover:border-border/80 rounded-xl cursor-pointer transition-all space-y-1.5"
-                    >
-                      <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-md">
-                        PRACTICE
-                      </span>
-                      <h4 className="text-sm font-bold text-foreground m-0">Team Practice</h4>
-                      <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
-                        <Clock size={11} /> {formatTime(practice.scheduled_time)} • <MapPin size={11} /> {practice.location || "Turf"}
-                      </p>
-                    </div>
-                  ))}
+                  {selectedDateEvents.practices.map((practice, i) => {
+                    const style = getActivityStyle(practice);
+                    return (
+                      <div 
+                        key={`m-p-${i}`} 
+                        onClick={() => {
+                          setEditingPractice(practice);
+                          setEditPracticeDate(practice.scheduled_date || "");
+                          setEditPracticeTime(practice.scheduled_time ? practice.scheduled_time.substring(0, 5) : "");
+                          setEditPracticeLocation(practice.location || "");
+                          setEditPracticeNotes(practice.notes || "");
+                          setEditPracticeError("");
+                          setPracticeDeleteConfirm(false);
+                        }}
+                        className={`p-3 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1.5`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 ${style.tagClass} rounded-md`}>
+                            {style.tag}
+                          </span>
+                          <span className="text-[10px] font-bold text-muted-foreground">
+                            {formatTime(practice.scheduled_time)}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-foreground m-0">Team Practice</h4>
+                        <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
+                          <MapPin size={11} /> {practice.location || "Turf"}
+                        </p>
+                      </div>
+                    );
+                  })}
 
                   {/* Lacrosse Coaching Lessons */}
-                  {selectedDateEvents.privateSessions.map((pSess, i) => (
-                    <div 
-                      key={`m-priv-${i}`} 
-                      onClick={() => openEditLesson(pSess)}
-                      className="p-3.5 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-400/60 rounded-2xl cursor-pointer transition-all space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-[#00E676] text-black rounded-md">
-                          COACHING LESSON
-                        </span>
-                        {(pSess.session_number || pSess.lesson_number) && (
-                          <span className="text-[10px] font-bold text-emerald-400 font-mono">
-                            {[
-                              pSess.session_number ? `S${pSess.session_number}` : '',
-                              pSess.lesson_number ? `L${pSess.lesson_number}` : ''
-                            ].filter(Boolean).join(', ')}
+                  {selectedDateEvents.privateSessions.map((pSess, i) => {
+                    const style = getActivityStyle(pSess);
+                    return (
+                      <div 
+                        key={`m-priv-${i}`} 
+                        onClick={() => openEditLesson(pSess)}
+                        className={`p-3.5 ${style.cardClass} rounded-2xl cursor-pointer transition-all space-y-2`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 ${style.tagClass} rounded-md`}>
+                            {style.tag}
                           </span>
+                          {(pSess.session_number || pSess.lesson_number) && (
+                            <span className="text-[10px] font-bold text-emerald-400 font-mono">
+                              {[
+                                pSess.session_number ? `S${pSess.session_number}` : '',
+                                pSess.lesson_number ? `L${pSess.lesson_number}` : ''
+                              ].filter(Boolean).join(', ')}
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-sm font-bold text-foreground m-0">
+                          {formatLessonLabel(pSess.athlete_name, pSess.session_number, pSess.lesson_number)}
+                        </h4>
+                        <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
+                          <MapPin size={11} className="text-[#00E676]" /> {pSess.location || "Bell Memorial Park"}
+                        </p>
+                        {pSess.notes && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-2 italic pt-1 border-t border-border/40">
+                            "{pSess.notes}"
+                          </p>
                         )}
                       </div>
-                      <h4 className="text-sm font-bold text-foreground m-0">
-                        {formatLessonLabel(pSess.athlete_name, pSess.session_number, pSess.lesson_number)}
-                      </h4>
-                      <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
-                        <MapPin size={11} className="text-[#00E676]" /> {pSess.location || "Bell Memorial Park"}
-                      </p>
-                      {pSess.notes && (
-                        <p className="text-[11px] text-muted-foreground line-clamp-2 italic pt-1 border-t border-border/40">
-                          "{pSess.notes}"
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
