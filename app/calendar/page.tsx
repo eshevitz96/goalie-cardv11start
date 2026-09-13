@@ -1393,21 +1393,44 @@ export default function CalendarPage() {
       };
       const notesJson = JSON.stringify(trainingPayload);
 
-      const isSyntheticId = typeof editingTraining.id === 'string' && (editingTraining.id.startsWith('hockey-') || editingTraining.id.startsWith('ath-'));
+      const isSyntheticId = typeof editingTraining.id === 'string' && (
+        editingTraining.id.startsWith('hockey-') || 
+        editingTraining.id.startsWith('ath-') || 
+        editingTraining.id.startsWith('custom-') ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(editingTraining.id)
+      );
 
-      if (uid === "00000000-0000-0000-0000-000000000000" || isSyntheticId) {
-        if (isSyntheticId) {
-          setAthleteHockeySessions(prev => prev.filter(h => h.id !== editingTraining.id));
+      // Remove from synthetic/projected list if present
+      setAthleteHockeySessions(prev => prev.filter(h => h.id !== editingTraining.id));
+
+      // Always update local state immediately for instant feedback
+      const updatedGames = [
+        ...games.filter(g => g.id !== editingTraining.id),
+        {
+          ...editingTraining,
+          id: editingTraining.id,
+          opponent: editTrainingFocus,
+          opponent_name: editTrainingFocus,
+          location: editTrainingLocation || "TBD",
+          scheduled_date: editTrainingDate,
+          game_date: editTrainingDate,
+          scheduled_time: formattedTime,
+          game_type: "training",
+          notes: notesJson
         }
+      ];
+      setGames(updatedGames);
 
-        if (uid !== "00000000-0000-0000-0000-000000000000") {
-          const { data: userRes } = await supabase
-            .from("users")
-            .select("id")
-            .eq("auth_user_id", uid)
-            .single();
-          const publicUserId = userRes?.id;
+      if (uid && uid !== "00000000-0000-0000-0000-000000000000") {
+        const { data: userRes } = await supabase
+          .from("users")
+          .select("id")
+          .eq("auth_user_id", uid)
+          .single();
+        const publicUserId = userRes?.id;
 
+        if (isSyntheticId) {
+          // Insert fresh record in games & game_sessions
           const { data: gameData } = await supabase
             .from("games")
             .insert({
@@ -1436,54 +1459,40 @@ export default function CalendarPage() {
                 notes: notesJson
               });
           }
-        }
+        } else {
+          // Update existing database record
+          await supabase
+            .from("game_sessions")
+            .update({
+              opponent: editTrainingFocus,
+              location: editTrainingLocation || "TBD",
+              scheduled_date: editTrainingDate,
+              scheduled_time: formattedTime,
+              game_type: "training",
+              notes: notesJson
+            })
+            .eq("id", editingTraining.id);
 
-        const updatedGames = [
-          ...games.filter(g => g.id !== editingTraining.id),
-          {
-            id: isSyntheticId ? `custom-${Date.now()}` : editingTraining.id,
-            opponent: editTrainingFocus,
-            location: editTrainingLocation || "TBD",
-            scheduled_date: editTrainingDate,
-            scheduled_time: formattedTime,
-            game_type: "training",
-            notes: notesJson
+          const targetGameId = editingTraining.game_id || editingTraining.id;
+          if (targetGameId) {
+            await supabase
+              .from("games")
+              .update({
+                opponent_name: editTrainingFocus,
+                game_date: editTrainingDate,
+                location: editTrainingLocation || "TBD",
+                notes: notesJson
+              })
+              .eq("id", targetGameId);
           }
-        ];
-        setGames(updatedGames);
-        setEditingTraining(null);
-        setDbSaving(false);
-        toast.success("Training session updated.");
-        loadData();
-        return;
+        }
       }
-
-      await supabase
-        .from("game_sessions")
-        .update({
-          opponent: editTrainingFocus,
-          location: editTrainingLocation || "TBD",
-          scheduled_date: editTrainingDate,
-          scheduled_time: formattedTime,
-          game_type: "training",
-          notes: notesJson
-        })
-        .eq("id", editingTraining.id);
-
-      await supabase
-        .from("games")
-        .update({
-          opponent_name: editTrainingFocus,
-          game_date: editTrainingDate,
-          location: editTrainingLocation || "TBD",
-          notes: notesJson
-        })
-        .eq("id", editingTraining.id);
 
       setEditingTraining(null);
       toast.success("Training session updated.");
       loadData();
     } catch (err: any) {
+      console.error("Failed to update training:", err);
       setEditTrainingError(err?.message || "Failed to update training session.");
     } finally {
       setDbSaving(false);
@@ -1495,23 +1504,29 @@ export default function CalendarPage() {
     setDbSaving(true);
     try {
       const uid = auth.userId;
-      const isSyntheticId = typeof editingTraining.id === 'string' && (editingTraining.id.startsWith('hockey-') || editingTraining.id.startsWith('ath-'));
+      const isSyntheticId = typeof editingTraining.id === 'string' && (
+        editingTraining.id.startsWith('hockey-') || 
+        editingTraining.id.startsWith('ath-') || 
+        editingTraining.id.startsWith('custom-') ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(editingTraining.id)
+      );
 
       if (isSyntheticId) {
         setAthleteHockeySessions(prev => prev.filter(h => h.id !== editingTraining.id));
       }
 
-      if (uid === "00000000-0000-0000-0000-000000000000") {
-        setGames(games.filter((g) => g.id !== editingTraining.id));
-        setEditingTraining(null);
-        setDbSaving(false);
-        return;
+      setGames(prev => prev.filter(g => g.id !== editingTraining.id));
+
+      if (uid && uid !== "00000000-0000-0000-0000-000000000000") {
+        try {
+          await supabase.from("game_sessions").delete().eq("id", editingTraining.id);
+        } catch {}
+        try {
+          const targetGameId = editingTraining.game_id || editingTraining.id;
+          await supabase.from("games").delete().eq("id", targetGameId);
+        } catch {}
       }
 
-      await supabase.from("game_sessions").delete().eq("id", editingTraining.id);
-      await supabase.from("games").delete().eq("id", editingTraining.id);
-
-      setGames(prev => prev.filter(g => g.id !== editingTraining.id));
       setEditingTraining(null);
       loadData();
       toast.success("Training session removed.");

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/utils/supabase/client';
@@ -181,7 +181,8 @@ export default function TrainingPage() {
     const [activeTab, setActiveTab] = useState<'regimen' | 'drills' | 'timer' | 'game'>('regimen');
     const [expandedDrill, setExpandedDrill] = useState<string | null>(null);
 
-    // Daily Training Regimen Checklist State
+    // Daily Training Regimen Checklist State (Persisted by Date)
+    const todayDateStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
     const [regimenChecklist, setRegimenChecklist] = useState<{ [key: string]: boolean }>({
         mobility: false,
         reaction: false,
@@ -189,8 +190,27 @@ export default function TrainingPage() {
         reflection: false
     });
 
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(`goalie_regimen_${todayDateStr}`);
+            if (saved) {
+                setRegimenChecklist(JSON.parse(saved));
+            }
+        } catch (e) {
+            console.error("Error loading regimen checklist:", e);
+        }
+    }, [todayDateStr]);
+
     const toggleRegimenItem = (key: string) => {
-        setRegimenChecklist(prev => ({ ...prev, [key]: !prev[key] }));
+        setRegimenChecklist(prev => {
+            const next = { ...prev, [key]: !prev[key] };
+            try {
+                localStorage.setItem(`goalie_regimen_${todayDateStr}`, JSON.stringify(next));
+            } catch (e) {
+                console.error("Error saving regimen checklist:", e);
+            }
+            return next;
+        });
     };
 
     const completedRegimenItems = Object.values(regimenChecklist).filter(Boolean).length;
