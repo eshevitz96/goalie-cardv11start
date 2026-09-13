@@ -18,7 +18,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 const PRESET_LOCATIONS = [
-    "Bell Mem",
+    "Bell Memorial Park",
     "Milton",
     "Lambert",
     "Custom"
@@ -63,7 +63,7 @@ export function CoachScheduler() {
     });
     const [selectedTime, setSelectedTime] = useState<string>("16:30");
     const [durationMinutes, setDurationMinutes] = useState<number>(60);
-    const [selectedLocation, setSelectedLocation] = useState<string>("Bell Mem");
+    const [selectedLocation, setSelectedLocation] = useState<string>("Bell Memorial Park");
     const [customLocation, setCustomLocation] = useState<string>("");
     const [isCustomLoc, setIsCustomLoc] = useState<boolean>(false);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
