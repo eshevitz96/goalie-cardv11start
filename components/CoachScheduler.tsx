@@ -72,20 +72,39 @@ export function CoachScheduler() {
         fetchSlots();
     }, []);
 
+    const COACH_ACCOUNTS = [
+        '14092722-0e2b-492b-866c-0f77e87469de', // eshevitz96@gmail.com
+        '715ddfe1-23c8-4d4a-a144-5a06985cf50d', // e@cmmncreators.com
+        '3088e71c-8b79-47d8-a25b-b3f540f19e7a'  // thegoaliebrand@gmail.com
+    ];
+
     const fetchSlots = async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
+            const coachFilter = COACH_ACCOUNTS.includes(user.id)
+                ? COACH_ACCOUNTS
+                : [user.id];
+
             const { data, error } = await supabase
                 .from('coach_availability')
                 .select('*')
-                .eq('coach_id', user.id)
+                .in('coach_id', coachFilter)
                 .gte('start_time', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
                 .order('start_time', { ascending: true });
 
             if (data && !error) {
-                setSlots(data);
+                // Deduplicate by start_time so multi-account syncing remains clean
+                const seenTimes = new Set<string>();
+                const uniqueSlots: any[] = [];
+                for (const s of data) {
+                    if (!seenTimes.has(s.start_time)) {
+                        seenTimes.add(s.start_time);
+                        uniqueSlots.push(s);
+                    }
+                }
+                setSlots(uniqueSlots);
             }
         } catch (err) {
             console.error("Error fetching coach slots:", err);
