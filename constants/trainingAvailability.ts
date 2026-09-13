@@ -82,8 +82,8 @@ export function generateTrainingSlots(startDate: Date, endDate: Date): TrainingS
     return slots;
 }
 
-// Pre-generate slots from Sep 1, 2026 through Dec 31, 2026
+// Pre-generate slots from Sep 13, 2026 through Dec 31, 2026
 export const INITIAL_TRAINING_SLOTS: TrainingSlot[] = generateTrainingSlots(
-    new Date(2026, 8, 1),  // Sep 1, 2026
+    new Date(2026, 8, 13), // Sep 13, 2026 (Today)
     new Date(2026, 11, 31) // Dec 31, 2026
 );

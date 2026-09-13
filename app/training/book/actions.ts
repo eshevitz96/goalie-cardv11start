@@ -54,19 +54,23 @@ export async function getAvailableTrainingSlots() {
             });
         }
 
-        // 2. Mark availability
-        const slots = INITIAL_TRAINING_SLOTS.map(slot => ({
-            ...slot,
-            isBooked: bookedSlotKeys.has(slot.id),
-            spotsLeft: bookedSlotKeys.has(slot.id) ? 0 : 1
-        }));
+        // 2. Mark availability and filter out past dates
+        const todayIso = new Date().toISOString().split('T')[0];
+        const slots = INITIAL_TRAINING_SLOTS
+            .filter(slot => slot.date >= todayIso)
+            .map(slot => ({
+                ...slot,
+                isBooked: bookedSlotKeys.has(slot.id),
+                spotsLeft: bookedSlotKeys.has(slot.id) ? 0 : 1
+            }));
 
         return { success: true, slots };
     } catch (err: any) {
         console.error("[getAvailableTrainingSlots] Error:", err);
+        const todayIso = new Date().toISOString().split('T')[0];
         return { 
             success: true, 
-            slots: INITIAL_TRAINING_SLOTS.map(s => ({ ...s, isBooked: false, spotsLeft: 1 }))
+            slots: INITIAL_TRAINING_SLOTS.filter(s => s.date >= todayIso).map(s => ({ ...s, isBooked: false, spotsLeft: 1 }))
         };
     }
 }

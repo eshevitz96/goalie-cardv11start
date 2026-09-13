@@ -128,19 +128,23 @@ function BookTrainingContent() {
             days.push(null);
         }
 
+        const todayIso = new Date().toISOString().split('T')[0];
+
         // Days in month
         for (let d = 1; d <= daysInMonth; d++) {
             const padD = String(d).padStart(2, '0');
             const padM = String(month + 1).padStart(2, '0');
             const dateStr = `${year}-${padM}-${padD}`;
+            const isPast = dateStr < todayIso;
             
-            const daySlots = slots.filter(s => s.date === dateStr && !s.isBooked);
-            const hasSelected = slots.some(s => s.date === dateStr && selectedSlotIds.includes(s.id));
+            const daySlots = isPast ? [] : slots.filter(s => s.date === dateStr && !s.isBooked);
+            const hasSelected = !isPast && slots.some(s => s.date === dateStr && selectedSlotIds.includes(s.id));
 
             days.push({
                 dayNumber: d,
                 dateStr,
                 isCurrentMonth: true,
+                isPast,
                 availableSlotCount: daySlots.length,
                 hasSelected
             });
@@ -149,9 +153,11 @@ function BookTrainingContent() {
         return days;
     }, [currentMonthDate, slots, selectedSlotIds]);
 
-    // Slots for the currently selected date
+    // Slots for the currently selected date (only today and future)
     const slotsForSelectedDay = useMemo(() => {
-        return slots.filter(s => s.date === selectedDateStr);
+        const todayIso = new Date().toISOString().split('T')[0];
+        if (selectedDateStr < todayIso) return [];
+        return slots.filter(s => s.date === selectedDateStr && s.date >= todayIso);
     }, [slots, selectedDateStr]);
 
     const handleToggleSlot = (slotId: string) => {
@@ -356,30 +362,34 @@ function BookTrainingContent() {
 
                                 const isSelected = day.dateStr === selectedDateStr;
                                 const hasAvailable = day.availableSlotCount > 0;
+                                const isPast = day.isPast;
 
                                 return (
                                     <button
                                         key={day.dateStr}
-                                        onClick={() => setSelectedDateStr(day.dateStr)}
+                                        disabled={isPast}
+                                        onClick={() => !isPast && setSelectedDateStr(day.dateStr)}
                                         className={`h-14 rounded-2xl flex flex-col items-center justify-center relative transition-all border ${
-                                            isSelected 
-                                                ? 'bg-primary/20 border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/40' 
-                                                : day.hasSelected
-                                                    ? 'bg-emerald-500/10 border-emerald-500/50'
-                                                    : hasAvailable
-                                                        ? 'bg-secondary/30 border-border/50 hover:bg-secondary/60'
-                                                        : 'bg-secondary/10 border-transparent opacity-40 hover:opacity-70'
+                                            isPast
+                                                ? 'opacity-20 bg-secondary/5 border-transparent cursor-not-allowed pointer-events-none'
+                                                : isSelected 
+                                                    ? 'bg-primary/20 border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/40' 
+                                                    : day.hasSelected
+                                                        ? 'bg-emerald-500/10 border-emerald-500/50'
+                                                        : hasAvailable
+                                                            ? 'bg-secondary/30 border-border/50 hover:bg-secondary/60'
+                                                            : 'bg-secondary/10 border-transparent opacity-40 hover:opacity-70'
                                         }`}
                                     >
-                                        <span className={`text-sm font-black ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                                        <span className={`text-sm font-black ${isPast ? 'text-muted-foreground/40' : isSelected ? 'text-primary' : 'text-foreground'}`}>
                                             {day.dayNumber}
                                         </span>
-                                        {hasAvailable && (
+                                        {!isPast && hasAvailable && (
                                             <span className="text-[8px] font-black uppercase text-emerald-500 tracking-wider mt-0.5">
                                                 {day.availableSlotCount} {day.availableSlotCount === 1 ? 'Slot' : 'Slots'}
                                             </span>
                                         )}
-                                        {day.hasSelected && (
+                                        {!isPast && day.hasSelected && (
                                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 absolute top-1.5 right-1.5" />
                                         )}
                                     </button>
