@@ -68,6 +68,39 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined') {
+                window.addEventListener('error', function(e) {
+                  if (e && e.message && /Loading chunk .* failed|ChunkLoadError/i.test(e.message)) {
+                    var k = 'chk_rld_' + location.pathname;
+                    var last = sessionStorage.getItem(k);
+                    var now = Date.now();
+                    if (!last || (now - parseInt(last, 10)) > 10000) {
+                      sessionStorage.setItem(k, now.toString());
+                      window.location.reload();
+                    }
+                  }
+                });
+                window.addEventListener('unhandledrejection', function(e) {
+                  var msg = e && e.reason && (e.reason.message || String(e.reason));
+                  if (msg && /Loading chunk .* failed|ChunkLoadError/i.test(msg)) {
+                    var k = 'chk_rld_' + location.pathname;
+                    var last = sessionStorage.getItem(k);
+                    var now = Date.now();
+                    if (!last || (now - parseInt(last, 10)) > 10000) {
+                      sessionStorage.setItem(k, now.toString());
+                      window.location.reload();
+                    }
+                  }
+                });
+              }
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${inter.variable} antialiased`}
       >
