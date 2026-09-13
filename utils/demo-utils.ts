@@ -27,7 +27,7 @@ export function getDemoGoalie(id: string) {
     return {
         id: id,
         goalie_name: "Demo Goalie",
-        email: "demo@goaliecard.com",
+        email: "demo@goaliecard.app",
         role: "goalie"
     };
 }

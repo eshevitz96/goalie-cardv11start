@@ -610,7 +610,7 @@ export async function completeTrainingSessionAndNotify(payload: {
                             <p style="margin: 0 0 16px; font-size: 13px; color: #64748b; line-height: 1.5;">
                                 Documenting what clicked during training cements your muscle memory and helps direct film analysis. Tap below to add your takeaways in Goalie Card.
                             </p>
-                            <a href="https://goaliecard.com/dashboard" style="display: inline-block; background: #00E676; color: #000000; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 6px; text-decoration: none;">Add Lesson Takeaways in Dashboard</a>
+                            <a href="https://goaliecard.app/dashboard" style="display: inline-block; background: #00E676; color: #000000; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 6px; text-decoration: none;">Add Lesson Takeaways in Dashboard</a>
                         </div>
 
                         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
@@ -1493,7 +1493,7 @@ export async function saveCalendarLessonUpdate(payload: {
                         </div>
 
                         <div style="text-align: center; margin: 28px 0 12px;">
-                            <a href="https://goaliecard.com/calendar" style="display: inline-block; background: #00E676; color: #000000; font-size: 13px; font-weight: 800; text-decoration: none; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;">View Goalie Card & Schedule</a>
+                            <a href="https://goaliecard.app/calendar" style="display: inline-block; background: #00E676; color: #000000; font-size: 13px; font-weight: 800; text-decoration: none; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;">View Goalie Card & Schedule</a>
                         </div>
 
                         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0 16px;" />
@@ -1510,7 +1510,7 @@ export async function saveCalendarLessonUpdate(payload: {
                         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
                     },
                     body: JSON.stringify({
-                        from: process.env.EMAIL_FROM_ADDRESS || "Elliott Shevitz <coach@goaliecard.com>",
+                        from: process.env.EMAIL_FROM_ADDRESS || "Elliott Shevitz <coach@goaliecard.app>",
                         to: recipients,
                         subject: `Coach Takeaways: ${resolvedGoalieName} (${sessionLabel})`,
                         html: takeawayEmailHtml,
