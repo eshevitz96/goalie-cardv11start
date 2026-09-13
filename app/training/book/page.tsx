@@ -53,6 +53,9 @@ function BookTrainingContent() {
         deliveredCount?: number;
     } | null>(null);
 
+    const [guestName, setGuestName] = useState<string>(() => searchParams.get('name') || "");
+    const [guestEmail, setGuestEmail] = useState<string>(() => searchParams.get('email') || "");
+
     // Month Navigation
     const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
     const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
@@ -72,10 +75,11 @@ function BookTrainingContent() {
         const init = async () => {
             setIsLoading(true);
             const activeUid = auth.userId || "00000000-0000-0000-0000-000000000000";
+            const effectiveEmail = searchParams.get('email') || auth.userEmail || undefined;
             
             const [slotsRes, profileRes] = await Promise.all([
                 getAvailableTrainingSlots(),
-                getGoalieBookingProfile(activeUid, auth.userEmail || undefined)
+                getGoalieBookingProfile(activeUid, effectiveEmail)
             ]);
 
             if (slotsRes.slots && slotsRes.slots.length > 0) {
@@ -98,6 +102,12 @@ function BookTrainingContent() {
                     bookedCount: profileRes.bookedCount,
                     deliveredCount: profileRes.deliveredCount
                 });
+                if (profileRes.goalieName && profileRes.goalieName !== 'Athlete' && !guestName) {
+                    setGuestName(profileRes.goalieName);
+                }
+                if (profileRes.email && !guestEmail) {
+                    setGuestEmail(profileRes.email);
+                }
             }
             setIsLoading(false);
         };
@@ -105,7 +115,7 @@ function BookTrainingContent() {
         if (!auth.loading) {
             init();
         }
-    }, [auth.loading, auth.userId, auth.userEmail]);
+    }, [auth.loading, auth.userId, auth.userEmail, searchParams]);
 
     // Calendar Grid Calculation
     const calendarDays = useMemo(() => {
@@ -165,9 +175,9 @@ function BookTrainingContent() {
         if (selectedSlotIds.includes(slotId)) {
             setSelectedSlotIds(prev => prev.filter(id => id !== slotId));
         } else {
-            const maxAllowed = goalieProfile?.lessonsRemaining ?? 16;
+            const maxAllowed = goalieProfile?.lessonsRemaining ?? 4;
             if (selectedSlotIds.length >= maxAllowed) {
-                setError(`You have ${maxAllowed} lesson${maxAllowed > 1 ? 's' : ''} available to book.`);
+                setError(`You have ${maxAllowed} lesson${maxAllowed > 1 ? 's' : ''} available to book in this package.`);
                 return;
             }
             setError(null);
@@ -182,10 +192,13 @@ function BookTrainingContent() {
 
         try {
             const activeUid = auth.userId || "00000000-0000-0000-0000-000000000000";
+            const effectiveName = guestName.trim() || goalieProfile?.goalieName || "Athlete";
+            const effectiveEmail = guestEmail.trim() || goalieProfile?.email || auth.userEmail || "";
+
             const res = await bookTrainingSlots({
                 goalieProfileId: activeUid,
-                athleteName: goalieProfile?.goalieName || "Athlete",
-                email: goalieProfile?.email || auth.userEmail || "",
+                athleteName: effectiveName,
+                email: effectiveEmail,
                 selectedSlotIds
             });
 
@@ -355,10 +368,10 @@ function BookTrainingContent() {
                         </div>
 
                         {/* Days Grid */}
-                        <div className="grid grid-cols-7 gap-2">
+                        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                             {calendarDays.map((day, idx) => {
                                 if (!day) {
-                                    return <div key={`empty-${idx}`} className="h-14 rounded-2xl opacity-0" />;
+                                    return <div key={`empty-${idx}`} className="h-11 sm:h-13 rounded-xl opacity-0" />;
                                 }
 
                                 const isSelected = day.dateStr === selectedDateStr;
@@ -370,28 +383,26 @@ function BookTrainingContent() {
                                         key={day.dateStr}
                                         disabled={isPast}
                                         onClick={() => !isPast && setSelectedDateStr(day.dateStr)}
-                                        className={`h-14 rounded-2xl flex flex-col items-center justify-center relative transition-all border ${
+                                        className={`h-11 sm:h-13 rounded-xl flex flex-col items-center justify-center relative transition-all border ${
                                             isPast
                                                 ? 'opacity-20 bg-secondary/5 border-transparent cursor-not-allowed pointer-events-none'
                                                 : isSelected 
-                                                    ? 'bg-primary/20 border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/40' 
+                                                    ? 'bg-primary/20 border-primary shadow-md shadow-primary/10 ring-2 ring-primary/40' 
                                                     : day.hasSelected
-                                                        ? 'bg-emerald-500/10 border-emerald-500/50'
+                                                        ? 'bg-emerald-500/15 border-emerald-500/60'
                                                         : hasAvailable
-                                                            ? 'bg-secondary/30 border-border/50 hover:bg-secondary/60'
+                                                            ? 'bg-secondary/30 border-border/60 hover:bg-secondary/60 hover:border-emerald-500/40'
                                                             : 'bg-secondary/10 border-transparent opacity-40 hover:opacity-70'
                                         }`}
                                     >
-                                        <span className={`text-sm font-black ${isPast ? 'text-muted-foreground/40' : isSelected ? 'text-primary' : 'text-foreground'}`}>
+                                        <span className={`text-xs sm:text-sm font-black ${isPast ? 'text-muted-foreground/40' : isSelected ? 'text-primary' : 'text-foreground'}`}>
                                             {day.dayNumber}
                                         </span>
                                         {!isPast && hasAvailable && (
-                                            <span className="text-[8px] font-black uppercase text-emerald-500 tracking-wider mt-0.5">
-                                                {day.availableSlotCount} {day.availableSlotCount === 1 ? 'Slot' : 'Slots'}
-                                            </span>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1 shadow-sm shadow-emerald-500/50" />
                                         )}
                                         {!isPast && day.hasSelected && (
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 absolute top-1.5 right-1.5" />
+                                            <div className="w-2 h-2 rounded-full bg-primary absolute top-1.5 right-1.5" />
                                         )}
                                     </button>
                                 );
@@ -405,15 +416,15 @@ function BookTrainingContent() {
                     {/* Lesson Balance Info */}
                     <div className="bg-secondary/30 border border-border/40 rounded-3xl p-5 flex items-center justify-between">
                         <div>
-                            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/60">Your Balance</p>
-                            <h4 className="text-xl font-bold text-foreground">
-                                {goalieProfile?.lessonsRemaining ?? 16} Available to Book
+                            <p className="text-[10px] uppercase font-black tracking-widest text-emerald-500">
+                                {goalieProfile?.goalieName && goalieProfile.goalieName !== 'Athlete' ? `${goalieProfile.goalieName}'s Balance` : 'Private Training Balance'}
+                            </p>
+                            <h4 className="text-xl font-bold text-foreground mt-0.5">
+                                {goalieProfile?.lessonsRemaining ?? 4} Available to Book
                             </h4>
-                            {goalieProfile?.bookedCount !== undefined && goalieProfile.bookedCount > 0 && (
-                                <p className="text-[10px] font-bold text-emerald-500 mt-0.5">
-                                    {goalieProfile.bookedCount} Scheduled • {goalieProfile.totalAllowance || 16} Total Package
-                                </p>
-                            )}
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                                {goalieProfile?.bookedCount ? `${goalieProfile.bookedCount} completed in current package` : `${goalieProfile?.totalAllowance || 4}-lesson private package`}
+                            </p>
                         </div>
                         <div className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-black uppercase tracking-wider">
                             {selectedSlotIds.length} Selected

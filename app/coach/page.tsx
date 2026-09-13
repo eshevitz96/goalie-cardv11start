@@ -1004,91 +1004,103 @@ export default function CoachDashboard() {
                                                         <div>
                                                             <div className="flex justify-between items-start mb-3">
                                                                 <div>
-                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                        <h4 className="font-bold text-base text-foreground leading-tight">{athlete.goalie_name}</h4>
-                                                                        {isPaused ? (
-                                                                            <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border bg-amber-500/10 text-amber-400 border-amber-500/30 flex items-center gap-1">
-                                                                                <span>⏸️</span> Paused in Stripe
-                                                                            </span>
-                                                                        ) : isActiveStripe ? (
-                                                                            <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 flex items-center gap-1">
-                                                                                <Zap size={10} /> Auto-Renew
-                                                                            </span>
-                                                                        ) : athlete.payment_status ? (
+                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                            <h4 className="font-bold text-base text-foreground leading-tight">{athlete.goalie_name}</h4>
                                                                             <span className={clsx(
                                                                                 "text-[9px] font-black uppercase px-2 py-0.5 rounded-full border",
-                                                                                athlete.payment_status === 'paid' || athlete.payment_status === 'enrolled' ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                                                                remaining > 0 ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-zinc-800 text-zinc-400 border-zinc-700"
                                                                             )}>
-                                                                                {athlete.payment_status}
+                                                                                {remaining} Lesson{remaining === 1 ? '' : 's'} Left
                                                                             </span>
-                                                                        ) : null}
+                                                                            {isPaused ? (
+                                                                                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border bg-amber-500/10 text-amber-400 border-amber-500/30 flex items-center gap-1">
+                                                                                    <span>⏸️</span> Paused in Stripe
+                                                                                </span>
+                                                                            ) : isActiveStripe ? (
+                                                                                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 flex items-center gap-1">
+                                                                                    <Zap size={10} /> Auto-Renew
+                                                                                </span>
+                                                                            ) : athlete.payment_status ? (
+                                                                                <span className={clsx(
+                                                                                    "text-[9px] font-black uppercase px-2 py-0.5 rounded-full border",
+                                                                                    athlete.payment_status === 'paid' || athlete.payment_status === 'enrolled' ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                                                                )}>
+                                                                                    {athlete.payment_status}
+                                                                                </span>
+                                                                            ) : null}
+                                                                        </div>
+                                                                        <div className="text-xs text-muted-foreground mt-0.5">
+                                                                            {athlete.team || "Private Client"} {athlete.grad_year ? `• '` + String(athlete.grad_year).slice(-2) : ''}
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="text-xs text-muted-foreground mt-0.5">
-                                                                        {athlete.team || "Private Client"} {athlete.grad_year ? `• '` + String(athlete.grad_year).slice(-2) : ''}
+                                                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold border border-border shrink-0 text-foreground">
+                                                                        {athlete.goalie_name.charAt(0)}
                                                                     </div>
                                                                 </div>
-                                                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold border border-border shrink-0 text-foreground">
-                                                                    {athlete.goalie_name.charAt(0)}
-                                                                </div>
-                                                            </div>
 
-                                                            {/* Stripe Billing & Status Notice */}
-                                                            {athlete.stripe_billing_day ? (
-                                                                <div className={clsx(
-                                                                    "p-2.5 rounded-xl border text-[11px] mb-3 flex items-center justify-between",
-                                                                    isPaused ? "bg-amber-500/5 border-amber-500/20 text-amber-300" : "bg-emerald-500/5 border-emerald-500/20 text-emerald-300"
-                                                                )}>
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <Calendar size={12} />
-                                                                        <span className="font-semibold">{athlete.stripe_billing_day}</span>
+                                                                {/* Stripe Billing & Status Notice */}
+                                                                {athlete.stripe_billing_day ? (
+                                                                    <div className={clsx(
+                                                                        "p-2.5 rounded-xl border text-[11px] mb-3 flex items-center justify-between",
+                                                                        isPaused ? "bg-amber-500/5 border-amber-500/20 text-amber-300" : "bg-emerald-500/5 border-emerald-500/20 text-emerald-300"
+                                                                    )}>
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <Calendar size={12} />
+                                                                            <span className="font-semibold">{athlete.stripe_billing_day}</span>
+                                                                        </div>
+                                                                        {isPaused && (
+                                                                            <span className="text-[10px] text-amber-400/80 font-mono font-medium">Invoicing Draft</span>
+                                                                        )}
                                                                     </div>
-                                                                    {isPaused && (
-                                                                        <span className="text-[10px] text-amber-400/80 font-mono font-medium">Invoicing Draft</span>
+                                                                ) : (
+                                                                    <div className="p-2.5 rounded-xl border border-border/40 bg-muted/30 text-[11px] mb-3 flex items-center gap-1.5 text-muted-foreground">
+                                                                        <CreditCard size={12} />
+                                                                        <span>Direct / Offline Package</span>
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="space-y-2 py-3 border-y border-border/50 my-3 text-xs">
+                                                                    <div className="flex justify-between text-muted-foreground">
+                                                                        <span>2026 Total Lessons:</span>
+                                                                        <span className="font-black text-foreground">{athlete.session_count || 0}</span>
+                                                                    </div>
+                                                                    {athlete.current_package && (
+                                                                        <div className="flex justify-between text-muted-foreground">
+                                                                            <span>Current Package:</span>
+                                                                            <span className="font-semibold text-foreground font-mono">{athlete.current_package}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="flex justify-between items-center text-muted-foreground">
+                                                                        <span>Remaining Lessons:</span>
+                                                                        <span className={clsx(
+                                                                            "font-black px-2 py-0.5 rounded-md text-[11px]",
+                                                                            remaining > 0 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                                                                        )}>
+                                                                            {remaining} / {athlete.lesson_count || 4} Left
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center text-muted-foreground">
+                                                                        <span>Package Status:</span>
+                                                                        <span className="font-semibold text-foreground">
+                                                                            {athlete.package_status ? athlete.package_status : (remaining > 0 ? `In progress — ${remaining} left` : 'Complete')}
+                                                                        </span>
+                                                                    </div>
+                                                                    {athlete.email && (
+                                                                        <div className="flex justify-between text-muted-foreground truncate pt-1">
+                                                                            <span>Email:</span>
+                                                                            <span className="font-semibold text-foreground truncate max-w-[160px]">{athlete.email}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {athlete.phone && (
+                                                                        <div className="flex justify-between text-muted-foreground">
+                                                                            <span>Phone:</span>
+                                                                            <span className="font-semibold text-foreground">{athlete.phone}</span>
+                                                                        </div>
                                                                     )}
                                                                 </div>
-                                                            ) : (
-                                                                <div className="p-2.5 rounded-xl border border-border/40 bg-muted/30 text-[11px] mb-3 flex items-center gap-1.5 text-muted-foreground">
-                                                                    <CreditCard size={12} />
-                                                                    <span>Direct / Offline Package</span>
-                                                                </div>
-                                                            )}
-
-                                                            <div className="space-y-2 py-3 border-y border-border/50 my-3 text-xs">
-                                                                <div className="flex justify-between text-muted-foreground">
-                                                                    <span>2026 Total Lessons:</span>
-                                                                    <span className="font-black text-foreground">{athlete.session_count || 0}</span>
-                                                                </div>
-                                                                {athlete.current_package && (
-                                                                    <div className="flex justify-between text-muted-foreground">
-                                                                        <span>Current Package:</span>
-                                                                        <span className="font-semibold text-foreground font-mono">{athlete.current_package}</span>
-                                                                    </div>
-                                                                )}
-                                                                <div className="flex justify-between items-center text-muted-foreground">
-                                                                    <span>Package Status:</span>
-                                                                    <span className={clsx(
-                                                                        "font-black px-2 py-0.5 rounded-md text-[11px]",
-                                                                        remaining > 0 ? "bg-primary/10 text-primary border border-primary/20" : "bg-zinc-800 text-zinc-400 border border-zinc-700"
-                                                                    )}>
-                                                                        {athlete.package_status ? athlete.package_status : (remaining > 0 ? `In progress — ${remaining} left` : 'Complete')}
-                                                                    </span>
-                                                                </div>
-                                                                {athlete.email && (
-                                                                    <div className="flex justify-between text-muted-foreground truncate pt-1">
-                                                                        <span>Email:</span>
-                                                                        <span className="font-semibold text-foreground truncate max-w-[160px]">{athlete.email}</span>
-                                                                    </div>
-                                                                )}
-                                                                {athlete.phone && (
-                                                                    <div className="flex justify-between text-muted-foreground">
-                                                                        <span>Phone:</span>
-                                                                        <span className="font-semibold text-foreground">{athlete.phone}</span>
-                                                                    </div>
-                                                                )}
                                                             </div>
-                                                        </div>
 
-                                                        <div className="flex items-center gap-2 pt-1">
+                                                            <div className="flex items-center gap-2 pt-1">
                                                             <Link
                                                                 href={`/calendar`}
                                                                 className="w-full bg-muted hover:bg-muted/80 text-foreground text-xs font-bold py-2 rounded-xl text-center transition-colors border border-border/50"

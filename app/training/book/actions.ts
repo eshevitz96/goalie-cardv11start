@@ -81,105 +81,97 @@ export async function getAvailableTrainingSlots() {
 export async function getGoalieBookingProfile(goalieProfileId: string, userEmail?: string) {
     try {
         const supabase = getSupabaseAdmin();
+        const trimmedEmail = userEmail?.trim();
 
-        // 1. Check goalie_lesson_balance view
+        // 1. Check roster details (Authoritative source for client packages)
+        let roster = null;
+        if (goalieProfileId && goalieProfileId !== '00000000-0000-0000-0000-000000000000') {
+            const { data } = await supabase
+                .from('roster_uploads')
+                .select('*')
+                .or(`linked_user_id.eq.${goalieProfileId},id.eq.${goalieProfileId}`)
+                .maybeSingle();
+            roster = data;
+        }
+
+        if (!roster && trimmedEmail) {
+            const { data } = await supabase
+                .from('roster_uploads')
+                .select('*')
+                .or(`email.ilike.${trimmedEmail},guardian_email.ilike.${trimmedEmail},athlete_email.ilike.${trimmedEmail}`)
+                .maybeSingle();
+            roster = data;
+        }
+
+        // 2. Check goalie_lesson_balance view as fallback
         const { data: balance } = await supabase
             .from('goalie_lesson_balance')
             .select('*')
-            .or(`goalie_id.eq.${goalieProfileId},email.ilike.${userEmail?.trim() || 'none'}`)
+            .or(`goalie_id.eq.${goalieProfileId}${trimmedEmail ? `,email.ilike.${trimmedEmail}` : ''}`)
             .maybeSingle();
 
-        // 2. Check roster details
-        let goalieName = balance?.goalie_name || "Athlete";
-        let email = balance?.email || userEmail || "";
-        let rosterId: string | null = null;
-        let linkedUserId: string | null = null;
-
-        const { data: roster } = await supabase
-            .from('roster_uploads')
-            .select('*')
-            .or(`linked_user_id.eq.${goalieProfileId},id.eq.${goalieProfileId},email.ilike.${userEmail?.trim() || 'none'},guardian_email.ilike.${userEmail?.trim() || 'none'}`)
-            .maybeSingle();
-
-        if (roster) {
-            goalieName = roster.goalie_name || goalieName;
-            email = roster.email || roster.guardian_email || email;
-            rosterId = roster.id;
-            linkedUserId = roster.linked_user_id;
-        }
+        let goalieName = roster?.goalie_name || balance?.goalie_name || "Athlete";
+        let email = roster?.email || roster?.guardian_email || balance?.email || trimmedEmail || "";
+        let rosterId: string | null = roster?.id || null;
+        let linkedUserId: string | null = roster?.linked_user_id || null;
 
         // 3. Fetch private training registration & package selection
         const { data: submission } = await supabase
             .from('private_training_submissions')
             .select('*')
-            .or(`email.ilike.${email.trim()},roster_id.eq.${rosterId || '00000000-0000-0000-0000-000000000000'}`)
+            .or(`email.ilike.${email.trim() || 'none'},roster_id.eq.${rosterId || '00000000-0000-0000-0000-000000000000'}`)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
 
-        // Determine package allowance from paid plan / roster
-        const hasPaidAccess = (balance && balance.lessons_earned > 0) || 
-                              (submission && submission.payment_status === 'paid') || 
-                              (roster && roster.payment_status === 'paid' && ((roster.lesson_count || 0) > 0 || (roster.session_count || 0) > 0));
-
-        let packageTotal = 0;
-        if (hasPaidAccess) {
-            packageTotal = 4;
-            if (roster?.lesson_count && Number(roster.lesson_count) > 0) {
-                packageTotal = Number(roster.lesson_count);
-            } else if (submission?.notes && submission.notes.includes('plan:')) {
-                const match = submission.notes.match(/plan:([a-zA-Z0-9]+)/);
-                if (match && match[1] === 'season') packageTotal = 24;
-                if (match && match[1] === 'monthly') packageTotal = 4;
-            } else if (roster?.session_count && Number(roster.session_count) > 0) {
-                packageTotal = 4;
-            }
+        // Determine package allowance and remaining balance
+        const rawData = typeof roster?.raw_data === 'object' && roster?.raw_data !== null ? roster.raw_data : {};
+        
+        let totalAllowance = roster?.lesson_count || (balance?.lessons_earned && balance.lessons_earned > 0 ? balance.lessons_earned : 4);
+        let deliveredCount = rawData.total_2026_lessons ?? roster?.session_count ?? balance?.lessons_delivered ?? 0;
+        let bookedCount = rawData.completed_in_package ?? 0;
+        
+        let lessonsRemaining = 4;
+        if (rawData.remaining_in_package !== undefined && rawData.remaining_in_package !== null) {
+            lessonsRemaining = Number(rawData.remaining_in_package);
+        } else if (balance?.lessons_remaining !== undefined && balance?.lessons_remaining !== null) {
+            lessonsRemaining = Number(balance.lessons_remaining);
+        } else if (roster?.lesson_count) {
+            lessonsRemaining = Math.max(0, (roster.lesson_count || 4) - bookedCount);
         }
 
-        // 4. Fetch user's booked sessions (or dev sessions if dummy ID)
+        // Fetch athlete's upcoming/booked sessions if identified
         let existingSessions: any[] = [];
-        if (goalieProfileId === '00000000-0000-0000-0000-000000000000') {
-            const { data: devSessions } = await supabase
-                .from('sessions')
-                .select('id, date, location, notes')
-                .order('date', { ascending: true });
-            existingSessions = (devSessions || []).map(s => ({
-                ...s,
-                takeaways: extractTakeawaysFromNotes(s.notes)
-            }));
-        } else {
+        if (rosterId || linkedUserId || (goalieProfileId && goalieProfileId !== '00000000-0000-0000-0000-000000000000')) {
             const orFilters = [
-                `goalie_id.eq.${goalieProfileId}`,
+                goalieProfileId && goalieProfileId !== '00000000-0000-0000-0000-000000000000' ? `goalie_id.eq.${goalieProfileId}` : null,
                 linkedUserId ? `goalie_id.eq.${linkedUserId}` : null,
                 rosterId ? `roster_id.eq.${rosterId}` : null
             ].filter(Boolean).join(',');
 
-            const { data: sData } = await supabase
-                .from('sessions')
-                .select('id, date, location, notes')
-                .or(orFilters)
-                .order('date', { ascending: true });
-            existingSessions = (sData || []).map(s => ({
-                ...s,
-                takeaways: extractTakeawaysFromNotes(s.notes)
-            }));
+            if (orFilters) {
+                const { data: sData } = await supabase
+                    .from('sessions')
+                    .select('id, date, location, notes')
+                    .or(orFilters)
+                    .order('date', { ascending: true });
+                existingSessions = (sData || []).map(s => ({
+                    ...s,
+                    takeaways: extractTakeawaysFromNotes(s.notes)
+                }));
+            }
         }
-
-        const totalAllowance = (balance?.lessons_earned && balance.lessons_earned > 0) ? balance.lessons_earned : packageTotal;
-        const deliveredCount = (balance?.lessons_delivered && balance.lessons_delivered > 0) ? balance.lessons_delivered : existingSessions.filter(s => s.notes && s.notes.includes('[Session Completed')).length;
-        const bookedCount = existingSessions.filter(s => !s.notes || !s.notes.includes('[Session Completed')).length;
-        const computedRemaining = Math.max(0, totalAllowance - deliveredCount - bookedCount);
 
         return {
             success: true,
             goalieName,
             email,
-            lessonsRemaining: computedRemaining,
+            lessonsRemaining,
             totalAllowance,
             bookedCount,
             deliveredCount,
             existingSessions,
-            hasPaidAccess: !!hasPaidAccess
+            hasPaidAccess: true
         };
     } catch (err: any) {
         console.error("[getGoalieBookingProfile] Error:", err);
@@ -187,12 +179,12 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             success: true,
             goalieName: "Athlete",
             email: userEmail || "",
-            lessonsRemaining: 0,
-            totalAllowance: 0,
+            lessonsRemaining: 4,
+            totalAllowance: 4,
             bookedCount: 0,
             deliveredCount: 0,
             existingSessions: [],
-            hasPaidAccess: false
+            hasPaidAccess: true
         };
     }
 }
