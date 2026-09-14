@@ -192,8 +192,11 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
 /**
  * Helper to build Google Calendar template URL
  */
-function createGoogleCalendarUrl(slot: TrainingSlot, athleteName: string): string {
-    const title = encodeURIComponent(`Private Goalie Training: ${athleteName}`);
+function createGoogleCalendarUrl(slot: TrainingSlot, athleteName: string, sessionNum?: number, lessonNum?: number): string {
+    const formattedTitle = (sessionNum && lessonNum) 
+        ? `The Goalie Brand - ${athleteName} S${sessionNum} L${lessonNum}`
+        : `The Goalie Brand - ${athleteName}`;
+    const title = encodeURIComponent(formattedTitle);
     const details = encodeURIComponent(`Private training session with Coach Elliott.\nLocation: ${slot.location}`);
     const location = encodeURIComponent(slot.location);
 
@@ -340,17 +343,79 @@ export async function bookTrainingSlots(payload: {
             console.warn("[bookTrainingSlots] Roster resolution note:", e);
         }
 
-        // 2. Insert sessions and events for each slot
+        // 2. Determine base S# and L# for athlete package
+        let baseSessionNum = 1;
+        let completedInPkg = 0;
+
+        if (resolvedRosterId) {
+            const { data: rRow } = await supabase
+                .from('roster_uploads')
+                .select('*')
+                .eq('id', resolvedRosterId)
+                .maybeSingle();
+
+            const raw = typeof rRow?.raw_data === 'object' && rRow?.raw_data !== null ? rRow.raw_data : {};
+            if (raw.current_package) {
+                const sMatch = String(raw.current_package).match(/S(\d+)/i);
+                if (sMatch) baseSessionNum = parseInt(sMatch[1], 10);
+            }
+            completedInPkg = raw.completed_in_package ?? 0;
+        }
+
+        if (resolvedRosterId || resolvedGoalieId) {
+            const orF = [
+                resolvedRosterId ? `roster_id.eq.${resolvedRosterId}` : null,
+                resolvedGoalieId ? `goalie_id.eq.${resolvedGoalieId}` : null
+            ].filter(Boolean).join(',');
+
+            if (orF) {
+                const { data: pastSess } = await supabase
+                    .from('sessions')
+                    .select('session_number, lesson_number, date')
+                    .or(orF)
+                    .order('session_number', { ascending: false })
+                    .order('lesson_number', { ascending: false })
+                    .limit(10);
+
+                if (pastSess && pastSess.length > 0) {
+                    const valid = pastSess.filter(s => s.session_number && s.session_number > 0);
+                    if (valid.length > 0) {
+                        const top = valid[0];
+                        baseSessionNum = top.session_number || baseSessionNum;
+                        if (top.lesson_number && top.lesson_number < 4) {
+                            completedInPkg = top.lesson_number;
+                        } else if (top.lesson_number === 4) {
+                            baseSessionNum += 1;
+                            completedInPkg = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Insert sessions and events for each slot
         const createdSessions: any[] = [];
         const googleCalLinks: { slotId: string; title: string; url: string }[] = [];
 
-        for (const slot of selectedSlots) {
-            // A. Insert into sessions table with authoritative athlete name
+        for (let i = 0; i < selectedSlots.length; i++) {
+            const slot = selectedSlots[i];
+            let slotLessonNum = completedInPkg + (i + 1);
+            let slotSessionNum = baseSessionNum;
+            if (slotLessonNum > 4) {
+                slotSessionNum += Math.floor((slotLessonNum - 1) / 4);
+                slotLessonNum = ((slotLessonNum - 1) % 4) + 1;
+            }
+
+            const formattedTitle = `The Goalie Brand - ${resolvedName} S${slotSessionNum} L${slotLessonNum}`;
+
+            // A. Insert into sessions table with authoritative athlete name & S# L#
             const sessionPayload: any = {
                 goalie_id: resolvedGoalieId,
                 date: `${slot.date}T${slot.startTime.includes('PM') ? '18:00:00' : '09:00:00'}`,
                 location: slot.location,
-                notes: `The Goalie Brand - ${resolvedName} • Private Training Session • slot_id:${slot.id} • ${slot.timeDisplay}`,
+                notes: formattedTitle,
+                session_number: slotSessionNum,
+                lesson_number: slotLessonNum
             };
             if (resolvedRosterId) {
                 sessionPayload.roster_id = resolvedRosterId;
@@ -370,43 +435,55 @@ export async function bookTrainingSlots(payload: {
 
             // B. Insert into events table for the athlete's Goalie Card calendar
             await supabase.from('events').insert({
-                name: `Private Training: ${slot.location}`,
+                name: formattedTitle,
                 date: slot.date,
                 location: slot.location,
                 sport: resolvedSport,
-                scouting_report: `Scheduled Private Training Session with Coach Elliott (${slot.timeDisplay})`,
+                scouting_report: `${formattedTitle} (${slot.timeDisplay})`,
                 created_by: resolvedGoalieId
             });
 
             // Build Google Calendar Link
-            const calUrl = createGoogleCalendarUrl(slot, resolvedName);
+            const calUrl = createGoogleCalendarUrl(slot, resolvedName, slotSessionNum, slotLessonNum);
             googleCalLinks.push({
                 slotId: slot.id,
-                title: `${slot.date} (${slot.timeDisplay}) @ ${slot.location}`,
+                title: `${formattedTitle} • ${slot.date} (${slot.timeDisplay})`,
                 url: calUrl
             });
         }
 
-        // 2. Dispatch Email via Resend to Coach (Elliott) and Client
+        // 4. Dispatch Email via Resend to Coach (Elliott) and Client
         if (process.env.RESEND_API_KEY) {
             try {
-                const sessionListHtml = selectedSlots.map((s, idx) => `
+                const sessionListHtml = selectedSlots.map((s, idx) => {
+                    let slotLessonNum = completedInPkg + (idx + 1);
+                    let slotSessionNum = baseSessionNum;
+                    if (slotLessonNum > 4) {
+                        slotSessionNum += Math.floor((slotLessonNum - 1) / 4);
+                        slotLessonNum = ((slotLessonNum - 1) % 4) + 1;
+                    }
+                    const formattedTitle = `The Goalie Brand - ${resolvedName} S${slotSessionNum} L${slotLessonNum}`;
+                    const calUrl = createGoogleCalendarUrl(s, resolvedName, slotSessionNum, slotLessonNum);
+
+                    return `
                     <div style="background: #f8fafc; border-left: 4px solid #00E676; padding: 12px 16px; margin-bottom: 12px; border-radius: 6px;">
-                        <p style="margin: 0; font-size: 14px; font-weight: bold; color: #0f172a;">Session ${idx + 1}: ${new Date(s.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                        <p style="margin: 0; font-size: 14px; font-weight: bold; color: #0f172a;">${formattedTitle}</p>
+                        <p style="margin: 4px 0 0; font-size: 13px; color: #475569;"><strong>Date:</strong> ${new Date(s.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
                         <p style="margin: 4px 0 0; font-size: 13px; color: #475569;"><strong>Time:</strong> ${s.timeDisplay}</p>
                         <p style="margin: 4px 0 0; font-size: 13px; color: #475569;"><strong>Location:</strong> ${s.location}</p>
-                        <p style="margin: 8px 0 0;"><a href="${createGoogleCalendarUrl(s, athleteName)}" style="display: inline-block; font-size: 11px; font-weight: bold; color: #0284c7; text-decoration: none; background: #e0f2fe; padding: 4px 10px; border-radius: 4px;">+ Add to Google Calendar</a></p>
+                        <p style="margin: 8px 0 0;"><a href="${calUrl}" style="display: inline-block; font-size: 11px; font-weight: bold; color: #0284c7; text-decoration: none; background: #e0f2fe; padding: 4px 10px; border-radius: 4px;">+ Add to Google Calendar</a></p>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
 
                 const coachEmailHtml = `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
                         <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">New Private Training Scheduled</h2>
-                        <p style="font-size: 15px; color: #475569; margin-top: 0;"><strong>${athleteName}</strong> has just booked <strong>${selectedSlots.length}</strong> private training session(s).</p>
+                        <p style="font-size: 15px; color: #475569; margin-top: 0;"><strong>${resolvedName}</strong> has just booked <strong>${selectedSlots.length}</strong> private training session(s).</p>
                         
                         <div style="background: #f1f5f9; padding: 14px 18px; border-radius: 8px; margin-bottom: 24px;">
-                            <p style="margin: 0; font-size: 13px;"><strong>Athlete:</strong> ${athleteName}</p>
-                            <p style="margin: 4px 0 0; font-size: 13px;"><strong>Contact Email:</strong> ${email || 'N/A'}</p>
+                            <p style="margin: 0; font-size: 13px;"><strong>Athlete:</strong> ${resolvedName}</p>
+                            <p style="margin: 4px 0 0; font-size: 13px;"><strong>Contact Email:</strong> ${cleanEmail || 'N/A'}</p>
                             <p style="margin: 4px 0 0; font-size: 13px;"><strong>Total Sessions Booked:</strong> ${selectedSlots.length}</p>
                         </div>
 
@@ -1708,7 +1785,14 @@ export async function createCalendarPrivateLesson(payload: {
         }
 
         const name = athleteName || "Private Athlete";
-        const formattedNotes = notes ? `${name} - ${notes}` : name;
+        let formattedNotes = name;
+        if (sessionNumber && lessonNumber) {
+            formattedNotes = `The Goalie Brand - ${name.replace(/^The Goalie Brand\s*-\s*/i, '')} S${sessionNumber} L${lessonNumber}${notes ? ` • ${notes}` : ''}`;
+        } else if (name.startsWith('The Goalie Brand -')) {
+            formattedNotes = `${name}${notes ? ` • ${notes}` : ''}`;
+        } else {
+            formattedNotes = `The Goalie Brand - ${name}${notes ? ` • ${notes}` : ''}`;
+        }
 
         const insertData: any = {
             date: isoDate,
