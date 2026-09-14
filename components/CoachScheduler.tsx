@@ -780,23 +780,27 @@ export function CoachScheduler() {
                                                             return (
                                                                 <div
                                                                     key={slot.id}
-                                                                    className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between gap-2 group relative ${
+                                                                    className={`p-2.5 sm:p-3 rounded-xl border transition-all text-left flex flex-col justify-between gap-1.5 min-h-[62px] group relative ${
                                                                         slot.is_booked
-                                                                            ? 'bg-muted/70 border-border/80 text-foreground'
+                                                                            ? 'bg-muted/60 border-border/80 text-foreground'
                                                                             : 'bg-[#00E676]/10 border-[#00E676]/30 hover:border-[#00E676]/60 text-foreground'
                                                                     }`}
                                                                 >
-                                                                    {/* Top row: Time & Status Badge */}
+                                                                    {/* Row 1: Time on left | Status/Athlete Badge on right */}
                                                                     <div className="flex items-center justify-between gap-2">
-                                                                        <div className="flex items-center gap-1.5 text-xs font-black text-foreground">
-                                                                            <Clock size={13} className={slot.is_booked ? "text-muted-foreground" : "text-[#00E676]"} />
-                                                                            <span>{sTime} – {eTime}</span>
+                                                                        <div className="flex items-center gap-1.5 text-xs font-black text-foreground truncate">
+                                                                            <Clock size={12} className={slot.is_booked ? "text-muted-foreground shrink-0" : "text-[#00E676] shrink-0"} />
+                                                                            <span className="truncate">{sTime} – {eTime}</span>
                                                                         </div>
 
-                                                                        <div className="flex items-center gap-1">
+                                                                        <div className="flex items-center gap-1 shrink-0">
                                                                             {slot.is_booked ? (
-                                                                                <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
-                                                                                    <Lock size={9} /> Booked
+                                                                                <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted text-foreground border border-border">
+                                                                                    <Lock size={9} className="text-muted-foreground shrink-0" />
+                                                                                    <span className="truncate max-w-[120px]">{slot.athlete_name || "Booked"}</span>
+                                                                                    {slot.lesson_code && (
+                                                                                        <span className="text-[8px] text-[#00E676] font-bold">({slot.lesson_code})</span>
+                                                                                    )}
                                                                                 </span>
                                                                             ) : (
                                                                                 <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#00E676]/20 text-[#00E676] border border-[#00E676]/30">
@@ -812,7 +816,7 @@ export function CoachScheduler() {
                                                                                         handleDeleteSlot(slot);
                                                                                     }}
                                                                                     title="Delete slot"
-                                                                                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-1 cursor-pointer"
+                                                                                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
                                                                                 >
                                                                                     <Trash2 size={12} />
                                                                                 </button>
@@ -820,23 +824,17 @@ export function CoachScheduler() {
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* Middle row: Athlete & Lesson Info (if booked) */}
-                                                                    {slot.is_booked && (
-                                                                        <div className="flex items-center gap-1.5 text-xs font-black text-foreground bg-card/70 px-2.5 py-1 rounded-lg border border-border/50">
-                                                                            <User size={12} className="text-[#00E676] shrink-0" />
-                                                                            <span className="truncate">{slot.athlete_name || "Athlete"}</span>
-                                                                            {slot.lesson_code && (
-                                                                                <span className="text-[10px] font-extrabold px-1.5 py-0.2 bg-[#00E676]/15 text-[#00E676] rounded">
-                                                                                    {slot.lesson_code}
-                                                                                </span>
-                                                                            )}
+                                                                    {/* Row 2: Location */}
+                                                                    <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-muted-foreground">
+                                                                        <div className="flex items-center gap-1 truncate">
+                                                                            <MapPin size={10} className="text-[#00E676] shrink-0" />
+                                                                            <span className="truncate">{locName}</span>
                                                                         </div>
-                                                                    )}
-
-                                                                    {/* Bottom row: Location */}
-                                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
-                                                                        <MapPin size={11} className="text-[#00E676] shrink-0" />
-                                                                        <span className="truncate">{locName}</span>
+                                                                        {slot.is_booked && (
+                                                                            <span className="text-[9px] text-muted-foreground/60 font-semibold shrink-0 hidden sm:inline">
+                                                                                Private Session
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             );
@@ -901,48 +899,48 @@ export function CoachScheduler() {
                                                     return (
                                                         <div
                                                             key={slot.id}
-                                                            className={`p-2.5 rounded-xl border transition-all text-left space-y-1 group relative ${
+                                                            className={`p-2 rounded-xl border transition-all text-left flex flex-col justify-between gap-1 min-h-[58px] group relative ${
                                                                 slot.is_booked
-                                                                    ? 'bg-muted/70 border-border/70 text-foreground'
+                                                                    ? 'bg-muted/60 border-border/70 text-foreground'
                                                                     : 'bg-[#00E676]/10 border-[#00E676]/25 hover:border-[#00E676]/50'
                                                             }`}
                                                         >
                                                             <div className="flex items-center justify-between gap-1">
-                                                                <span className="text-[10px] font-extrabold text-foreground leading-tight">
+                                                                <span className="text-[10px] font-extrabold text-foreground leading-tight truncate">
                                                                     {sTime} – {eTime}
                                                                 </span>
-                                                                {!slot.is_booked && !slot.is_session_source && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleDeleteSlot(slot);
-                                                                        }}
-                                                                        title="Delete slot"
-                                                                        className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
-                                                                    >
-                                                                        <Trash2 size={11} />
-                                                                    </button>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Athlete Name if booked */}
-                                                            {slot.is_booked && (
-                                                                <div className="flex items-center gap-1 text-[10px] font-extrabold text-foreground bg-card/80 px-1.5 py-0.5 rounded border border-border/50">
-                                                                    <User size={10} className="text-[#00E676] shrink-0" />
-                                                                    <span className="truncate">{slot.athlete_name || "Athlete"}</span>
-                                                                    {slot.lesson_code && (
-                                                                        <span className="text-[8px] font-black text-[#00E676]">
-                                                                            {slot.lesson_code}
-                                                                        </span>
+                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                    {slot.is_booked ? (
+                                                                        <Lock size={9} className="text-muted-foreground" />
+                                                                    ) : (
+                                                                        !slot.is_session_source && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    handleDeleteSlot(slot);
+                                                                                }}
+                                                                                title="Delete slot"
+                                                                                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
+                                                                            >
+                                                                                <Trash2 size={11} />
+                                                                            </button>
+                                                                        )
                                                                     )}
                                                                 </div>
-                                                            )}
+                                                            </div>
 
-                                                            {/* Location Pill */}
-                                                            <div className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground">
-                                                                <MapPin size={9} className="text-[#00E676] shrink-0" />
-                                                                <span className="truncate">{locName}</span>
+                                                            {/* Athlete Name / Location */}
+                                                            <div className="flex items-center justify-between gap-1 text-[9px] font-bold text-muted-foreground">
+                                                                <div className="flex items-center gap-1 truncate">
+                                                                    <MapPin size={9} className="text-[#00E676] shrink-0" />
+                                                                    <span className="truncate">{locName}</span>
+                                                                </div>
+                                                                {slot.is_booked && (
+                                                                    <span className="text-[8px] font-black text-foreground bg-card/80 px-1 py-0.2 rounded border border-border/50 truncate max-w-[70px]">
+                                                                        {slot.athlete_name || "Booked"}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     );
