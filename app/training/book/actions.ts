@@ -127,17 +127,24 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
         // Determine package allowance and remaining balance
         const rawData = typeof roster?.raw_data === 'object' && roster?.raw_data !== null ? roster.raw_data : {};
         
-        let totalAllowance = roster?.lesson_count || (balance?.lessons_earned && balance.lessons_earned > 0 ? balance.lessons_earned : 4);
+        const hasRosterPackage = Boolean(roster && (roster.lesson_count > 0 || roster.payment_status === 'paid' || roster.payment_status === 'enrolled'));
+        const hasBalanceRecord = Boolean(balance && balance.lessons_earned > 0);
+        const hasActiveSubmission = Boolean(submission && (submission.payment_status === 'paid' || submission.payment_status === 'enrolled'));
+        const isClientEnrolled = hasRosterPackage || hasBalanceRecord || hasActiveSubmission;
+
+        let totalAllowance = roster?.lesson_count || (balance?.lessons_earned && balance.lessons_earned > 0 ? balance.lessons_earned : (isClientEnrolled ? 4 : 0));
         let deliveredCount = rawData.total_2026_lessons ?? roster?.session_count ?? balance?.lessons_delivered ?? 0;
         let bookedCount = rawData.completed_in_package ?? 0;
         
-        let lessonsRemaining = 4;
+        let lessonsRemaining = 0;
         if (rawData.remaining_in_package !== undefined && rawData.remaining_in_package !== null) {
             lessonsRemaining = Number(rawData.remaining_in_package);
         } else if (balance?.lessons_remaining !== undefined && balance?.lessons_remaining !== null) {
             lessonsRemaining = Number(balance.lessons_remaining);
         } else if (roster?.lesson_count) {
-            lessonsRemaining = Math.max(0, (roster.lesson_count || 4) - bookedCount);
+            lessonsRemaining = Math.max(0, (roster.lesson_count || 0) - bookedCount);
+        } else if (isClientEnrolled) {
+            lessonsRemaining = Math.max(0, totalAllowance - bookedCount);
         }
 
         // Fetch athlete's upcoming/booked sessions if identified
@@ -171,7 +178,7 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             bookedCount,
             deliveredCount,
             existingSessions,
-            hasPaidAccess: true
+            hasPaidAccess: isClientEnrolled
         };
     } catch (err: any) {
         console.error("[getGoalieBookingProfile] Error:", err);
@@ -179,12 +186,12 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
             success: true,
             goalieName: "Athlete",
             email: userEmail || "",
-            lessonsRemaining: 4,
-            totalAllowance: 4,
+            lessonsRemaining: 0,
+            totalAllowance: 0,
             bookedCount: 0,
             deliveredCount: 0,
             existingSessions: [],
-            hasPaidAccess: true
+            hasPaidAccess: false
         };
     }
 }
