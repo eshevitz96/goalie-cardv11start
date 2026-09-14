@@ -207,7 +207,7 @@ export default function CoachDashboard() {
                             goalie_id: sess.goalie_id,
                             roster_id: sess.roster_id,
                             athlete_name: matchRoster?.goalie_name || (sess.notes ? sess.notes.split(' - ')[0] : "Athlete"),
-                            team: matchRoster?.team || "Private Client",
+                            team: matchRoster?.team || "",
                             email: matchRoster?.email || matchRoster?.guardian_email || "",
                             phone: matchRoster?.phone || "",
                             is_completed: sess.notes?.includes('[Session Completed') || (sess.date && new Date(sess.date).getTime() < Date.now())
@@ -217,7 +217,7 @@ export default function CoachDashboard() {
                     const fallbackAthletes = fallbackRosters.map(r => ({
                         id: r.id,
                         goalie_name: r.goalie_name || "Athlete",
-                        team: r.team || "Private Client",
+                        team: r.team || "",
                         grad_year: r.grad_year || "",
                         email: r.email || r.guardian_email || "",
                         guardian_email: r.guardian_email || "",
@@ -908,9 +908,11 @@ export default function CoachDashboard() {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="text-xs text-muted-foreground mt-0.5 font-medium">
-                                                            {sess.team || "Private Client"}
-                                                        </div>
+                                                        {sess.team && sess.team !== "Private Client" && (
+                                                            <div className="text-xs text-muted-foreground mt-0.5 font-medium">
+                                                                {sess.team}
+                                                            </div>
+                                                        )}
 
                                                         <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
                                                             <div className="flex items-center gap-1.5 truncate">
@@ -1030,7 +1032,7 @@ export default function CoachDashboard() {
                                                                             ) : null}
                                                                         </div>
                                                                         <div className="text-xs text-muted-foreground mt-0.5">
-                                                                            {athlete.team || "Private Client"} {athlete.grad_year ? `• '` + String(athlete.grad_year).slice(-2) : ''}
+                                                                            {[athlete.team && athlete.team !== "Private Client" ? athlete.team : null, athlete.grad_year ? `'` + String(athlete.grad_year).slice(-2) : null].filter(Boolean).join(' • ')}
                                                                         </div>
                                                                     </div>
                                                                     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold border border-border shrink-0 text-foreground">
@@ -1143,7 +1145,7 @@ export default function CoachDashboard() {
                                                                     </span>
                                                                 </div>
                                                                 <div className="text-xs text-muted-foreground mt-0.5">
-                                                                    {athlete.team || "Private Client"} {athlete.grad_year ? `• '` + String(athlete.grad_year).slice(-2) : ''}
+                                                                    {[athlete.team && athlete.team !== "Private Client" ? athlete.team : null, athlete.grad_year ? `'` + String(athlete.grad_year).slice(-2) : null].filter(Boolean).join(' • ')}
                                                                 </div>
                                                             </div>
                                                             <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs font-bold border border-amber-500/20 shrink-0">
@@ -1223,7 +1225,7 @@ export default function CoachDashboard() {
                                                             </span>
                                                         </div>
                                                         <div className="text-xs text-muted-foreground mt-0.5">
-                                                            {athlete.team || "Private Client"} {athlete.grad_year ? `• '` + String(athlete.grad_year).slice(-2) : ''}
+                                                            {[athlete.team && athlete.team !== "Private Client" ? athlete.team : null, athlete.grad_year ? `'` + String(athlete.grad_year).slice(-2) : null].filter(Boolean).join(' • ')}
                                                         </div>
                                                     </div>
                                                     <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs font-bold border border-amber-500/20 shrink-0">
