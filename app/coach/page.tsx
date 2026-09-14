@@ -975,7 +975,7 @@ export default function CoachDashboard() {
                                     <div className="flex justify-between items-center mb-2">
                                         <div>
                                             <div className="flex items-center gap-2.5">
-                                                <h3 className="text-lg font-bold">Assigned Athletes & Clients</h3>
+                                                <h3 className="text-lg font-bold">Assigned Athletes</h3>
                                                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#00E676]/10 text-[#00E676] border border-[#00E676]/20">
                                                     {activeAthletes.length} Active
                                                 </span>
