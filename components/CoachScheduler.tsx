@@ -94,11 +94,12 @@ export function CoachScheduler() {
                 ? COACH_ACCOUNTS
                 : [user.id];
 
-            // 1. Fetch coach availability slots, active sessions, and athlete rosters simultaneously
+            // 1. Fetch coach availability slots, active sessions, athlete rosters, and profiles simultaneously
             const [
                 { data: availData, error: availErr },
                 { data: sessionsData, error: sessErr },
-                { data: rosterData, error: rosterErr }
+                { data: rosterData, error: rosterErr },
+                { data: profileData }
             ] = await Promise.all([
                 supabase
                     .from('coach_availability')
@@ -109,18 +110,22 @@ export function CoachScheduler() {
                 supabase
                     .from('sessions')
                     .select('*')
-                    .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+                    .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
                     .order('date', { ascending: true }),
                 supabase
                     .from('roster_uploads')
-                    .select('id, goalie_name, email, guardian_email, linked_user_id')
+                    .select('id, goalie_name, email, guardian_email, linked_user_id'),
+                supabase
+                    .from('profiles')
+                    .select('id, goalie_name, full_name, email')
             ]);
 
             const rosters = rosterData || [];
+            const profiles = profileData || [];
             const mergedList: any[] = [];
             const matchedSessionIds = new Set<string>();
 
-            // Helper to resolve athlete name and lesson info from session notes or roster
+            // Helper to resolve athlete name and lesson info from session notes, roster, or profile
             const resolveAthleteInfo = (sess: any) => {
                 let athleteName = "";
                 let lessonCode = "";
@@ -130,8 +135,15 @@ export function CoachScheduler() {
                     if (match?.goalie_name) athleteName = match.goalie_name;
                 }
                 if (!athleteName && sess.goalie_id) {
-                    const match = rosters.find(r => r.linked_user_id === sess.goalie_id);
-                    if (match?.goalie_name) athleteName = match.goalie_name;
+                    const matchRoster = rosters.find(r => r.linked_user_id === sess.goalie_id);
+                    if (matchRoster?.goalie_name) {
+                        athleteName = matchRoster.goalie_name;
+                    } else {
+                        const matchProf = profiles.find(p => p.id === sess.goalie_id);
+                        if (matchProf?.goalie_name || matchProf?.full_name) {
+                            athleteName = matchProf.goalie_name || matchProf.full_name || "";
+                        }
+                    }
                 }
                 if (!athleteName && sess.notes) {
                     for (const r of rosters) {
@@ -145,7 +157,10 @@ export function CoachScheduler() {
                         if (match && match[1]) {
                             athleteName = match[1].trim();
                         } else if (sess.notes.includes(' - ')) {
-                            athleteName = sess.notes.split(' - ')[0].trim();
+                            const candidate = sess.notes.split(' - ')[0].replace(/The Goalie Brand/i, '').trim();
+                            if (candidate && candidate.length > 1 && !candidate.toLowerCase().includes('private')) {
+                                athleteName = candidate;
+                            }
                         }
                     }
                 }
@@ -160,7 +175,7 @@ export function CoachScheduler() {
                 }
 
                 return {
-                    athleteName: athleteName || "Athlete",
+                    athleteName: athleteName || "Private Client",
                     lessonCode: lessonCode || ""
                 };
             };
@@ -189,7 +204,7 @@ export function CoachScheduler() {
                             is_session_source: false
                         });
                     } else if (slot.is_booked) {
-                        let athleteName = "Athlete";
+                        let athleteName = "";
                         let lessonCode = "";
                         for (const r of rosters) {
                             if (r.goalie_name && slot.notes && slot.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
@@ -197,7 +212,7 @@ export function CoachScheduler() {
                                 break;
                             }
                         }
-                        if (athleteName === "Athlete" && slot.notes) {
+                        if (!athleteName && slot.notes) {
                             const match = slot.notes.match(/The Goalie Brand\s*-\s*([^S\n]+?)\s*S\d+/i);
                             if (match && match[1]) athleteName = match[1].trim();
                         }
@@ -209,7 +224,7 @@ export function CoachScheduler() {
                         mergedList.push({
                             ...slot,
                             is_booked: true,
-                            athlete_name: athleteName,
+                            athlete_name: athleteName || "Booked Athlete",
                             lesson_code: lessonCode,
                             location: slot.location || "Field",
                             is_session_source: false
@@ -224,10 +239,17 @@ export function CoachScheduler() {
                 }
             }
 
-            // 3. Add any booked sessions from `sessions` that weren't in coach_availability (e.g. Colton Aven)
+            // 3. Add any booked athlete sessions from `sessions` that weren't in coach_availability (e.g. Colton Aven)
             if (sessionsData && !sessErr) {
                 for (const sess of sessionsData) {
                     if (matchedSessionIds.has(sess.id)) continue;
+
+                    // Skip internal coach log sessions / completed coach test rows with no athlete
+                    const isCoachSelfSession = sess.goalie_id && COACH_ACCOUNTS.includes(sess.goalie_id) && !sess.roster_id;
+                    const isCompletedWithoutAthlete = sess.notes?.includes('[Session Completed') && !sess.roster_id;
+                    if (isCoachSelfSession || isCompletedWithoutAthlete) {
+                        continue;
+                    }
 
                     const { athleteName, lessonCode } = resolveAthleteInfo(sess);
                     const sessStart = new Date(sess.date);
