@@ -26,7 +26,8 @@ import {
     rescheduleTrainingSession, 
     completeTrainingSessionAndNotify, 
     submitSessionTakeaways,
-    getGoalieBookingProfile
+    getGoalieBookingProfile,
+    getAvailableTrainingSlots
 } from "@/app/training/book/actions";
 import { extractTakeawaysFromNotes } from "@/lib/utils";
 
@@ -95,6 +96,8 @@ export function LessonsTransparency({
 
     const isCoach = userRole === 'coach' || userRole === 'admin' || userEmail === 'eshevitz96@gmail.com';
 
+    const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+
     const fetchData = async () => {
         if (!goalieProfileId) {
             setLoading(false);
@@ -104,7 +107,11 @@ export function LessonsTransparency({
         setLoading(true);
         setError(null);
         try {
-            const profileRes = await getGoalieBookingProfile(goalieProfileId, userEmail);
+            const [profileRes, slotsRes] = await Promise.all([
+                getGoalieBookingProfile(goalieProfileId, userEmail),
+                getAvailableTrainingSlots()
+            ]);
+
             if (profileRes && profileRes.success) {
                 if (profileRes.hasPaidAccess || profileRes.totalAllowance > 0) {
                     setBalance({
@@ -119,6 +126,10 @@ export function LessonsTransparency({
                     setBalance(null);
                 }
                 setSessions(profileRes.existingSessions || []);
+            }
+
+            if (slotsRes && slotsRes.success && slotsRes.slots) {
+                setAvailableSlots(slotsRes.slots.filter((s: any) => !s.isBooked));
             }
         } catch (err: any) {
             console.error("Unexpected error in LessonsTransparency:", err);
@@ -523,7 +534,7 @@ export function LessonsTransparency({
                                 </div>
 
                                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-4 max-h-[280px]">
-                                    {INITIAL_TRAINING_SLOTS.map((slot) => {
+                                    {(availableSlots.length > 0 ? availableSlots : INITIAL_TRAINING_SLOTS).map((slot) => {
                                         const isSelected = selectedNewSlotId === slot.id;
                                         return (
                                             <div

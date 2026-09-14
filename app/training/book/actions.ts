@@ -30,39 +30,118 @@ function getSupabaseAdmin() {
     return createClient(url, key);
 }
 
+function formatSlotTime(isoString: string): { dateStr: string; startTimeStr: string; endTimeStr: string; timeDisplay: string } {
+    const d = new Date(isoString);
+    const optionsDate: Intl.DateTimeFormatOptions = { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' };
+    const dateParts = new Intl.DateTimeFormat('en-CA', optionsDate).format(d); // 'YYYY-MM-DD'
+    
+    const optionsTime: Intl.DateTimeFormatOptions = { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true };
+    const startTimeStr = new Intl.DateTimeFormat('en-US', optionsTime).format(d);
+    
+    const endD = new Date(d.getTime() + 60 * 60 * 1000);
+    const endTimeStr = new Intl.DateTimeFormat('en-US', optionsTime).format(endD);
+    
+    return {
+        dateStr: dateParts,
+        startTimeStr,
+        endTimeStr,
+        timeDisplay: `${startTimeStr} – ${endTimeStr}`
+    };
+}
+
+function getSlotTemplateLocation(isoString: string): string {
+    try {
+        const d = new Date(isoString);
+        const nyDate = new Date(d.toLocaleString("en-US", { timeZone: "America/New_York" }));
+        const day = nyDate.getDay(); // 0=Sun, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+        const hour = nyDate.getHours();
+
+        if (day === 2) return "Bell Memorial Park";
+        if (day === 3) return "Bell Memorial Park";
+        if (day === 4) return "Milton";
+        if (day === 5) return "Lambert";
+        if (day === 6) return hour < 12 ? "Milton" : "Lambert";
+        if (day === 0) return "Lambert";
+        return "Bell Memorial Park";
+    } catch {
+        return "Bell Memorial Park";
+    }
+}
+
 /**
- * Returns available slots, subtracting any slots already booked.
+ * Returns available slots connecting live coach_availability DB and schedule templates.
  */
 export async function getAvailableTrainingSlots() {
     try {
         const supabase = getSupabaseAdmin();
 
-        // 1. Fetch already booked slots from sessions / events table
-        const { data: bookedSessions, error } = await supabase
-            .from('sessions')
-            .select('date, location, notes');
+        // 1. Fetch live coach availability from DB
+        const { data: dbSlots } = await supabase
+            .from('coach_availability')
+            .select('*')
+            .order('start_time', { ascending: true });
 
-        const bookedSlotKeys = new Set<string>();
-        if (bookedSessions && !error) {
-            bookedSessions.forEach((s: any) => {
-                if (s.notes && s.notes.includes('slot_id:')) {
-                    const match = s.notes.match(/slot_id:([a-zA-Z0-9_-]+)/);
-                    if (match && match[1]) {
-                        bookedSlotKeys.add(match[1]);
-                    }
-                }
-            });
+        // 2. Fetch already booked sessions from sessions table
+        const { data: bookedSessions } = await supabase
+            .from('sessions')
+            .select('id, date, location, notes, roster_id, goalie_id');
+
+        const slotsMap = new Map<string, TrainingSlot & { isBooked: boolean; spotsLeft: number }>();
+
+        // A. Process live coach_availability slots (custom times like Tuesday, additions, etc.)
+        if (dbSlots && dbSlots.length > 0) {
+            for (const s of dbSlots) {
+                if (!s.start_time) continue;
+                const { dateStr, startTimeStr, endTimeStr, timeDisplay } = formatSlotTime(s.start_time);
+                
+                const slotStartTime = new Date(s.start_time).getTime();
+                const matchingSession = (bookedSessions || []).find((sess: any) => {
+                    if (!sess.date) return false;
+                    return Math.abs(new Date(sess.date).getTime() - slotStartTime) < 60 * 60 * 1000;
+                });
+
+                const isBooked = Boolean(s.is_booked || matchingSession);
+                const loc = s.location ? s.location.split('\n')[0].trim() : getSlotTemplateLocation(s.start_time);
+
+                const slotObj: TrainingSlot & { isBooked: boolean; spotsLeft: number } = {
+                    id: s.id,
+                    date: dateStr,
+                    startTime: startTimeStr,
+                    endTime: endTimeStr,
+                    timeDisplay: timeDisplay,
+                    location: loc,
+                    maxCapacity: 1,
+                    isBooked: isBooked,
+                    spotsLeft: isBooked ? 0 : 1
+                };
+
+                slotsMap.set(`${dateStr}_${startTimeStr}`, slotObj);
+            }
         }
 
-        // 2. Mark availability and filter out past dates
+        // B. Merge template slots as fallbacks if not explicitly managed in DB
         const todayIso = new Date().toISOString().split('T')[0];
-        const slots = INITIAL_TRAINING_SLOTS
-            .filter(slot => slot.date >= todayIso)
-            .map(slot => ({
-                ...slot,
-                isBooked: bookedSlotKeys.has(slot.id),
-                spotsLeft: bookedSlotKeys.has(slot.id) ? 0 : 1
-            }));
+        for (const tSlot of INITIAL_TRAINING_SLOTS) {
+            if (tSlot.date < todayIso) continue;
+            const key = `${tSlot.date}_${tSlot.startTime}`;
+            if (!slotsMap.has(key)) {
+                const isSessionBooked = (bookedSessions || []).some((sess: any) => {
+                    if (!sess.date) return false;
+                    return sess.date.startsWith(tSlot.date);
+                });
+
+                slotsMap.set(key, {
+                    ...tSlot,
+                    isBooked: isSessionBooked,
+                    spotsLeft: isSessionBooked ? 0 : 1
+                });
+            }
+        }
+
+        const slots = Array.from(slotsMap.values()).sort((a, b) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return a.startTime.localeCompare(b.startTime);
+        });
 
         return { success: true, slots };
     } catch (err: any) {
@@ -304,7 +383,8 @@ export async function bookTrainingSlots(payload: {
             return { error: "Please select at least one session date." };
         }
 
-        const selectedSlots = INITIAL_TRAINING_SLOTS.filter(s => selectedSlotIds.includes(s.id));
+        const { slots: allAvailableSlots } = await getAvailableTrainingSlots();
+        const selectedSlots = allAvailableSlots.filter(s => selectedSlotIds.includes(s.id));
         if (selectedSlots.length === 0) {
             return { error: "No valid training slots found for selection." };
         }
@@ -415,10 +495,23 @@ export async function bookTrainingSlots(payload: {
 
             const formattedTitle = `The Goalie Brand - ${resolvedName} S${slotSessionNum} L${slotLessonNum}`;
 
+            let isoDate = `${slot.date}T18:00:00-04:00`;
+            try {
+                const parts = slot.startTime.split(' ');
+                const [h, m] = parts[0].split(':');
+                let hour = parseInt(h, 10);
+                const min = parseInt(m || '0', 10);
+                if (parts[1] === 'PM' && hour < 12) hour += 12;
+                if (parts[1] === 'AM' && hour === 12) hour = 0;
+                isoDate = `${slot.date}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00-04:00`;
+            } catch (e) {
+                console.warn("Date parsing error:", e);
+            }
+
             // A. Insert into sessions table with authoritative athlete name & S# L#
             const sessionPayload: any = {
                 goalie_id: resolvedGoalieId,
-                date: `${slot.date}T${slot.startTime.includes('PM') ? '18:00:00' : '09:00:00'}`,
+                date: isoDate,
                 location: slot.location,
                 notes: formattedTitle,
                 session_number: slotSessionNum,
@@ -438,6 +531,14 @@ export async function bookTrainingSlots(payload: {
                 console.error("[bookTrainingSlots] Session insert error:", sessionErr);
             } else {
                 createdSessions.push(sessionData);
+            }
+
+            // Mark coach_availability as booked if this was a database slot
+            if (slot.id && !slot.id.startsWith('slot-')) {
+                await supabase
+                    .from('coach_availability')
+                    .update({ is_booked: true, notes: formattedTitle })
+                    .eq('id', slot.id);
             }
 
             // B. Insert into events table for the athlete's Goalie Card calendar
@@ -587,7 +688,8 @@ export async function rescheduleTrainingSession(payload: {
         }
 
         // 3. Find target slot
-        const targetSlot = INITIAL_TRAINING_SLOTS.find(s => s.id === newSlotId);
+        const { slots: allAvailableSlots } = await getAvailableTrainingSlots();
+        const targetSlot = allAvailableSlots.find(s => s.id === newSlotId);
         if (!targetSlot) {
             return { error: "Selected new time slot is invalid or unavailable." };
         }
@@ -596,7 +698,18 @@ export async function rescheduleTrainingSession(payload: {
         const oldLocation = session.location || 'Training Location';
 
         // 4. Update session
-        const newIsoDate = `${targetSlot.date}T${targetSlot.startTime.includes('PM') ? '18:00:00' : '09:00:00'}`;
+        let newIsoDate = `${targetSlot.date}T18:00:00-04:00`;
+        try {
+            const parts = targetSlot.startTime.split(' ');
+            const [h, m] = parts[0].split(':');
+            let hour = parseInt(h, 10);
+            const min = parseInt(m || '0', 10);
+            if (parts[1] === 'PM' && hour < 12) hour += 12;
+            if (parts[1] === 'AM' && hour === 12) hour = 0;
+            newIsoDate = `${targetSlot.date}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00-04:00`;
+        } catch (e) {
+            console.warn("Date parsing error:", e);
+        }
         const cleanNotes = (session.notes || '').replace(/slot_id:[a-zA-Z0-9_-]+/, '').trim();
         const updatedNotes = `${cleanNotes} • slot_id:${targetSlot.id} • ${targetSlot.timeDisplay} (Rescheduled by ${requestedBy === 'coach' ? 'Coach Elliott' : 'Client'})`.trim();
 
