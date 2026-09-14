@@ -13,7 +13,11 @@ import {
     ChevronRight, 
     Check, 
     CalendarDays, 
-    List
+    List,
+    Lock,
+    User,
+    LayoutGrid,
+    AlignLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -21,19 +25,20 @@ const PRESET_LOCATIONS = [
     "Bell Memorial Park",
     "Milton",
     "Lambert",
+    "Harrison High School",
     "Custom"
 ];
 
 const PRESET_TIMES = [
+    { label: "12:00 PM", value: "12:00" },
+    { label: "1:00 PM", value: "13:00" },
     { label: "3:00 PM", value: "15:00" },
     { label: "3:30 PM", value: "15:30" },
     { label: "4:00 PM", value: "16:00" },
     { label: "4:30 PM", value: "16:30" },
     { label: "5:00 PM", value: "17:00" },
     { label: "5:30 PM", value: "17:30" },
-    { label: "6:00 PM", value: "18:00" },
-    { label: "6:30 PM", value: "18:30" },
-    { label: "7:00 PM", value: "19:00" }
+    { label: "6:00 PM", value: "18:00" }
 ];
 
 export function CoachScheduler() {
@@ -42,8 +47,10 @@ export function CoachScheduler() {
     const [notifying, setNotifying] = useState(false);
     const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
 
-    // View mode: 'calendar' (Week Grid) | 'list'
+    // View mode: 'calendar' (Week Schedule) | 'list'
     const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+    // Calendar layout style: 'agenda' (Spacious Day Rows) | 'grid' (7-Day Columns)
+    const [calendarStyle, setCalendarStyle] = useState<'agenda' | 'grid'>('agenda');
 
     // Week navigation anchor date (Monday of the current viewed week)
     const [currentWeekMonday, setCurrentWeekMonday] = useState<Date>(() => {
@@ -87,27 +94,176 @@ export function CoachScheduler() {
                 ? COACH_ACCOUNTS
                 : [user.id];
 
-            const { data, error } = await supabase
-                .from('coach_availability')
-                .select('*')
-                .in('coach_id', coachFilter)
-                .gte('start_time', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-                .order('start_time', { ascending: true });
+            // 1. Fetch coach availability slots, active sessions, and athlete rosters simultaneously
+            const [
+                { data: availData, error: availErr },
+                { data: sessionsData, error: sessErr },
+                { data: rosterData, error: rosterErr }
+            ] = await Promise.all([
+                supabase
+                    .from('coach_availability')
+                    .select('*')
+                    .in('coach_id', coachFilter)
+                    .gte('start_time', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+                    .order('start_time', { ascending: true }),
+                supabase
+                    .from('sessions')
+                    .select('*')
+                    .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+                    .order('date', { ascending: true }),
+                supabase
+                    .from('roster_uploads')
+                    .select('id, goalie_name, email, guardian_email, linked_user_id')
+            ]);
 
-            if (data && !error) {
-                // Deduplicate by start_time so multi-account syncing remains clean
-                const seenTimes = new Set<string>();
-                const uniqueSlots: any[] = [];
-                for (const s of data) {
-                    if (!seenTimes.has(s.start_time)) {
-                        seenTimes.add(s.start_time);
-                        uniqueSlots.push(s);
+            const rosters = rosterData || [];
+            const mergedList: any[] = [];
+            const matchedSessionIds = new Set<string>();
+
+            // Helper to resolve athlete name and lesson info from session notes or roster
+            const resolveAthleteInfo = (sess: any) => {
+                let athleteName = "";
+                let lessonCode = "";
+
+                if (sess.roster_id) {
+                    const match = rosters.find(r => r.id === sess.roster_id);
+                    if (match?.goalie_name) athleteName = match.goalie_name;
+                }
+                if (!athleteName && sess.goalie_id) {
+                    const match = rosters.find(r => r.linked_user_id === sess.goalie_id);
+                    if (match?.goalie_name) athleteName = match.goalie_name;
+                }
+                if (!athleteName && sess.notes) {
+                    for (const r of rosters) {
+                        if (r.goalie_name && sess.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
+                            athleteName = r.goalie_name;
+                            break;
+                        }
+                    }
+                    if (!athleteName) {
+                        const match = sess.notes.match(/The Goalie Brand\s*-\s*([^S\n]+?)\s*S\d+/i);
+                        if (match && match[1]) {
+                            athleteName = match[1].trim();
+                        } else if (sess.notes.includes(' - ')) {
+                            athleteName = sess.notes.split(' - ')[0].trim();
+                        }
                     }
                 }
-                setSlots(uniqueSlots);
+
+                if (sess.session_number && sess.lesson_number) {
+                    lessonCode = `S${sess.session_number} L${sess.lesson_number}`;
+                } else if (sess.notes) {
+                    const codeMatch = sess.notes.match(/S(\d+)\s*L(\d+)/i);
+                    if (codeMatch) {
+                        lessonCode = `S${codeMatch[1]} L${codeMatch[2]}`;
+                    }
+                }
+
+                return {
+                    athleteName: athleteName || "Athlete",
+                    lessonCode: lessonCode || ""
+                };
+            };
+
+            // 2. Process Coach Availability Slots
+            if (availData && !availErr) {
+                for (const slot of availData) {
+                    const slotStartTime = new Date(slot.start_time).getTime();
+                    
+                    const matchingSession = (sessionsData || []).find((sess: any) => {
+                        if (!sess.date) return false;
+                        const sessTime = new Date(sess.date).getTime();
+                        return Math.abs(sessTime - slotStartTime) < 45 * 60 * 1000;
+                    });
+
+                    if (matchingSession) {
+                        matchedSessionIds.add(matchingSession.id);
+                        const { athleteName, lessonCode } = resolveAthleteInfo(matchingSession);
+                        mergedList.push({
+                            ...slot,
+                            is_booked: true,
+                            athlete_name: athleteName,
+                            lesson_code: lessonCode,
+                            location: matchingSession.location || slot.location || "Field",
+                            notes: matchingSession.notes || slot.notes,
+                            is_session_source: false
+                        });
+                    } else if (slot.is_booked) {
+                        let athleteName = "Athlete";
+                        let lessonCode = "";
+                        for (const r of rosters) {
+                            if (r.goalie_name && slot.notes && slot.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
+                                athleteName = r.goalie_name;
+                                break;
+                            }
+                        }
+                        if (athleteName === "Athlete" && slot.notes) {
+                            const match = slot.notes.match(/The Goalie Brand\s*-\s*([^S\n]+?)\s*S\d+/i);
+                            if (match && match[1]) athleteName = match[1].trim();
+                        }
+                        if (slot.notes) {
+                            const codeMatch = slot.notes.match(/S(\d+)\s*L(\d+)/i);
+                            if (codeMatch) lessonCode = `S${codeMatch[1]} L${codeMatch[2]}`;
+                        }
+
+                        mergedList.push({
+                            ...slot,
+                            is_booked: true,
+                            athlete_name: athleteName,
+                            lesson_code: lessonCode,
+                            location: slot.location || "Field",
+                            is_session_source: false
+                        });
+                    } else {
+                        mergedList.push({
+                            ...slot,
+                            is_booked: false,
+                            is_session_source: false
+                        });
+                    }
+                }
             }
+
+            // 3. Add any booked sessions from `sessions` that weren't in coach_availability (e.g. Colton Aven)
+            if (sessionsData && !sessErr) {
+                for (const sess of sessionsData) {
+                    if (matchedSessionIds.has(sess.id)) continue;
+
+                    const { athleteName, lessonCode } = resolveAthleteInfo(sess);
+                    const sessStart = new Date(sess.date);
+                    const sessEnd = new Date(sessStart.getTime() + 60 * 60 * 1000);
+
+                    mergedList.push({
+                        id: `sess_${sess.id}`,
+                        coach_id: user.id,
+                        start_time: sessStart.toISOString(),
+                        end_time: sessEnd.toISOString(),
+                        location: sess.location || "Field / Training Facility",
+                        notes: sess.notes,
+                        is_booked: true,
+                        athlete_name: athleteName,
+                        lesson_code: lessonCode,
+                        is_session_source: true,
+                        raw_session_id: sess.id
+                    });
+                }
+            }
+
+            // Deduplicate slots with identical start_time and booked status
+            const seenKeys = new Set<string>();
+            const uniqueSlots: any[] = [];
+            for (const s of mergedList) {
+                const key = `${s.start_time}_${s.athlete_name || ''}_${s.is_booked}`;
+                if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    uniqueSlots.push(s);
+                }
+            }
+
+            uniqueSlots.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+            setSlots(uniqueSlots);
         } catch (err) {
-            console.error("Error fetching coach slots:", err);
+            console.error("Error fetching coach slots & sessions:", err);
         }
     };
 
@@ -148,12 +304,8 @@ export function CoachScheduler() {
         }
     };
 
-    const handleAddSlot = async (overrideDate?: string, overrideTime?: string, overrideLoc?: string) => {
-        const dateToUse = overrideDate || selectedDate;
-        const timeToUse = overrideTime || selectedTime;
-        const locToUse = overrideLoc || activeLocationName;
-
-        if (!dateToUse || !timeToUse) {
+    const handleAddSlot = async () => {
+        if (!selectedDate || !selectedTime) {
             alert("Please select both a date and time.");
             return;
         }
@@ -167,10 +319,9 @@ export function CoachScheduler() {
                 return;
             }
 
-            const startDateTime = new Date(`${dateToUse}T${timeToUse}`);
+            const startDateTime = new Date(`${selectedDate}T${selectedTime}`);
             const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60 * 1000);
 
-            // Robust insert handling: inserts base fields
             const { error } = await supabase.from('coach_availability').insert({
                 coach_id: user.id,
                 start_time: startDateTime.toISOString(),
@@ -182,7 +333,7 @@ export function CoachScheduler() {
                 throw error;
             }
 
-            setActionSuccess(`Slot added for ${locToUse}!`);
+            setActionSuccess(`Slot added for ${activeLocationName}!`);
             setTimeout(() => setActionSuccess(null), 3000);
             await fetchSlots();
         } catch (err: any) {
@@ -193,11 +344,16 @@ export function CoachScheduler() {
         }
     };
 
-    const handleDeleteSlot = async (id: string) => {
+    const handleDeleteSlot = async (slot: any) => {
+        if (slot.is_session_source) {
+            alert("This is a booked session from an athlete. Please manage or complete it from the Coach Schedule tab.");
+            return;
+        }
+
         try {
-            const { error } = await supabase.from('coach_availability').delete().eq('id', id);
+            const { error } = await supabase.from('coach_availability').delete().eq('id', slot.id);
             if (!error) {
-                setSlots(prev => prev.filter(s => s.id !== id));
+                setSlots(prev => prev.filter(s => s.id !== slot.id));
             } else {
                 alert("Error removing slot: " + error.message);
             }
@@ -462,34 +618,25 @@ export function CoachScheduler() {
             </div>
 
             {/* ======================================================== */}
-            {/* VIEW 1: WEEK GRID (INTERACTIVE CALENDAR) */}
+            {/* VIEW 1: WEEK SCHEDULE */}
             {/* ======================================================== */}
             {viewMode === 'calendar' && (
                 <div className="space-y-4">
                     {/* Week Navigation Header */}
-                    <div className="flex items-center justify-between bg-card border border-border/80 rounded-2xl p-3 sm:px-4">
-                        <button
-                            onClick={() => {
-                                const prev = new Date(currentWeekMonday);
-                                prev.setDate(currentWeekMonday.getDate() - 7);
-                                setCurrentWeekMonday(prev);
-                            }}
-                            className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
-                        >
-                            <ChevronLeft size={16} />
-                            <span className="hidden sm:inline">Prev Week</span>
-                        </button>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border/80 rounded-2xl p-3 sm:px-4">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    const prev = new Date(currentWeekMonday);
+                                    prev.setDate(currentWeekMonday.getDate() - 7);
+                                    setCurrentWeekMonday(prev);
+                                }}
+                                className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
+                            >
+                                <ChevronLeft size={16} />
+                                <span>Prev Week</span>
+                            </button>
 
-                        <div className="text-center">
-                            <h4 className="text-sm sm:text-base font-black text-foreground m-0">
-                                {weekTitle}
-                            </h4>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                Weekly Training Grid
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
                             <button
                                 onClick={() => {
                                     const today = new Date();
@@ -504,6 +651,7 @@ export function CoachScheduler() {
                             >
                                 This Week
                             </button>
+
                             <button
                                 onClick={() => {
                                     const next = new Date(currentWeekMonday);
@@ -512,30 +660,192 @@ export function CoachScheduler() {
                                 }}
                                 className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
                             >
-                                <span className="hidden sm:inline">Next Week</span>
+                                <span>Next Week</span>
                                 <ChevronRight size={16} />
                             </button>
                         </div>
-                    </div>
 
-                    {/* 7-Day Week Columns */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
-                        {weekDays.map((day) => {
-                            const isToday = new Date().toDateString() === day.toDateString();
-                            const daySlots = getSlotsForDay(day);
-                            const dayStr = day.toISOString().split('T')[0];
+                        <div className="text-center sm:text-right flex items-center justify-between sm:justify-end gap-3">
+                            <div>
+                                <h4 className="text-sm sm:text-base font-black text-foreground m-0">
+                                    {weekTitle}
+                                </h4>
+                            </div>
 
-                            return (
-                                <div
-                                    key={day.toISOString()}
-                                    className={`bg-card rounded-2xl border transition-all flex flex-col justify-between p-3 min-h-[160px] ${
-                                        isToday 
-                                            ? 'border-[#00E676]/60 shadow-xs ring-1 ring-[#00E676]/30' 
-                                            : 'border-border/70 hover:border-border'
+                            {/* Agenda vs Grid Toggle */}
+                            <div className="bg-muted p-0.5 rounded-lg border border-border flex items-center">
+                                <button
+                                    onClick={() => setCalendarStyle('agenda')}
+                                    title="Spacious Day Agenda View"
+                                    className={`p-1.5 rounded-md transition-all ${
+                                        calendarStyle === 'agenda'
+                                            ? 'bg-card text-foreground shadow-2xs font-bold'
+                                            : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
-                                    {/* Day Header */}
-                                    <div>
+                                    <AlignLeft size={14} />
+                                </button>
+                                <button
+                                    onClick={() => setCalendarStyle('grid')}
+                                    title="7-Day Column Grid View"
+                                    className={`p-1.5 rounded-md transition-all ${
+                                        calendarStyle === 'grid'
+                                            ? 'bg-card text-foreground shadow-2xs font-bold'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    <LayoutGrid size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* STYLE A: SPACIOUS DAY AGENDA (RECOMMENDED - FULL TEXT, NEVER CRAMPED) */}
+                    {calendarStyle === 'agenda' && (
+                        <div className="space-y-3">
+                            {weekDays.map((day) => {
+                                const isToday = new Date().toDateString() === day.toDateString();
+                                const daySlots = getSlotsForDay(day);
+
+                                return (
+                                    <div
+                                        key={day.toISOString()}
+                                        className={`bg-card rounded-2xl border transition-all p-3.5 sm:p-4 ${
+                                            isToday 
+                                                ? 'border-[#00E676]/60 shadow-xs ring-1 ring-[#00E676]/30 bg-muted/10' 
+                                                : 'border-border/70 hover:border-border'
+                                        }`}
+                                    >
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                            {/* Date Badge */}
+                                            <div className="flex items-center gap-3 min-w-[140px]">
+                                                <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl font-bold border ${
+                                                    isToday 
+                                                        ? 'bg-[#00E676] text-black border-[#00E676]' 
+                                                        : 'bg-muted text-foreground border-border'
+                                                }`}>
+                                                    <span className="text-[10px] uppercase font-black tracking-wider leading-none">
+                                                        {day.toLocaleDateString("en-US", { weekday: "short" })}
+                                                    </span>
+                                                    <span className="text-base font-black leading-tight">
+                                                        {day.getDate()}
+                                                    </span>
+                                                </div>
+
+                                                <div>
+                                                    <div className="text-xs font-bold text-foreground">
+                                                        {day.toLocaleDateString("en-US", { month: "short", day: "numeric", weekday: "long" })}
+                                                    </div>
+                                                    <div className="text-[11px] text-muted-foreground">
+                                                        {daySlots.length === 0 ? "No hours scheduled" : `${daySlots.length} session${daySlots.length > 1 ? 's' : ''} / slots`}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Slots Area */}
+                                            <div className="flex-1">
+                                                {daySlots.length === 0 ? (
+                                                    <div className="py-2 px-3 rounded-xl bg-muted/30 border border-dashed border-border/60 text-xs text-muted-foreground/60 italic">
+                                                        No training hours scheduled for this date
+                                                    </div>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                                        {daySlots.map((slot) => {
+                                                            const sTime = new Date(slot.start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                                                            const eTime = new Date(slot.end_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                                                            const locName = getSlotLocation(slot);
+
+                                                            return (
+                                                                <div
+                                                                    key={slot.id}
+                                                                    className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between gap-2 group relative ${
+                                                                        slot.is_booked
+                                                                            ? 'bg-muted/70 border-border/80 text-foreground'
+                                                                            : 'bg-[#00E676]/10 border-[#00E676]/30 hover:border-[#00E676]/60 text-foreground'
+                                                                    }`}
+                                                                >
+                                                                    {/* Top row: Time & Status Badge */}
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <div className="flex items-center gap-1.5 text-xs font-black text-foreground">
+                                                                            <Clock size={13} className={slot.is_booked ? "text-muted-foreground" : "text-[#00E676]"} />
+                                                                            <span>{sTime} – {eTime}</span>
+                                                                        </div>
+
+                                                                        <div className="flex items-center gap-1">
+                                                                            {slot.is_booked ? (
+                                                                                <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
+                                                                                    <Lock size={9} /> Booked
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#00E676]/20 text-[#00E676] border border-[#00E676]/30">
+                                                                                    Open Slot
+                                                                                </span>
+                                                                            )}
+
+                                                                            {!slot.is_booked && !slot.is_session_source && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleDeleteSlot(slot);
+                                                                                    }}
+                                                                                    title="Delete slot"
+                                                                                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-1 cursor-pointer"
+                                                                                >
+                                                                                    <Trash2 size={12} />
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Middle row: Athlete & Lesson Info (if booked) */}
+                                                                    {slot.is_booked && (
+                                                                        <div className="flex items-center gap-1.5 text-xs font-black text-foreground bg-card/70 px-2.5 py-1 rounded-lg border border-border/50">
+                                                                            <User size={12} className="text-[#00E676] shrink-0" />
+                                                                            <span className="truncate">{slot.athlete_name || "Athlete"}</span>
+                                                                            {slot.lesson_code && (
+                                                                                <span className="text-[10px] font-extrabold px-1.5 py-0.2 bg-[#00E676]/15 text-[#00E676] rounded">
+                                                                                    {slot.lesson_code}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Bottom row: Location */}
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
+                                                                        <MapPin size={11} className="text-[#00E676] shrink-0" />
+                                                                        <span className="truncate">{locName}</span>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* STYLE B: 7-DAY COLUMN GRID */}
+                    {calendarStyle === 'grid' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+                            {weekDays.map((day) => {
+                                const isToday = new Date().toDateString() === day.toDateString();
+                                const daySlots = getSlotsForDay(day);
+
+                                return (
+                                    <div
+                                        key={day.toISOString()}
+                                        className={`bg-card rounded-2xl border transition-all flex flex-col justify-start p-3 min-h-[180px] ${
+                                            isToday 
+                                                ? 'border-[#00E676]/60 shadow-xs ring-1 ring-[#00E676]/30' 
+                                                : 'border-border/70 hover:border-border'
+                                        }`}
+                                    >
+                                        {/* Day Header */}
                                         <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/50">
                                             <div>
                                                 <span className={`text-[11px] font-black uppercase ${isToday ? 'text-[#00E676]' : 'text-muted-foreground'}`}>
@@ -553,9 +863,9 @@ export function CoachScheduler() {
                                         </div>
 
                                         {/* Day Slots List */}
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-2 flex-1">
                                             {daySlots.length === 0 ? (
-                                                <div className="py-4 text-center">
+                                                <div className="py-6 text-center">
                                                     <span className="text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
                                                         No Slots
                                                     </span>
@@ -569,31 +879,46 @@ export function CoachScheduler() {
                                                     return (
                                                         <div
                                                             key={slot.id}
-                                                            className={`p-2 rounded-xl border transition-all text-left space-y-1 group relative ${
+                                                            className={`p-2.5 rounded-xl border transition-all text-left space-y-1 group relative ${
                                                                 slot.is_booked
-                                                                    ? 'bg-muted/60 border-border/60 opacity-60'
+                                                                    ? 'bg-muted/70 border-border/70 text-foreground'
                                                                     : 'bg-[#00E676]/10 border-[#00E676]/25 hover:border-[#00E676]/50'
                                                             }`}
                                                         >
                                                             <div className="flex items-center justify-between gap-1">
-                                                                <span className="text-[10px] font-extrabold text-foreground leading-tight truncate">
+                                                                <span className="text-[10px] font-extrabold text-foreground leading-tight">
                                                                     {sTime} – {eTime}
                                                                 </span>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleDeleteSlot(slot.id);
-                                                                    }}
-                                                                    title="Delete slot"
-                                                                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
-                                                                >
-                                                                    <Trash2 size={11} />
-                                                                </button>
+                                                                {!slot.is_booked && !slot.is_session_source && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteSlot(slot);
+                                                                        }}
+                                                                        title="Delete slot"
+                                                                        className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
+                                                                    >
+                                                                        <Trash2 size={11} />
+                                                                    </button>
+                                                                )}
                                                             </div>
 
+                                                            {/* Athlete Name if booked */}
+                                                            {slot.is_booked && (
+                                                                <div className="flex items-center gap-1 text-[10px] font-extrabold text-foreground bg-card/80 px-1.5 py-0.5 rounded border border-border/50">
+                                                                    <User size={10} className="text-[#00E676] shrink-0" />
+                                                                    <span className="truncate">{slot.athlete_name || "Athlete"}</span>
+                                                                    {slot.lesson_code && (
+                                                                        <span className="text-[8px] font-black text-[#00E676]">
+                                                                            {slot.lesson_code}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+
                                                             {/* Location Pill */}
-                                                            <div className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground truncate">
+                                                            <div className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground">
                                                                 <MapPin size={9} className="text-[#00E676] shrink-0" />
                                                                 <span className="truncate">{locName}</span>
                                                             </div>
@@ -603,23 +928,10 @@ export function CoachScheduler() {
                                             )}
                                         </div>
                                     </div>
-
-                                    {/* Fast Quick Add for this specific day */}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSelectedDate(dayStr);
-                                            handleAddSlot(dayStr);
-                                        }}
-                                        className="mt-2.5 w-full py-1 px-2 bg-muted/60 hover:bg-[#00E676]/20 text-muted-foreground hover:text-[#00E676] border border-border/60 hover:border-[#00E676]/40 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
-                                    >
-                                        <Plus size={11} />
-                                        <span>+ Add Slot</span>
-                                    </button>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -631,7 +943,7 @@ export function CoachScheduler() {
                     {slots.length === 0 ? (
                         <div className="bg-card border border-border rounded-2xl p-8 text-center">
                             <Calendar size={28} className="mx-auto text-muted-foreground/40 mb-2" />
-                            <p className="text-sm font-bold text-foreground">No upcoming availability slots set</p>
+                            <p className="text-sm font-bold text-foreground">No upcoming availability slots or booked lessons</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
                                 Select a date, time, and location above to publish training hours for athletes.
                             </p>
@@ -647,18 +959,28 @@ export function CoachScheduler() {
                                     <motion.div
                                         layout
                                         key={slot.id}
-                                        className="flex items-center justify-between p-3.5 bg-card border border-border/80 rounded-2xl group hover:border-[#00E676]/40 transition-all shadow-2xs"
+                                        className={`flex items-center justify-between p-3.5 bg-card border rounded-2xl group transition-all shadow-2xs ${
+                                            slot.is_booked ? 'border-border/80 bg-muted/40' : 'border-[#00E676]/30 hover:border-[#00E676]/60'
+                                        }`}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2.5 bg-[#00E676]/10 text-[#00E676] rounded-xl border border-[#00E676]/20">
-                                                <Clock size={16} />
+                                            <div className={`p-2.5 rounded-xl border ${
+                                                slot.is_booked 
+                                                    ? 'bg-muted text-muted-foreground border-border' 
+                                                    : 'bg-[#00E676]/10 text-[#00E676] border-[#00E676]/20'
+                                            }`}>
+                                                {slot.is_booked ? <Lock size={16} /> : <Clock size={16} />}
                                             </div>
                                             <div>
                                                 <div className="text-xs font-bold text-foreground flex items-center gap-2">
                                                     <span>{startDate.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                                    {slot.is_booked && (
-                                                        <span className="text-[8px] font-black uppercase px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">
-                                                            Booked
+                                                    {slot.is_booked ? (
+                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-muted text-muted-foreground border border-border rounded">
+                                                            Booked: {slot.athlete_name} {slot.lesson_code ? `(${slot.lesson_code})` : ''}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-[#00E676]/20 text-[#00E676] rounded">
+                                                            Open Slot
                                                         </span>
                                                     )}
                                                 </div>
@@ -675,14 +997,16 @@ export function CoachScheduler() {
                                             </div>
                                         </div>
 
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteSlot(slot.id)}
-                                            className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded-lg hover:bg-destructive/10 cursor-pointer"
-                                            title="Delete slot"
-                                        >
-                                            <Trash2 size={15} />
-                                        </button>
+                                        {!slot.is_booked && !slot.is_session_source && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteSlot(slot)}
+                                                className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded-lg hover:bg-destructive/10 cursor-pointer"
+                                                title="Delete slot"
+                                            >
+                                                <Trash2 size={15} />
+                                            </button>
+                                        )}
                                     </motion.div>
                                 );
                             })}
