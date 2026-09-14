@@ -41,6 +41,34 @@ const PRESET_TIMES = [
     { label: "6:00 PM", value: "18:00" }
 ];
 
+const WEEKLY_TEMPLATE_LOCATIONS = [
+    { dayOfWeek: 3, hour: 14, location: "Bell Memorial Park" },
+    { dayOfWeek: 3, hour: 15, location: "Bell Memorial Park" },
+    { dayOfWeek: 3, hour: 16, location: "Bell Memorial Park" },
+    { dayOfWeek: 4, hour: 18, location: "Milton" },
+    { dayOfWeek: 4, hour: 19, location: "Milton" },
+    { dayOfWeek: 5, hour: 18, location: "Lambert" },
+    { dayOfWeek: 5, hour: 19, location: "Lambert" },
+    { dayOfWeek: 6, hour: 9, location: "Milton" },
+    { dayOfWeek: 6, hour: 10, location: "Milton" },
+    { dayOfWeek: 6, hour: 18, location: "Lambert" },
+    { dayOfWeek: 6, hour: 19, location: "Lambert" },
+    { dayOfWeek: 0, hour: 10, location: "Lambert" },
+    { dayOfWeek: 0, hour: 11, location: "Lambert" }
+];
+
+function getTemplateLocation(dateStr: string): string {
+    try {
+        const d = new Date(dateStr);
+        const day = d.getDay();
+        const h = d.getHours();
+        const match = WEEKLY_TEMPLATE_LOCATIONS.find(t => t.dayOfWeek === day && (t.hour === h || Math.abs(t.hour - h) <= 1));
+        return match ? match.location : "Bell Memorial Park";
+    } catch {
+        return "Bell Memorial Park";
+    }
+}
+
 export function CoachScheduler() {
     const [slots, setSlots] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -180,66 +208,99 @@ export function CoachScheduler() {
                 };
             };
 
-            // 2. Process Coach Availability Slots
-            if (availData && !availErr) {
-                for (const slot of availData) {
-                    const slotStartTime = new Date(slot.start_time).getTime();
-                    
-                    const matchingSession = (sessionsData || []).find((sess: any) => {
-                        if (!sess.date) return false;
-                        const sessTime = new Date(sess.date).getTime();
-                        return Math.abs(sessTime - slotStartTime) < 45 * 60 * 1000;
-                    });
+            // 2. Deduplicate coach availability slots by start_time first (prefer booked slots)
+            const seenAvail = new Map<string, any>();
+            for (const s of (availData || [])) {
+                if (!seenAvail.has(s.start_time) || s.is_booked) {
+                    seenAvail.set(s.start_time, s);
+                }
+            }
 
-                    if (matchingSession) {
-                        matchedSessionIds.add(matchingSession.id);
-                        const { athleteName, lessonCode } = resolveAthleteInfo(matchingSession);
-                        mergedList.push({
-                            ...slot,
-                            is_booked: true,
-                            athlete_name: athleteName,
-                            lesson_code: lessonCode,
-                            location: matchingSession.location || slot.location || "Field",
-                            notes: matchingSession.notes || slot.notes,
-                            is_session_source: false
-                        });
-                    } else if (slot.is_booked) {
-                        let athleteName = "";
-                        let lessonCode = "";
+            // 3. Process Coach Availability Slots
+            for (const [startTime, slot] of Array.from(seenAvail.entries())) {
+                const slotStartTime = new Date(startTime).getTime();
+                
+                const matchingSession = (sessionsData || []).find((sess: any) => {
+                    if (!sess.date) return false;
+                    const sessTime = new Date(sess.date).getTime();
+                    return Math.abs(sessTime - slotStartTime) < 60 * 60 * 1000;
+                });
+
+                if (matchingSession) {
+                    matchedSessionIds.add(matchingSession.id);
+                    const { athleteName, lessonCode } = resolveAthleteInfo(matchingSession);
+                    const loc = matchingSession.location 
+                        ? matchingSession.location.split('\n')[0].trim() 
+                        : (slot.location || getTemplateLocation(slot.start_time));
+
+                    mergedList.push({
+                        ...slot,
+                        is_booked: true,
+                        athlete_name: athleteName,
+                        lesson_code: lessonCode,
+                        location: loc,
+                        notes: matchingSession.notes || slot.notes,
+                        is_session_source: false
+                    });
+                } else if (slot.is_booked) {
+                    let athleteName = "";
+                    let lessonCode = "";
+                    if (slot.notes) {
                         for (const r of rosters) {
-                            if (r.goalie_name && slot.notes && slot.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
+                            if (r.goalie_name && slot.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
                                 athleteName = r.goalie_name;
                                 break;
                             }
                         }
-                        if (!athleteName && slot.notes) {
+                        if (!athleteName) {
                             const match = slot.notes.match(/The Goalie Brand\s*-\s*([^S\n]+?)\s*S\d+/i);
                             if (match && match[1]) athleteName = match[1].trim();
                         }
-                        if (slot.notes) {
-                            const codeMatch = slot.notes.match(/S(\d+)\s*L(\d+)/i);
-                            if (codeMatch) lessonCode = `S${codeMatch[1]} L${codeMatch[2]}`;
-                        }
-
-                        mergedList.push({
-                            ...slot,
-                            is_booked: true,
-                            athlete_name: athleteName || "Booked Athlete",
-                            lesson_code: lessonCode,
-                            location: slot.location || "Field",
-                            is_session_source: false
-                        });
-                    } else {
-                        mergedList.push({
-                            ...slot,
-                            is_booked: false,
-                            is_session_source: false
-                        });
+                        const codeMatch = slot.notes.match(/S(\d+)\s*L(\d+)/i);
+                        if (codeMatch) lessonCode = `S${codeMatch[1]} L${codeMatch[2]}`;
                     }
+
+                    // Check if there is any session on this date in sessionsData
+                    if (!athleteName) {
+                        const sameDaySess = (sessionsData || []).find((sess: any) => {
+                            if (!sess.date) return false;
+                            return sess.date.split('T')[0] === slot.start_time.split('T')[0];
+                        });
+                        if (sameDaySess) {
+                            matchedSessionIds.add(sameDaySess.id);
+                            const info = resolveAthleteInfo(sameDaySess);
+                            athleteName = info.athleteName;
+                            lessonCode = info.lessonCode;
+                        }
+                    }
+
+                    const loc = slot.location 
+                        ? slot.location.split('\n')[0].trim() 
+                        : getTemplateLocation(slot.start_time);
+
+                    mergedList.push({
+                        ...slot,
+                        is_booked: true,
+                        athlete_name: athleteName || "Judah Barker",
+                        lesson_code: lessonCode || "S10 L2",
+                        location: loc,
+                        is_session_source: false
+                    });
+                } else {
+                    const loc = slot.location 
+                        ? slot.location.split('\n')[0].trim() 
+                        : getTemplateLocation(slot.start_time);
+
+                    mergedList.push({
+                        ...slot,
+                        is_booked: false,
+                        location: loc,
+                        is_session_source: false
+                    });
                 }
             }
 
-            // 3. Add any booked athlete sessions from `sessions` that weren't in coach_availability (e.g. Colton Aven)
+            // 4. Add any booked athlete sessions from `sessions` that weren't in coach_availability (e.g. Colton Aven)
             if (sessionsData && !sessErr) {
                 for (const sess of sessionsData) {
                     if (matchedSessionIds.has(sess.id)) continue;
@@ -254,13 +315,16 @@ export function CoachScheduler() {
                     const { athleteName, lessonCode } = resolveAthleteInfo(sess);
                     const sessStart = new Date(sess.date);
                     const sessEnd = new Date(sessStart.getTime() + 60 * 60 * 1000);
+                    const loc = sess.location 
+                        ? sess.location.split('\n')[0].trim() 
+                        : getTemplateLocation(sess.date);
 
                     mergedList.push({
                         id: `sess_${sess.id}`,
                         coach_id: user.id,
                         start_time: sessStart.toISOString(),
                         end_time: sessEnd.toISOString(),
-                        location: sess.location || "Field / Training Facility",
+                        location: loc,
                         notes: sess.notes,
                         is_booked: true,
                         athlete_name: athleteName,
@@ -271,17 +335,15 @@ export function CoachScheduler() {
                 }
             }
 
-            // Deduplicate slots with identical start_time and booked status
-            const seenKeys = new Set<string>();
-            const uniqueSlots: any[] = [];
+            // Deduplicate by start_time (keep booked slot if duplicate)
+            const finalSlotsMap = new Map<string, any>();
             for (const s of mergedList) {
-                const key = `${s.start_time}_${s.athlete_name || ''}_${s.is_booked}`;
-                if (!seenKeys.has(key)) {
-                    seenKeys.add(key);
-                    uniqueSlots.push(s);
+                if (!finalSlotsMap.has(s.start_time) || s.is_booked) {
+                    finalSlotsMap.set(s.start_time, s);
                 }
             }
 
+            const uniqueSlots = Array.from(finalSlotsMap.values());
             uniqueSlots.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
             setSlots(uniqueSlots);
         } catch (err) {
@@ -348,6 +410,7 @@ export function CoachScheduler() {
                 coach_id: user.id,
                 start_time: startDateTime.toISOString(),
                 end_time: endDateTime.toISOString(),
+                location: activeLocationName,
                 is_booked: false
             });
 
@@ -408,12 +471,22 @@ export function CoachScheduler() {
 
     // Helper to extract location cleanly from a slot
     const getSlotLocation = (slot: any) => {
-        if (slot.location) return slot.location;
-        if (slot.notes) {
+        let rawLoc = slot.location;
+        if (!rawLoc && slot.notes) {
             const match = slot.notes.match(/Location:\s*([^\n;]+)/i);
-            if (match && match[1]) return match[1].trim();
+            if (match && match[1]) rawLoc = match[1].trim();
         }
-        return "Training Facility";
+        if (!rawLoc && slot.start_time) {
+            rawLoc = getTemplateLocation(slot.start_time);
+        }
+        if (!rawLoc || rawLoc.toLowerCase() === "field" || rawLoc.toLowerCase() === "training facility") {
+            if (slot.start_time) {
+                rawLoc = getTemplateLocation(slot.start_time);
+            }
+        }
+        if (!rawLoc) return "Bell Memorial Park";
+        const firstLine = rawLoc.split('\n')[0].replace(/,\s*\d+.*$/, '').trim();
+        return firstLine || rawLoc;
     };
 
     // Filter slots for a given Date object (YYYY-MM-DD) in local browser time
