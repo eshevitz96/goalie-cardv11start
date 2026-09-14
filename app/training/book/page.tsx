@@ -142,26 +142,28 @@ function BookTrainingContent() {
         try {
             const res = await lookupAthleteByEmail(target);
             if (res.found && res.goalieName) {
+                const remaining = res.lessonsRemaining ?? 4;
+                const total = res.totalAllowance ?? 4;
                 setGuestName(res.goalieName);
-                setGuestEmail(res.email);
+                setGuestEmail(res.email || target);
                 setGoalieProfile({
                     goalieName: res.goalieName,
-                    email: res.email,
-                    lessonsRemaining: res.lessonsRemaining,
-                    totalAllowance: res.totalAllowance,
-                    bookedCount: res.bookedCount,
+                    email: res.email || target,
+                    lessonsRemaining: remaining,
+                    totalAllowance: total,
+                    bookedCount: res.bookedCount ?? 0,
                     deliveredCount: 0
                 });
 
-                if (res.lessonsRemaining <= 0) {
+                if (remaining <= 0) {
                     setVerificationStatus({
                         type: 'error',
-                        message: `${res.goalieName} has completed all ${res.totalAllowance} lessons in their current package. Please contact Coach Elliott to renew.`
+                        message: `${res.goalieName} has completed all ${total} lessons in their current package. Please contact Coach Elliott to renew.`
                     });
                 } else {
                     setVerificationStatus({
                         type: 'success',
-                        message: `Verified: ${res.goalieName} (${res.lessonsRemaining} of ${res.totalAllowance} lessons available)`
+                        message: `Verified: ${res.goalieName} (${remaining} of ${total} lessons available)`
                     });
                 }
             } else {
