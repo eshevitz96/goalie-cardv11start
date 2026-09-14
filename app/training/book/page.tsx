@@ -21,7 +21,7 @@ import {
     Shield
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getAvailableTrainingSlots, getGoalieBookingProfile, bookTrainingSlots } from "./actions";
+import { getAvailableTrainingSlots, getGoalieBookingProfile, bookTrainingSlots, lookupAthleteByEmail } from "./actions";
 import { TrainingSlot } from "@/constants/trainingAvailability";
 
 export default function BookTrainingPage() {
@@ -55,6 +55,10 @@ function BookTrainingContent() {
 
     const [guestName, setGuestName] = useState<string>(() => searchParams.get('name') || "");
     const [guestEmail, setGuestEmail] = useState<string>(() => searchParams.get('email') || "");
+    const [emailLookupInput, setEmailLookupInput] = useState<string>(() => searchParams.get('email') || "");
+    const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+    const [verificationStatus, setVerificationStatus] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+    const [showIdentityModal, setShowIdentityModal] = useState(false);
 
     // Month Navigation
     const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
@@ -107,6 +111,13 @@ function BookTrainingContent() {
                 }
                 if (profileRes.email && !guestEmail) {
                     setGuestEmail(profileRes.email);
+                    setEmailLookupInput(profileRes.email);
+                }
+                if (profileRes.goalieName && profileRes.goalieName !== 'Athlete') {
+                    setVerificationStatus({
+                        type: 'success',
+                        message: `Verified: ${profileRes.goalieName} (${profileRes.lessonsRemaining} of ${profileRes.totalAllowance || 4} lessons available)`
+                    });
                 }
             }
             setIsLoading(false);
@@ -116,6 +127,56 @@ function BookTrainingContent() {
             init();
         }
     }, [auth.loading, auth.userId, auth.userEmail, searchParams]);
+
+    const handleVerifyEmail = async (overrideEmail?: string) => {
+        const target = (overrideEmail || emailLookupInput).trim();
+        if (!target) {
+            setVerificationStatus({ type: 'error', message: 'Please enter a parent or athlete email.' });
+            return;
+        }
+
+        setIsVerifyingEmail(true);
+        setVerificationStatus(null);
+        setError(null);
+
+        try {
+            const res = await lookupAthleteByEmail(target);
+            if (res.found && res.goalieName) {
+                setGuestName(res.goalieName);
+                setGuestEmail(res.email);
+                setGoalieProfile({
+                    goalieName: res.goalieName,
+                    email: res.email,
+                    lessonsRemaining: res.lessonsRemaining,
+                    totalAllowance: res.totalAllowance,
+                    bookedCount: res.bookedCount,
+                    deliveredCount: 0
+                });
+
+                if (res.lessonsRemaining <= 0) {
+                    setVerificationStatus({
+                        type: 'error',
+                        message: `${res.goalieName} has completed all ${res.totalAllowance} lessons in their current package. Please contact Coach Elliott to renew.`
+                    });
+                } else {
+                    setVerificationStatus({
+                        type: 'success',
+                        message: `Verified: ${res.goalieName} (${res.lessonsRemaining} of ${res.totalAllowance} lessons available)`
+                    });
+                }
+            } else {
+                setGuestEmail(target);
+                setVerificationStatus({
+                    type: 'info',
+                    message: `Email verified. Please enter the athlete's name below.`
+                });
+            }
+        } catch (e: any) {
+            setVerificationStatus({ type: 'error', message: 'Could not verify email. Please try again.' });
+        } finally {
+            setIsVerifyingEmail(false);
+        }
+    };
 
     // Calendar Grid Calculation
     const calendarDays = useMemo(() => {
@@ -185,20 +246,17 @@ function BookTrainingContent() {
         }
     };
 
-    const handleConfirmBooking = async () => {
+    const executeBooking = async (name: string, email: string) => {
         if (selectedSlotIds.length === 0) return;
         setIsSubmitting(true);
         setError(null);
 
         try {
             const activeUid = auth.userId || "00000000-0000-0000-0000-000000000000";
-            const effectiveName = guestName.trim() || goalieProfile?.goalieName || "Athlete";
-            const effectiveEmail = guestEmail.trim() || goalieProfile?.email || auth.userEmail || "";
-
             const res = await bookTrainingSlots({
                 goalieProfileId: activeUid,
-                athleteName: effectiveName,
-                email: effectiveEmail,
+                athleteName: name.trim(),
+                email: email.trim(),
                 selectedSlotIds
             });
 
@@ -206,6 +264,7 @@ function BookTrainingContent() {
                 setError(res.error);
                 setIsSubmitting(false);
             } else if (res.success) {
+                setShowIdentityModal(false);
                 setBookedResult({
                     bookedSlots: res.bookedSlots!,
                     googleCalLinks: res.googleCalLinks!
@@ -216,6 +275,20 @@ function BookTrainingContent() {
             setError(err.message || "Failed to confirm booking.");
             setIsSubmitting(false);
         }
+    };
+
+    const handleConfirmBooking = async () => {
+        if (selectedSlotIds.length === 0) return;
+        
+        const effectiveName = guestName.trim() || (goalieProfile?.goalieName !== 'Athlete' ? goalieProfile?.goalieName : '');
+        const effectiveEmail = guestEmail.trim() || goalieProfile?.email || auth.userEmail || '';
+
+        if (!effectiveName || !effectiveEmail || effectiveName.toLowerCase() === 'athlete') {
+            setShowIdentityModal(true);
+            return;
+        }
+
+        await executeBooking(effectiveName, effectiveEmail);
     };
 
     if (isLoading) {
@@ -334,6 +407,68 @@ function BookTrainingContent() {
                             Choose available weekend and weeknight training times below.
                         </p>
                     </div>
+
+                    {/* Athlete Verification Card */}
+                    {guestName && guestName !== 'Athlete' ? (
+                        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                                    <CheckCircle2 size={16} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-foreground">Booking for: <span className="text-emerald-400 font-extrabold">{guestName}</span></p>
+                                    <p className="text-[11px] text-muted-foreground">{guestEmail || goalieProfile?.email} • {goalieProfile?.lessonsRemaining ?? 4} lessons available</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    setGuestName("");
+                                    setGuestEmail("");
+                                    setEmailLookupInput("");
+                                    setGoalieProfile(null);
+                                    setVerificationStatus(null);
+                                }} 
+                                className="text-[10px] uppercase font-black text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg bg-secondary/40 hover:bg-secondary/80"
+                            >
+                                Change
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="bg-secondary/40 border border-border/60 rounded-2xl p-4 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Shield size={14} className="text-emerald-500" />
+                                    <p className="text-xs font-bold text-foreground">Parent / Athlete Verification</p>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground font-medium">Verify your package</span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                                Enter your email to confirm your athlete profile & load your active balance:
+                            </p>
+                            <div className="flex gap-2">
+                                <input
+                                    type="email"
+                                    value={emailLookupInput}
+                                    onChange={(e) => setEmailLookupInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleVerifyEmail()}
+                                    placeholder="e.g. parent@email.com"
+                                    className="flex-1 bg-background border border-border/80 rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                                <Button
+                                    onClick={() => handleVerifyEmail()}
+                                    loading={isVerifyingEmail}
+                                    className="text-xs font-bold px-4 py-2 rounded-xl"
+                                >
+                                    Verify
+                                </Button>
+                            </div>
+                            {verificationStatus && (
+                                <p className={`text-[11px] font-bold ${verificationStatus.type === 'error' ? 'text-destructive' : 'text-emerald-400'}`}>
+                                    {verificationStatus.message}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Calendar Card */}
                     <div className="bg-card/40 backdrop-blur-2xl border border-border/50 rounded-3xl p-6 shadow-xl space-y-5">
@@ -542,6 +677,89 @@ function BookTrainingContent() {
                             </div>
                         </div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+            {/* ── IDENTITY CONFIRMATION MODAL ──────────────────────────────── */}
+            <AnimatePresence>
+                {showIdentityModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-card border border-border/80 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-5"
+                        >
+                            <div className="space-y-1">
+                                <span className="text-[10px] uppercase font-black tracking-widest text-emerald-500">
+                                    Athlete Details
+                                </span>
+                                <h3 className="text-xl font-bold text-foreground">Confirm Who is Training</h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Enter your details so Coach Elliott can link your session and notify you.
+                                </p>
+                            </div>
+
+                            <div className="space-y-4 pt-1">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-foreground">Parent / Contact Email</label>
+                                    <input
+                                        type="email"
+                                        value={guestEmail}
+                                        onChange={(e) => {
+                                            setGuestEmail(e.target.value);
+                                            handleVerifyEmail(e.target.value);
+                                        }}
+                                        placeholder="e.g. parent@email.com"
+                                        className="w-full bg-secondary/50 border border-border/80 rounded-xl px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-foreground">Athlete Full Name</label>
+                                    <input
+                                        type="text"
+                                        value={guestName}
+                                        onChange={(e) => setGuestName(e.target.value)}
+                                        placeholder="e.g. Colton Aven"
+                                        className="w-full bg-secondary/50 border border-border/80 rounded-xl px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                </div>
+
+                                {verificationStatus && (
+                                    <div className={`p-3 rounded-xl text-xs font-bold border ${verificationStatus.type === 'error' ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                                        {verificationStatus.message}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-3 pt-2">
+                                <button
+                                    onClick={() => setShowIdentityModal(false)}
+                                    className="flex-1 py-3 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <Button
+                                    onClick={() => {
+                                        if (!guestEmail.trim()) {
+                                            setVerificationStatus({ type: 'error', message: 'Please enter your email.' });
+                                            return;
+                                        }
+                                        if (!guestName.trim() || guestName.trim().toLowerCase() === 'athlete') {
+                                            setVerificationStatus({ type: 'error', message: 'Please enter the athlete name.' });
+                                            return;
+                                        }
+                                        executeBooking(guestName, guestEmail);
+                                    }}
+                                    loading={isSubmitting}
+                                    disabled={!guestEmail.trim() || !guestName.trim() || guestName.trim().toLowerCase() === 'athlete'}
+                                    className="flex-1 py-3 text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/10"
+                                >
+                                    Book {selectedSlotIds.length} Session{selectedSlotIds.length > 1 ? 's' : ''}
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
         </main>

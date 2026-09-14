@@ -224,6 +224,50 @@ function createGoogleCalendarUrl(slot: TrainingSlot, athleteName: string): strin
 }
 
 /**
+ * Look up an athlete on the roster by email or name to verify their active package balance.
+ */
+export async function lookupAthleteByEmail(identifier: string) {
+    try {
+        const supabase = getSupabaseAdmin();
+        const clean = (identifier || '').trim().toLowerCase();
+        if (!clean) return { found: false };
+
+        const { data: roster } = await supabase
+            .from('roster_uploads')
+            .select('*')
+            .or(`email.ilike.${clean},guardian_email.ilike.${clean},athlete_email.ilike.${clean},goalie_name.ilike.%${clean}%`)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (!roster) {
+            return { found: false };
+        }
+
+        const rawData = typeof roster.raw_data === 'object' && roster.raw_data !== null ? roster.raw_data : {};
+        const totalAllowance = roster.lesson_count || 4;
+        const bookedCount = rawData.completed_in_package ?? 0;
+        const remaining = rawData.remaining_in_package !== undefined ? Number(rawData.remaining_in_package) : Math.max(0, totalAllowance - bookedCount);
+
+        return {
+            found: true,
+            rosterId: roster.id,
+            goalieName: roster.goalie_name,
+            email: roster.email || roster.guardian_email || clean,
+            phone: roster.phone || roster.guardian_phone || roster.athlete_phone || "",
+            lessonsRemaining: remaining,
+            totalAllowance,
+            bookedCount,
+            currentPackage: rawData.current_package || `${totalAllowance}-Pack`,
+            packageStatus: rawData.package_status || (remaining > 0 ? `In progress — ${remaining} left` : 'Completed')
+        };
+    } catch (err: any) {
+        console.error("[lookupAthleteByEmail] error:", err);
+        return { found: false, error: err.message };
+    }
+}
+
+/**
  * Confirms session bookings, creates calendar events in Supabase, and emails the coach and client.
  */
 export async function bookTrainingSlots(payload: {
@@ -235,6 +279,16 @@ export async function bookTrainingSlots(payload: {
     try {
         const supabase = getSupabaseAdmin();
         const { goalieProfileId, athleteName, email, selectedSlotIds } = payload;
+        const cleanEmail = (email || '').trim();
+        const cleanName = (athleteName || '').trim();
+
+        if (!cleanEmail) {
+            return { error: "Please enter your parent or athlete email to confirm booking." };
+        }
+
+        if (!cleanName || cleanName.toLowerCase() === 'athlete') {
+            return { error: "Please enter the athlete's full name to confirm booking." };
+        }
 
         if (!selectedSlotIds || selectedSlotIds.length === 0) {
             return { error: "Please select at least one session date." };
@@ -245,27 +299,35 @@ export async function bookTrainingSlots(payload: {
             return { error: "No valid training slots found for selection." };
         }
 
-        // 1. Resolve roster_id & sport if available
+        // 1. Resolve roster_id & sport by email or athlete name
         let resolvedRosterId: string | null = null;
         let resolvedSport = 'Lacrosse';
         let resolvedGoalieId = goalieProfileId;
+        let resolvedName = cleanName;
 
         try {
             const { data: roster } = await supabase
                 .from('roster_uploads')
-                .select('id, goalie_name, email, sport')
-                .or(`linked_user_id.eq.${goalieProfileId},id.eq.${goalieProfileId},email.ilike.${email.trim()}`)
+                .select('*')
+                .or(`email.ilike.${cleanEmail},guardian_email.ilike.${cleanEmail},athlete_email.ilike.${cleanEmail},goalie_name.ilike.%${cleanName}%`)
+                .order('created_at', { ascending: false })
+                .limit(1)
                 .maybeSingle();
+
             if (roster) {
                 resolvedRosterId = roster.id;
                 resolvedSport = roster.sport || 'Lacrosse';
+                resolvedName = roster.goalie_name || cleanName;
+                if (roster.linked_user_id) {
+                    resolvedGoalieId = roster.linked_user_id;
+                }
             }
 
             // Verify goalie_id foreign key in profiles
             const { data: profileCheck } = await supabase
                 .from('profiles')
                 .select('id')
-                .eq('id', goalieProfileId)
+                .eq('id', resolvedGoalieId)
                 .maybeSingle();
 
             if (!profileCheck) {
@@ -283,12 +345,12 @@ export async function bookTrainingSlots(payload: {
         const googleCalLinks: { slotId: string; title: string; url: string }[] = [];
 
         for (const slot of selectedSlots) {
-            // A. Insert into sessions table
+            // A. Insert into sessions table with authoritative athlete name
             const sessionPayload: any = {
                 goalie_id: resolvedGoalieId,
                 date: `${slot.date}T${slot.startTime.includes('PM') ? '18:00:00' : '09:00:00'}`,
                 location: slot.location,
-                notes: `Private Training Session • slot_id:${slot.id} • ${slot.timeDisplay}`,
+                notes: `The Goalie Brand - ${resolvedName} • Private Training Session • slot_id:${slot.id} • ${slot.timeDisplay}`,
             };
             if (resolvedRosterId) {
                 sessionPayload.roster_id = resolvedRosterId;
@@ -312,12 +374,12 @@ export async function bookTrainingSlots(payload: {
                 date: slot.date,
                 location: slot.location,
                 sport: resolvedSport,
-                scouting_report: `Scheduled Private Training Session (${slot.timeDisplay})`,
-                created_by: goalieProfileId
+                scouting_report: `Scheduled Private Training Session with Coach Elliott (${slot.timeDisplay})`,
+                created_by: resolvedGoalieId
             });
 
             // Build Google Calendar Link
-            const calUrl = createGoogleCalendarUrl(slot, athleteName);
+            const calUrl = createGoogleCalendarUrl(slot, resolvedName);
             googleCalLinks.push({
                 slotId: slot.id,
                 title: `${slot.date} (${slot.timeDisplay}) @ ${slot.location}`,
