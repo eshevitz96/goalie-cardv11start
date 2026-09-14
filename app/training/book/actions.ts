@@ -857,49 +857,7 @@ export async function submitSessionTakeaways(payload: {
             }
         }
 
-        // Notify other party
-        if (process.env.RESEND_API_KEY) {
-            try {
-                const recipients = authorRole === 'coach' 
-                    ? getCoachNotificationRecipients(targetEmail)
-                    : [...COACH_NOTIFICATION_EMAILS];
-
-                const emailHtml = `
-                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
-                        <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">New Lesson Takeaway Added</h2>
-                        <p style="font-size: 14px; color: #475569;"><strong>${displayName}</strong> posted new reflection takeaways for session on ${session.date ? new Date(session.date).toLocaleDateString() : 'Recent Session'}:</p>
-                        
-                        <div style="background: #f8fafc; border-left: 4px solid #00E676; padding: 14px 18px; border-radius: 8px; margin: 18px 0; font-size: 14px; color: #1e293b; line-height: 1.6;">
-                            ${takeaways.replace(/\n/g, '<br/>')}
-                        </div>
-
-                        <div style="margin-top: 24px;">
-                            <a href="https://goaliecard.app/dashboard" style="display: inline-block; background: #00E676; color: #000; font-weight: 700; font-size: 13px; text-decoration: none; padding: 10px 18px; border-radius: 8px;">View in Goalie Card</a>
-                        </div>
-
-                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-                        <p style="font-size: 12px; color: #94a3b8; text-align: center;">Goalie Card • The Goalie Brand</p>
-                    </div>
-                `;
-
-                await fetch("https://api.resend.com/emails", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-                    },
-                    body: JSON.stringify({
-                        from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Private Training <onboarding@goaliecard.app>",
-                        to: recipients,
-                        subject: `Lesson Takeaway Added: ${authorName || displayName}`,
-                        html: emailHtml,
-                    }),
-                });
-            } catch (err) {
-                console.error("[submitSessionTakeaways] Email dispatch error:", err);
-            }
-        }
-
+        // Takeaways are saved to session notes for parents/goalies to view upon login (email dispatch disabled)
         return { success: true };
     } catch (err: any) {
         console.error("[submitSessionTakeaways] Exception:", err);
@@ -1645,71 +1603,7 @@ export async function saveCalendarLessonUpdate(payload: {
             }
         }
 
-        // If takeaway notes are present, dispatch email via Resend
-        if (notes && notes.trim().length > 0 && process.env.RESEND_API_KEY) {
-            try {
-                const sNum = updateData.session_number !== undefined ? updateData.session_number : (updatedSession?.session_number || 1);
-                const lNum = updateData.lesson_number !== undefined ? updateData.lesson_number : (updatedSession?.lesson_number || 1);
-                const sessionLabel = `S${sNum}, L${lNum}`;
-                
-                let formattedDate = isoDate;
-                try {
-                    formattedDate = new Date(isoDate).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                    });
-                } catch {
-                    formattedDate = isoDate.slice(0, 10);
-                }
-
-                const takeawayEmailHtml = `
-                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
-                        <div style="text-align: center; margin-bottom: 24px;">
-                            <span style="display: inline-block; background: #00E676; color: #000000; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Coach Takeaways & Feedback</span>
-                            <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 8px 0 4px;">Session Debrief: ${resolvedGoalieName}</h2>
-                            <p style="font-size: 14px; color: #64748b; margin: 0;">${sessionLabel} • ${formattedDate}</p>
-                        </div>
-
-                        <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #00E676;">
-                            <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">Session Location</p>
-                            <p style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a;">${location || 'Field / Training Facility'}</p>
-                        </div>
-
-                        <div style="background: #0f172a; color: #ffffff; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
-                            <h3 style="font-size: 14px; font-weight: 800; color: #00E676; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 12px;">Coach Elliott's Notes & Key Focal Points:</h3>
-                            <p style="font-size: 14px; line-height: 1.6; color: #e2e8f0; margin: 0; white-space: pre-wrap;">${notes}</p>
-                        </div>
-
-                        <div style="text-align: center; margin: 28px 0 12px;">
-                            <a href="https://goaliecard.app/calendar" style="display: inline-block; background: #00E676; color: #000000; font-size: 13px; font-weight: 800; text-decoration: none; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;">View Goalie Card & Schedule</a>
-                        </div>
-
-                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0 16px;" />
-                        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">The Goalie Brand • Goalie Card Coaching System • Coach Elliott Shevitz</p>
-                    </div>
-                `;
-
-                const recipients = getCoachNotificationRecipients(resolvedEmail);
-
-                await fetch("https://api.resend.com/emails", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-                    },
-                    body: JSON.stringify({
-                        from: process.env.EMAIL_FROM_ADDRESS || "Elliott Shevitz <coach@goaliecard.app>",
-                        to: recipients,
-                        subject: `Coach Takeaways: ${resolvedGoalieName} (${sessionLabel})`,
-                        html: takeawayEmailHtml,
-                    }),
-                });
-            } catch (emailErr) {
-                console.error("[saveCalendarLessonUpdate] Email Send Error:", emailErr);
-            }
-        }
+        // Takeaway notes are stored in session notes for parents/goalies to view upon login (email dispatch disabled)
 
         // Create in-app notification if user is linked
         if (targetUserId) {
