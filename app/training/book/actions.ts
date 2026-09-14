@@ -730,37 +730,71 @@ export async function completeTrainingSessionAndNotify(payload: {
             })
             .eq('id', sessionId);
 
-        // 3. Dispatch Completion & Takeaways Email to Coach + Client
-        if (process.env.RESEND_API_KEY) {
+        // 3. Auto-resolve client email and takeaway notes
+        const extractedTakeaways = (coachNotes && coachNotes !== 'Completed on field.' && coachNotes !== 'Session wrapped on field.')
+            ? coachNotes
+            : (extractTakeawaysFromNotes(session.notes) || '');
+
+        let targetEmail = clientEmail || '';
+        if (!targetEmail || !targetEmail.includes('@')) {
+            if (session.roster_id) {
+                const { data: r } = await supabase
+                    .from('roster_uploads')
+                    .select('email, guardian_email, athlete_email')
+                    .eq('id', session.roster_id)
+                    .maybeSingle();
+                if (r) targetEmail = r.email || r.guardian_email || r.athlete_email || '';
+            }
+            if (!targetEmail && session.notes) {
+                const { data: rosters } = await supabase
+                    .from('roster_uploads')
+                    .select('goalie_name, email, guardian_email, athlete_email');
+                if (rosters) {
+                    for (const r of rosters) {
+                        if (r.goalie_name && session.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
+                            targetEmail = r.email || r.guardian_email || r.athlete_email || '';
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Dispatch Takeaways Email only if takeaway notes are present
+        if (extractedTakeaways && extractedTakeaways.trim().length > 0 && process.env.RESEND_API_KEY) {
             try {
+                const sessionLabel = (session.session_number || session.lesson_number)
+                    ? `S${session.session_number || 1}, L${session.lesson_number || 1}`
+                    : '';
+
                 const completionHtml = `
-                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
-                        <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">Lesson Completed: Debrief & Takeaways</h2>
-                        <p style="font-size: 15px; color: #475569; margin-top: 0;">
-                            Private training session with <strong>${resolvedName}</strong> on <strong>${sessionDateStr}</strong> at <strong>${sessionLocation}</strong> is officially wrapped.
-                        </p>
-
-                        ${coachNotes ? `
-                        <div style="background: #f0fdf4; border-left: 4px solid #00E676; padding: 14px 18px; border-radius: 8px; margin: 20px 0;">
-                            <p style="margin: 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #166534;">Coach Notes & Focus Areas</p>
-                            <p style="margin: 6px 0 0; font-size: 14px; color: #15803d; line-height: 1.5;">${coachNotes}</p>
-                        </div>
-                        ` : ''}
-
-                        <div style="background: #f8fafc; padding: 18px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
-                            <h3 style="margin: 0 0 8px; font-size: 15px; font-weight: 700; color: #0f172a;">Key Takeaways & Reflection</h3>
-                            <p style="margin: 0 0 16px; font-size: 13px; color: #64748b; line-height: 1.5;">
-                                Documenting what clicked during training cements your muscle memory and helps direct film analysis. Tap below to add your takeaways in Goalie Card.
-                            </p>
-                            <a href="https://goaliecard.app/dashboard" style="display: inline-block; background: #00E676; color: #000000; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 6px; text-decoration: none;">Add Lesson Takeaways in Dashboard</a>
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <div style="text-align: center; margin-bottom: 24px;">
+                            <span style="display: inline-block; background: #00E676; color: #000000; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Lesson Completed & Coach Takeaways</span>
+                            <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 8px 0 4px;">Training Debrief: ${resolvedName}</h2>
+                            <p style="font-size: 14px; color: #64748b; margin: 0;">${sessionLabel ? `${sessionLabel} • ` : ''}${sessionDateStr}</p>
                         </div>
 
-                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
-                        <p style="font-size: 12px; color: #94a3b8; text-align: center;">Goalie Card Scheduling Engine • The Goalie Brand</p>
+                        <div style="background: #f8fafc; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; border-left: 4px solid #00E676;">
+                            <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">Training Facility / Field</p>
+                            <p style="margin: 0; font-size: 14px; font-weight: 600; color: #0f172a;">${sessionLocation}</p>
+                        </div>
+
+                        <div style="background: #0f172a; color: #ffffff; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+                            <h3 style="font-size: 13px; font-weight: 800; color: #00E676; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 10px;">Coach Takeaways & Focal Points:</h3>
+                            <p style="font-size: 14px; line-height: 1.6; color: #e2e8f0; margin: 0; white-space: pre-wrap;">${extractedTakeaways}</p>
+                        </div>
+
+                        <div style="text-align: center; margin: 24px 0 12px;">
+                            <a href="https://goaliecard.app/dashboard" style="display: inline-block; background: #00E676; color: #000000; font-size: 13px; font-weight: 800; text-decoration: none; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;">View in Goalie Card</a>
+                        </div>
+
+                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0 16px;" />
+                        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">Goalie Card Coaching System • The Goalie Brand • Coach Elliott Shevitz</p>
                     </div>
                 `;
 
-                const recipients = getCoachNotificationRecipients(clientEmail);
+                const recipients = getCoachNotificationRecipients(targetEmail);
 
                 await fetch("https://api.resend.com/emails", {
                     method: "POST",
@@ -771,7 +805,7 @@ export async function completeTrainingSessionAndNotify(payload: {
                     body: JSON.stringify({
                         from: (process.env.EMAIL_FROM_ADDRESS && !process.env.EMAIL_FROM_ADDRESS.includes("resend.dev")) ? process.env.EMAIL_FROM_ADDRESS : "Goalie Card Private Training <onboarding@goaliecard.app>",
                         to: recipients,
-                        subject: `Lesson Completed & Takeaways: ${resolvedName} (${sessionDateStr})`,
+                        subject: `Coach Takeaways & Debrief: ${resolvedName} (${sessionDateStr})`,
                         html: completionHtml,
                     }),
                 });

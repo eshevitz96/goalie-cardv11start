@@ -345,7 +345,7 @@ export default function CoachDashboard() {
                 sessionId: session.id,
                 athleteName: session.athlete_name,
                 clientEmail: session.email,
-                coachNotes: session.takeaways || "Session wrapped on field."
+                coachNotes: session.takeaways || ""
             });
 
             if (res && res.error) {
