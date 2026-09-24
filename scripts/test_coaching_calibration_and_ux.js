@@ -83,8 +83,8 @@ assert.ok(
   "System prompt must include the WHAT -> WHY -> PLAN -> GUARDRAIL information hierarchy"
 );
 assert.ok(
-  routeSource.includes("WHAT: 1 concise sentence stating today's objective/session and estimated duration") ||
-  routeSource.includes("WHAT: 1 concise sentence stating today's objective/session"),
+  routeSource.includes("WHAT: 1 concise sentence stating today's objective/focus") ||
+  routeSource.includes("WHAT: 1 concise sentence stating today's objective"),
   "Hierarchy must specify WHAT sentence requirement"
 );
 assert.ok(
@@ -227,26 +227,24 @@ assert.ok(
 );
 console.log("✅ PASS: Cue domain grounding verified.\n");
 
-// --- 16. Plan-First Duration Derivation ---
-console.log("[Test 16] Plan-First Duration Derivation");
+// --- 16. Duration Derivation (System Boundary) ---
+console.log("[Test 16] Duration Derivation (System Boundary)");
 assert.ok(
-  routeSource.includes("Plan-First Duration Derivation:"),
-  "Must include Plan-First Duration Derivation header"
+  routeSource.includes("Duration Derivation (System Boundary):") ||
+  routeSource.includes("Duration Derivation"),
+  "Must include Duration Derivation header"
 );
 assert.ok(
-  routeSource.includes('Build the Mission plan first; then estimate total session duration in "what" from the completed plan (actual work, rest intervals, warm-up, and reasonable transitions)') ||
-  routeSource.includes('Build the Mission plan first; then estimate total session duration'),
-  "Must instruct plan-first estimation"
+  routeSource.includes('The LLM must NEVER generate or guess total session duration in "what" or prose') ||
+  routeSource.includes('Total Mission duration is derived deterministically from the completed "plan" by the system runtime'),
+  "Must instruct system-derived duration boundary"
 );
 assert.ok(
-  routeSource.includes("Duration is descriptive metadata and must NEVER drive the prescription or cause exercise/volume padding to fill an arbitrary target"),
-  "Duration must never drive prescription or volume padding"
+  routeSource.includes('Focus "what" strictly on the conceptual training objective') ||
+  routeSource.includes('Focus "what" strictly'),
+  "Must instruct what to focus on objective"
 );
-assert.ok(
-  routeSource.includes("Preserve uncertainty rather than false precision"),
-  "Must preserve uncertainty rather than false precision"
-);
-console.log("✅ PASS: Plan-first duration derivation verified.\n");
+console.log("✅ PASS: System-derived duration boundary verified.\n");
 
 // --- 17. Baseline Prescription Precision Without Fixed Template Anchors ---
 console.log("[Test 17] Baseline Prescription Precision Without Fixed Template Anchors");

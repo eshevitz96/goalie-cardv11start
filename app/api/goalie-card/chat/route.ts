@@ -13,6 +13,7 @@ import {
     hasExplicitNegation, 
     detectExplicitAction 
 } from '@/lib/goalieCardChat';
+import { deriveMissionDuration, MissionDuration } from '@/lib/missionDuration';
 
 interface ChatMessage {
     id?: string;
@@ -103,15 +104,15 @@ NATURAL COACHING DIALOGUE & INTELLIGENCE MANDATE:
 
 2. DEFAULT TRAINING RECOMMENDATION UX (WHEN PRESCRIBING A MISSION):
    - When Goalie Card is prescribing a workout or daily training plan, set responseMode to "mission" and populate the structured "mission" object using the scan-first information hierarchy (WHAT → WHY → PLAN → GUARDRAIL):
-     * WHAT: 1 concise sentence stating today's objective/session and estimated duration.
+     * WHAT: 1 concise sentence stating today's objective/focus.
      * WHY: 1–2 concise sentences explaining decisive factual context (recency, readiness, upcoming event).
      * PLAN: Array of structured exercise items with name, sets, reps, load, duration, and notes.
      * GUARDRAIL: 1 concise line covering RPE reserve, stop/reassess criteria, or performance-preservation constraint.
    - Default Mission responses must remain concise and scan-first—easy to read during a workout. Deeper physiological reasoning belongs in follow-up dialogue or the Explain experience.
-   - Plan-First Duration Derivation:
-     * Build the Mission plan first; then estimate total session duration in "what" from the completed plan (actual work, rest intervals, warm-up, and reasonable transitions).
-     * Duration is descriptive metadata and must NEVER drive the prescription or cause exercise/volume padding to fill an arbitrary target.
-     * Preserve uncertainty rather than false precision.
+   - Duration Derivation (System Boundary):
+     * The LLM must NEVER generate or guess total session duration in "what" or prose.
+     * Total Mission duration is derived deterministically from the completed "plan" by the system runtime.
+     * Focus "what" strictly on the conceptual training objective.
    - Mission Revision Boundary: Preserve the invariant "ORIGINAL PLANNED MISSION → MISSION REVISION(S) → ATHLETE DECISION(S) → ACTUAL EXECUTION". If conversational feedback changes the plan, generate the appropriate revision without overwriting the original Mission.
 
 3. PRE-PERFORMANCE & PRE-ICE DECISION SPECTRUM (~1 DAY OUT):
@@ -158,7 +159,7 @@ Always return valid JSON with this exact schema:
   "responseMode": "conversation" | "mission",
   "reply": "<Conversational coaching message: full natural response if responseMode is conversation; or concise introductory/framing message if responseMode is mission>",
   "mission": null OR {
-    "what": "<1 concise sentence stating today's focus and estimated total duration>",
+    "what": "<1 concise sentence stating today's session objective/focus>",
     "why": "<1-2 concise sentences summarizing the factual context justifying this session (recency, readiness, upcoming event)>",
     "plan": [
       {
@@ -666,6 +667,11 @@ CURRENT THREAD INFO:
                     replyText = "Goalie Card is operating in offline mode. Live AI coaching intelligence and full Athlete Track context are currently unavailable. No automated coaching directive or training card was inferred.";
                 }
             }
+        }
+
+        // Derive structured mission duration at server boundary after complete plan[] exists
+        if (mission && Array.isArray(mission.plan)) {
+            mission.duration = deriveMissionDuration(mission.plan);
         }
 
         if (suggestedThreadTitle && activeThreadTitle.startsWith('Chat •')) {

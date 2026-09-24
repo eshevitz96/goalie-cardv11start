@@ -76,6 +76,12 @@ interface Message {
             notes?: string | null;
         }>;
         guardrail: string;
+        duration?: {
+            minMinutes: number | null;
+            maxMinutes: number | null;
+            display: string;
+            confidence: 'EXACT' | 'DERIVED_RANGE' | 'UNCERTAIN';
+        };
     } | null;
     decisionFactors?: string[];
     actionCard?: {
@@ -1339,9 +1345,16 @@ export default function TrainingPage() {
                                                     <div className="mt-3 pt-3 border-t border-border/60 space-y-2.5">
                                                         {/* WHAT Header */}
                                                         <div className="bg-primary/10 border border-primary/20 rounded-xl p-2.5">
-                                                            <span className="text-[10px] font-mono font-bold tracking-wider text-primary uppercase block mb-0.5">
-                                                                Today's Mission (WHAT)
-                                                            </span>
+                                                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                                <span className="text-[10px] font-mono font-bold tracking-wider text-primary uppercase">
+                                                                    Today's Mission (WHAT)
+                                                                </span>
+                                                                {msg.mission.duration?.display && (
+                                                                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/25">
+                                                                        {msg.mission.duration.display}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <p className="text-xs font-bold text-foreground leading-snug">
                                                                 {msg.mission.what}
                                                             </p>
