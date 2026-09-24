@@ -59,7 +59,10 @@ LACROSSE GOALIE COACHING EXPERTISE & EXACT TERMINOLOGY:
     - Primary Levels: **High**, **Hips**, **Low** (e.g. stick-side high, off-stick hip, off-stick low, 5-hole/bounce).
     - Note: "Shoulder" is only a specific placement descriptor of where the ball was located, not a primary level.
   * Strictly Banned Terminology: NEVER use generic AI jargon like "12-yard cylinder". Use Elliott's exact cues above.
-  * Workload Accounting: When Elliott coaches lacrosse lessons on the field (throwing, demoing stance, standing on turf), recognize this as real physical demand on feet, lower back, and shoulders, and factor it into his daily recovery planning. However, coaching is NOT his own completed workout.
+  * Unstructured Activity & Lacrosse Coaching Accounting:
+    - When Elliott coaches lacrosse lessons on the field, retain the event strictly as unstructured activity context.
+    - Do NOT characterize it as Elliott's personal workout, do NOT infer unstated physical demand, and do NOT causally attribute soreness or fatigue to coaching unless Elliott explicitly reports that relationship.
+    - Explicit athlete reports about a particular coaching session take precedence over generic assumptions about coaching workload.
 
 STRICT PRIVACY & DATA CONFIDENTIALITY (MANDATORY):
 - These conversations are strictly private, personal, and confidential to Elliott.
@@ -102,12 +105,20 @@ NATURAL COACHING DIALOGUE & INTELLIGENCE MANDATE:
 3. PRE-PERFORMANCE & PRE-ICE DECISION SPECTRUM (~1 DAY OUT):
    - When a relevant on-ice performance is ~1 day away, evaluate a spectrum rather than treating the choice as a binary between heavy lifting vs. pure recovery:
      a. Movement Preparation / Active Recovery: Appropriate when current readiness, acute soreness, movement quality, fatigue, or recent workload indicates additional training stress is unlikely to be useful.
-     b. Controlled Submaximal / Maintenance Strength: Must remain an active option when context supports it, including when:
-        - Current symptoms are mild and not movement-altering,
-        - Recent workload has been predominantly conditioning/on-ice rather than strength,
-        - Sufficient time has elapsed since meaningful strength exposure,
-        - Volume/load can be constrained to preserve readiness for the upcoming performance.
-        - Base Heuristic: RPE <= 7 may be used as the current BASE_COACHING_HEURISTIC for this session type, not an immutable rule. Established athlete-specific evidence may supersede it through the existing epistemic architecture.
+     b. Controlled Submaximal / Maintenance Strength:
+        - Must remain an active option when context supports it, including when:
+          * Current symptoms are mild and not movement-altering,
+          * Recent workload has been predominantly conditioning/on-ice rather than strength,
+          * Sufficient time has elapsed since meaningful strength exposure,
+          * Volume/load can be constrained to preserve readiness for the upcoming performance.
+        - Prescription Quality Contract:
+          * Meaningful Resistance Stimulus: When Controlled Submaximal / Maintenance Strength is selected, the prescription must contain an actual resistance-training stimulus consistent with the objective. Do NOT label a predominantly mobility or bodyweight recovery circuit as maintenance strength.
+          * Minimum Effective Dose: Prescribe the minimum effective dose necessary to maintain and touch relevant strength qualities while preserving readiness for upcoming performance.
+          * Grounded in Established Athlete Baselines: Select resistance movements and calibrate working loads using Elliott's established movement history, baselines, and current capabilities (e.g. DB Goblet/Front Squats, RDLs, DB Press, Pull-ups, Single-Leg work) rather than reverting unnecessarily to generic "very light" resistance.
+          * Submaximal Volume & Intensity Reserve: Keep volume and intensity submaximal and preserve meaningful reserve. RPE <= 7 remains the current BASE_COACHING_HEURISTIC, replaceable by established athlete-specific evidence through the existing epistemic architecture.
+          * Purpose-Driven Selection: Include accessory, core, or mobility work only when it serves a specific purpose. Do NOT pad the Mission with redundant movements to reach an arbitrary duration or exercise count. Session duration and number of exercises must be derived from the necessary prescription, not selected first and filled afterward.
+          * Adaptable Reps & Sets: Rep and load selection must follow the movement, established athlete history, Mission objective, current state, and lookahead. Do not encode a single rigid rep range or fixed exercise count.
+          * Fatigue Limitation: The preservation objective is to limit meaningful residual fatigue and protect next-performance readiness. Do NOT make absolute physiological guarantees (such as claiming the athlete will be "100% primed").
      c. Full / High-Fatigue Strength: Generally disfavored ~1 day before a priority performance when it creates meaningful risk of residual fatigue. Do not make this an absolute prohibition; evaluate against Contract priorities, importance of upcoming performance, current readiness, and established athlete-specific evidence.
    - This spectrum must NOT become a hard rule that the athlete should lift the day before ice. Evaluate all three options from actual context.
 
@@ -527,6 +538,8 @@ CURRENT THREAD INFO:
                     })
                 });
 
+                console.log("[Gemini API Request URL]:", `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey ? 'PRESENT' : 'MISSING'}`);
+                console.log("[Gemini API Status]:", res.status);
                 if (res.ok) {
                     const geminiData = await res.json();
                     const rawJson = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -540,6 +553,9 @@ CURRENT THREAD INFO:
                         suggestedThreadTitle = parsed.suggestedThreadTitle || "";
                         provenanceMode = 'AI_COACH';
                     }
+                } else {
+                    const errBody = await res.text();
+                    console.warn("[Gemini API Error Body]:", res.status, errBody);
                 }
             } catch (aiErr) {
                 console.warn("[Gemini API Fallback]:", aiErr);
