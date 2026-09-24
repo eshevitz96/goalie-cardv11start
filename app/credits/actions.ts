@@ -112,7 +112,7 @@ export async function processScheduleRequest(requestId: string, action: 'confirm
     if (!requestId || !action) return { success: false, error: "Invalid parameters" };
 
     try {
-        const supabase = createServerSupabase();
+        const supabase = await createServerSupabase();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) return { success: false, error: "Unauthorized" };

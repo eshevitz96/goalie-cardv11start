@@ -8,6 +8,7 @@ import Link from "next/link";
 import { ArrowLeft, Plus, Calendar, ToggleLeft, ToggleRight, Loader2, LogOut, Edit2, MapPin } from "lucide-react";
 import { PerformanceAvatar } from "@/components/ui/PerformanceAvatar";
 import { BrandLogo } from "@/components/ui/BrandLogo";
+import { usePerformanceRealtime } from "@/hooks/usePerformanceRealtime";
 
 export default function ProfilePage() {
     const auth = useAuth();
@@ -19,7 +20,8 @@ export default function ProfilePage() {
     const [subscriptionData, setSubscriptionData] = useState<any>(null);
     const [portalLoading, setPortalLoading] = useState(false);
     const [portalError, setPortalError] = useState<string | null>(null);
-    const [performanceScore, setPerformanceScore] = useState(0);
+    const { score: realtimeScore } = usePerformanceRealtime(auth.userId);
+    const performanceScore = typeof realtimeScore === 'number' ? realtimeScore : (Number(realtimeScore) || 0);
     const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
     const [isPublicProfile, setIsPublicProfile] = useState<boolean>(false);
 
@@ -72,21 +74,6 @@ export default function ProfilePage() {
 
                 if (userErr) {
                     console.error("Profile page users SELECT query error:", userErr);
-                }
-
-                // Fetch latest Performance Index score safely (handling empty/no-snapshot result)
-                try {
-                    const { data: latestSnapshot } = await supabase
-                        .from('performance_index_snapshots')
-                        .select('score')
-                        .eq('user_id', uid)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-                    setPerformanceScore(latestSnapshot?.score ?? 0);
-                } catch (e) {
-                    console.warn("Failed to fetch performance baseline snapshots:", e);
-                    setPerformanceScore(0);
                 }
                 
                 let initials = "GC";

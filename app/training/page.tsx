@@ -1,43 +1,80 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/utils/supabase/client';
-import Link from 'next/link';
-import { ArrowLeft, Loader2, Play, Pause, RotateCcw, ChevronDown, ChevronUp, BookOpen, Clock, Gamepad2, Dumbbell, Target, Sparkles, CheckCircle2, Flame, Shield, ArrowRight, Activity, Calendar, Trophy, FileText, Edit3, X, Check } from 'lucide-react';
-import RavenGame from '@/components/training/RavenGame';
-import { DRILL_LIBRARY } from '@/lib/drill-library';
-import { MobileBottomNav } from '@/components/shared/MobileBottomNav';
-import { twMerge } from 'tailwind-merge';
 import { useToast } from '@/context/ToastContext';
-import { BrandLogo } from "@/components/ui/BrandLogo";
-import { LessonsTransparency } from '@/components/goalie/LessonsTransparency';
-import { ATHLETE_TRAINING_HISTORY, ATHLETE_PROFILE_METRICS } from '@/lib/athleteTrainingHistory';
-import { getCalendarPrivateLessons } from '@/app/training/book/actions';
+import { supabase } from '@/utils/supabase/client';
+import { saveTrainingSession } from '@/app/actions/training';
+import { 
+    Dumbbell, 
+    Calendar as CalendarIcon, 
+    Plus, 
+    Check, 
+    Clock, 
+    Shield, 
+    CheckCircle2, 
+    Send, 
+    Trash2,
+    ArrowRight,
+    ArrowLeft,
+    AlertCircle,
+    X,
+    Play,
+    MessageSquare,
+    History,
+    Edit2,
+    Sparkles,
+    ChevronDown
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const DRILL_CATEGORIES = {
-    physical: [
-        "Hand-Eye Activation",
-        "Wall Ball (Alt Hands)",
-        "Juggling & Wall Ball tracking",
-        "Goal Area Movement",
-        "Wall Ball - Low Hops",
-        "Butterfly Slides & Stick Seal",
-        "Rebound Placement (Box Control)",
-        "Up-Downs / Recoveries",
-        "Post-to-Post Recoveries"
-    ],
-    mental: [
-        "Box Breathing",
-        "Box Breathing & Basics",
-        "Disconnect & Walk",
-        "Positive Visualization (Saves)"
-    ],
-    video: [
-        "Video Review (Goals Against)"
-    ]
-};
+interface CompletedSessionInput {
+    id: string;
+    date: string;
+    title: string;
+    durationMins: number | '';
+    type: 'strength' | 'conditioning' | 'sport' | 'recovery' | 'other';
+    routineNotes: string;
+    fatigueNotes: string;
+}
+
+interface Drill {
+    id: string;
+    name: string;
+    sets: string;
+    durationMins: number;
+    cue: string;
+    completed: boolean;
+}
+
+interface ChatThread {
+    id: string;
+    date: string;
+    title: string;
+    lastMessage: string;
+    updatedAt: string;
+    messageCount: number;
+}
+
+interface Message {
+    id: string;
+    sender: 'goalie' | 'goalie_card';
+    text: string;
+    timestamp: string;
+    actionCard?: {
+        type: 'training_session' | 'calendar_event' | 'logged_session' | 'prescribed_protocol' | string;
+        title: string;
+        data?: any;
+    };
+    provenance?: {
+        mode: 'AI_COACH' | 'DETERMINISTIC_ACTION' | 'OFFLINE_UNAVAILABLE';
+        historyThroughDate: string;
+        lookaheadSource: string;
+        details?: string;
+    };
+}
 
 export default function TrainingPage() {
     const auth = useAuth();
@@ -49,1638 +86,1428 @@ export default function TrainingPage() {
     const activeIsAuthenticated = isDevBypass ? true : auth.isAuthenticated;
     const activeAuthLoading = isDevBypass ? false : auth.loading;
 
-    const [loading, setLoading] = useState(true);
-    const [personalBest, setPersonalBest] = useState<number | null>(null);
-    const [goalieProfileId, setGoalieProfileId] = useState<string | null>(null);
-    const [resolvingId, setResolvingId] = useState(true);
-    const [parentGoalies, setParentGoalies] = useState<any[]>([]);
+    const athleteName = "Elliott Shevitz";
+    const todayDateStr = new Date().toISOString().slice(0, 10);
 
-    const validateProfileId = async (id: string | null) => {
-        if (!id) return false;
+    // Calculate dynamic contract week and day (June 22, 2026 contract start)
+    const getContractWeekAndDay = (dateStr: string = todayDateStr) => {
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('id', id)
-                .maybeSingle();
-            return !error && data !== null;
+            const start = new Date('2026-06-22T00:00:00');
+            const current = new Date(`${dateStr}T00:00:00`);
+            const diffTime = current.getTime() - start.getTime();
+            const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+            const weekNum = Math.floor(diffDays / 7) + 1;
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = dayNames[current.getDay()];
+            return `Week ${weekNum}, ${dayName} — Training`;
         } catch (e) {
-            console.error("Profile validation failed:", e);
-            return false;
+            return `Week 14 — Training Session`;
         }
     };
 
-    // Resolve goalie child's profiles.id (especially for parent login)
-    useEffect(() => {
-        if (activeAuthLoading) return;
-        if (!activeUserId) {
-            setResolvingId(false);
-            return;
+    // 3-STEP INTAKE STATE
+    const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
+    // STEP 1: TRAINING INTAKE (Clean & Blank Defaults)
+    const [hasTrained, setHasTrained] = useState<boolean | null>(true);
+    const [sessionsList, setSessionsList] = useState<CompletedSessionInput[]>([
+        {
+            id: 'sess-1',
+            date: todayDateStr,
+            title: getContractWeekAndDay(todayDateStr),
+            durationMins: '',
+            type: 'strength',
+            routineNotes: '',
+            fatigueNotes: ''
         }
+    ]);
 
-        const resolveGoalieId = async () => {
-            if (activeUserId === '00000000-0000-0000-0000-000000000000') {
-                setGoalieProfileId('00000000-0000-0000-0000-000000000000');
-                setResolvingId(false);
-                return;
-            }
+    // STEP 2: BODY READINESS & RECOVERY (Clean Defaults)
+    const [groinTightness, setGroinTightness] = useState<number>(1); // 1-5
+    const [generalFatigue, setGeneralFatigue] = useState<number>(1); // 1-5
+    const [bodyNotes, setBodyNotes] = useState("");
+    const [daysUntilGame, setDaysUntilGame] = useState<number | null>(null);
+    const [upcomingEventTitle, setUpcomingEventTitle] = useState<string | null>(null);
 
-            // 1. Goalie login: profiles.id is their own auth ID (activeUserId)
-            if (auth.userRole === 'goalie') {
-                const isValid = await validateProfileId(activeUserId);
-                if (isValid) {
-                    setGoalieProfileId(activeUserId);
-                } else {
-                    console.warn("Active user has no profiles.id record");
-                }
-                setResolvingId(false);
-                return;
-            }
+    // STEP 3: PRESCRIBED DIRECTIVE & DRILLS
+    const [isSubmittingCheckin, setIsSubmittingCheckin] = useState(false);
+    const [directiveTitle, setDirectiveTitle] = useState("Active Recovery & Preparation Flow");
+    const [directiveContext, setDirectiveContext] = useState("Daily training intake & readiness flow.");
 
-            // 2. Parent login: resolve linked goalie's profiles.id (roster_uploads.linked_user_id)
-            if (auth.userRole === 'parent' && auth.userEmail) {
-                try {
-                    // Match guardian_email column intentionally (no loose OR columns matching)
-                    const { data: rosters, error } = await supabase
-                        .from('roster_uploads')
-                        .select('id, linked_user_id, assigned_unique_id, goalie_name')
-                        .ilike('guardian_email', auth.userEmail);
+    const [whatToDoList, setWhatToDoList] = useState([
+        "15-minute hip capsule decompression & 90/90 adductor flow.",
+        "10 minutes of visual reaction & hand-eye snap drills.",
+        "Hydration and 20-minute post-session walk."
+    ]);
 
-                    if (error) {
-                        console.error("Error fetching rosters for parent:", error);
-                        setResolvingId(false);
-                        return;
-                    }
+    const [whatNotToDoList, setWhatNotToDoList] = useState([
+        "No heavy squats, deadlifts, or leg press.",
+        "No explosive lateral butterfly pushes with tight adductors.",
+        "No excessive fatigue before upcoming performance."
+    ]);
 
-                    if (rosters && rosters.length > 0) {
-                        // Filter to children that have claimed their card (linked_user_id is not null)
-                        const activeRosters = rosters.filter(r => r.linked_user_id);
-
-                        if (activeRosters.length === 0) {
-                            setResolvingId(false);
-                            return;
-                        }
-
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const athleteIdParam = urlParams.get('athleteId');
-
-                        let selectedRoster = null;
-                        if (athleteIdParam) {
-                            // Strictly match within the parent's resolved active children set to enforce parent-child authorization boundary
-                            selectedRoster = activeRosters.find(
-                                r => r.id === athleteIdParam || 
-                                     r.assigned_unique_id === athleteIdParam || 
-                                     r.linked_user_id === athleteIdParam
-                            ) || null;
-                        }
-
-                        if (selectedRoster) {
-                            // Validate the resolved id actually maps to a real profile before trusting it
-                            const isValid = await validateProfileId(selectedRoster.linked_user_id);
-                            if (isValid) {
-                                setGoalieProfileId(selectedRoster.linked_user_id);
-                            }
-                            setResolvingId(false);
-                            return;
-                        } else {
-                            if (activeRosters.length === 1) {
-                                // Safe to auto-select single child after validation
-                                const singleRoster = activeRosters[0];
-                                const isValid = await validateProfileId(singleRoster.linked_user_id);
-                                if (isValid) {
-                                    setGoalieProfileId(singleRoster.linked_user_id);
-                                }
-                                setResolvingId(false);
-                                return;
-                            } else {
-                                // Multi-child parent: never auto-select, present child picker
-                                setParentGoalies(activeRosters);
-                                setResolvingId(false);
-                                return;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error("Error resolving goalie ID for parent:", e);
-                }
-            }
-
-            // Fallback to activeUserId
-            const isValid = await validateProfileId(activeUserId);
-            if (isValid) {
-                setGoalieProfileId(activeUserId);
-            }
-            setResolvingId(false);
-        };
-
-        resolveGoalieId();
-    }, [activeUserId, activeAuthLoading, auth.userRole, auth.userEmail]);
-
-
-    // Tabs state: 'regimen' | 'drills' | 'timer' | 'game'
-    const [activeTab, setActiveTab] = useState<'regimen' | 'drills' | 'timer' | 'game'>('regimen');
-    const [expandedDrill, setExpandedDrill] = useState<string | null>(null);
-
-    // Daily Training Regimen Checklist State (Persisted by Date)
-    const todayDateStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
-    const [regimenChecklist, setRegimenChecklist] = useState<{ [key: string]: boolean }>({
-        mobility: false,
-        reaction: false,
-        strength: false,
-        reflection: false
-    });
-
-    useEffect(() => {
-        try {
-            const saved = localStorage.getItem(`goalie_regimen_${todayDateStr}`);
-            if (saved) {
-                setRegimenChecklist(JSON.parse(saved));
-            }
-        } catch (e) {
-            console.error("Error loading regimen checklist:", e);
-        }
-    }, [todayDateStr]);
-
-    const toggleRegimenItem = (key: string) => {
-        setRegimenChecklist(prev => {
-            const next = { ...prev, [key]: !prev[key] };
-            try {
-                localStorage.setItem(`goalie_regimen_${todayDateStr}`, JSON.stringify(next));
-            } catch (e) {
-                console.error("Error saving regimen checklist:", e);
-            }
-            return next;
-        });
-    };
-
-    const completedRegimenItems = Object.values(regimenChecklist).filter(Boolean).length;
-    const totalRegimenItems = Object.keys(regimenChecklist).length;
-    const regimenProgressPercent = Math.round((completedRegimenItems / totalRegimenItems) * 100);
-
-    // Season Contract & Goalie Commitment State
-    const [contractModalOpen, setContractModalOpen] = useState(false);
-    const [seasonContract, setSeasonContract] = useState<{
-        season: string;
-        team: string;
-        level: string;
-        primaryGoal: string;
-        technicalGoal: string;
-        recoveryGoal: string;
-        signedDate: string;
-        signedBy: string;
-    }>({
-        season: "2026–2027 Season",
-        team: "Atlanta Gladiators / Prep",
-        level: "College / Semi-Pro",
-        primaryGoal: "Dominate crease depth and hold edges on low-angle releases.",
-        technicalGoal: "Arrive set before shot release with zero wasted slide motion.",
-        recoveryGoal: "Daily 90/90 hip capsule flow & active tissue recovery.",
-        signedDate: "Sep 12, 2026",
-        signedBy: "Goalie"
-    });
-    const [editForm, setEditForm] = useState(seasonContract);
-
-    useEffect(() => {
-        try {
-            const saved = localStorage.getItem('goalie_season_contract');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                setSeasonContract(parsed);
-                setEditForm(parsed);
-            }
-        } catch (e) {
-            console.error("Error loading season contract:", e);
-        }
-    }, []);
-
-    const updateContractField = (field: keyof typeof seasonContract, value: string) => {
-        setSeasonContract(prev => {
-            const next = { ...prev, [field]: value };
-            try {
-                localStorage.setItem('goalie_season_contract', JSON.stringify(next));
-            } catch (e) {
-                console.error("Error saving contract field:", e);
-            }
-            return next;
-        });
-        setEditForm(prev => ({ ...prev, [field]: value }));
-    };
-
-    const handleSaveContract = (e: React.FormEvent) => {
-        e.preventDefault();
-        setSeasonContract(editForm);
-        try {
-            localStorage.setItem('goalie_season_contract', JSON.stringify(editForm));
-            toast.success("Season Contract & Goals saved.");
-        } catch (e) {
-            console.error("Error saving contract:", e);
-        }
-        setContractModalOpen(false);
-    };
-
-    // Schedule Context & Training Memory State (Calendar <-> Training intelligence)
-    const [scheduleAwareness, setScheduleAwareness] = useState<{
-        todayKey: string;
-        todayFormatted: string;
-        hasGameToday: boolean;
-        gameTitle?: string;
-        hasPracticeToday: boolean;
-        lessonsCountToday: number;
-        lessonSummary?: string;
-        weeklyIntention: string;
-        lastWorkout: {
-            date: string;
-            title: string;
-            strengthSummary?: string;
-            cues?: string[];
-            reflection?: string;
-        };
-        adaptivePrescription: {
-            category: 'game_day' | 'coaching_heavy' | 'overload_day' | 'active_recovery';
-            badge: string;
-            title: string;
-            rationale: string;
-            primaryFocus: string;
-            recommendedMinutes: number;
-            drills: string[];
-            cues: string[];
-        };
-    }>({
-        todayKey: "2026-09-12",
-        todayFormatted: "Saturday, Sep 12",
-        hasGameToday: false,
-        hasPracticeToday: false,
-        lessonsCountToday: 1,
-        lessonSummary: "Coaching Session • 10:30 AM",
-        weeklyIntention: "Maintain high hands and explode on bounce shots.",
-        lastWorkout: {
-            date: "Sep 11, 2026",
-            title: "Lower Body Power & Single-Leg Stability",
-            strengthSummary: "Trap bar deadlifts (4x5), Bulgarian split squats (3x8/leg), rotational med ball slams",
-            cues: ["Sit into edges.", "Arrive set.", "Push the floor away."],
-            reflection: "Joints and adductor feeling durable. Explosion off crease reset is sharp."
+    const [drills, setDrills] = useState<Drill[]>([
+        {
+            id: 'd1',
+            name: '90/90 Hip Flow & Capsule Openers',
+            sets: '3 sets x 8 switches',
+            durationMins: 4,
+            cue: 'Keep tall chest, pause 2 seconds in end-range',
+            completed: false
         },
-        adaptivePrescription: {
-            category: 'coaching_heavy',
-            badge: 'Active Performance & Flush',
-            title: 'Crease Movement & Visual Speed',
-            rationale: 'You have private coaching lessons on the field/ice today. Keep your nervous system fast and fresh with visual reaction and hip mobility without fatiguing heavy axial loading.',
-            primaryFocus: 'Reaction & Crease Movement',
-            recommendedMinutes: 25,
-            drills: ['Reaction (3 rounds)', '5-Point Arc Shuffles (4 sets x 30s)', '90/90 Hip Flow & Frog Flushes'],
-            cues: ['Arrive set before release.', 'Track into the pocket.', 'Soft hands.']
+        {
+            id: 'd2',
+            name: 'Cossack Squats & Adductor Flushes',
+            sets: '3 sets x 6 reps per leg',
+            durationMins: 4,
+            cue: 'Keep straight-leg heel planted, sink smoothly into hips',
+            completed: false
+        },
+        {
+            id: 'd3',
+            name: '2-Ball Wall Reaction & Hand-Eye Snap',
+            sets: '3 rounds x 45 seconds',
+            durationMins: 4,
+            cue: 'Eyes lead the hands, stay set in ready stance',
+            completed: false
+        },
+        {
+            id: 'd4',
+            name: 'Glute Medius & Piriformis Ball Release',
+            sets: '2 minutes per side',
+            durationMins: 4,
+            cue: 'Find trigger points, deep diaphragmatic breathing',
+            completed: false
         }
-    });
+    ]);
 
-    // Fetch live calendar schedule context & workout memory
-    useEffect(() => {
-        const loadScheduleAndMemory = async () => {
-            try {
-                const now = new Date();
-                const pad = (n: number) => String(n).padStart(2, '0');
-                const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-                const todayFormatted = now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
-
-                // 1. Fetch today's games, practices, private lessons, and intention
-                const [{ data: games }, { data: practices }, privateRes, { data: intentionData }] = await Promise.all([
-                    supabase.from('games').select('*').eq('scheduled_date', todayKey),
-                    supabase.from('practices').select('*').eq('scheduled_date', todayKey),
-                    getCalendarPrivateLessons(),
-                    supabase.from('weekly_intentions').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle()
-                ]);
-
-                const isTrainingItem = (item: any) => {
-                    if (!item) return false;
-                    if (item.game_type === 'training') return true;
-                    const opp = (item.opponent || item.opponent_name || item.title || '').toLowerCase();
-                    const loc = (item.location || '').toLowerCase();
-                    if (
-                        opp.includes('leg day') ||
-                        opp.includes('training') ||
-                        opp.includes('workout') ||
-                        opp.includes('strength') ||
-                        opp.includes('s&c') ||
-                        opp.includes('upper body') ||
-                        opp.includes('lower body') ||
-                        opp.includes('squat') ||
-                        opp.includes('deadlift') ||
-                        opp.includes('plyo') ||
-                        opp.includes('mobility') ||
-                        opp.includes('conditioning') ||
-                        loc.includes('gym') ||
-                        loc.includes('fitness') ||
-                        loc.includes('weight room')
-                    ) {
-                        return true;
-                    }
-                    return false;
-                };
-
-                const todayGames = (games || []).filter((g: any) => !isTrainingItem(g));
-                const todayPractices = practices || [];
-                const allLessons = privateRes?.success ? (privateRes.sessions || []) : [];
-                const todayLessons = allLessons.filter((s: any) => s.date && s.date.startsWith(todayKey));
-
-                const hasGame = todayGames.length > 0;
-                const hasPractice = todayPractices.length > 0;
-                const lessonCount = todayLessons.length;
-                const gameTitle = hasGame ? `${todayGames[0].opponent || 'Game'} (${todayGames[0].scheduled_time?.slice(0, 5) || 'Today'})` : undefined;
-                const lessonSummary = lessonCount > 0 ? `${todayLessons[0].athlete_name || 'Lesson'} • ${lessonCount} Session${lessonCount > 1 ? 's' : ''}` : undefined;
-                const weeklyIntention = intentionData?.intention_text || "Maintain high hands and explode on bounce shots.";
-
-                // 2. Fetch latest workout from ATHLETE_TRAINING_HISTORY or sessions
-                const latestHistory = ATHLETE_TRAINING_HISTORY[ATHLETE_TRAINING_HISTORY.length - 1];
-                const lastWorkout = {
-                    date: latestHistory ? new Date(latestHistory.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recent",
-                    title: latestHistory?.title || "Lower Body Power & Crease Stability",
-                    strengthSummary: latestHistory?.strength?.join(', ') || "Trap bar deadlifts, split squats, core stabilization",
-                    cues: latestHistory?.cues || ATHLETE_PROFILE_METRICS.currentCues.slice(0, 3),
-                    reflection: latestHistory?.notes || "Movement quality and hip adductor durability feeling solid."
-                };
-
-                // 3. Compute dynamic intelligent recommendation
-                let category: 'game_day' | 'coaching_heavy' | 'overload_day' | 'active_recovery' = 'overload_day';
-                let badge = 'Strength & Crease Power';
-                let title = 'Power Output & Crease Speed';
-                let rationale = 'Open training day with no taxing game collisions. Optimal window for Pillar 1 Strength loading and explosive Pillar 2 crease footwork.';
-                let primaryFocus = 'Strength & Crease Footwork';
-                let recommendedMinutes = 45;
-                let drills = ['Trap Bar Jumps (4 sets x 5 reps)', 'Bulgarian Split Squats (3 sets x 8 reps/leg)', '5-Point Arc Shuffles (5 sets x 30s)', 'Reaction (3 rounds)'];
-                let cues = ['Sit into edges.', 'Push the floor away.', 'Arrive set.'];
-
-                if (hasGame) {
-                    category = 'game_day';
-                    badge = 'Game Day Priming';
-                    title = 'Neuro-Visual Speed & Hip Primer';
-                    rationale = `Game scheduled today against ${gameTitle}. Zero heavy axial loading to keep fast-twitch snap fresh. Focus strictly on visual reaction, hip/groin flow, and 4-4-4-4 box breathing.`;
-                    primaryFocus = 'Reaction & Recovery';
-                    recommendedMinutes = 20;
-                    drills = ['Reaction (3 rounds)', '2-Ball Wall Ball Switches (50 catches)', '90/90 Hip Flow & Frog Flushes', 'Box Breathing Reset'];
-                    cues = ['Track ball into the pocket.', 'Soft hands.', 'Stay square to release channel.'];
-                } else if (lessonCount >= 2 || (lessonCount === 1 && hasPractice)) {
-                    category = 'coaching_heavy';
-                    badge = 'Active Movement & Flush';
-                    title = 'Crease Movement & Visual Speed';
-                    rationale = `You have ${lessonCount} coaching session(s) and on-field duties today. Protect your hips and lower back with high-frequency reaction drills and mobility flushes.`;
-                    primaryFocus = 'Crease Movement & Reaction';
-                    recommendedMinutes = 25;
-                    drills = ['Reaction (3 rounds)', '5-Point Arc Shuffles (4 sets x 30s)', '90/90 Hip Flow', 'Rotational Med Ball Slams (4x6)'];
-                    cues = ['Arrive set.', 'No false steps.', 'Stick into edges.'];
-                }
-
-                setScheduleAwareness({
-                    todayKey,
-                    todayFormatted,
-                    hasGameToday: hasGame,
-                    gameTitle,
-                    hasPracticeToday: hasPractice,
-                    lessonsCountToday: lessonCount,
-                    lessonSummary,
-                    weeklyIntention,
-                    lastWorkout,
-                    adaptivePrescription: {
-                        category,
-                        badge,
-                        title,
-                        rationale,
-                        primaryFocus,
-                        recommendedMinutes,
-                        drills,
-                        cues
-                    }
-                });
-            } catch (err) {
-                console.error("Error loading schedule context:", err);
-            }
-        };
-
-        loadScheduleAndMemory();
-    }, [activeUserId]);
-
-    // Timer state
-    const [timerIsActive, setTimerIsActive] = useState(false);
-    const [timerDuration, setTimerDuration] = useState(300); // default 5m
-    const [totalDuration, setTotalDuration] = useState(300);
-    const [selectedDrill, setSelectedDrill] = useState<string | null>(null);
+    // Timer State
+    const [activeDrillId, setActiveDrillId] = useState<string | null>(null);
+    const [timerRemaining, setTimerRemaining] = useState<number>(0);
+    const [timerRunning, setTimerRunning] = useState(false);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Redirect if unauthenticated
+    // Chat Stream & Thread State (Right Column)
+    const [threads, setThreads] = useState<ChatThread[]>([]);
+    const [activeThreadId, setActiveThreadId] = useState<string>(() => `thread-${todayDateStr}-${Date.now().toString().slice(-4)}`);
+    const [activeThreadTitle, setActiveThreadTitle] = useState<string>(`Chat • ${todayDateStr}`);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [titleInput, setTitleInput] = useState('');
+    const [showThreadDrawer, setShowThreadDrawer] = useState(false);
+
+    const [messages, setMessages] = useState<Message[]>([
+        {
+            id: 'msg-1',
+            sender: 'goalie_card',
+            text: `Goalie Card active. Let's talk through your training, physical readiness, or game prep. What did you work on today?`,
+            timestamp: 'Today'
+        }
+    ]);
+    const [inputText, setInputText] = useState('');
+    const [isSendingChat, setIsSendingChat] = useState(false);
+    const [addedToTrainingIds, setAddedToTrainingIds] = useState<Set<string>>(new Set());
+    const [addedToCalendarIds, setAddedToCalendarIds] = useState<Set<string>>(new Set());
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+    // Load user's chat threads & active thread messages
+    const fetchThreadsAndMessages = async () => {
+        try {
+            const emailParam = encodeURIComponent(auth.userEmail || '');
+            const res = await fetch(`/api/goalie-card/chat?userId=${activeUserId || ''}&userEmail=${emailParam}&threads=true`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.threads && data.threads.length > 0) {
+                    setThreads(data.threads);
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to load chat threads:", e);
+        }
+    };
+
+    useEffect(() => {
+        fetchThreadsAndMessages();
+    }, [activeUserId, auth.userEmail]);
+
+    const handleSelectThread = async (t: ChatThread) => {
+        setActiveThreadId(t.id);
+        setActiveThreadTitle(t.title);
+        setShowThreadDrawer(false);
+        try {
+            const emailParam = encodeURIComponent(auth.userEmail || '');
+            const res = await fetch(`/api/goalie-card/chat?userId=${activeUserId || ''}&userEmail=${emailParam}&threadId=${t.id}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.messages && data.messages.length > 0) {
+                    setMessages(data.messages);
+                }
+            }
+        } catch (e) {
+            toast.error("Failed to load thread.");
+        }
+    };
+
+    const handleNewThread = () => {
+        const newId = `thread-${todayDateStr}-${Date.now().toString().slice(-4)}`;
+        const newTitle = `Chat • ${todayDateStr}`;
+        setActiveThreadId(newId);
+        setActiveThreadTitle(newTitle);
+        setMessages([
+            {
+                id: `msg-${Date.now()}`,
+                sender: 'goalie_card',
+                text: `New coaching session started. What are we focusing on today?`,
+                timestamp: 'Now'
+            }
+        ]);
+        setShowThreadDrawer(false);
+        toast.success("Started new conversation.");
+    };
+
+    const handleSaveTitle = () => {
+        if (titleInput.trim()) {
+            setActiveThreadTitle(titleInput.trim());
+        }
+        setIsEditingTitle(false);
+    };
+
+    // Auth redirection guard
     useEffect(() => {
         if (!activeAuthLoading && !activeIsAuthenticated) {
-            router.push('/login');
+            router.push('/login?redirect=/training');
         }
     }, [activeAuthLoading, activeIsAuthenticated, router]);
 
-    // Fetch personal best
+    // Live Event Lookahead Fetching (Dynamic & Non-fabricated)
     useEffect(() => {
-        if (!activeUserId) return;
-
-        const fetchPersonalBest = async () => {
-            setLoading(true);
+        async function fetchUpcomingMatch() {
             try {
-                const uid = activeUserId;
-                if (uid === '00000000-0000-0000-0000-000000000000') {
-                    const localPb = localStorage.getItem('dev_training_pb');
-                    setPersonalBest(localPb ? parseInt(localPb, 10) : null);
-                } else {
-                    const { data, error } = await supabase
-                        .from('training_game_scores')
-                        .select('score')
-                        .eq('user_id', uid)
-                        .eq('game_type', 'training')
-                        .order('score', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
+                const { data, error } = await supabase
+                    .from('events')
+                    .select('*')
+                    .gte('date', todayDateStr)
+                    .order('date', { ascending: true })
+                    .limit(1);
 
-                    if (!error && data) {
-                        setPersonalBest(data.score);
+                if (!error && data && data.length > 0) {
+                    const nextEvt = data[0];
+                    setUpcomingEventTitle(nextEvt.name || nextEvt.title || 'Competition');
+                    if (nextEvt.date) {
+                        const evtDate = new Date(nextEvt.date);
+                        const today = new Date(todayDateStr);
+                        const diffDays = Math.ceil((evtDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                        if (diffDays >= 0) {
+                            setDaysUntilGame(diffDays);
+                        }
                     }
+                } else {
+                    setDaysUntilGame(null);
+                    setUpcomingEventTitle(null);
                 }
-            } catch (err) {
-                console.error('Error loading training personal best:', err);
-            } finally {
-                setLoading(false);
+            } catch (e) {
+                setDaysUntilGame(null);
+                setUpcomingEventTitle(null);
             }
-        };
-
-        fetchPersonalBest();
-    }, [activeUserId]);
-
-    // Timer interval loop
-    useEffect(() => {
-        if (timerIsActive && timerDuration > 0) {
-            timerRef.current = setInterval(() => {
-                setTimerDuration(prev => prev - 1);
-            }, 1000);
-        } else if (timerDuration === 0) {
-            setTimerIsActive(false);
-            if (timerRef.current) clearInterval(timerRef.current);
-            // Log session complete
-            logTrainingSession();
-            toast.success(`Training complete! Great work.`);
-            setSelectedDrill(null);
         }
+        fetchUpcomingMatch();
+    }, [todayDateStr]);
 
+    // Timer Engine
+    useEffect(() => {
+        if (timerRunning && timerRemaining > 0) {
+            timerRef.current = setInterval(() => {
+                setTimerRemaining(prev => {
+                    if (prev <= 1) {
+                        setTimerRunning(false);
+                        toast.success(`Interval complete.`);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        } else {
+            if (timerRef.current) clearInterval(timerRef.current);
+        }
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [timerIsActive, timerDuration]);
+    }, [timerRunning, timerRemaining, toast]);
 
-    const logTrainingSession = async () => {
-        if (!activeUserId || !selectedDrill) return;
-        try {
-            if (activeUserId !== '00000000-0000-0000-0000-000000000000') {
-                await supabase
-                    .from('training_game_scores')
-                    .insert({
-                        user_id: activeUserId,
-                        game_type: 'training',
-                        score: Math.round(totalDuration / 60) // log minutes as a score proxy
-                    });
-                window.dispatchEvent(new CustomEvent('performance_refresh'));
+    // Auto-scroll chat feed to bottom on new message or typing state
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, isSendingChat]);
+
+    const startDrillTimer = (drill: Drill) => {
+        setActiveDrillId(drill.id);
+        setTimerRemaining(drill.durationMins * 60);
+        setTimerRunning(true);
+    };
+
+    const toggleDrillCompleted = (drillId: string) => {
+        setDrills(prev => prev.map(d => d.id === drillId ? { ...d, completed: !d.completed } : d));
+        toast.success("Drill updated.");
+    };
+
+    const handleAddSessionRow = () => {
+        const newId = `sess-${Date.now()}`;
+        setSessionsList(prev => [
+            ...prev,
+            {
+                id: newId,
+                date: todayDateStr,
+                title: getContractWeekAndDay(todayDateStr),
+                durationMins: '',
+                type: 'strength',
+                routineNotes: '',
+                fatigueNotes: ''
             }
-        } catch (e) {
-            console.error("Failed to log training completion:", e);
+        ]);
+    };
+
+    const handleRemoveSessionRow = (id: string) => {
+        if (sessionsList.length === 1) {
+            setHasTrained(false);
+            return;
+        }
+        setSessionsList(prev => prev.filter(s => s.id !== id));
+    };
+
+    const handleUpdateSession = (id: string, field: keyof CompletedSessionInput, value: any) => {
+        setSessionsList(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+    };
+
+    const handleCompleteStep2 = async () => {
+        setIsSubmittingCheckin(true);
+        try {
+            if (hasTrained) {
+                for (const sess of sessionsList) {
+                    await saveTrainingSession({
+                        title: sess.title,
+                        sessionType: (['team', 'private', 'wall_ball', 'footwork', 'reaction', 'film', 'coach_mission'].includes(sess.type) ? sess.type : 'other') as any,
+                        durationMins: Number(sess.durationMins) || 30,
+                        sessionDate: sess.date || todayDateStr,
+                        notes: `${sess.routineNotes}\n${sess.fatigueNotes}`,
+                        userId: activeUserId,
+                        userEmail: auth.userEmail,
+                        reflection: {
+                            win: 'Logged via Training Check-In',
+                            tightness: `${bodyNotes} | Groin Strain Level: ${groinTightness}/5`
+                        }
+                    });
+                }
+                toast.success(`Logged ${sessionsList.length} session(s) to Calendar.`);
+            }
+
+            if (groinTightness >= 3) {
+                setDirectiveTitle("Active Recovery & Adductor Decompression");
+                setDirectiveContext(`Game in ${daysUntilGame} days. High adductor strain (${groinTightness}/5) recorded.`);
+                setWhatToDoList([
+                    "15m Hip capsule flow & 90/90 adductor openers.",
+                    "10m Visual reaction & hand-eye snap drills.",
+                    "Glute medius and piriformis ball release (4 mins)."
+                ]);
+                setWhatNotToDoList([
+                    "NO heavy axial loaded squats or leg presses.",
+                    "NO explosive lateral butterfly slides under fatigue.",
+                    "NO extra high-intensity conditioning before Friday."
+                ]);
+            } else {
+                setDirectiveTitle("Pre-Game Priming & Crease Edge Set");
+                setDirectiveContext(`Game in ${daysUntilGame} days. Readiness high.`);
+                setWhatToDoList([
+                    "20m Crease depth and set-before-release arrival drills.",
+                    "10m Hand-eye visual tracking.",
+                    "Active hip mobility flush."
+                ]);
+                setWhatNotToDoList([
+                    "NO training to failure.",
+                    "Keep on-ice contact under 35 minutes."
+                ]);
+            }
+
+            setCurrentStep(3);
+
+            // Automatically synchronize with Goalie Card AI Stream
+            const syncSummary = hasTrained
+                ? `Logged completed session(s): ${sessionsList.map(s => `${s.title} (${s.durationMins}m${s.routineNotes ? ` - ${s.routineNotes}` : ''})`).join('; ')}. Physical status: Groin strain level ${groinTightness}/5. Notes: ${bodyNotes || 'Feeling good'}. Adapt my upcoming schedule and game plan.`
+                : `Checked in for today: No workout completed yet. Physical status: Groin strain level ${groinTightness}/5. Notes: ${bodyNotes || 'Fresh'}. Prescribe today's focus.`;
+
+            setTimeout(() => {
+                handleSendMessage(syncSummary);
+            }, 250);
+        } catch (err) {
+            console.error("Check-in submission error:", err);
+            toast.error("Failed to commit training data. Proceeding to plan.");
+            setCurrentStep(3);
+        } finally {
+            setIsSubmittingCheckin(false);
         }
     };
 
-    const startDrillTimer = (drillName: string, durationMinutes: number = 5) => {
-        setSelectedDrill(drillName);
-        setTotalDuration(durationMinutes * 60);
-        setTimerDuration(durationMinutes * 60);
-        setExpandedDrill(drillName);
-        setTimerIsActive(true);
+    const handleSendMessage = async (customText?: string) => {
+        const query = (customText || inputText).trim();
+        if (!query || isSendingChat) return;
+
+        const userMsg: Message = {
+            id: `user-${Date.now()}`,
+            sender: 'goalie',
+            text: query,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setMessages(prev => [...prev, userMsg]);
+        if (!customText) setInputText('');
+        setIsSendingChat(true);
+
+        try {
+            const res = await fetch('/api/goalie-card/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userMessage: query,
+                    userId: activeUserId,
+                    userEmail: auth.userEmail,
+                    threadId: activeThreadId,
+                    threadTitle: activeThreadTitle,
+                    threadDate: todayDateStr,
+                    messages
+                })
+            });
+
+            const data = await res.json();
+            const replyMsg: Message = {
+                id: `gc-${Date.now()}`,
+                sender: 'goalie_card',
+                text: data.reply || "Tracking your workload.",
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                actionCard: data.actionCard || undefined,
+                provenance: data.provenance || undefined
+            };
+
+            setMessages(prev => [...prev, replyMsg]);
+
+            if (data.threadTitle && data.threadTitle !== activeThreadTitle) {
+                setActiveThreadTitle(data.threadTitle);
+            }
+
+            // If training session was recognized in chat, sync draft form
+            if (data.actionCard?.type === 'training_session' || data.actionCard?.type === 'logged_session') {
+                const cardData = data.actionCard.data || {};
+                const cardTitle = cardData.title || getContractWeekAndDay();
+                const cardDuration = Number(cardData.duration) || 30;
+                const cardType = (cardData.type === 'footwork' ? 'conditioning' : cardData.type === 'reaction' ? 'recovery' : cardData.type || 'strength') as any;
+                const cardDetails = cardData.details || '';
+                const cardRecovery = cardData.recoveryNotes || '';
+
+                setSessionsList(prev => {
+                    if (prev.length === 1 && !prev[0].routineNotes && !prev[0].durationMins) {
+                        return [{
+                            id: prev[0].id,
+                            date: todayDateStr,
+                            title: cardTitle,
+                            durationMins: cardDuration,
+                            type: cardType,
+                            routineNotes: cardDetails,
+                            fatigueNotes: cardRecovery
+                        }];
+                    }
+                    return [
+                        ...prev,
+                        {
+                            id: `sess-${Date.now()}`,
+                            date: todayDateStr,
+                            title: cardTitle,
+                            durationMins: cardDuration,
+                            type: cardType,
+                            routineNotes: cardDetails,
+                            fatigueNotes: cardRecovery
+                        }
+                    ];
+                });
+                setHasTrained(true);
+            }
+
+            fetchThreadsAndMessages();
+
+        } catch (err) {
+            toast.error("Failed to connect with Goalie Card.");
+        } finally {
+            setIsSendingChat(false);
+        }
     };
 
-    const formatTime = (secs: number) => {
-        const m = Math.floor(secs / 60);
-        const s = secs % 60;
-        return `${m}:${s.toString().padStart(2, '0')}`;
+    // ACTION: Add to Training
+    const handleAddToTraining = async (msg: Message) => {
+        if (addedToTrainingIds.has(msg.id)) return;
+
+        try {
+            const cardData = msg.actionCard?.data || {};
+            const title = cardData.title || msg.actionCard?.title || "Goalie Training Session";
+            const duration = Number(cardData.duration) || 30;
+            const type = cardData.type || 'strength';
+            const notes = cardData.details || msg.text.slice(0, 200);
+
+            const res = await fetch('/api/goalie-card/actions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'add_to_training',
+                    userId: activeUserId,
+                    userEmail: auth.userEmail,
+                    payload: {
+                        date: cardData.date || todayDateStr,
+                        title,
+                        duration,
+                        type,
+                        notes
+                    }
+                })
+            });
+
+            if (res.ok) {
+                setAddedToTrainingIds(prev => new Set(prev).add(msg.id));
+                toast.success(`Added "${title}" to Training!`);
+                setHasTrained(true);
+            } else {
+                toast.error("Failed to add to training.");
+            }
+        } catch (e) {
+            console.error("Add to training error:", e);
+            toast.error("Failed to add to training.");
+        }
     };
 
-    const handleTimerPreset = (mins: number) => {
-        setTimerIsActive(false);
-        setTotalDuration(mins * 60);
-        setTimerDuration(mins * 60);
+    // ACTION: Add to Calendar
+    const handleAddToCalendar = async (msg: Message) => {
+        if (addedToCalendarIds.has(msg.id)) return;
+
+        try {
+            const cardData = msg.actionCard?.data || {};
+            const title = cardData.title || msg.actionCard?.title || "Scheduled Event";
+            const date = cardData.date || todayDateStr;
+            const time = cardData.time || "TBD";
+            const location = cardData.location || "Local Rink / Gym";
+            const notes = cardData.details || msg.text.slice(0, 200);
+
+            const res = await fetch('/api/goalie-card/actions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'add_to_calendar',
+                    userId: activeUserId,
+                    userEmail: auth.userEmail,
+                    payload: {
+                        date,
+                        title,
+                        time,
+                        location,
+                        sport: cardData.sport || 'Hockey',
+                        notes
+                    }
+                })
+            });
+
+            if (res.ok) {
+                setAddedToCalendarIds(prev => new Set(prev).add(msg.id));
+                toast.success(`Scheduled "${title}" on your Calendar!`);
+            } else {
+                toast.error("Failed to add to calendar.");
+            }
+        } catch (e) {
+            console.error("Add to calendar error:", e);
+            toast.error("Failed to add to calendar.");
+        }
     };
-
-    const adjustTimer = (amountSecs: number) => {
-        setTimerIsActive(false);
-        setTimerDuration(prev => {
-            const next = Math.max(60, prev + amountSecs);
-            setTotalDuration(next);
-            return next;
-        });
-    };
-
-    if (activeAuthLoading || resolvingId || (loading && activeUserId)) {
-        return (
-            <div 
-                className="flex items-center justify-center text-foreground w-full bg-background"
-                style={{ minHeight: '100vh' }}
-            >
-                <Loader2 className="animate-spin text-muted-foreground" size={32} />
-            </div>
-        );
-    }
-
-    if (!activeIsAuthenticated) return null;
-
-    // SVG Circular progress math
-    const radius = 80;
-    const circumference = 2 * Math.PI * radius;
-    const progressPercent = totalDuration > 0 ? (timerDuration / totalDuration) : 1;
-    const strokeDashoffset = circumference - progressPercent * circumference;
 
     return (
-        <div 
-            className="text-foreground font-sans flex flex-col justify-start w-full min-h-screen pb-[calc(120px+env(safe-area-inset-bottom))] bg-background"
-            style={{ padding: '32px 24px 140px 24px' }}
-        >
-            {/* Top Navigation & Header */}
-            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full mb-6 flex items-center justify-between border-b border-border pb-4 px-1">
-                <Link href="/dashboard" className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity text-foreground">
-                    <ArrowLeft size={16} />
-                    <span className="text-xs font-bold  tracking-wider">Dashboard</span>
-                </Link>
-                <BrandLogo textClassName="text-lg font-medium tracking-tight text-foreground select-none pointer-events-none" />
-            </div>
-
-            {/* Lessons Transparency View / Goalie Selector */}
-            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full mb-6 no-print">
-                {goalieProfileId ? (
-                    <LessonsTransparency goalieProfileId={goalieProfileId} />
-                ) : parentGoalies.length > 0 ? (
-                    <div className="w-full bg-card border border-border rounded-3xl p-6 space-y-4 shadow-xl relative overflow-hidden">
-                        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                        <div>
-                            <span className="text-[9px] font-bold  tracking-[0.2em] text-foreground block mb-1">
+        <div className="flex flex-col min-h-screen w-full bg-background text-foreground font-sans">
+            {/* FULL-WIDTH HEADER MATCHING OTHER PAGES */}
+            <header className="sticky top-0 z-[1100] w-full bg-background border-b border-border h-auto md:h-20">
+                <div className="w-full max-w-[1600px] mx-auto px-4 md:px-16 flex flex-col md:flex-row justify-between items-center h-full py-3 md:py-0 gap-3 md:gap-0">
+                    {/* Left: Brand / Title */}
+                    <div className="flex items-center justify-between md:justify-start gap-4 md:gap-12 w-full md:w-auto h-full">
+                        <div className="flex items-center gap-2 md:gap-4 text-xl md:text-2xl">
+                            <Link 
+                                href="/dashboard"
+                                className="text-foreground tracking-tight font-sans font-bold text-[1.25rem] md:text-[1.4rem] hover:text-foreground/80 transition-colors"
+                            >
                                 Goalie Card
-                            </span>
-                            <h3 className="text-lg font-bold text-foreground tracking-tight leading-none">
-                                Select Goalie
-                            </h3>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                            Please select an athlete to view their private training lessons:
-                        </p>
-                        <div className="grid grid-cols-1 gap-2.5 pt-2">
-                            {parentGoalies.map((roster) => (
-                                <button
-                                    key={roster.id}
-                                    onClick={async () => {
-                                        setResolvingId(true);
-                                        const isValid = await validateProfileId(roster.linked_user_id);
-                                        if (isValid) {
-                                            setGoalieProfileId(roster.linked_user_id);
-                                        } else {
-                                            toast.error("Selected goalie profile is not active yet.");
-                                        }
-                                        setResolvingId(false);
-                                    }}
-                                    className="w-full text-left p-4 bg-muted border border-border hover:border-border hover:border-foreground/40 hover:bg-foreground/5 rounded-2xl transition-all font-bold text-sm text-foreground flex items-center justify-between group cursor-pointer"
-                                >
-                                    <span>{roster.goalie_name}</span>
-                                    <span className="text-[9px] font-bold  tracking-wider bg-muted border border-border text-muted-foreground px-2.5 py-1.5 rounded-xl group-hover:bg-foreground group-hover:text-background group-hover:text-foreground transition-all font-sans">
-                                        View Lessons
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="w-full bg-card border border-border rounded-3xl p-6 flex flex-col items-center justify-center text-center min-h-[160px]">
-                        <span className="text-[9px] font-bold  tracking-[0.2em] text-foreground block mb-1">
-                            Private Training
-                        </span>
-                        <h4 className="text-sm font-bold text-foreground  tracking-wider mb-2">
-                            No Active Lessons
-                        </h4>
-                        <p className="text-[11px] text-muted-foreground max-w-xs leading-relaxed">
-                            No active athlete profile was found linked to your account.
-                        </p>
-                    </div>
-                )}
-            </div>
-
-            {/* Segmented Control Selector Tabs */}
-            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full mb-8 grid grid-cols-2 sm:grid-cols-4 p-1 bg-muted border border-border rounded-2xl gap-1 shrink-0">
-                <button
-                    onClick={() => setActiveTab('regimen')}
-                    className={twMerge(
-                        "py-3 rounded-xl text-[10px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
-                        activeTab === 'regimen' ? "bg-background text-foreground font-black shadow-sm text-[#00E676]" : "text-muted-foreground hover:text-foreground/70"
-                    )}
-                >
-                    <Dumbbell size={13} className={activeTab === 'regimen' ? "text-[#00E676]" : ""} />
-                    Regimen & Plan
-                </button>
-                <button
-                    onClick={() => setActiveTab('drills')}
-                    className={twMerge(
-                        "py-3 rounded-xl text-[10px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
-                        activeTab === 'drills' ? "bg-background text-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground/70"
-                    )}
-                >
-                    <BookOpen size={13} />
-                    Drill Library
-                </button>
-                <button
-                    onClick={() => setActiveTab('timer')}
-                    className={twMerge(
-                        "py-3 rounded-xl text-[10px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
-                        activeTab === 'timer' ? "bg-background text-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground/70"
-                    )}
-                >
-                    <Clock size={13} />
-                    Timer
-                </button>
-                <button
-                    onClick={() => setActiveTab('game')}
-                    className={twMerge(
-                        "py-3 rounded-xl text-[10px] font-bold tracking-widest flex items-center justify-center gap-1.5 transition-all duration-300",
-                        activeTab === 'game' ? "bg-background text-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground/70"
-                    )}
-                >
-                    <Gamepad2 size={13} />
-                    Reaction
-                </button>
-            </div>
-
-            {/* Content view panel */}
-            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto w-full flex-1">
-                {/* 0. Regimen & Plan TAB */}
-                {activeTab === 'regimen' && (
-                    <div className="space-y-6">
-                        {/* 1. Schedule <-> Training Intelligent Prescription Card */}
-                        <div className="bg-card border border-border rounded-3xl p-6 sm:p-7 relative overflow-hidden shadow-sm space-y-4">
-                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 85% 15%, rgba(0,230,118,0.12), transparent 60%)', pointerEvents: 'none', borderRadius: '24px' }}></div>
+                            </Link>
                             
-                            <div className="relative z-10 space-y-3">
-                                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-[#00E676] animate-pulse" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#00E676]">
-                                            Calendar Connected • {scheduleAwareness.todayFormatted}
-                                        </span>
-                                    </div>
-                                    <span className="text-xs font-bold text-muted-foreground">
-                                        {scheduleAwareness.hasGameToday ? (
-                                            <span className="text-amber-300 font-black">Game Day ({scheduleAwareness.gameTitle})</span>
-                                        ) : scheduleAwareness.lessonsCountToday > 0 ? (
-                                            <span className="text-emerald-300 font-black">{scheduleAwareness.lessonsCountToday} Coaching Session Today</span>
-                                        ) : (
-                                            <span>Open Training Window</span>
-                                        )}
-                                    </span>
-                                </div>
+                            <span className="text-muted-foreground/30 font-light hidden md:inline">/</span>
+                            
+                            <span className="text-muted-foreground font-medium tracking-tight font-sans text-[1.3rem] md:text-[1.5rem] hidden md:inline">
+                                Training
+                            </span>
+                        </div>
+                    </div>
 
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-[#00E676] text-black rounded-md">
-                                            {scheduleAwareness.adaptivePrescription.badge}
-                                        </span>
-                                        <h2 className="text-xl sm:text-2xl font-black text-foreground m-0 tracking-tight">
-                                            {scheduleAwareness.adaptivePrescription.title}
-                                        </h2>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground font-medium leading-relaxed max-w-3xl pt-1 m-0">
-                                        {scheduleAwareness.adaptivePrescription.rationale}
+                    {/* Right: Actions */}
+                    <div className="w-full md:w-auto flex items-center justify-end gap-3">
+                        <Link 
+                            href="/calendar"
+                            className="px-4 py-2 bg-muted border border-border hover:bg-muted/80 font-semibold rounded-xl text-xs md:text-sm text-foreground transition-all flex items-center gap-1.5"
+                        >
+                            <CalendarIcon size={16} />
+                            Calendar
+                        </Link>
+                    </div>
+                </div>
+            </header>
+
+            {/* FULL-WIDTH CANVAS (max-w-[1600px]) */}
+            <main className="w-full max-w-[1600px] mx-auto px-4 py-4 md:px-12 md:py-5 flex-1 flex flex-col gap-4 lg:h-[calc(100vh-5rem)] lg:overflow-hidden">
+                {/* Title Row */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-4">
+                        <Dumbbell size={32} className="text-foreground md:w-9 md:h-9" strokeWidth={2.5} />
+                        <div>
+                            <h1 className="text-2xl md:text-[2.2rem] font-bold tracking-tight text-foreground font-sans">
+                                Training
+                            </h1>
+                            <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+                                {athleteName} • {daysUntilGame !== null ? (upcomingEventTitle ? `${upcomingEventTitle} in ${daysUntilGame} day${daysUntilGame === 1 ? '' : 's'}` : `Match in ${daysUntilGame} day${daysUntilGame === 1 ? '' : 's'}`) : 'In-Season Performance Track'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {currentStep === 3 && (
+                        <button
+                            onClick={() => setCurrentStep(1)}
+                            className="px-4 py-2 bg-muted hover:bg-muted/80 border border-border text-foreground font-semibold rounded-xl text-xs md:text-sm transition-all flex items-center gap-1.5"
+                        >
+                            <ArrowLeft size={14} />
+                            Update Completed Training
+                        </button>
+                    )}
+                </div>
+
+                {/* TWO-COLUMN LAYOUT: TRAINING INTAKE & DRILLS (2/3) + GOALIE CARD (1/3) */}
+                <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch pb-2">
+                    {/* LEFT 2 COLUMNS: 3-STEP FLOW */}
+                    <div className="lg:col-span-2 flex flex-col h-full min-h-0 lg:overflow-y-auto pr-1 lg:pr-3 space-y-6">
+                        {/* STEPPER PILLS */}
+                        <div className="flex items-center justify-between bg-muted/40 p-1.5 rounded-2xl border border-border text-xs font-bold">
+                            <button
+                                onClick={() => setCurrentStep(1)}
+                                className={`flex-1 py-2 rounded-xl text-center transition-all ${
+                                    currentStep === 1 ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                1. Training Check-In
+                            </button>
+                            <button
+                                onClick={() => setCurrentStep(2)}
+                                className={`flex-1 py-2 rounded-xl text-center transition-all ${
+                                    currentStep === 2 ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                2. Readiness & Fatigue
+                            </button>
+                            <button
+                                onClick={() => setCurrentStep(3)}
+                                className={`flex-1 py-2 rounded-xl text-center transition-all ${
+                                    currentStep === 3 ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                3. Daily Game Plan
+                            </button>
+                        </div>
+
+                        {/* STEP 1: COMPLETED TRAINING INTAKE */}
+                        {currentStep === 1 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-card border border-border rounded-[28px] p-6 md:p-8 space-y-6 shadow-sm"
+                            >
+                                <div>
+                                    <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+                                        Did you already complete training today or this week?
+                                    </h2>
+                                    <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                                        Log one or multiple workouts (on-ice, lifts, HIIT, recovery). You can backfill multiple sessions at once.
                                     </p>
                                 </div>
 
-                                {/* Today's Prescribed Drills */}
-                                <div className="bg-muted/40 border border-border/60 rounded-2xl p-3.5 space-y-2">
-                                    <span className="text-[9px] font-black uppercase tracking-wider text-foreground/70 block">
-                                        Today's Prescribed Focus ({scheduleAwareness.adaptivePrescription.recommendedMinutes} Min)
-                                    </span>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                        {scheduleAwareness.adaptivePrescription.drills.map((drill, idx) => (
-                                            <div key={idx} className="p-2.5 bg-card border border-border/70 rounded-xl text-xs font-semibold text-foreground flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-[#00E676] shrink-0" />
-                                                <span className="truncate">{drill}</span>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setHasTrained(true)}
+                                        className={`p-4 rounded-2xl border text-sm font-bold transition-all text-center ${
+                                            hasTrained === true 
+                                                ? 'bg-foreground text-background border-foreground' 
+                                                : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        ✓ Yes, I trained
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setHasTrained(false);
+                                            setCurrentStep(2);
+                                        }}
+                                        className={`p-4 rounded-2xl border text-sm font-bold transition-all text-center ${
+                                            hasTrained === false 
+                                                ? 'bg-foreground text-background border-foreground' 
+                                                : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        Rest Day / Haven't trained yet
+                                    </button>
+                                </div>
+
+                                {hasTrained && (
+                                    <div className="space-y-4 pt-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                                Logged Workouts ({sessionsList.length})
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={handleAddSessionRow}
+                                                className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl border border-border flex items-center gap-1.5 transition-all"
+                                            >
+                                                <Plus size={14} />
+                                                Add Another Session
+                                            </button>
+                                        </div>
+
+                                        {sessionsList.map((sess, index) => (
+                                            <div key={sess.id} className="p-5 bg-muted/30 border border-border rounded-2xl space-y-3 relative">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-foreground">
+                                                        Workout #{index + 1}
+                                                    </span>
+                                                    {sessionsList.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveSessionRow(sess.id)}
+                                                            className="text-muted-foreground hover:text-rose-500 p-1 transition-colors"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                    <div className="sm:col-span-2">
+                                                        <label className="text-[10px] font-bold uppercase text-muted-foreground">Session Title</label>
+                                                        <input
+                                                            type="text"
+                                                            value={sess.title}
+                                                            onChange={(e) => handleUpdateSession(sess.id, 'title', e.target.value)}
+                                                            placeholder="e.g. 38m HIIT Deck of Cards or Stick 'n Puck"
+                                                            className="w-full px-3.5 py-2 text-xs md:text-sm bg-background border border-border rounded-xl text-foreground focus:outline-none focus:border-foreground mt-1"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-bold uppercase text-muted-foreground">Duration (mins)</label>
+                                                        <input
+                                                            type="number"
+                                                            value={sess.durationMins}
+                                                            onChange={(e) => handleUpdateSession(sess.id, 'durationMins', Number(e.target.value))}
+                                                            className="w-full px-3.5 py-2 text-xs md:text-sm bg-background border border-border rounded-xl text-foreground focus:outline-none focus:border-foreground mt-1"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label className="text-[10px] font-bold uppercase text-muted-foreground">Date Completed</label>
+                                                        <input
+                                                            type="date"
+                                                            value={sess.date}
+                                                            onChange={(e) => handleUpdateSession(sess.id, 'date', e.target.value)}
+                                                            className="w-full px-3.5 py-2 text-xs md:text-sm bg-background border border-border rounded-xl text-foreground focus:outline-none focus:border-foreground mt-1"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-bold uppercase text-muted-foreground">Type</label>
+                                                        <select
+                                                            value={sess.type}
+                                                            onChange={(e) => handleUpdateSession(sess.id, 'type', e.target.value as any)}
+                                                            className="w-full px-3.5 py-2 text-xs md:text-sm bg-background border border-border rounded-xl text-foreground focus:outline-none focus:border-foreground mt-1 font-medium"
+                                                        >
+                                                            <option value="strength">Gym / Strength</option>
+                                                            <option value="conditioning">Conditioning / Cardio</option>
+                                                            <option value="sport">Sport Practice / Skills</option>
+                                                            <option value="recovery">Mobility / Recovery</option>
+                                                            <option value="other">Other / Custom</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Routine Breakdown & Notes</label>
+                                                    <textarea
+                                                        rows={2}
+                                                        value={sess.routineNotes}
+                                                        onChange={(e) => handleUpdateSession(sess.id, 'routineNotes', e.target.value)}
+                                                        placeholder="Exercises, reps, sets, drill cues..."
+                                                        className="w-full px-3.5 py-2 text-xs md:text-sm bg-background border border-border rounded-xl text-foreground focus:outline-none focus:border-foreground mt-1 resize-none"
+                                                    />
+                                                </div>
                                             </div>
                                         ))}
+
+                                        {/* Additional Training Button */}
+                                        <div className="pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleAddSessionRow}
+                                                className="w-full py-3 px-4 bg-muted/40 hover:bg-muted/70 text-foreground text-xs font-bold rounded-2xl border border-dashed border-border hover:border-foreground/40 flex items-center justify-center gap-2 transition-all shadow-sm"
+                                            >
+                                                <Plus size={16} />
+                                                Add Additional Training Session for Today
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
-                                <div className="flex flex-wrap items-center gap-3 pt-1">
+                                <div className="flex justify-end pt-4 border-t border-border">
                                     <button
-                                        onClick={() => router.push('/calendar')}
-                                        className="flex items-center gap-2 px-4 py-2 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+                                        type="button"
+                                        onClick={() => setCurrentStep(2)}
+                                        className="px-6 py-2.5 bg-foreground text-background font-bold text-xs md:text-sm rounded-xl hover:bg-foreground/90 transition-all flex items-center gap-2"
                                     >
-                                        <Calendar size={13} />
-                                        <span>Log to Calendar</span>
-                                        <ArrowRight size={12} />
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('game')}
-                                        className="flex items-center gap-2 px-3.5 py-2 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
-                                    >
-                                        <Gamepad2 size={13} className="text-cyan-400" />
-                                        <span>Reaction</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('timer')}
-                                        className="flex items-center gap-2 px-3.5 py-2 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
-                                    >
-                                        <Clock size={13} className="text-amber-400" />
-                                        <span>Timer</span>
+                                        <span>Next: Readiness & Physical Check</span>
+                                        <ArrowRight size={14} />
                                     </button>
                                 </div>
-                            </div>
-                        </div>
+                            </motion.div>
+                        )}
 
-                        {/* 2. Season Contract & Goalie Commitment Card */}
-                        <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
-                            <div className="flex items-center justify-between pb-3 border-b border-border">
-                                <div className="flex items-center gap-2">
-                                    <Trophy size={16} className="text-[#00E676]" />
-                                    <h3 className="text-sm font-bold text-foreground m-0 uppercase tracking-wider">Season Contract & Goals</h3>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        setEditForm(seasonContract);
-                                        setContractModalOpen(true);
-                                    }}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Edit3 size={12} />
-                                    <span>Edit Contract</span>
-                                </button>
-                            </div>
-
-                            {/* Adaptive Philosophy Direct Notice */}
-                            <div className="p-3.5 bg-muted/40 border border-border/60 rounded-2xl flex items-start gap-3 text-xs leading-relaxed text-muted-foreground">
-                                <Shield size={16} className="text-[#00E676] shrink-0 mt-0.5" />
+                        {/* STEP 2: READINESS & FATIGUE */}
+                        {currentStep === 2 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-card border border-border rounded-[28px] p-6 md:p-8 space-y-6 shadow-sm"
+                            >
                                 <div>
-                                    <p className="font-semibold text-foreground m-0">We train with your season, not against it.</p>
-                                    <p className="m-0 mt-0.5 text-[11px]">
-                                        If you miss a day, have an overtime game, or need rest, your plan automatically adapts without penalties or broken streaks. You set the goals; the system supports you.
+                                    <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+                                        Physical Readiness & Muscle State
+                                    </h2>
+                                    <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                                        State any acute tightness or fatigue to establish safety restrictions before your next start.
                                     </p>
                                 </div>
-                            </div>
 
-                            {/* Team & Level Badges + Season Goals (Direct Inline Inputs) */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                                <div className="p-3 bg-muted/40 border border-border/60 hover:border-border rounded-2xl space-y-1 transition-colors">
-                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Team</label>
-                                    <input
-                                        type="text"
-                                        value={seasonContract.team}
-                                        onChange={(e) => updateContractField('team', e.target.value)}
-                                        placeholder="Type your team..."
-                                        className="w-full bg-transparent font-bold text-foreground text-xs focus:outline-none focus:text-[#00E676] placeholder:text-muted-foreground/40 border-b border-transparent focus:border-[#00E676] transition-colors py-0.5"
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="p-4 bg-muted/30 border border-border rounded-2xl space-y-2">
+                                        <label className="text-xs font-bold text-foreground block">
+                                            Groin / Adductor Tightness (1 = Fresh, 5 = Severe)
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            {[1, 2, 3, 4, 5].map((level) => (
+                                                <button
+                                                    key={level}
+                                                    type="button"
+                                                    onClick={() => setGroinTightness(level)}
+                                                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${
+                                                        groinTightness === level 
+                                                            ? 'bg-foreground text-background border-foreground' 
+                                                            : 'bg-background border-border text-muted-foreground'
+                                                    }`}
+                                                >
+                                                    {level}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-4 bg-muted/30 border border-border rounded-2xl space-y-2">
+                                        <label className="text-xs font-bold text-foreground block">
+                                            General Fatigue Level (1 = Peaked, 5 = Drained)
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            {[1, 2, 3, 4, 5].map((level) => (
+                                                <button
+                                                    key={level}
+                                                    type="button"
+                                                    onClick={() => setGeneralFatigue(level)}
+                                                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${
+                                                        generalFatigue === level 
+                                                            ? 'bg-foreground text-background border-foreground' 
+                                                            : 'bg-background border-border text-muted-foreground'
+                                                    }`}
+                                                >
+                                                    {level}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">
+                                        Specific Tissue / Joint Notes
+                                    </label>
+                                    <textarea
+                                        rows={2}
+                                        value={bodyNotes}
+                                        onChange={(e) => setBodyNotes(e.target.value)}
+                                        placeholder="e.g. Right groin tight, shoulders fatigued after push-ups..."
+                                        className="w-full px-3.5 py-2.5 text-xs md:text-sm bg-muted/50 border border-border rounded-xl text-foreground focus:outline-none focus:border-foreground resize-none"
                                     />
                                 </div>
-                                <div className="p-3 bg-muted/40 border border-border/60 hover:border-border rounded-2xl space-y-1 transition-colors">
-                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Level</label>
-                                    <input
-                                        type="text"
-                                        value={seasonContract.level}
-                                        onChange={(e) => updateContractField('level', e.target.value)}
-                                        placeholder="Type your level (e.g. College / Varsity)..."
-                                        className="w-full bg-transparent font-bold text-foreground text-xs focus:outline-none focus:text-[#00E676] placeholder:text-muted-foreground/40 border-b border-transparent focus:border-[#00E676] transition-colors py-0.5"
-                                    />
-                                </div>
-                                <div className="p-3 bg-muted/40 border border-border/60 hover:border-border rounded-2xl space-y-1 transition-colors">
-                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Season Term</label>
-                                    <input
-                                        type="text"
-                                        value={seasonContract.season}
-                                        onChange={(e) => updateContractField('season', e.target.value)}
-                                        placeholder="Type season (e.g. 2026–2027)..."
-                                        className="w-full bg-transparent font-bold text-foreground text-xs focus:outline-none focus:text-[#00E676] placeholder:text-muted-foreground/40 border-b border-transparent focus:border-[#00E676] transition-colors py-0.5"
-                                    />
-                                </div>
-                            </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                                <div className="p-3.5 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Primary Season Goal</span>
-                                    <p className="font-semibold text-foreground leading-snug m-0">"{seasonContract.primaryGoal}"</p>
-                                </div>
-                                <div className="p-3.5 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Technical Focus</span>
-                                    <p className="font-semibold text-foreground leading-snug m-0">"{seasonContract.technicalGoal}"</p>
-                                </div>
-                                <div className="p-3.5 bg-muted/30 border border-border/50 rounded-2xl space-y-1">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Longevity / Recovery</span>
-                                    <p className="font-semibold text-foreground leading-snug m-0">"{seasonContract.recoveryGoal}"</p>
-                                </div>
-                            </div>
-
-                            {/* Goalie Signature Status */}
-                            <div className="pt-1 flex flex-wrap items-center justify-between text-xs text-muted-foreground border-t border-border pt-3">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 size={14} className="text-[#00E676]" />
-                                    <span className="font-medium">Signed Commitment: <span className="text-foreground font-bold">{seasonContract.signedBy}</span></span>
-                                </div>
-                                <span className="font-mono text-[11px]">{seasonContract.signedDate}</span>
-                            </div>
-                        </div>
-
-                        {/* 3. Performance Memory Card */}
-                        <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
-                            <div className="flex items-center justify-between pb-3 border-b border-border">
-                                <div className="flex items-center gap-2">
-                                    <Activity size={15} className="text-[#00E676]" />
-                                    <h3 className="text-sm font-bold text-foreground m-0 uppercase tracking-wider">Performance Memory</h3>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                                {/* Memory: Weekly Intention */}
-                                <div className="p-3.5 bg-muted/40 border border-border/60 rounded-2xl space-y-1.5">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Active Intention</span>
-                                    <p className="font-bold text-foreground leading-snug m-0">"{scheduleAwareness.weeklyIntention}"</p>
-                                </div>
-
-                                {/* Memory: Last Workout */}
-                                <div className="p-3.5 bg-muted/40 border border-border/60 rounded-2xl space-y-1.5">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Last Session Logged</span>
-                                    <p className="font-bold text-foreground leading-snug m-0">{scheduleAwareness.lastWorkout.title}</p>
-                                    <p className="text-[10px] text-muted-foreground leading-tight m-0">{scheduleAwareness.lastWorkout.date}</p>
-                                </div>
-
-                                {/* Memory: Body Feedback & Readiness */}
-                                <div className="p-3.5 bg-muted/40 border border-border/60 rounded-2xl space-y-1.5">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Body & Joint Readiness</span>
-                                    <p className="font-semibold text-emerald-300 leading-snug m-0">{scheduleAwareness.lastWorkout.reflection}</p>
-                                </div>
-                            </div>
-
-                            {/* Active Technical Cues */}
-                            <div className="pt-1 flex flex-wrap items-center gap-2">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Active Cues:</span>
-                                {scheduleAwareness.lastWorkout.cues?.map((cue, idx) => (
-                                    <span key={idx} className="text-[10px] font-bold px-2.5 py-1 bg-muted rounded-lg border border-border text-foreground">
-                                        {cue}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* 4. Daily Goalie Commitment Checklist */}
-                        <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 size={16} className="text-[#00E676]" />
-                                    <h3 className="text-base font-bold text-foreground m-0">Daily Commitment</h3>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-black font-mono text-[#00E676] bg-[#00E676]/10 px-2.5 py-1 rounded-lg">
-                                        {completedRegimenItems} / {totalRegimenItems} Done ({regimenProgressPercent}%)
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Progress Bar */}
-                            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                                <div 
-                                    className="h-full bg-[#00E676] transition-all duration-500 rounded-full"
-                                    style={{ width: `${regimenProgressPercent}%` }}
-                                />
-                            </div>
-
-                            {/* Checklist items */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                                {[
-                                    {
-                                        id: 'mobility',
-                                        title: '1. Mobility (10 Min)',
-                                        desc: '90/90 hip switches, Cossack squats, groin openers, ankle dorsiflexion.'
-                                    },
-                                    {
-                                        id: 'reaction',
-                                        title: '2. Reaction (15 Min)',
-                                        desc: 'Visual reaction drills, 2-ball wall ball, numbered tennis ball drops.'
-                                    },
-                                    {
-                                        id: 'strength',
-                                        title: '3. Strength & Crease (45 Min)',
-                                        desc: 'Trap bar jumps, split squats, rotational med ball slams, 5-point arc pushes.'
-                                    },
-                                    {
-                                        id: 'reflection',
-                                        title: '4. Reflection (5 Min)',
-                                        desc: 'Log sets, reps, load, and focal cues directly on your Goalie Card schedule.'
-                                    }
-                                ].map((item) => {
-                                    const isChecked = !!regimenChecklist[item.id];
-                                    return (
-                                        <div
-                                            key={item.id}
-                                            onClick={() => toggleRegimenItem(item.id)}
-                                            className={twMerge(
-                                                "p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none",
-                                                isChecked 
-                                                    ? "bg-[#00E676]/10 border-[#00E676]/50 shadow-xs" 
-                                                    : "bg-muted/40 hover:bg-muted/70 border-border hover:border-border/80"
-                                            )}
-                                        >
-                                            <div className={twMerge(
-                                                "w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                                                isChecked ? "bg-[#00E676] border-[#00E676] text-black" : "border-muted-foreground/40 bg-card"
-                                            )}>
-                                                {isChecked && <CheckCircle2 size={13} className="stroke-[3]" />}
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <h4 className={twMerge(
-                                                    "text-xs font-bold leading-tight transition-colors",
-                                                    isChecked ? "text-foreground line-through opacity-80" : "text-foreground"
-                                                )}>
-                                                    {item.title}
-                                                </h4>
-                                                <p className="text-[11px] text-muted-foreground leading-relaxed m-0">
-                                                    {item.desc}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* 5. The 4 Pillars (Clean Titles) */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-foreground m-0">The 4 Pillars</h3>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Pillar 1 */}
-                                <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-blue-500/15 text-blue-300 border border-blue-500/30 rounded-md">
-                                            1. Strength
-                                        </span>
-                                        <span className="text-xs font-bold text-muted-foreground">3x / Week</span>
-                                    </div>
-                                    <h4 className="text-sm font-bold text-foreground m-0">Power, Single-Leg & Core</h4>
-                                    <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
-                                        <p className="font-semibold text-foreground m-0">• Trap Bar Deadlift / Jump Shrugs: <span className="text-muted-foreground font-normal">4 sets x 5 reps (Explosive)</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Bulgarian Split Squats: <span className="text-muted-foreground font-normal">3 sets x 8 reps/leg</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Rotational Med Ball Slams: <span className="text-muted-foreground font-normal">4 sets x 6 reps/side</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Pallof Holds & Deadbugs: <span className="text-muted-foreground font-normal">3 sets x 30s</span></p>
-                                    </div>
-                                </div>
-
-                                {/* Pillar 2 */}
-                                <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-md">
-                                            2. Movement
-                                        </span>
-                                        <span className="text-xs font-bold text-muted-foreground">4x / Week</span>
-                                    </div>
-                                    <h4 className="text-sm font-bold text-foreground m-0">Crease Footwork & Angles</h4>
-                                    <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
-                                        <p className="font-semibold text-foreground m-0">• 5-Point Arc Shuffles: <span className="text-muted-foreground font-normal">5 sets x 30s</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Drop Steps (Stick & Off-Stick): <span className="text-muted-foreground font-normal">4 sets x 10 reps</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Pipe-to-Pipe Resets: <span className="text-muted-foreground font-normal">6 sets x 4 reps</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Low Bounce Explosion: <span className="text-muted-foreground font-normal">4 sets x 8 reps</span></p>
-                                    </div>
-                                </div>
-
-                                {/* Pillar 3 */}
-                                <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 rounded-md">
-                                            3. Reaction
-                                        </span>
-                                        <span className="text-xs font-bold text-muted-foreground">Daily / 15m</span>
-                                    </div>
-                                    <h4 className="text-sm font-bold text-foreground m-0">Visual Tracking & Hand-Eye</h4>
-                                    <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
-                                        <p className="font-semibold text-foreground m-0">• Reaction Drill: <span className="text-muted-foreground font-normal">3 rounds</span></p>
-                                        <p className="font-semibold text-foreground m-0">• 2-Ball Wall Ball Switches: <span className="text-muted-foreground font-normal">3 sets x 50 catches</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Numbered Tennis Ball Drops: <span className="text-muted-foreground font-normal">4 sets x 10 drops</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Juggling & Tracking: <span className="text-muted-foreground font-normal">5 min activation</span></p>
-                                    </div>
-                                </div>
-
-                                {/* Pillar 4 */}
-                                <div className="bg-card border border-border rounded-2xl p-5 space-y-3 relative overflow-hidden">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-md">
-                                            4. Recovery
-                                        </span>
-                                        <span className="text-xs font-bold text-muted-foreground">Daily</span>
-                                    </div>
-                                    <h4 className="text-sm font-bold text-foreground m-0">Hips, Mindset & Longevity</h4>
-                                    <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 border border-border/50 text-xs">
-                                        <p className="font-semibold text-foreground m-0">• 90/90 Hip Flow & Frog Stretch: <span className="text-muted-foreground font-normal">10 min post-work</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Ankle Dorsiflexion & Tibialis: <span className="text-muted-foreground font-normal">3 sets x 15 reps</span></p>
-                                        <p className="font-semibold text-foreground m-0">• 4-4-4-4 Box Breathing: <span className="text-muted-foreground font-normal">5 min pre/post work</span></p>
-                                        <p className="font-semibold text-foreground m-0">• Clutch Save Visualization: <span className="text-muted-foreground font-normal">Rehearse step-downs</span></p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* 1. Drills TAB */}
-                {activeTab === 'drills' && (
-                    <div className="space-y-6">
-                        {/* Physical Drills */}
-                        <div>
-                            <span className="text-[9px] font-bold  tracking-[0.2em] text-foreground block mb-3 px-1">Physical Drills</span>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {DRILL_CATEGORIES.physical.map(name => {
-                                    const details = DRILL_LIBRARY[name];
-                                    const isActiveDrill = selectedDrill === name;
-                                    const isExpanded = expandedDrill === name || isActiveDrill;
-                                    return (
-                                        <div 
-                                            key={name}
-                                            className={twMerge(
-                                                "border rounded-2xl p-4 overflow-hidden transition-all duration-300",
-                                                isActiveDrill 
-                                                    ? "bg-card/95 border-foreground/30 ring-1 ring-foreground/10 shadow-lg shadow-foreground/5" 
-                                                    : "bg-card border-border"
-                                            )}
-                                        >
-                                            <div 
-                                                onClick={() => setExpandedDrill(isExpanded ? null : name)}
-                                                className="flex items-center justify-between cursor-pointer"
-                                            >
-                                                <h4 className="text-xs font-bold  tracking-wider text-foreground">{name}</h4>
-                                                {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
-                                            </div>
-                                            {isExpanded && details && (
-                                                <div className="mt-4 pt-3 border-t border-border space-y-4">
-                                                    <div>
-                                                        <span className="text-[8px] font-bold  tracking-widest text-foreground block mb-1">Key Steps</span>
-                                                        <ol className="list-decimal pl-4 space-y-1 text-xs text-foreground/70 font-medium">
-                                                            {details.steps.map((step, i) => <li key={i}>{step}</li>)}
-                                                        </ol>
-                                                    </div>
-                                                    {details.points.length > 0 && (
-                                                        <div>
-                                                            <span className="text-[8px] font-bold  tracking-widest text-muted-foreground block mb-1">Coaching Points</span>
-                                                            <ul className="list-disc pl-4 space-y-0.5 text-xs text-foreground/50 font-medium">
-                                                                {details.points.map((pt, i) => <li key={i}>{pt}</li>)}
-                                                            </ul>
-                                                        </div>
-                                                    )}
-                                                    {isActiveDrill ? (
-                                                        <div 
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="mt-4 bg-muted/50 border border-border rounded-2xl p-4 gap-4 flex flex-col sm:flex-row items-center justify-center"
-                                                        >
-                                                            <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
-                                                                <svg className="w-28 h-28 -rotate-90">
-                                                                    <circle
-                                                                        cx="56" cy="56" r="44"
-                                                                        className="text-foreground/5" stroke="currentColor" strokeWidth="4" fill="transparent"
-                                                                    />
-                                                                    <circle
-                                                                        cx="56" cy="56" r="44"
-                                                                        className="text-foreground transition-all duration-300" stroke="currentColor" strokeWidth="4" fill="transparent"
-                                                                        strokeDasharray={2 * Math.PI * 44}
-                                                                        strokeDashoffset={2 * Math.PI * 44 - (timerDuration / totalDuration) * 2 * Math.PI * 44}
-                                                                        strokeLinecap="round"
-                                                                    />
-                                                                </svg>
-                                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                    <span className="text-xl font-bold font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex flex-col gap-2 w-full sm:w-auto min-w-[120px]">
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setTimerIsActive(!timerIsActive);
-                                                                    }}
-                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
-                                                                >
-                                                                    {timerIsActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
-                                                                    {timerIsActive ? 'Pause' : 'Resume'}
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setTimerIsActive(false);
-                                                                        setTimerDuration(totalDuration);
-                                                                    }}
-                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
-                                                                >
-                                                                    <RotateCcw size={12} />
-                                                                    Reset
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setTimerIsActive(false);
-                                                                        setSelectedDrill(null);
-                                                                        setTotalDuration(300);
-                                                                        setTimerDuration(300);
-                                                                    }}
-                                                                    className="w-full py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
-                                                                >
-                                                                    Done
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                startDrillTimer(name, details.duration || 5);
-                                                            }}
-                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-bold  tracking-widest transition-all"
-                                                        >
-                                                            Start {details.duration || 5}m Timer
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Mental Drills */}
-                        <div className="pt-2">
-                            <span className="text-[9px] font-bold  tracking-[0.2em] text-foreground block mb-3 px-1">Mental & Breathwork</span>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {DRILL_CATEGORIES.mental.map(name => {
-                                    const details = DRILL_LIBRARY[name];
-                                    const isActiveDrill = selectedDrill === name;
-                                    const isExpanded = expandedDrill === name || isActiveDrill;
-                                    return (
-                                        <div 
-                                            key={name}
-                                            className={twMerge(
-                                                "border rounded-2xl p-4 overflow-hidden transition-all duration-300",
-                                                isActiveDrill 
-                                                    ? "bg-card/95 border-foreground/30 ring-1 ring-foreground/10 shadow-lg shadow-foreground/5" 
-                                                    : "bg-card border-border"
-                                            )}
-                                        >
-                                            <div 
-                                                onClick={() => setExpandedDrill(isExpanded ? null : name)}
-                                                className="flex items-center justify-between cursor-pointer"
-                                            >
-                                                <h4 className="text-xs font-bold  tracking-wider text-foreground">{name}</h4>
-                                                {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
-                                            </div>
-                                            {isExpanded && details && (
-                                                <div className="mt-4 pt-3 border-t border-border space-y-4">
-                                                    <div>
-                                                        <span className="text-[8px] font-bold  tracking-widest text-foreground block mb-1">Key Steps</span>
-                                                        <ol className="list-decimal pl-4 space-y-1 text-xs text-foreground/70 font-medium">
-                                                            {details.steps.map((step, i) => <li key={i}>{step}</li>)}
-                                                        </ol>
-                                                    </div>
-                                                    {details.points.length > 0 && (
-                                                        <div>
-                                                            <span className="text-[8px] font-bold  tracking-widest text-muted-foreground block mb-1">Key Points</span>
-                                                            <ul className="list-disc pl-4 space-y-0.5 text-xs text-foreground/50 font-medium">
-                                                                {details.points.map((pt, i) => <li key={i}>{pt}</li>)}
-                                                            </ul>
-                                                        </div>
-                                                    )}
-                                                    {isActiveDrill ? (
-                                                        <div 
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="mt-4 bg-muted/50 border border-border rounded-2xl p-4 gap-4 flex flex-col sm:flex-row items-center justify-center"
-                                                        >
-                                                            <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
-                                                                <svg className="w-28 h-28 -rotate-90">
-                                                                    <circle
-                                                                        cx="56" cy="56" r="44"
-                                                                        className="text-foreground/5" stroke="currentColor" strokeWidth="4" fill="transparent"
-                                                                    />
-                                                                    <circle
-                                                                        cx="56" cy="56" r="44"
-                                                                        className="text-foreground transition-all duration-300" stroke="currentColor" strokeWidth="4" fill="transparent"
-                                                                        strokeDasharray={2 * Math.PI * 44}
-                                                                        strokeDashoffset={2 * Math.PI * 44 - (timerDuration / totalDuration) * 2 * Math.PI * 44}
-                                                                        strokeLinecap="round"
-                                                                    />
-                                                                </svg>
-                                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                    <span className="text-xl font-bold font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex flex-col gap-2 w-full sm:w-auto min-w-[120px]">
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setTimerIsActive(!timerIsActive);
-                                                                    }}
-                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
-                                                                >
-                                                                    {timerIsActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
-                                                                    {timerIsActive ? 'Pause' : 'Resume'}
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setTimerIsActive(false);
-                                                                        setTimerDuration(totalDuration);
-                                                                    }}
-                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
-                                                                >
-                                                                    <RotateCcw size={12} />
-                                                                    Reset
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setTimerIsActive(false);
-                                                                        setSelectedDrill(null);
-                                                                        setTotalDuration(300);
-                                                                        setTimerDuration(300);
-                                                                    }}
-                                                                    className="w-full py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
-                                                                >
-                                                                    Done
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                startDrillTimer(name, details.duration || 5);
-                                                            }}
-                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-bold  tracking-widest transition-all"
-                                                        >
-                                                            Start {details.duration || 5}m Timer
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Video Review */}
-                        <div className="pt-2">
-                            <span className="text-[9px] font-bold  tracking-[0.2em] text-foreground block mb-3 px-1">Video Review</span>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {DRILL_CATEGORIES.video.map(name => {
-                                    const details = DRILL_LIBRARY[name];
-                                    const isActiveDrill = selectedDrill === name;
-                                    const isExpanded = expandedDrill === name || isActiveDrill;
-                                    return (
-                                        <div 
-                                            key={name}
-                                            className={twMerge(
-                                                "border rounded-2xl p-4 overflow-hidden transition-all duration-300",
-                                                isActiveDrill 
-                                                    ? "bg-card/95 border-foreground/30 ring-1 ring-foreground/10 shadow-lg shadow-foreground/5" 
-                                                    : "bg-card border-border"
-                                            )}
-                                        >
-                                            <div 
-                                                onClick={() => setExpandedDrill(isExpanded ? null : name)}
-                                                className="flex items-center justify-between cursor-pointer"
-                                            >
-                                                <h4 className="text-xs font-bold  tracking-wider text-foreground">{name}</h4>
-                                                {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
-                                            </div>
-                                            {isExpanded && details && (
-                                                <div className="mt-4 pt-3 border-t border-border space-y-4">
-                                                    <div>
-                                                        <span className="text-[8px] font-bold  tracking-widest text-foreground block mb-1">Key Steps</span>
-                                                        <ol className="list-decimal pl-4 space-y-1 text-xs text-foreground/70 font-medium">
-                                                            {details.steps.map((step, i) => <li key={i}>{step}</li>)}
-                                                        </ol>
-                                                    </div>
-                                                    {details.points.length > 0 && (
-                                                        <div>
-                                                            <span className="text-[8px] font-bold  tracking-widest text-muted-foreground block mb-1">Focus Points</span>
-                                                            <ul className="list-disc pl-4 space-y-0.5 text-xs text-foreground/50 font-medium">
-                                                                {details.points.map((pt, i) => <li key={i}>{pt}</li>)}
-                                                            </ul>
-                                                        </div>
-                                                    )}
-                                                    {isActiveDrill ? (
-                                                        <div 
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="mt-4 bg-muted/50 border border-border rounded-2xl p-4 gap-4 flex flex-col sm:flex-row items-center justify-center"
-                                                        >
-                                                            <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
-                                                                <svg className="w-28 h-28 -rotate-90">
-                                                                    <circle
-                                                                        cx="56" cy="56" r="44"
-                                                                        className="text-foreground/5" stroke="currentColor" strokeWidth="4" fill="transparent"
-                                                                    />
-                                                                    <circle
-                                                                        cx="56" cy="56" r="44"
-                                                                        className="text-foreground transition-all duration-300" stroke="currentColor" strokeWidth="4" fill="transparent"
-                                                                        strokeDasharray={2 * Math.PI * 44}
-                                                                        strokeDashoffset={2 * Math.PI * 44 - (timerDuration / totalDuration) * 2 * Math.PI * 44}
-                                                                        strokeLinecap="round"
-                                                                    />
-                                                                </svg>
-                                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                    <span className="text-xl font-bold font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex flex-col gap-2 w-full sm:w-auto min-w-[120px]">
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setTimerIsActive(!timerIsActive);
-                                                                    }}
-                                                                    className="w-full py-2.5 bg-foreground text-background hover:bg-neutral-200 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
-                                                                >
-                                                                    {timerIsActive ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
-                                                                    {timerIsActive ? 'Pause' : 'Resume'}
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setTimerIsActive(false);
-                                                                        setTimerDuration(totalDuration);
-                                                                    }}
-                                                                    className="w-full py-2.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
-                                                                >
-                                                                    <RotateCcw size={12} />
-                                                                    Reset
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setTimerIsActive(false);
-                                                                        setSelectedDrill(null);
-                                                                        setTotalDuration(300);
-                                                                        setTimerDuration(300);
-                                                                    }}
-                                                                    className="w-full py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all rounded-xl text-[10px] font-bold  tracking-widest flex items-center justify-center gap-1.5"
-                                                                >
-                                                                    Done
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                startDrillTimer(name, details.duration || 10);
-                                                            }}
-                                                            className="w-full py-3 bg-foreground text-background hover:bg-foreground text-background/80 text-foreground rounded-xl text-[10px] font-bold  tracking-widest transition-all"
-                                                        >
-                                                            Start {details.duration || 10}m Timer
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* 2. Timer TAB */}
-                {activeTab === 'timer' && (
-                    <div className="flex flex-col items-center justify-center py-6 text-center">
-                        {/* Circular Progress Ring HUD */}
-                        <div className="relative w-56 h-56 flex items-center justify-center mb-8">
-                            <svg className="w-56 h-56 -rotate-90">
-                                <circle
-                                    cx="112" cy="112" r={radius}
-                                    className="text-foreground/5" stroke="currentColor" strokeWidth="6" fill="transparent"
-                                />
-                                <circle
-                                    cx="112" cy="112" r={radius}
-                                    className="text-foreground transition-all duration-300" stroke="currentColor" strokeWidth="6" fill="transparent"
-                                    strokeDasharray={circumference}
-                                    strokeDashoffset={strokeDashoffset}
-                                    strokeLinecap="round"
-                                />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-4xl font-bold font-mono tracking-tight text-foreground">{formatTime(timerDuration)}</span>
-                                {selectedDrill ? (
-                                    <span className="text-[9px] font-bold  tracking-widest text-foreground mt-2 max-w-[140px] truncate">{selectedDrill}</span>
-                                ) : (
-                                    <span className="text-[9px] font-bold  tracking-widest text-muted-foreground mt-2">No Drill Selected</span>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Adjust / Preset Buttons */}
-                        <div className="w-full max-w-[280px] space-y-4 mb-8">
-                            <div className="flex justify-between gap-3">
-                                <button
-                                    onClick={() => adjustTimer(-60)}
-                                    className="flex-1 py-2 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border text-[10px] font-bold  tracking-wider rounded-xl"
-                                >
-                                    - 1 Min
-                                </button>
-                                <button
-                                    onClick={() => adjustTimer(60)}
-                                    className="flex-1 py-2 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border text-[10px] font-bold  tracking-wider rounded-xl"
-                                >
-                                    + 1 Min
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-4 gap-2">
-                                {[1, 2, 5, 10].map(mins => (
+                                <div className="flex items-center justify-between pt-4 border-t border-border">
                                     <button
-                                        key={mins}
-                                        onClick={() => handleTimerPreset(mins)}
-                                        className="py-1.5 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border text-[9px] font-bold rounded-lg"
+                                        type="button"
+                                        onClick={() => setCurrentStep(1)}
+                                        className="px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1"
                                     >
-                                        {mins}m
+                                        <ArrowLeft size={14} />
+                                        Back
                                     </button>
-                                ))}
-                            </div>
-                        </div>
+                                    <button
+                                        type="button"
+                                        disabled={isSubmittingCheckin}
+                                        onClick={handleCompleteStep2}
+                                        className="px-6 py-2.5 bg-foreground text-background font-bold text-xs md:text-sm rounded-xl hover:bg-foreground/90 transition-all flex items-center gap-2"
+                                    >
+                                        {isSubmittingCheckin ? "Processing..." : "Generate Today's Game Plan →"}
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
 
-                        {/* Controller buttons */}
-                        <div className="flex items-center gap-6">
-                            <button
-                                onClick={() => {
-                                    setTimerIsActive(false);
-                                    setTimerDuration(totalDuration);
-                                }}
-                                className="w-12 h-12 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors text-foreground"
-                                title="Reset"
+                        {/* STEP 3: PRESCRIBED GAME PLAN & DRILL RUNNER */}
+                        {currentStep === 3 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-6"
                             >
-                                <RotateCcw size={18} />
-                            </button>
-                            <button
-                                onClick={() => setTimerIsActive(!timerIsActive)}
-                                className="w-20 h-20 rounded-full border-2 border-white/15 bg-foreground text-background flex items-center justify-center hover:bg-neutral-200 transition-all shadow-xl"
-                            >
-                                {timerIsActive ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" className="ml-1" />}
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setTimerIsActive(false);
-                                    setSelectedDrill(null);
-                                    setTotalDuration(300);
-                                    setTimerDuration(300);
-                                }}
-                                className="w-12 h-12 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors text-foreground/50 hover:text-foreground"
-                                title="Clear"
-                            >
-                                Clear
-                            </button>
-                        </div>
+                                {/* DIRECTIVE SUMMARY BANNER */}
+                                <div className="p-6 md:p-8 bg-muted/40 border border-border rounded-[28px]">
+                                    <div className="flex items-center justify-between gap-4 mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-foreground text-background">
+                                                Today's Focus
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">•</span>
+                                            <span className="text-xs font-semibold text-muted-foreground">{directiveContext}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setCurrentStep(1)}
+                                            className="text-xs font-semibold text-muted-foreground hover:text-foreground underline"
+                                        >
+                                            Adjust Input
+                                        </button>
+                                    </div>
+
+                                    <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground mb-4">
+                                        {directiveTitle}
+                                    </h2>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                        <div className="p-4 bg-background/80 border border-border rounded-2xl">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-500 mb-2.5 flex items-center gap-1.5">
+                                                <Check size={16} />
+                                                Recommended Work & Movement Focus
+                                            </h4>
+                                            <ul className="text-xs text-foreground space-y-1.5 list-disc list-inside">
+                                                {whatToDoList.map((item, i) => (
+                                                    <li key={i}>{item}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+
+                                        <div className="p-4 bg-background/80 border border-border rounded-2xl">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-rose-500 mb-2.5 flex items-center gap-1.5">
+                                                <X size={16} />
+                                                Load Management & What to Avoid
+                                            </h4>
+                                            <ul className="text-xs text-foreground space-y-1.5 list-disc list-inside">
+                                                {whatNotToDoList.map((item, i) => (
+                                                    <li key={i}>{item}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* DRILL DECK */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-4 px-1">
+                                        <h3 className="text-sm font-bold tracking-tight text-foreground uppercase">
+                                            Prescribed Drills ({drills.filter(d => d.completed).length}/{drills.length} Complete)
+                                        </h3>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {drills.map((drill) => {
+                                            const isTimerActive = activeDrillId === drill.id && timerRunning;
+                                            return (
+                                                <div
+                                                    key={drill.id}
+                                                    className={`p-5 rounded-[24px] border transition-all flex flex-col justify-between ${
+                                                        drill.completed 
+                                                            ? 'bg-muted/40 border-emerald-500/40' 
+                                                            : 'bg-muted/30 border-border'
+                                                    }`}
+                                                >
+                                                    <div>
+                                                        <div className="flex items-start justify-between gap-3 mb-2">
+                                                            <h4 className={`text-sm md:text-base font-bold leading-tight ${drill.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                                                {drill.name}
+                                                            </h4>
+                                                            <button
+                                                                onClick={() => toggleDrillCompleted(drill.id)}
+                                                                className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all flex-shrink-0 ${
+                                                                    drill.completed 
+                                                                        ? 'bg-emerald-500 border-emerald-500 text-white' 
+                                                                        : 'border-border hover:border-foreground/40'
+                                                                }`}
+                                                            >
+                                                                {drill.completed && <Check size={14} />}
+                                                            </button>
+                                                        </div>
+
+                                                        <p className="text-xs font-semibold text-muted-foreground mb-1">
+                                                            {drill.sets}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground italic mb-4">
+                                                            Cue: "{drill.cue}"
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between pt-3 border-t border-border/40">
+                                                        <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                                                            <Clock size={14} />
+                                                            {drill.durationMins} mins
+                                                        </span>
+
+                                                        {isTimerActive ? (
+                                                            <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 px-3 py-1 rounded-xl text-xs font-mono font-bold">
+                                                                <Clock size={14} className="animate-spin" />
+                                                                <span>{Math.floor(timerRemaining / 60)}:{(timerRemaining % 60).toString().padStart(2, '0')}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => startDrillTimer(drill)}
+                                                                className="px-3.5 py-1.5 bg-background hover:bg-muted border border-border text-foreground text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
+                                                            >
+                                                                <Play size={12} className="text-foreground" />
+                                                                <span>Start</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
                     </div>
-                )}
 
-                {/* 3. Game TAB */}
-                {activeTab === 'game' && (
-                    <div className="flex justify-center items-center py-4">
-                        <RavenGame 
-                            userId={activeUserId} 
-                            personalBest={personalBest} 
-                            onNewPb={(newScore) => setPersonalBest(newScore)} 
-                        />
-                    </div>
-                )}
-            </div>
+                    {/* RIGHT 1 COLUMN: GOALIE CARD STREAM (SIDE-BY-SIDE ON DESKTOP) */}
+                    <div className="p-5 bg-muted/30 border border-border rounded-[28px] flex flex-col h-[650px] lg:h-full min-h-0 relative">
+                        {/* THREAD HEADER & CONTROLS */}
+                        <div className="pb-3.5 border-b border-border mb-3 space-y-2 shrink-0">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                                    {isEditingTitle ? (
+                                        <div className="flex items-center gap-1 flex-1">
+                                            <input
+                                                type="text"
+                                                defaultValue={activeThreadTitle}
+                                                onChange={(e) => setTitleInput(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleSaveTitle();
+                                                    if (e.key === 'Escape') setIsEditingTitle(false);
+                                                }}
+                                                autoFocus
+                                                className="px-2 py-0.5 text-xs bg-background border border-foreground rounded font-bold text-foreground w-full focus:outline-none"
+                                            />
+                                            <button
+                                                onClick={handleSaveTitle}
+                                                className="p-1 text-emerald-500 hover:text-emerald-400"
+                                            >
+                                                <Check size={14} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                            <h3 className="text-sm font-bold text-foreground truncate" title={activeThreadTitle}>
+                                                {activeThreadTitle}
+                                            </h3>
+                                            <button
+                                                onClick={() => {
+                                                    setTitleInput(activeThreadTitle);
+                                                    setIsEditingTitle(true);
+                                                }}
+                                                className="text-muted-foreground hover:text-foreground transition-colors p-0.5 flex-shrink-0"
+                                                title="Rename Chat"
+                                            >
+                                                <Edit2 size={12} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
 
-            {/* Season Contract & Goals Modal */}
-            {contractModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-card border border-border rounded-3xl w-full max-w-lg p-6 sm:p-7 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between pb-3 border-b border-border">
-                            <div className="flex items-center gap-2">
-                                <Trophy size={18} className="text-[#00E676]" />
-                                <h3 className="text-base font-bold text-foreground m-0">Season Contract & Goals</h3>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowThreadDrawer(prev => !prev)}
+                                        className="px-2.5 py-1 bg-background hover:bg-muted border border-border rounded-xl text-[11px] font-bold text-foreground transition-all flex items-center gap-1 shadow-sm"
+                                        title="View Chat History by Date"
+                                    >
+                                        <History size={12} />
+                                        <span>Chats ({threads.length || 1})</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleNewThread}
+                                        className="px-2.5 py-1 bg-foreground text-background hover:bg-foreground/90 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
+                                        title="Start New Chat"
+                                    >
+                                        <Plus size={12} />
+                                        <span>New</span>
+                                    </button>
+                                </div>
                             </div>
+                        </div>
+
+                        {/* THREADS POPUP / DRAWER */}
+                        <AnimatePresence>
+                            {showThreadDrawer && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="absolute top-20 left-4 right-4 z-50 bg-card border border-border shadow-2xl rounded-2xl p-4 max-h-[400px] overflow-y-auto space-y-2"
+                                >
+                                    <div className="flex items-center justify-between pb-2 border-b border-border">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                                            <History size={14} />
+                                            Saved Conversations by Date
+                                        </h4>
+                                        <button
+                                            onClick={() => setShowThreadDrawer(false)}
+                                            className="text-muted-foreground hover:text-foreground"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-1.5 pt-1">
+                                        {threads.length === 0 ? (
+                                            <p className="text-xs text-muted-foreground py-3 text-center">No past chats recorded yet.</p>
+                                        ) : (
+                                            threads.map((t) => (
+                                                <button
+                                                    key={t.id}
+                                                    onClick={() => handleSelectThread(t)}
+                                                    className={`w-full p-2.5 rounded-xl border text-left text-xs transition-all flex flex-col gap-1 ${
+                                                        activeThreadId === t.id
+                                                            ? 'bg-foreground text-background border-foreground font-bold'
+                                                            : 'bg-muted/40 border-border text-foreground hover:bg-muted'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between w-full">
+                                                        <span className="font-bold truncate">{t.title}</span>
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${activeThreadId === t.id ? 'bg-background/20 text-background' : 'bg-background border border-border text-muted-foreground'}`}>
+                                                            {t.date}
+                                                        </span>
+                                                    </div>
+                                                    {t.lastMessage && (
+                                                        <p className={`text-[11px] truncate ${activeThreadId === t.id ? 'text-background/80' : 'text-muted-foreground'}`}>
+                                                            {t.lastMessage}
+                                                        </p>
+                                                    )}
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+
+                                    <div className="pt-2 border-t border-border flex justify-end">
+                                        <button
+                                            onClick={handleNewThread}
+                                            className="w-full py-2 bg-foreground text-background text-xs font-bold rounded-xl flex items-center justify-center gap-1.5"
+                                        >
+                                            <Plus size={14} />
+                                            Start New Chat for Today
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Messages Feed */}
+                        <div className="flex-1 overflow-y-auto min-h-0 space-y-3.5 pr-1 mb-3 text-xs md:text-sm">
+                            {messages.map((msg) => {
+                                const cardData = msg.actionCard?.data || {};
+                                const isTrainingCard = msg.actionCard && (
+                                    msg.actionCard.type === 'training_session' ||
+                                    msg.actionCard.type === 'logged_session' ||
+                                    msg.actionCard.type === 'prescribed_protocol'
+                                );
+                                const isCalendarCard = msg.actionCard && msg.actionCard.type === 'calendar_event';
+
+                                return (
+                                    <div
+                                        key={msg.id}
+                                        className={`flex flex-col ${msg.sender === 'goalie' ? 'items-end' : 'items-start'}`}
+                                    >
+                                        <div className="flex items-center gap-1.5 mb-1 px-1">
+                                            <span className="text-[10px] font-semibold text-muted-foreground">
+                                                {msg.sender === 'goalie' ? 'You' : 'Goalie Card'}
+                                            </span>
+                                            {msg.sender === 'goalie_card' && msg.provenance && (
+                                                <span 
+                                                    className={`text-[9px] px-1.5 py-0.5 rounded-md font-mono font-bold tracking-tight ${
+                                                        msg.provenance.mode === 'AI_COACH' 
+                                                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' 
+                                                            : (msg.provenance.mode === 'DETERMINISTIC_ACTION' 
+                                                                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30' 
+                                                                : 'bg-zinc-500/15 text-zinc-500 dark:text-zinc-400 border border-zinc-500/30')
+                                                    }`}
+                                                    title={`Mode: ${msg.provenance.mode} | History-Through: ${msg.provenance.historyThroughDate} | Lookahead: ${msg.provenance.lookaheadSource}`}
+                                                >
+                                                    {msg.provenance.mode}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div
+                                            className={`max-w-[92%] p-3.5 rounded-2xl leading-relaxed ${
+                                                msg.sender === 'goalie'
+                                                    ? 'bg-foreground text-background rounded-tr-sm font-medium'
+                                                    : 'bg-background border border-border text-foreground rounded-tl-sm shadow-sm'
+                                            }`}
+                                        >
+                                            <div className="space-y-2">
+                                                {msg.text.split('\n\n').map((paragraph, pIdx) => {
+                                                    if (paragraph.startsWith('### ')) {
+                                                        return (
+                                                            <h4 key={pIdx} className="text-xs md:text-sm font-bold text-foreground tracking-tight border-b border-border/50 pb-1 mt-1">
+                                                                {paragraph.replace('### ', '')}
+                                                            </h4>
+                                                        );
+                                                    }
+                                                    if (paragraph.startsWith('* ') || paragraph.startsWith('- ')) {
+                                                        const items = paragraph.split('\n');
+                                                        return (
+                                                            <ul key={pIdx} className="space-y-1 my-1 pl-3.5 list-disc list-outside text-xs">
+                                                                {items.map((it, itIdx) => {
+                                                                    const cleanIt = it.replace(/^[\*\-]\s+/, '');
+                                                                    return (
+                                                                        <li key={itIdx} className="leading-snug">
+                                                                            <span dangerouslySetInnerHTML={{
+                                                                                __html: cleanIt.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                                            }} />
+                                                                        </li>
+                                                                    );
+                                                                })}
+                                                            </ul>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <p key={pIdx} className="leading-relaxed text-xs md:text-sm" dangerouslySetInnerHTML={{
+                                                            __html: paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                        }} />
+                                                    );
+                                                })}
+
+                                                {/* ACTION CARDS: TRAINING (TWO SEPARATE BUTTONS) */}
+                                                {msg.sender === 'goalie_card' && isTrainingCard && (
+                                                    <div className="mt-3 pt-3 border-t border-border/60 space-y-2.5">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className="text-[11px] font-bold text-foreground flex items-center gap-1.5 truncate">
+                                                                <Dumbbell size={13} className="text-emerald-500 flex-shrink-0" />
+                                                                <span className="truncate">{msg.actionCard?.title || "Recognized Training"}</span>
+                                                            </span>
+                                                            {cardData.duration && (
+                                                                <span className="text-[10px] font-semibold text-muted-foreground flex-shrink-0">
+                                                                    {cardData.duration}m
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {cardData.details && (
+                                                            <p className="text-[11px] text-muted-foreground italic leading-tight">
+                                                                {cardData.details}
+                                                            </p>
+                                                        )}
+
+                                                        <div className="flex items-center gap-2 pt-1">
+                                                            {/* Button 1: Add to Training */}
+                                                            <button
+                                                                type="button"
+                                                                disabled={addedToTrainingIds.has(msg.id)}
+                                                                onClick={() => handleAddToTraining(msg)}
+                                                                className={`flex-1 py-1.5 px-2.5 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1.5 transition-all shadow-sm ${
+                                                                    addedToTrainingIds.has(msg.id)
+                                                                        ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 cursor-default'
+                                                                        : 'bg-foreground text-background hover:bg-foreground/90'
+                                                                }`}
+                                                            >
+                                                                {addedToTrainingIds.has(msg.id) ? (
+                                                                    <>
+                                                                        <Check size={12} />
+                                                                        <span>Added to Training</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Plus size={12} />
+                                                                        <span>Add to Training</span>
+                                                                    </>
+                                                                )}
+                                                            </button>
+
+                                                            {/* Button 2: Add to Calendar */}
+                                                            <button
+                                                                type="button"
+                                                                disabled={addedToCalendarIds.has(msg.id)}
+                                                                onClick={() => handleAddToCalendar(msg)}
+                                                                className={`flex-1 py-1.5 px-2.5 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1.5 transition-all border shadow-sm ${
+                                                                    addedToCalendarIds.has(msg.id)
+                                                                        ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 cursor-default'
+                                                                        : 'bg-background hover:bg-muted border-border text-foreground'
+                                                                }`}
+                                                            >
+                                                                {addedToCalendarIds.has(msg.id) ? (
+                                                                    <>
+                                                                        <Check size={12} />
+                                                                        <span>Added to Calendar</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <CalendarIcon size={12} />
+                                                                        <span>Add to Calendar</span>
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* ACTION CARDS: CALENDAR EVENT (SINGLE BUTTON) */}
+                                                {msg.sender === 'goalie_card' && isCalendarCard && (
+                                                    <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className="text-[11px] font-bold text-foreground flex items-center gap-1.5 truncate">
+                                                                <CalendarIcon size={13} className="text-sky-500 flex-shrink-0" />
+                                                                <span className="truncate">{msg.actionCard?.title || "Calendar Event"}</span>
+                                                            </span>
+                                                            <span className="text-[10px] font-semibold text-muted-foreground">
+                                                                {cardData.date || todayDateStr}
+                                                            </span>
+                                                        </div>
+
+                                                        {cardData.time && (
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                Time: {cardData.time} • {cardData.location || "Rink"}
+                                                            </p>
+                                                        )}
+
+                                                        <div className="pt-1">
+                                                            <button
+                                                                type="button"
+                                                                disabled={addedToCalendarIds.has(msg.id)}
+                                                                onClick={() => handleAddToCalendar(msg)}
+                                                                className={`w-full py-1.5 px-2.5 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1.5 transition-all shadow-sm ${
+                                                                    addedToCalendarIds.has(msg.id)
+                                                                        ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 cursor-default'
+                                                                        : 'bg-foreground text-background hover:bg-foreground/90'
+                                                                }`}
+                                                            >
+                                                                {addedToCalendarIds.has(msg.id) ? (
+                                                                    <>
+                                                                        <Check size={12} />
+                                                                        <span>Added to Calendar</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Plus size={12} />
+                                                                        <span>Add to Calendar</span>
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {isSendingChat && (
+                                <div className="flex flex-col items-start animate-fade-in">
+                                    <span className="text-[10px] font-semibold text-muted-foreground mb-1 px-1">Goalie Card</span>
+                                    <div className="bg-background border border-border text-foreground rounded-2xl rounded-tl-sm px-3.5 py-3 flex items-center gap-1.5 shadow-sm">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Quick Prompts */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 no-scrollbar text-[11px] shrink-0">
                             <button
-                                onClick={() => setContractModalOpen(false)}
-                                className="p-1 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                onClick={() => handleSendMessage("Logged: 38-min Deck of Cards HIIT workout today (burpees, push-ups, squats, planks). Groin is slightly tight.")}
+                                className="flex-shrink-0 px-2.5 py-1 rounded-full bg-background border border-border text-muted-foreground hover:text-foreground font-medium transition-all"
                             >
-                                <X size={18} />
+                                38m HIIT
+                            </button>
+                            <button
+                                onClick={() => handleSendMessage("Logged: 50-min Stick 'n Puck on-ice session focusing on crease depth.")}
+                                className="flex-shrink-0 px-2.5 py-1 rounded-full bg-background border border-border text-muted-foreground hover:text-foreground font-medium transition-all"
+                            >
+                                50m On-Ice
+                            </button>
+                            <button
+                                onClick={() => handleSendMessage("Explain the 90/90 hip capsule flow and why it helps my butterfly recovery")}
+                                className="flex-shrink-0 px-2.5 py-1 rounded-full bg-background border border-border text-muted-foreground hover:text-foreground font-medium transition-all"
+                            >
+                                Explain 90/90
+                            </button>
+                            <button
+                                onClick={() => handleSendMessage("I have a stick 'n puck skate on Thursday at 2pm. Can you put that on my calendar?")}
+                                className="flex-shrink-0 px-2.5 py-1 rounded-full bg-background border border-border text-muted-foreground hover:text-foreground font-medium transition-all"
+                            >
+                                Schedule Skate
                             </button>
                         </div>
 
-                        <form onSubmit={handleSaveContract} className="space-y-4">
-                            {/* Season & Team & Level */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Season</label>
-                                    <input
-                                        type="text"
-                                        value={editForm.season}
-                                        onChange={(e) => setEditForm(prev => ({ ...prev, season: e.target.value }))}
-                                        placeholder="e.g. 2026–2027"
-                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:border-[#00E676]"
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Team</label>
-                                    <input
-                                        type="text"
-                                        value={editForm.team}
-                                        onChange={(e) => setEditForm(prev => ({ ...prev, team: e.target.value }))}
-                                        placeholder="e.g. Varsity / Prep"
-                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:border-[#00E676]"
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Level</label>
-                                    <input
-                                        type="text"
-                                        value={editForm.level}
-                                        onChange={(e) => setEditForm(prev => ({ ...prev, level: e.target.value }))}
-                                        placeholder="e.g. College / Committed"
-                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:border-[#00E676]"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Goals */}
-                            <div className="space-y-3 pt-1">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Primary Season Goal</label>
-                                    <input
-                                        type="text"
-                                        value={editForm.primaryGoal}
-                                        onChange={(e) => setEditForm(prev => ({ ...prev, primaryGoal: e.target.value }))}
-                                        placeholder="e.g. Dominate crease depth and hold edges on low-angle releases."
-                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-[#00E676]"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Technical / Movement Focus</label>
-                                    <input
-                                        type="text"
-                                        value={editForm.technicalGoal}
-                                        onChange={(e) => setEditForm(prev => ({ ...prev, technicalGoal: e.target.value }))}
-                                        placeholder="e.g. Arrive set before shot release with zero wasted slide motion."
-                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-[#00E676]"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Recovery & Joint Longevity Goal</label>
-                                    <input
-                                        type="text"
-                                        value={editForm.recoveryGoal}
-                                        onChange={(e) => setEditForm(prev => ({ ...prev, recoveryGoal: e.target.value }))}
-                                        placeholder="e.g. Daily 90/90 hip capsule flow & active tissue recovery."
-                                        className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-[#00E676]"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Goalie Signature */}
-                            <div className="space-y-1 pt-1">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Goalie Signature</label>
-                                <input
-                                    type="text"
-                                    value={editForm.signedBy}
-                                    onChange={(e) => setEditForm(prev => ({ ...prev, signedBy: e.target.value }))}
-                                    placeholder="Your Full Name"
-                                    className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-bold text-foreground focus:outline-none focus:border-[#00E676]"
-                                    required
-                                />
-                            </div>
-
-                            {/* Commitment Agreement */}
-                            <div className="p-3 bg-muted/40 border border-border rounded-xl text-[11px] text-muted-foreground leading-relaxed">
-                                <span className="font-semibold text-foreground block mb-0.5">The Goalie Commitment:</span>
-                                "I commit to the daily process over outcome. This system trains with my season, not against it. When games or life shift my schedule, the plan adapts with me."
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-                                <button
-                                    type="button"
-                                    onClick={() => setContractModalOpen(false)}
-                                    className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-5 py-2 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-                                >
-                                    <Check size={14} />
-                                    <span>Sign & Save Contract</span>
-                                </button>
-                            </div>
+                        {/* Chat Input */}
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleSendMessage();
+                            }}
+                            className="relative flex items-center shrink-0"
+                        >
+                            <input
+                                type="text"
+                                value={inputText}
+                                onChange={(e) => setInputText(e.target.value)}
+                                placeholder="Message Goalie Card, log training, or schedule..."
+                                disabled={isSendingChat}
+                                className="w-full bg-background border border-border rounded-xl pl-3.5 pr-10 py-2.5 text-xs md:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground transition-all"
+                            />
+                            <button
+                                type="submit"
+                                disabled={!inputText.trim() || isSendingChat}
+                                className="absolute right-1.5 p-1.5 rounded-lg bg-foreground text-background disabled:opacity-40 hover:opacity-90 transition-all"
+                            >
+                                <Send size={14} />
+                            </button>
                         </form>
                     </div>
                 </div>
-            )}
-
-            {/* Mobile Bottom Navigation */}
-            <MobileBottomNav />
+            </main>
         </div>
     );
 }

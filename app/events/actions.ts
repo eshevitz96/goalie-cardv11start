@@ -124,7 +124,7 @@ export async function deleteEvent(eventId: string) {
 
     try {
         // 1. Get current user using the correct server-side client (reads cookies)
-        const supabaseServer = createSupabaseServerClient();
+        const supabaseServer = await createSupabaseServerClient();
         const { data: { user }, error: authError } = await supabaseServer.auth.getUser();
 
         if (authError || !user) {

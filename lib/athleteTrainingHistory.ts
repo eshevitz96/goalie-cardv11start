@@ -26,11 +26,11 @@ export const ATHLETE_PROFILE_METRICS = {
   sport: "Ice Hockey",
   position: "Goaltender",
   age: 29,
-  trainingObjective: "Return to competitive hockey / determine highest attainable level",
-  program: "Goalie Card / Coach Alpha",
+  trainingObjective: "Professional Goalie / Highest Attainable Level - Be the best version of me",
+  program: "Goalie Card / Coach Card",
   startDate: "2026-06-22",
-  historyThrough: "2026-09-11",
-  targetTeam: "Atlanta Gladiators / highest attainable level",
+  historyThrough: "2026-09-16",
+  targetTeam: "Professional Goalie",
   baselines: {
     fiveKPace: "7:36",
     benchPress: "225 lb (5 x 5)",
@@ -39,10 +39,10 @@ export const ATHLETE_PROFILE_METRICS = {
     rdlWorkingWeight: "70 lb",
     bulgarianSplitSquat: "30–35 lb DBs",
     singleLegRdl: "35 lb",
-    inclineDbPress: "60–65 lb",
+    inclineDbPress: "65 lb x 10 AMRAP (positive signal)",
     singleArmRow: "65–70 lb",
     dbShoulderPress: "40 lb",
-    pullUps: "4 x 6",
+    pullUps: "4 x 6 (solid/high perceived quality)",
     farmerSuitcaseCarry: "75 lb"
   },
   currentWeeklyModel: {
@@ -53,14 +53,24 @@ export const ATHLETE_PROFILE_METRICS = {
     recovery: "Dynamic Mobility, Yoga, & Goalie Hip Protocols"
   },
   currentCues: [
-    "Sit into edges.",
-    "Get low.",
-    "Load the leg.",
-    "Push the floor/ice away.",
-    "Stick the landing.",
+    "Keep it simple.",
+    "Sit into your edges.",
+    "Get low → load the leg → push the floor away → control the landing.",
     "Arrive set.",
-    "Angles → depth → arrive set → read → save."
-  ]
+    "Angles → depth → arrive set → read → save.",
+    "Compact stance → patience → post-shot agility."
+  ],
+  lacrosseCoachingCues: [
+    "Eyes lead hands.",
+    "Arc around the ball.",
+    "Reverse cradle through the save.",
+    "Light hands, loose on all shots.",
+    "Step directly to the ball."
+  ],
+  lacrosseShotLevels: {
+    primaryLevels: ["High", "Hips", "Low"],
+    descriptorNote: "Shoulder is a placement descriptor of ball path, not a primary plane."
+  }
 };
 
 export const ATHLETE_TRAINING_HISTORY: AthleteTrainingEntry[] = [
@@ -531,5 +541,159 @@ export const ATHLETE_TRAINING_HISTORY: AthleteTrainingEntry[] = [
     coachNotes: "Athlete is no longer limited by general physical capacity. Focus is 100% on ice volume, edge calibration, angles, depth, reads & rebound control.",
     cues: ["Angles → depth → arrive set → read → save.", "Sit into your edges."],
     sport: "Ice Hockey"
+  },
+  {
+    id: "ath-2026-09-13-run",
+    date: "2026-09-13",
+    title: "Aerobic Workload: 4-Mile Run",
+    type: "off_ice",
+    confidence: "EXACT",
+    phase: "September — Goalie-First Phase",
+    location: "Outdoor / Trail",
+    conditioning: "Run: 4 miles",
+    notes: "Meaningful lower-body/aerobic workload preceding subsequent training.",
+    athleteReflection: "Completed 4 miles. No detailed pace, duration, RPE, soreness, or heart-rate data documented.",
+    coachNotes: "Treat as meaningful aerobic/lower-body workload preceding subsequent training. Do not infer intensity.",
+    sport: "Ice Hockey"
+  },
+  {
+    id: "ath-2026-09-14-lawnmow",
+    date: "2026-09-14",
+    title: "General Activity Workload: Lawn Mowing (~2 Hours)",
+    type: "recovery",
+    confidence: "EXACT",
+    phase: "September — Goalie-First Phase",
+    location: "Outdoor / Home",
+    notes: "Unstructured physical workload: approximately 2 hours of standing, walking, and general physical activity. Contributes to recent cumulative workload context.",
+    coachNotes: "Unstructured workload context. Do not automatically classify athlete as fatigued because of this event.",
+    sport: "Ice Hockey"
+  },
+  {
+    id: "ath-2026-09-15-yoga-am",
+    date: "2026-09-15",
+    time: "09:00:00",
+    title: "Yoga with Adriene: Center Journey (Day 16)",
+    type: "recovery",
+    confidence: "EXACT",
+    phase: "September — Goalie-First Phase",
+    location: "Home / Studio",
+    recovery: ["Yoga with Adriene — Center Journey Day 16"],
+    notes: "Mobility and physical workload exposure. No negative response reported.",
+    coachNotes: "Yoga counts as physical workload/mobility exposure rather than being automatically classified as zero-load recovery.",
+    sport: "Ice Hockey"
+  },
+  {
+    id: "ath-2026-09-15-strength-pm",
+    date: "2026-09-15",
+    time: "17:00:00",
+    title: "Controlled Full-Body Strength & Power (Pre-Ice Calibration)",
+    type: "off_ice",
+    confidence: "EXACT",
+    phase: "September — Goalie-First Phase",
+    location: "Planet Fitness",
+    warmup: "Bike: 10:00, 2.3 miles, resistance 1",
+    athletic: [
+      "Skater bounds: Completed (initial balance off on some repetitions, self-corrected)",
+      "Box jumps: Completed (initial balance off on some repetitions, self-corrected)"
+    ],
+    strength: [
+      "Pull-ups: Completed ('solid... like really solid')",
+      "Incline DB Press: Final set 65 lb x 10 AMRAP (70 lb not attempted — INTENTIONALLY_HELD)",
+      "Smith Front Squat: Worked through 55 lb/side (60 lb/side not attempted — INTENTIONALLY_HELD)",
+      "RDL: Completed after front squats/upper work (exact load/reps unconfirmed; 'did the rdls then left')"
+    ],
+    notes: "Planned but NOT completed: Suitcase carries, Dead bugs (athlete stopped after RDLs). Autoregulatory decision: Intentionally preserved reserve before next-day hockey. Tags: high_readiness, controlled_loading, intentionally_submaximal, pre_ice_strength, movement_self_correction, positive_upper_strength_signal, autoregulatory_decision.",
+    athleteReflection: "\"didn't chase 70 on incline. didn't chase 60 on front squat. nothing bad. just didn't want to go to hard today. felt good all other reps... ok did the rdls then left.\"",
+    coachNotes: "Intentional autoregulation rather than inability, pain, or failed performance. Incline DB exceeded normal rep target (65x10). Movement self-correction observed on jumps/bounds. Preserved reserve for Sept 16 hockey.",
+    sport: "Ice Hockey"
+  },
+  {
+    id: "ath-2026-09-16-ice-benchmark",
+    date: "2026-09-16",
+    time: "11:00:00",
+    title: "On-Ice Benchmark: Automaticity & Control (Stick-and-Puck)",
+    type: "on_ice",
+    confidence: "EXACT",
+    phase: "September — Goalie-First Phase",
+    location: "Ice Arena Rink",
+    athletic: [
+      "Stick-and-puck live shooting session (Colin, U18 shooter: 0 goals allowed)",
+      "Goals against: 3 breakaways, several multi-rebound sequence goals (~4 saves before goal)",
+      "Multiple high-quality saves with strong edge depth and tracking"
+    ],
+    notes: "BENCHMARK SESSION: Automaticity + Control. Athlete reported highest confidence of comeback. Body felt loose, strong, and automatically executed required movements. Stance tighter/more compact with increased patience and post-shot agility. Transient goalie-specific hip soreness bounced back quickly.",
+    athleteReflection: "\"The most confident that I was on the ice yet. The body was just loose because the mind was going slow, and my body just did what I needed to do. My angles were great.\"",
+    coachNotes: "LEARNING EVENT / HYPOTHESIS (Confidence: LOW/EMERGING): Controlled submaximal strength/power with preserved reserve ~24h prior may support next-day neuromuscular readiness and automaticity. Movement cues: 'Keep it simple.' (emerging) & 'Sit into your edges.' Rebound control and sequence termination identified as next development areas. ECHL/AHL aspirations noted as athlete belief/aspiration.",
+    cues: [
+      "Keep it simple.",
+      "Sit into your edges.",
+      "Compact stance → patience → post-shot agility."
+    ],
+    sport: "Ice Hockey"
   }
 ];
+
+// ============================================================================
+// COACH CARD EPISTEMIC HIERARCHY & OPERATING MANDATE
+// ============================================================================
+
+export type EpistemicClassification =
+  | 'FACT'
+  | 'ATHLETE_REPORT'
+  | 'COACH_OBSERVATION'
+  | 'HYPOTHESIS'
+  | 'EMERGING_PATTERN'
+  | 'ESTABLISHED_PATTERN';
+
+export interface LearnedPatternEntry {
+  id: string;
+  classification: EpistemicClassification;
+  title: string;
+  sequenceContext: string[];
+  observedOutcome: string;
+  hypothesis: string;
+  confidence: 'LOW' | 'EMERGING' | 'MODERATE' | 'HIGH';
+  replicationsCount: number;
+  nextVerificationTest: string;
+  associatedCues: string[];
+  dateLogged: string;
+}
+
+export const LEARNED_PATTERNS: LearnedPatternEntry[] = [
+  {
+    id: "pat-2026-09-16-preice-reserve",
+    classification: "HYPOTHESIS",
+    title: "Controlled Pre-Ice Strength/Power with Preserved Reserve → Neuromuscular Readiness",
+    sequenceContext: [
+      "2026-09-13: 4-mile run (aerobic load)",
+      "2026-09-14: ~2 hours lawn mowing (unstructured load)",
+      "2026-09-15 AM: Yoga Day 16 (mobility/physical load)",
+      "2026-09-15 PM: Controlled strength + power (no maximal progression, intentionally held reserve)",
+      "2026-09-16: Stick-and-puck benchmark skate"
+    ],
+    observedOutcome: "Loose, strong, high confidence, automatic movement, compact stance, patience, strong angles, rapid transient soreness bounce-back.",
+    hypothesis: "Controlled submaximal strength/power performed ~18–30h before hockey, provided volume/intensity remain submaximal and sufficient reserve is preserved, may support next-day neuromuscular readiness and automatic goalie movement.",
+    confidence: "EMERGING",
+    replicationsCount: 1,
+    nextVerificationTest: "Reproduce a similar preparation sequence before an upcoming hockey session and compare leg heaviness, edge quality, stance compactness, patience, automaticity, and post-shot recovery.",
+    associatedCues: ["Keep it simple.", "Sit into your edges."],
+    dateLogged: "2026-09-16"
+  }
+];
+
+export const COACH_CARD_OPERATING_MANDATE = {
+  version: "2026-09-16",
+  programName: "Coach Card",
+  authoritativeSource: "Athlete Track (lib/athleteTrainingHistory.ts)",
+  coreLoop: "OBSERVE → DECIDE → PERFORM → REFLECT → LEARN → RE-DECIDE",
+  mandateRules: [
+    "Treat the Athlete Track as the authoritative historical record for Coach Card.",
+    "Coach Card must reason from timestamped completed activity, athlete reflections, upcoming performance events, and learned patterns.",
+    "Do not rely on conversational memory when equivalent structured Athlete Track data exists.",
+    "Never infer that a planned Mission was completed.",
+    "Never promote a single successful sequence into an established causal rule.",
+    "Preserve the strict distinction between FACT, ATHLETE REPORT, COACH OBSERVATION, HYPOTHESIS, EMERGING PATTERN, and ESTABLISHED PATTERN.",
+    "The objective is not to maximize workout completion.",
+    "The objective is to improve the next relevant athletic performance while building an increasingly accurate longitudinal model of the athlete."
+  ]
+};

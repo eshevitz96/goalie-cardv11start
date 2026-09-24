@@ -38,7 +38,6 @@ import {
   X,
   Trash2
 } from "lucide-react";
-import { ATHLETE_TRAINING_HISTORY, ATHLETE_PROFILE_METRICS } from "@/lib/athleteTrainingHistory";
 import { getCalendarPrivateLessons, fetchCoachOSData, saveCalendarLessonUpdate, deleteCalendarLesson, createCalendarPrivateLesson } from "@/app/training/book/actions";
 import { extractTakeawaysFromNotes } from "@/lib/utils";
 import { useToast } from "@/context/ToastContext";
@@ -387,37 +386,35 @@ export default function CalendarPage() {
         setPractices([]);
       }
 
-      // 4b. Load Pro Hockey Goalie Training Schedule (Athlete Track)
+      // 4b. Load Pro Hockey Goalie Training Schedule from database (training_sessions)
       const hockeySchedule: any[] = [];
       const historyDateSet = new Set<string>();
 
-      // 1. Add all exact and reconstructed historical sessions from Coach Alpha training dossier
-      ATHLETE_TRAINING_HISTORY.forEach(item => {
-        historyDateSet.add(item.date);
-        hockeySchedule.push({
-          id: item.id,
-          title: item.title,
-          scheduled_date: item.date,
-          scheduled_time: item.time || "09:00:00",
-          date: item.date,
-          location: item.location || "Ice Arena / Gym",
-          focus: item.notes || (item.strength ? item.strength.join(', ') : (item.athletic ? item.athletic.join(', ') : "")),
-          type: item.type,
-          confidence: item.confidence,
-          phase: item.phase,
-          strength: item.strength,
-          athletic: item.athletic,
-          balance: item.balance,
-          core: item.core,
-          warmup: item.warmup,
-          recovery: item.recovery,
-          notes: item.notes,
-          athleteReflection: item.athleteReflection,
-          coachNotes: item.coachNotes,
-          cues: item.cues,
-          sport: "Ice Hockey"
+      if (uid && uid !== "00000000-0000-0000-0000-000000000000") {
+        const { data: dbTrainingSessions } = await supabase
+          .from("training_sessions")
+          .select("*")
+          .or(`user_id.eq.${publicUserId || uid},user_id.eq.${uid}`)
+          .gte("session_date", startStr)
+          .lte("session_date", endStr);
+
+        (dbTrainingSessions || []).forEach(item => {
+          historyDateSet.add(item.session_date);
+          hockeySchedule.push({
+            id: item.id,
+            title: item.title || "Goalie Training Session",
+            scheduled_date: item.session_date,
+            scheduled_time: "09:00:00",
+            date: item.session_date,
+            location: "Ice Arena / Gym",
+            focus: item.notes_summary || "",
+            type: item.training_type || "off_ice",
+            duration_minutes: item.duration_minutes || 45,
+            notes: item.notes_summary || "",
+            sport: "Ice Hockey"
+          });
         });
-      });
+      }
 
       // 2. Project ongoing weekly model for future dates starting post-import (Sept 12, 2026 onwards)
       const futureStart = new Date("2026-09-12T00:00:00");
@@ -426,6 +423,12 @@ export default function CalendarPage() {
 
       while (curr <= rangeEnd) {
         const dateKey = formatDateKey(curr);
+        // Do not generate recurring template sessions on dates where athlete history is already recorded
+        if (historyDateSet.has(dateKey)) {
+          curr.setDate(curr.getDate() + 1);
+          continue;
+        }
+
         const dayOfWeek = curr.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
 
         if (dayOfWeek === 3) { // Wednesday: Ice / Development
@@ -693,24 +696,24 @@ export default function CalendarPage() {
       return {
         category: 'strength',
         tag: 'WORKOUT',
-        chipClass: 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/35 hover:border-amber-400 text-amber-300',
-        dotClass: 'bg-amber-400',
-        tagClass: 'bg-amber-400 text-black font-black',
-        cardClass: 'bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40',
-        accentColor: '#F59E0B'
+        chipClass: 'bg-[#FEF3C7] border border-[#FDE68A] text-[#0F172A] font-semibold',
+        dotClass: 'bg-[#D97706]',
+        tagClass: 'bg-[#FEF3C7] border border-[#FCD34D] text-[#B45309] font-bold tracking-wider text-[9px] px-2 py-0.5 rounded-md',
+        cardClass: 'bg-[#FEFAF0] border border-[#FDE68A] hover:border-[#FCD34D] hover:bg-[#FDF4DF]',
+        accentColor: '#D97706'
       };
     }
 
-    // 1. Coaching Lessons / Client Bookings (Coach Track - Lacrosse) -> Emerald #00E676
+    // 1. Coaching Lessons / Client Bookings (Coach Track - Lacrosse)
     if (item.athlete_name || item.session_number || item.lesson_number || item.roster_id) {
       return {
         category: 'coaching',
         tag: 'COACHING',
-        chipClass: 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/35 hover:border-emerald-400 text-emerald-300',
-        dotClass: 'bg-[#00E676]',
-        tagClass: 'bg-[#00E676] text-black font-black',
-        cardClass: 'bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40',
-        accentColor: '#00E676'
+        chipClass: 'bg-[#DCFCE7] border border-[#BBF7D0] text-[#0F172A] font-semibold',
+        dotClass: 'bg-[#16A34A]',
+        tagClass: 'bg-[#DCFCE7] border border-[#86EFAC] text-[#15803D] font-bold tracking-wider text-[9px] px-2 py-0.5 rounded-md',
+        cardClass: 'bg-[#F0FDF4] border border-[#BBF7D0] hover:border-[#86EFAC] hover:bg-[#DCFCE7]/60',
+        accentColor: '#16A34A'
       };
     }
 
@@ -719,11 +722,11 @@ export default function CalendarPage() {
       return {
         category: 'practice',
         tag: 'PRACTICE',
-        chipClass: 'bg-blue-500/20 hover:bg-blue-500/30 border-blue-500/35 hover:border-blue-400 text-blue-300',
-        dotClass: 'bg-blue-400',
-        tagClass: 'bg-blue-500/20 text-blue-400 border border-blue-500/30 font-black',
-        cardClass: 'bg-blue-500/5 hover:bg-blue-500/10 border-blue-500/20 hover:border-blue-500/30',
-        accentColor: '#60A5FA'
+        chipClass: 'bg-[#DBEAFE] border border-[#BFDBFE] text-[#0F172A] font-semibold',
+        dotClass: 'bg-[#2563EB]',
+        tagClass: 'bg-[#DBEAFE] border border-[#93C5FD] text-[#1D4ED8] font-bold tracking-wider text-[9px] px-2 py-0.5 rounded-md',
+        cardClass: 'bg-[#F0F6FF] border border-[#BFDBFE] hover:border-[#93C5FD] hover:bg-[#DBEAFE]/60',
+        accentColor: '#2563EB'
       };
     }
 
@@ -732,11 +735,11 @@ export default function CalendarPage() {
       return {
         category: 'game',
         tag: 'GAME',
-        chipClass: 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/35 hover:border-rose-400 text-rose-300',
-        dotClass: 'bg-rose-400',
-        tagClass: 'bg-rose-500 text-white font-black',
-        cardClass: 'bg-rose-500/5 hover:bg-rose-500/10 border-rose-500/20 hover:border-rose-500/30',
-        accentColor: '#F43F5E'
+        chipClass: 'bg-[#FFE4E6] border border-[#FECDD3] text-[#0F172A] font-semibold',
+        dotClass: 'bg-[#E11D48]',
+        tagClass: 'bg-[#FFE4E6] border border-[#FDA4AF] text-[#BE123C] font-bold tracking-wider text-[9px] px-2 py-0.5 rounded-md',
+        cardClass: 'bg-[#FFF1F2] border border-[#FECDD3] hover:border-[#FDA4AF] hover:bg-[#FFE4E6]/60',
+        accentColor: '#E11D48'
       };
     }
 
@@ -757,15 +760,15 @@ export default function CalendarPage() {
       return {
         category: 'recovery',
         tag: 'RECOVERY',
-        chipClass: 'bg-purple-500/15 hover:bg-purple-500/25 border-purple-500/35 hover:border-purple-400 text-purple-300',
-        dotClass: 'bg-purple-400',
-        tagClass: 'bg-purple-500/20 text-purple-300 border border-purple-500/30 font-black',
-        cardClass: 'bg-purple-500/5 hover:bg-purple-500/10 border-purple-500/20 hover:border-purple-500/40',
-        accentColor: '#A855F7'
+        chipClass: 'bg-[#F3E8FF] border border-[#DDD6FE] text-[#0F172A] font-semibold',
+        dotClass: 'bg-[#9333EA]',
+        tagClass: 'bg-[#F3E8FF] border border-[#D8B4FE] text-[#7E22CE] font-bold tracking-wider text-[9px] px-2 py-0.5 rounded-md',
+        cardClass: 'bg-[#FAF5FF] border border-[#E9D5FF] hover:border-[#D8B4FE] hover:bg-[#F3E8FF]/60',
+        accentColor: '#9333EA'
       };
     }
 
-    // 5. On-Ice Training, Hockey Skates, Stick-and-Puck -> Electric Ice Cyan
+    // 5. On-Ice Training, Hockey Skates, Stick-and-Puck -> Ice Cyan / Sky
     if (
       type === 'on_ice' || 
       title.includes('ice') || 
@@ -780,11 +783,11 @@ export default function CalendarPage() {
       return {
         category: 'on_ice',
         tag: 'ON-ICE',
-        chipClass: 'bg-cyan-500/15 hover:bg-cyan-500/25 border-cyan-500/35 hover:border-cyan-400 text-cyan-300',
-        dotClass: 'bg-cyan-400',
-        tagClass: 'bg-cyan-400 text-black font-black',
-        cardClass: 'bg-cyan-500/5 hover:bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40',
-        accentColor: '#22D3EE'
+        chipClass: 'bg-[#E0F2FE] border border-[#BAE6FD] text-[#0F172A] font-semibold',
+        dotClass: 'bg-[#0284C7]',
+        tagClass: 'bg-[#D7EFFF] border border-[#7DD3FC] text-[#0284C7] font-bold tracking-wider text-[9px] px-2 py-0.5 rounded-md',
+        cardClass: 'bg-[#F4F9FD] border border-[#BAE6FD] hover:border-[#7DD3FC] hover:bg-[#EAF4FD]',
+        accentColor: '#0284C7'
       };
     }
 
@@ -792,11 +795,11 @@ export default function CalendarPage() {
     return {
       category: 'strength',
       tag: 'STRENGTH',
-      chipClass: 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/35 hover:border-amber-400 text-amber-300',
-      dotClass: 'bg-amber-400',
-      tagClass: 'bg-amber-400 text-black font-black',
-      cardClass: 'bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40',
-      accentColor: '#F59E0B'
+      chipClass: 'bg-[#FEF3C7] border border-[#FDE68A] text-[#0F172A] font-semibold',
+      dotClass: 'bg-[#D97706]',
+      tagClass: 'bg-[#FEF3C7] border border-[#FCD34D] text-[#B45309] font-bold tracking-wider text-[9px] px-2 py-0.5 rounded-md',
+      cardClass: 'bg-[#FEFAF0] border border-[#FDE68A] hover:border-[#FCD34D] hover:bg-[#FDF4DF]',
+      accentColor: '#D97706'
     };
   };
 
@@ -1681,99 +1684,114 @@ export default function CalendarPage() {
   if (loading && !season && privateSessions.length === 0) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
-        <Loader2 size={32} className="animate-spin text-[#00E676] mb-4" />
-        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading Goalie Calendar...</p>
+        <Loader2 size={32} className="animate-spin text-muted-foreground/60 mb-4" />
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Loading Goalie Calendar...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-28 md:pb-20">
-      {/* Top App Header */}
-      <div className="border-b border-border/80 bg-background/95 backdrop-blur-md sticky top-0 z-30 px-4 py-3 sm:px-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-background text-foreground flex flex-col pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-12 font-sans">
+      {/* Top Navigation & Header - Mirrors Film and Training Header */}
+      <header className="sticky top-0 z-[1100] w-full bg-background border-b border-border h-auto md:h-20">
+        <div className="w-full max-w-[1600px] mx-auto px-4 md:px-16 flex flex-col md:flex-row justify-between items-center h-full py-3 md:py-0 gap-3 md:gap-0">
+          {/* Left Group: Breadcrumbs & Navigation */}
+          <div className="flex items-center justify-between md:justify-start gap-4 md:gap-12 w-full md:w-auto h-full">
             <Link 
-              href="/dashboard" 
-              className="p-2 -ml-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Back to dashboard"
+              href="/dashboard"
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-[0.95rem] font-medium transition-colors font-sans tracking-tight"
             >
-              <ArrowLeft size={18} />
+              <ChevronLeft size={20} strokeWidth={2.5} />
+              Dashboard
             </Link>
-            <div>
-              <h1 className="text-base sm:text-lg font-black tracking-tight text-foreground flex items-center gap-2 m-0">
-                <CalendarIcon size={18} className="text-[#00E676]" />
+
+            <div className="flex items-center gap-2 md:gap-4 text-xl md:text-2xl">
+              <Link 
+                href="/dashboard"
+                className="text-foreground tracking-tight font-sans font-bold text-[1.25rem] md:text-[1.4rem] hover:text-foreground/80 transition-colors"
+              >
+                Goalie Card
+              </Link>
+              
+              <span className="text-muted-foreground/30 font-light hidden md:inline">
+                /
+              </span>
+              
+              <span className="text-muted-foreground font-medium tracking-tight font-sans text-[1.3rem] md:text-[1.5rem] hidden md:inline">
                 Calendar
-              </h1>
+              </span>
             </div>
           </div>
 
-          {/* Center/Right: Athlete Filter & Actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Goalie / Athlete Selector */}
+          {/* Right Group: Filters & Actions */}
+          <div className="w-full md:w-auto flex items-center justify-end gap-2 sm:gap-3 flex-wrap">
             {rosterGoalies.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                <select
-                  value={selectedGoalieFilter}
-                  onChange={(e) => setSelectedGoalieFilter(e.target.value)}
-                  className="bg-muted border border-border text-foreground text-xs font-bold px-3 py-1.5 rounded-xl focus:outline-none focus:border-[#00E676] max-w-[150px] sm:max-w-[200px] truncate"
-                  title="Filter calendar by athlete"
-                >
-                  <option value="all">All Goalies ({rosterGoalies.length})</option>
-                  {rosterGoalies.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={selectedGoalieFilter}
+                onChange={(e) => setSelectedGoalieFilter(e.target.value)}
+                className="px-3.5 py-2 bg-muted border border-border rounded-xl text-xs font-semibold text-foreground cursor-pointer outline-none max-w-[160px] truncate"
+                title="Filter calendar by athlete"
+              >
+                <option value="all">All Goalies ({rosterGoalies.length})</option>
+                {rosterGoalies.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
             )}
 
-            {/* Link to CoachCard Roster / Clients */}
             <Link
               href="/coach"
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-muted text-xs font-bold text-foreground border border-border hover:border-[#00E676] rounded-xl transition-colors shadow-xs"
-              title="Open CoachCard Client & Roster Ledger"
+              className="px-3.5 py-2 bg-muted border border-border hover:bg-muted/80 text-foreground rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
+              title="Open Coach Card Client & Roster Ledger"
             >
-              <span>CoachCard Ledger</span>
-              <span className="text-[#00E676]">→</span>
+              <span>Coach Card Ledger</span>
             </Link>
 
-            {/* Quick Action: Add Event */}
-            <div className="relative">
-              <button 
-                onClick={() => openAddEvent("training")} 
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#00E676] hover:bg-[#00C853] text-black transition-all rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer shadow-sm active:scale-95"
-              >
-                <Plus size={15} /> 
-                <span className="hidden xs:inline">Add Event</span>
-              </button>
-            </div>
+            <button 
+              onClick={() => openAddEvent("training")} 
+              className="px-4 py-2 bg-foreground text-background font-semibold rounded-xl text-xs hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <Plus size={14} /> 
+              <span>Add Event</span>
+            </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
+      {/* MAIN CALENDAR CONTAINER */}
+      <main className="w-full max-w-[1600px] mx-auto px-4 py-6 md:px-16 md:py-10 flex-1 flex flex-col justify-start space-y-6">
+        {/* Title Row */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="flex items-center gap-3.5 md:gap-4">
+            <CalendarIcon size={32} className="text-foreground md:w-9 md:h-9 shrink-0" strokeWidth={2.5} />
+            <h1 className="text-2xl md:text-[2.5rem] font-bold tracking-tight text-foreground font-sans m-0">
+              Calendar
+            </h1>
+          </div>
+        </div>
+
         {/* TRACK SWITCHER BAR */}
-        <div className="bg-card border border-border/80 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="bg-card border border-border rounded-[28px] p-4 md:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-[#00E676]/10 border border-[#00E676]/20 flex items-center justify-center text-[#00E676] font-bold shrink-0">
-              <CalendarIcon size={16} />
+            <div className="w-10 h-10 rounded-2xl bg-muted border border-border flex items-center justify-center text-foreground font-bold shrink-0">
+              <CalendarIcon size={18} strokeWidth={2.5} />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-muted text-foreground border border-border uppercase tracking-wider">
                 NHL Pro Prospect
               </span>
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-                CoachCard • The Goalie Brand
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-muted text-foreground border border-border uppercase tracking-wider">
+                Coach Card • The Goalie Brand
               </span>
             </div>
           </div>
 
           {/* Track Filter Pills */}
-          <div className="flex items-center bg-muted/80 p-1 rounded-xl border border-border/60 text-xs font-bold gap-1 self-stretch sm:self-auto overflow-x-auto">
+          <div className="flex items-center bg-muted p-1 rounded-2xl border border-border text-xs font-semibold gap-1 self-stretch sm:self-auto overflow-x-auto">
             <button
               onClick={() => setRoleTrackFilter('all')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                roleTrackFilter === 'all' ? "bg-[#00E676] text-black font-black shadow-xs" : "text-muted-foreground hover:text-foreground"
+              className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                roleTrackFilter === 'all' ? "bg-foreground text-background font-semibold shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Layers size={13} />
@@ -1781,8 +1799,8 @@ export default function CalendarPage() {
             </button>
             <button
               onClick={() => setRoleTrackFilter('athlete')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                roleTrackFilter === 'athlete' ? "bg-cyan-400 text-black font-black shadow-xs" : "text-muted-foreground hover:text-foreground"
+              className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                roleTrackFilter === 'athlete' ? "bg-foreground text-background font-semibold shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Dumbbell size={13} />
@@ -1790,8 +1808,8 @@ export default function CalendarPage() {
             </button>
             <button
               onClick={() => setRoleTrackFilter('coach')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                roleTrackFilter === 'coach' ? "bg-emerald-400 text-black font-black shadow-xs" : "text-muted-foreground hover:text-foreground"
+              className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                roleTrackFilter === 'coach' ? "bg-foreground text-background font-semibold shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Users size={13} />
@@ -1801,14 +1819,14 @@ export default function CalendarPage() {
         </div>
 
         {/* VIEW CONTROLLER & DATE NAVIGATOR BAR */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card border border-border rounded-2xl p-3 sm:p-4 shadow-sm">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-card border border-border rounded-[28px] p-4 md:p-6 shadow-sm">
           {/* Left: View Mode Switcher (Day / Week / Month / Year) */}
-          <div className="flex items-center bg-muted/70 p-1 rounded-xl border border-border/60 self-center md:self-auto overflow-x-auto">
+          <div className="flex items-center bg-muted p-1 rounded-2xl border border-border self-center md:self-auto overflow-x-auto">
             <button
               onClick={() => setViewMode("day")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                 viewMode === "day"
-                  ? "bg-[#00E676] text-black shadow-xs"
+                  ? "bg-foreground text-background shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -1817,9 +1835,9 @@ export default function CalendarPage() {
             </button>
             <button
               onClick={() => setViewMode("week")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                 viewMode === "week"
-                  ? "bg-[#00E676] text-black shadow-xs"
+                  ? "bg-foreground text-background shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -1828,9 +1846,9 @@ export default function CalendarPage() {
             </button>
             <button
               onClick={() => setViewMode("month")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                 viewMode === "month"
-                  ? "bg-[#00E676] text-black shadow-xs"
+                  ? "bg-foreground text-background shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -1839,9 +1857,9 @@ export default function CalendarPage() {
             </button>
             <button
               onClick={() => setViewMode("year")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                 viewMode === "year"
-                  ? "bg-[#00E676] text-black shadow-xs"
+                  ? "bg-foreground text-background shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -1854,25 +1872,25 @@ export default function CalendarPage() {
           <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-3">
             <button
               onClick={handleToday}
-              className="px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider bg-muted hover:bg-muted-foreground/20 text-foreground border border-border rounded-lg transition-colors"
+              className="px-3.5 py-2 text-xs font-semibold uppercase tracking-wider bg-muted hover:bg-muted/80 text-foreground border border-border rounded-xl transition-all cursor-pointer"
             >
               Today
             </button>
 
-            <div className="flex items-center gap-1 bg-muted/40 border border-border rounded-xl p-1">
+            <div className="flex items-center gap-1 bg-muted border border-border rounded-xl p-1">
               <button
                 onClick={handlePrev}
-                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                className="p-2 hover:bg-card rounded-lg text-muted-foreground hover:text-foreground transition-all cursor-pointer"
                 aria-label="Previous period"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="px-2 text-xs sm:text-sm font-black text-foreground tracking-tight text-center min-w-[140px] sm:min-w-[170px]">
+              <span className="px-3 text-xs sm:text-sm font-bold text-foreground tracking-tight text-center min-w-[140px] sm:min-w-[170px]">
                 {navigationTitle}
               </span>
               <button
                 onClick={handleNext}
-                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                className="p-2 hover:bg-card rounded-lg text-muted-foreground hover:text-foreground transition-all cursor-pointer"
                 aria-label="Next period"
               >
                 <ChevronRight size={16} />
@@ -1890,7 +1908,7 @@ export default function CalendarPage() {
                   setSeasonError("");
                   setShowSeasonModal(true);
                 }}
-                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted border border-border rounded-lg transition-colors"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 border border-border rounded-xl transition-all cursor-pointer"
                 title="Edit active season"
               >
                 <Pencil size={11} />
@@ -1902,13 +1920,13 @@ export default function CalendarPage() {
 
         {/* WEEKLY INTENTION BANNER (Shown in Day & Week views if present) */}
         {(viewMode === "day" || viewMode === "week") && weeklyIntention && (
-          <div className="bg-card border border-border/80 rounded-2xl p-3.5 sm:p-4 shadow-xs flex items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-[#00E676]/10 text-[#00E676] rounded-xl shrink-0 mt-0.5">
-                <Flame size={16} />
+          <div className="bg-card border border-border rounded-[28px] p-4 md:p-6 shadow-xs flex items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 bg-muted text-foreground rounded-2xl shrink-0 mt-0.5">
+                <Flame size={18} />
               </div>
               <div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-[#00E676]">Weekly Intention</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Weekly Intention</span>
                 <p className="text-xs sm:text-sm font-semibold text-foreground m-0 mt-0.5 leading-snug">
                   "{weeklyIntention.intention_text}"
                 </p>
@@ -1916,7 +1934,7 @@ export default function CalendarPage() {
             </div>
             <Link
               href="/calendar/week"
-              className="shrink-0 px-3 py-1.5 bg-muted hover:bg-muted-foreground/20 text-xs font-bold text-muted-foreground hover:text-foreground border border-border rounded-xl transition-colors hidden sm:block"
+              className="shrink-0 px-3.5 py-2 bg-muted hover:bg-muted/80 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-xl transition-all hidden sm:block"
             >
               Adjust Intention
             </Link>
@@ -1928,23 +1946,23 @@ export default function CalendarPage() {
         {/* ======================================================== */}
         {viewMode === "day" && (
           <div className="space-y-4">
-            <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="bg-card border border-border rounded-[28px] p-6 md:p-8 shadow-sm">
               {/* Day Header */}
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-border">
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-black ${
-                    isToday(currentDate) ? "bg-[#00E676] text-black" : "bg-muted text-foreground"
+              <div className="flex items-center justify-between pb-6 mb-6 border-b border-border">
+                <div className="flex items-center gap-4">
+                  <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-bold ${
+                    isToday(currentDate) ? "bg-foreground text-background" : "bg-muted text-foreground"
                   }`}>
-                    <span className="text-[10px] uppercase leading-none">{currentDate.toLocaleDateString("en-US", { weekday: "short" })}</span>
-                    <span className="text-base leading-none mt-1">{currentDate.getDate()}</span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider leading-none">{currentDate.toLocaleDateString("en-US", { weekday: "short" })}</span>
+                    <span className="text-lg font-black leading-none mt-1">{currentDate.getDate()}</span>
                   </div>
                   <div>
-                    <h2 className="text-base sm:text-lg font-bold text-foreground m-0">
+                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground m-0">
                       {currentDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
                     </h2>
                     <div className="flex items-center gap-2 mt-1">
                       {isToday(currentDate) && (
-                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-[#00E676]/20 text-[#00E676] rounded-md border border-[#00E676]/30">
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-muted text-foreground rounded-md border border-border">
                           Today
                         </span>
                       )}
@@ -1960,9 +1978,9 @@ export default function CalendarPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openAddEvent("training", currentDate)}
-                    className="px-3 py-1.5 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-4 py-2 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-[0.98] cursor-pointer"
                   >
-                    <Plus size={13} />
+                    <Plus size={14} />
                     <span>Add Event</span>
                   </button>
                 </div>
@@ -1972,33 +1990,33 @@ export default function CalendarPage() {
               {selectedDateEvents.totalCount === 0 ? (
                 <div className="py-12 text-center max-w-sm mx-auto">
                   <CalendarIcon size={36} className="mx-auto text-muted-foreground/40 mb-3" />
-                  <p className="text-sm font-bold text-foreground mb-1">Rest & Recovery Day</p>
+                  <p className="text-sm font-bold text-foreground mb-1 tracking-tight">Rest & Recovery Day</p>
                   <p className="text-xs text-muted-foreground mb-6">No training sessions, coaching lessons, games, or practices scheduled.</p>
                   <div className="flex flex-wrap justify-center gap-2">
                     <button
                       onClick={() => openAddEvent("training", currentDate)}
-                      className="px-3 py-2 bg-muted hover:bg-cyan-400 hover:text-black border border-border text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                      className="px-3.5 py-2 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <Dumbbell size={13} />
                       <span>Log Training</span>
                     </button>
                     <button
                       onClick={() => openAddEvent("lesson", currentDate)}
-                      className="px-3 py-2 bg-muted hover:bg-emerald-400 hover:text-black border border-border text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                      className="px-3.5 py-2 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <Users size={13} />
                       <span>Book Lesson</span>
                     </button>
                     <button
                       onClick={() => openAddEvent("game", currentDate)}
-                      className="px-3 py-2 bg-muted hover:bg-amber-400 hover:text-black border border-border text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                      className="px-3.5 py-2 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <Award size={13} />
                       <span>Add Game</span>
                     </button>
                     <button
                       onClick={() => openAddEvent("practice", currentDate)}
-                      className="px-3 py-2 bg-muted hover:bg-blue-400 hover:text-black border border-border text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                      className="px-3.5 py-2 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <Shield size={13} />
                       <span>Add Practice</span>
@@ -2262,25 +2280,25 @@ export default function CalendarPage() {
                 return (
                   <div 
                     key={idx}
-                    className={`rounded-[22px] p-3 sm:p-3.5 border transition-all flex flex-col min-h-[160px] ${
+                    className={`rounded-3xl p-3 sm:p-3.5 border transition-all flex flex-col min-h-[180px] shadow-xs ${
                       isDayToday 
-                        ? "bg-card border-[#00E676]/40 shadow-sm ring-1 ring-[#00E676]/20" 
-                        : "bg-card/60 border-border/50 hover:border-border/80"
+                        ? "bg-card border-slate-900 ring-2 ring-slate-900 shadow-sm" 
+                        : "bg-card border-border hover:border-slate-400"
                     }`}
                   >
                     {/* Day Card Header */}
-                    <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-border/40">
+                    <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-border">
                       <div>
-                        <p className={`m-0 text-[10px] font-bold uppercase tracking-widest ${isDayToday ? "text-[#00E676]" : "text-muted-foreground"}`}>
+                        <p className={`m-0 text-[10px] font-bold uppercase tracking-wider ${isDayToday ? "text-slate-900" : "text-muted-foreground"}`}>
                           {date.toLocaleDateString("en-US", { weekday: "short" })}
                         </p>
-                        <p className={`m-0 text-base sm:text-lg font-bold tracking-tight ${isDayToday ? "text-foreground font-black" : "text-foreground/90"}`}>
+                        <p className={`m-0 text-base sm:text-lg font-black tracking-tight ${isDayToday ? "text-slate-900 font-black" : "text-slate-800"}`}>
                           {date.getDate()}
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
                         {isDayToday && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#00E676] animate-pulse"></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-900"></span>
                         )}
                         <button
                           onClick={() => {
@@ -2288,7 +2306,7 @@ export default function CalendarPage() {
                             setSelectedDate(date);
                             setViewMode("day");
                           }}
-                          className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+                          className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
                           title="Open Day View"
                         >
                           <Sun size={12} />
@@ -2303,7 +2321,7 @@ export default function CalendarPage() {
                           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/40">Rest</span>
                         </div>
                       ) : (
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                           {/* Games & Training */}
                           {dayEvents.games.map((game, gIdx) => {
                             const isTraining = game.game_type === 'training';
@@ -2314,19 +2332,21 @@ export default function CalendarPage() {
                                 <div 
                                   key={`week-g-${gIdx}`} 
                                   onClick={() => openEditTraining(game)}
-                                  className={`p-2.5 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1`}
+                                  className={`p-3 ${style.cardClass} rounded-2xl cursor-pointer transition-all space-y-1 hover:shadow-xs`}
                                 >
                                   <div className="flex items-center justify-between gap-1">
-                                    <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 ${style.tagClass} rounded-md`}>
+                                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 ${style.tagClass} rounded-lg`}>
                                       {style.tag}
                                     </span>
-                                    <span className="text-[10px] text-muted-foreground font-medium">
+                                    <span className="text-xs text-slate-500 font-medium">
                                       {formatTime(game.scheduled_time)}
                                     </span>
                                   </div>
-                                  <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">{game.opponent || "Workout"}</p>
+                                  <p className="m-0 text-sm font-bold text-slate-900 leading-snug line-clamp-2 break-words">
+                                    {game.opponent || "Workout"}
+                                  </p>
                                   {game.location && (
-                                    <p className="m-0 text-[10px] text-muted-foreground truncate">{game.location}</p>
+                                    <p className="m-0 text-xs text-slate-500 truncate">{game.location}</p>
                                   )}
                                 </div>
                               );
@@ -2345,17 +2365,20 @@ export default function CalendarPage() {
                                   setEditGameError("");
                                   setGameDeleteConfirm(false);
                                 }}
-                                className={`p-2.5 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1`}
+                                className={`p-3 ${style.cardClass} rounded-2xl cursor-pointer transition-all space-y-1 hover:shadow-xs`}
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 ${style.tagClass} rounded-md`}>
+                                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 ${style.tagClass} rounded-lg`}>
                                     {style.tag}
                                   </span>
-                                  <span className="text-[10px] text-muted-foreground font-medium">
+                                  <span className="text-xs text-slate-500 font-medium">
                                     {formatTime(game.scheduled_time)}
                                   </span>
                                 </div>
-                                <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">{game.opponent}</p>
+                                <p className="m-0 text-sm font-bold text-slate-900 leading-snug line-clamp-2 break-words">{game.opponent}</p>
+                                {game.location && (
+                                  <p className="m-0 text-xs text-slate-500 truncate">{game.location}</p>
+                                )}
                               </div>
                             );
                           })}
@@ -2375,17 +2398,20 @@ export default function CalendarPage() {
                                   setEditPracticeError("");
                                   setPracticeDeleteConfirm(false);
                                 }}
-                                className={`p-2.5 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1`}
+                                className={`p-3 ${style.cardClass} rounded-2xl cursor-pointer transition-all space-y-1 hover:shadow-xs`}
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 ${style.tagClass} rounded-md`}>
+                                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 ${style.tagClass} rounded-lg`}>
                                     {style.tag}
                                   </span>
-                                  <span className="text-[10px] text-muted-foreground font-medium">
+                                  <span className="text-xs text-slate-500 font-medium">
                                     {formatTime(practice.scheduled_time)}
                                   </span>
                                 </div>
-                                <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">Team Practice</p>
+                                <p className="m-0 text-sm font-bold text-slate-900 leading-snug line-clamp-2 break-words">Team Practice</p>
+                                {practice.location && (
+                                  <p className="m-0 text-xs text-slate-500 truncate">{practice.location}</p>
+                                )}
                               </div>
                             );
                           })}
@@ -2397,21 +2423,21 @@ export default function CalendarPage() {
                               <div 
                                 key={`week-hsess-${hIdx}`} 
                                 onClick={() => openEditTraining(hSess)}
-                                className={`p-2.5 ${style.cardClass} rounded-xl transition-all cursor-pointer space-y-1`}
+                                className={`p-3 ${style.cardClass} rounded-2xl transition-all cursor-pointer space-y-1 hover:shadow-xs`}
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 ${style.tagClass} rounded-md`}>
+                                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 ${style.tagClass} rounded-lg`}>
                                     {style.tag}
                                   </span>
-                                  <span className="text-[10px] text-muted-foreground font-medium truncate">
+                                  <span className="text-xs text-slate-500 font-medium truncate">
                                     {formatTime(hSess.scheduled_time)}
                                   </span>
                                 </div>
-                                <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">
+                                <p className="m-0 text-sm font-bold text-slate-900 leading-snug line-clamp-2 break-words">
                                   {hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training"}
                                 </p>
                                 {hSess.location && (
-                                  <p className="m-0 text-[10px] text-muted-foreground truncate">
+                                  <p className="m-0 text-xs text-slate-500 truncate">
                                     {hSess.location}
                                   </p>
                                 )}
@@ -2427,16 +2453,16 @@ export default function CalendarPage() {
 
                             return (
                               <div 
-                                key={`week-psess-${pIdx}`}
+                                key={`week-psess-${pIdx}`} 
                                 onClick={() => openEditLesson(pSess)}
-                                className={`p-2.5 ${style.cardClass} rounded-xl transition-all cursor-pointer space-y-1`}
+                                className={`p-3 ${style.cardClass} rounded-2xl transition-all cursor-pointer space-y-1 hover:shadow-xs`}
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 ${style.tagClass} rounded-md`}>
+                                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 ${style.tagClass} rounded-lg`}>
                                     {style.tag}
                                   </span>
                                   {(pSess.session_number || pSess.lesson_number) && (
-                                    <span className="text-[9px] text-[#00E676] font-bold truncate font-mono">
+                                    <span className="text-[10px] text-emerald-700 font-bold truncate font-mono">
                                       {[
                                         pSess.session_number ? `S${pSess.session_number}` : '',
                                         pSess.lesson_number ? `L${pSess.lesson_number}` : ''
@@ -2444,10 +2470,10 @@ export default function CalendarPage() {
                                     </span>
                                   )}
                                 </div>
-                                <p className="m-0 text-xs font-semibold text-foreground leading-tight truncate">
+                                <p className="m-0 text-sm font-bold text-slate-900 leading-snug line-clamp-2 break-words">
                                   {formatLessonLabel(pSess.athlete_name, pSess.session_number, pSess.lesson_number)}
                                 </p>
-                                <p className="m-0 text-[10px] text-muted-foreground truncate">
+                                <p className="m-0 text-xs text-slate-500 truncate">
                                   {displayTime}
                                 </p>
                               </div>
@@ -2468,203 +2494,178 @@ export default function CalendarPage() {
         {/* ======================================================== */}
         {viewMode === "month" && (
           <div className="space-y-6">
-            {/* Month Grid Card */}
-            <div className="bg-card border border-border rounded-2xl p-3 sm:p-5 shadow-sm">
-              {/* Weekday Header Row */}
-              <div className="grid grid-cols-7 gap-1 text-center mb-2 pb-2 border-b border-border">
-                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => (
-                  <div key={i} className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-muted-foreground py-1">
-                    {d}
-                  </div>
-                ))}
-              </div>
+            {/* Weekday Header */}
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 text-center text-[11px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+                <div key={day} className="py-1">{day}</div>
+              ))}
+            </div>
 
-              {/* 42-cell Month Grid */}
-              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-                {monthGridDates.map((cell, idx) => {
-                  const dateKey = formatDateKey(cell.date);
-                  const dayEvents = getEventsForDate(dateKey);
-                  const isCellToday = isToday(cell.date);
-                  const isCellSelected = formatDateKey(selectedDate) === dateKey;
+            {/* 42-cell Month Grid */}
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+              {monthGridDates.map((cell, idx) => {
+                const dateKey = formatDateKey(cell.date);
+                const dayEvents = getEventsForDate(dateKey);
+                const isCellToday = isToday(cell.date);
+                const isCellSelected = formatDateKey(selectedDate) === dateKey;
 
-                  // Aggregate all day events
-                  const cellEvents: Array<{
-                    id: string;
-                    title: string;
-                    badgeColor: string;
-                    dotColor: string;
-                    onClick: (e: React.MouseEvent) => void;
-                  }> = [];
+                // Aggregate events for compact single-line month chips
+                const allEvents: Array<{
+                  id: string;
+                  title: string;
+                  chipClass: string;
+                  dotClass: string;
+                  onClick: () => void;
+                }> = [];
 
-                  dayEvents.hockeySessions.forEach((h, i) => {
-                    const style = getActivityStyle(h);
-                    cellEvents.push({
-                      id: `h-${i}`,
-                      title: h.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training",
-                      badgeColor: style.chipClass,
-                      dotColor: style.dotClass,
-                      onClick: (e) => { e.stopPropagation(); openEditTraining(h); }
-                    });
+                dayEvents.hockeySessions.forEach((h, i) => {
+                  const style = getActivityStyle(h);
+                  allEvents.push({
+                    id: `h-${i}`,
+                    title: h.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training",
+                    chipClass: style.chipClass,
+                    dotClass: style.dotClass,
+                    onClick: () => openEditTraining(h)
                   });
+                });
 
-                  dayEvents.games.forEach((g, i) => {
-                    const isTraining = g.game_type === 'training';
-                    const style = getActivityStyle(g);
-                    cellEvents.push({
-                      id: `g-${i}`,
-                      title: g.opponent || (isTraining ? "Training" : "Game"),
-                      badgeColor: style.chipClass,
-                      dotColor: style.dotClass,
-                      onClick: (e) => {
-                        e.stopPropagation();
-                        if (isTraining) {
-                          openEditTraining(g);
-                        } else {
-                          setEditingGame(g);
-                          setEditGameOpponent(g.opponent || "");
-                          setEditGameLocation(g.location || "");
-                          setEditGameDate(g.scheduled_date || "");
-                          setEditGameTime(g.scheduled_time ? g.scheduled_time.substring(0, 5) : "");
-                          setEditGameType(g.game_type || "game");
-                          setEditGameError("");
-                          setGameDeleteConfirm(false);
-                        }
+                dayEvents.games.forEach((g, i) => {
+                  const isTraining = g.game_type === 'training';
+                  const style = getActivityStyle(g);
+                  allEvents.push({
+                    id: `g-${i}`,
+                    title: g.opponent || (isTraining ? "Training" : "Game"),
+                    chipClass: style.chipClass,
+                    dotClass: style.dotClass,
+                    onClick: () => {
+                      if (isTraining) {
+                        openEditTraining(g);
+                      } else {
+                        setEditingGame(g);
+                        setEditGameOpponent(g.opponent || "");
+                        setEditGameLocation(g.location || "");
+                        setEditGameDate(g.scheduled_date || "");
+                        setEditGameTime(g.scheduled_time ? g.scheduled_time.substring(0, 5) : "");
+                        setEditGameType(g.game_type || "game");
+                        setEditGameError("");
+                        setGameDeleteConfirm(false);
                       }
-                    });
-                  });
-
-                  dayEvents.practices.forEach((p, i) => {
-                    const style = getActivityStyle(p);
-                    cellEvents.push({
-                      id: `p-${i}`,
-                      title: "Practice",
-                      badgeColor: style.chipClass,
-                      dotColor: style.dotClass,
-                      onClick: (e) => {
-                        e.stopPropagation();
-                        setEditingPractice(p);
-                        setEditPracticeDate(p.scheduled_date || "");
-                        setEditPracticeTime(p.scheduled_time ? p.scheduled_time.substring(0, 5) : "");
-                        setEditPracticeLocation(p.location || "");
-                        setEditPracticeNotes(p.notes || "");
-                        setEditPracticeError("");
-                        setPracticeDeleteConfirm(false);
-                      }
-                    });
-                  });
-
-                  dayEvents.privateSessions.forEach((ps, i) => {
-                    const style = getActivityStyle(ps);
-                    cellEvents.push({
-                      id: `priv-${i}`,
-                      title: formatLessonLabel(ps.athlete_name, ps.session_number, ps.lesson_number),
-                      badgeColor: style.chipClass,
-                      dotColor: style.dotClass,
-                      onClick: (e) => { e.stopPropagation(); openEditLesson(ps); }
-                    });
-                  });
-
-                  const maxVisibleChips = 3;
-                  const visibleChips = cellEvents.slice(0, maxVisibleChips);
-                  const hiddenCount = cellEvents.length - visibleChips.length;
-
-                  const handleCellClick = () => {
-                    if (isCellSelected) {
-                      setCurrentDate(cell.date);
-                      setViewMode("day");
-                    } else {
-                      setSelectedDate(cell.date);
-                      setCurrentDate(cell.date);
                     }
-                  };
+                  });
+                });
 
-                  const handleJumpToDay = (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    setCurrentDate(cell.date);
-                    setSelectedDate(cell.date);
-                    setViewMode("day");
-                  };
+                dayEvents.practices.forEach((p, i) => {
+                  const style = getActivityStyle(p);
+                  allEvents.push({
+                    id: `p-${i}`,
+                    title: "Practice",
+                    chipClass: style.chipClass,
+                    dotClass: style.dotClass,
+                    onClick: () => {
+                      setEditingPractice(p);
+                      setEditPracticeDate(p.scheduled_date || "");
+                      setEditPracticeTime(p.scheduled_time ? p.scheduled_time.substring(0, 5) : "");
+                      setEditPracticeLocation(p.location || "");
+                      setEditPracticeNotes(p.notes || "");
+                      setEditPracticeError("");
+                      setPracticeDeleteConfirm(false);
+                    }
+                  });
+                });
 
-                  return (
-                    <div
-                      key={idx}
-                      onClick={handleCellClick}
-                      onDoubleClick={handleJumpToDay}
-                      className={`min-h-[74px] sm:min-h-[108px] p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between select-none ${
-                        !cell.isCurrentMonth 
-                          ? "opacity-30 bg-muted/20 border-transparent hover:opacity-60" 
-                          : isCellSelected
-                            ? "bg-muted/90 border-[#00E676] shadow-sm ring-1 ring-[#00E676]"
-                            : isCellToday
-                              ? "bg-card border-[#00E676]/40 shadow-xs ring-1 ring-[#00E676]/30"
-                              : "bg-card/70 border-border/50 hover:border-border hover:bg-muted/40"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between px-1 pt-0.5 mb-1">
-                        <button
-                          type="button"
-                          onClick={handleJumpToDay}
-                          title="Open Day View"
-                          className={`text-xs sm:text-sm font-bold leading-none p-1 -m-1 rounded-lg hover:bg-muted hover:text-[#00E676] transition-colors cursor-pointer flex items-center gap-1 ${
-                            isCellToday ? "text-[#00E676] font-black" : cell.isCurrentMonth ? "text-foreground" : "text-muted-foreground"
-                          }`}
-                        >
-                          <span>{cell.date.getDate()}</span>
-                        </button>
-                        {isCellToday && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#00E676]"></span>
-                        )}
-                      </div>
+                dayEvents.privateSessions.forEach((ps, i) => {
+                  const style = getActivityStyle(ps);
+                  allEvents.push({
+                    id: `ps-${i}`,
+                    title: formatLessonLabel(ps.athlete_name, ps.session_number, ps.lesson_number),
+                    chipClass: style.chipClass,
+                    dotClass: style.dotClass,
+                    onClick: () => openEditLesson(ps)
+                  });
+                });
 
-                      {/* Event Indicators */}
-                      <div className="mt-1 space-y-1">
-                        {/* Mobile dots view */}
-                        <div className="flex flex-wrap gap-1 sm:hidden">
-                          {cellEvents.map((evt, i) => (
-                            <span key={`mdot-${i}`} className={`w-1.5 h-1.5 rounded-full ${evt.dotColor}`}></span>
-                          ))}
-                        </div>
+                const maxChips = 2;
+                const visibleChips = allEvents.slice(0, maxChips);
+                const hiddenCount = allEvents.length - visibleChips.length;
 
-                        {/* Desktop chips */}
-                        <div className="hidden sm:flex flex-col gap-1">
-                          {visibleChips.map((evt) => (
-                            <div 
-                              key={evt.id} 
-                              onClick={evt.onClick}
-                              className={`px-1.5 py-0.5 border text-[9px] font-bold rounded-md truncate flex items-center gap-1 cursor-pointer transition-colors ${evt.badgeColor}`} 
-                              title={evt.title}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${evt.dotColor} shrink-0`} />
-                              <span className="truncate">{evt.title}</span>
-                            </div>
-                          ))}
-                          {hiddenCount > 0 && (
-                            <button
-                              type="button"
-                              onClick={handleJumpToDay}
-                              title={`View all ${cellEvents.length} events for ${cell.date.toLocaleDateString()}`}
-                              className="w-full text-left px-1.5 py-0.5 mt-0.5 bg-muted/80 hover:bg-[#00E676]/20 text-muted-foreground hover:text-[#00E676] border border-border/50 hover:border-[#00E676]/40 rounded text-[9px] font-bold flex items-center justify-between transition-all cursor-pointer group"
-                            >
-                              <span>+{hiddenCount} more</span>
-                              <span className="text-[8px] opacity-0 group-hover:opacity-100 transition-opacity font-extrabold text-[#00E676]">Day View →</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      setSelectedDate(cell.date);
+                    }}
+                    className={`h-[92px] sm:h-[104px] md:h-[112px] p-2 sm:p-2.5 rounded-xl border transition-all flex flex-col justify-between cursor-pointer select-none overflow-hidden ${
+                      !cell.isCurrentMonth
+                        ? "opacity-30 bg-muted/20 border-border/40"
+                        : isCellSelected
+                          ? "bg-card border-slate-900 ring-2 ring-slate-900 shadow-xs"
+                          : isCellToday
+                            ? "bg-card border-slate-900/50 ring-1 ring-slate-900/20"
+                            : "bg-card border-border/60 hover:border-slate-900/30 hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`text-xs font-bold leading-none ${
+                          isCellToday
+                            ? "w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-black"
+                            : isCellSelected
+                              ? "text-slate-900 font-black"
+                              : cell.isCurrentMonth
+                                ? "text-slate-700 font-bold"
+                                : "text-slate-400"
+                        }`}
+                      >
+                        {cell.date.getDate()}
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Single-line iCal-style compact pills */}
+                    <div className="space-y-1 mt-1 flex-1 overflow-hidden">
+                      {visibleChips.map((evt) => (
+                        <div
+                          key={evt.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            evt.onClick();
+                          }}
+                          className={`px-2 py-0.5 border text-[11px] font-bold rounded-lg truncate flex items-center gap-1.5 cursor-pointer transition-all hover:opacity-90 ${evt.chipClass}`}
+                          title={evt.title}
+                          style={{ color: '#0f172a' }}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${evt.dotClass}`} />
+                          <span className="truncate font-bold leading-tight" style={{ color: '#0f172a' }}>{evt.title}</span>
+                        </div>
+                      ))}
+
+                      {hiddenCount > 0 && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedDate(cell.date);
+                            setCurrentDate(cell.date);
+                            setViewMode("day");
+                          }}
+                          className="text-[9px] font-bold text-slate-700 hover:text-black px-1 py-0.5 rounded cursor-pointer transition-colors"
+                          style={{ color: '#334155' }}
+                        >
+                          +{hiddenCount} more
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Selected Day Agenda Drawer (Bottom of month view) */}
-            <div id="selected-day-drawer" className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-border">
+            <div id="selected-day-drawer" className="bg-card border border-border rounded-3xl p-6 md:p-8 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                  <h3 className="text-base font-bold text-foreground m-0">
+                  <h3 className="text-base sm:text-lg font-bold text-foreground m-0 tracking-tight">
                     {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
                   </h3>
-                  <p className="text-xs text-muted-foreground m-0 mt-0.5">
+                  <p className="text-xs text-muted-foreground m-0 mt-0.5 font-medium">
                     {selectedDateEvents.totalCount === 0 ? "No events scheduled" : `${selectedDateEvents.totalCount} Event${selectedDateEvents.totalCount > 1 ? 's' : ''}`}
                   </p>
                 </div>
@@ -2674,15 +2675,14 @@ export default function CalendarPage() {
                       setCurrentDate(selectedDate);
                       setViewMode("day");
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl border border-border transition-colors cursor-pointer"
-                    title="Open full timeline in Day View"
+                    className="px-3 py-1.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    <CalendarDays size={13} className="text-[#00E676]" />
-                    <span>Day Timeline</span>
+                    <Sun size={13} />
+                    <span>Day View</span>
                   </button>
                   <button
                     onClick={() => openAddEvent("training", selectedDate)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                    className="px-3 py-1.5 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
                   >
                     <Plus size={13} />
                     <span>Add Event</span>
@@ -2704,18 +2704,20 @@ export default function CalendarPage() {
                       <div 
                         key={`m-h-${i}`} 
                         onClick={() => openEditTraining(hSess)}
-                        className={`p-3 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1.5`}
+                        className={`p-3.5 ${style.cardClass} rounded-2xl cursor-pointer transition-all space-y-1.5`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 ${style.tagClass} rounded-md`}>
+                          <span className={`text-[8px] sm:text-[9px] font-extrabold uppercase px-2 py-0.5 ${style.tagClass} rounded-lg`}>
                             {style.tag}
                           </span>
-                          <span className="text-[10px] font-bold text-muted-foreground">
+                          <span className="text-[10px] sm:text-[11px] font-medium text-slate-500">
                             {formatTime(hSess.scheduled_time)}
                           </span>
                         </div>
-                        <h4 className="text-sm font-bold text-foreground m-0">{hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training Session"}</h4>
-                        <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
+                        <h4 className="text-sm font-bold text-slate-900 m-0 leading-tight">
+                          {hSess.title?.replace(/^Milestone Baseline:\s*/i, '') || "Training Session"}
+                        </h4>
+                        <p className="text-xs text-slate-500 m-0 flex items-center gap-1">
                           <MapPin size={11} /> {hSess.location || "Gym / Facility"}
                         </p>
                       </div>
@@ -2743,18 +2745,18 @@ export default function CalendarPage() {
                             setGameDeleteConfirm(false);
                           }
                         }}
-                        className={`p-3 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1.5`}
+                        className={`p-3.5 ${style.cardClass} rounded-2xl cursor-pointer transition-all space-y-1.5`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 ${style.tagClass} rounded-md`}>
+                          <span className={`text-[8px] sm:text-[9px] font-extrabold uppercase px-2 py-0.5 ${style.tagClass} rounded-lg`}>
                             {style.tag}
                           </span>
-                          <span className="text-[10px] font-bold text-muted-foreground">
+                          <span className="text-[10px] sm:text-[11px] font-medium text-slate-500">
                             {formatTime(game.scheduled_time)}
                           </span>
                         </div>
-                        <h4 className="text-sm font-bold text-foreground m-0">{game.opponent}</h4>
-                        <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
+                        <h4 className="text-sm font-bold text-slate-900 m-0 leading-tight">{game.opponent}</h4>
+                        <p className="text-xs text-slate-500 m-0 flex items-center gap-1">
                           <MapPin size={11} /> {game.location || "Gym / Facility"}
                         </p>
                       </div>
@@ -2776,18 +2778,18 @@ export default function CalendarPage() {
                           setEditPracticeError("");
                           setPracticeDeleteConfirm(false);
                         }}
-                        className={`p-3 ${style.cardClass} rounded-xl cursor-pointer transition-all space-y-1.5`}
+                        className={`p-3.5 ${style.cardClass} rounded-2xl cursor-pointer transition-all space-y-1.5`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 ${style.tagClass} rounded-md`}>
+                          <span className={`text-[8px] sm:text-[9px] font-extrabold uppercase px-2 py-0.5 ${style.tagClass} rounded-lg`}>
                             {style.tag}
                           </span>
-                          <span className="text-[10px] font-bold text-muted-foreground">
+                          <span className="text-[10px] sm:text-[11px] font-medium text-slate-500">
                             {formatTime(practice.scheduled_time)}
                           </span>
                         </div>
-                        <h4 className="text-sm font-bold text-foreground m-0">Team Practice</h4>
-                        <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
+                        <h4 className="text-sm font-bold text-slate-900 m-0 leading-tight">Team Practice</h4>
+                        <p className="text-xs text-slate-500 m-0 flex items-center gap-1">
                           <MapPin size={11} /> {practice.location || "Turf"}
                         </p>
                       </div>
@@ -2804,11 +2806,11 @@ export default function CalendarPage() {
                         className={`p-3.5 ${style.cardClass} rounded-2xl cursor-pointer transition-all space-y-2`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 ${style.tagClass} rounded-md`}>
+                          <span className={`text-[8px] sm:text-[9px] font-extrabold uppercase px-2 py-0.5 ${style.tagClass} rounded-lg`}>
                             {style.tag}
                           </span>
                           {(pSess.session_number || pSess.lesson_number) && (
-                            <span className="text-[10px] font-bold text-emerald-400 font-mono">
+                            <span className="text-[10px] font-bold text-emerald-600 font-mono">
                               {[
                                 pSess.session_number ? `S${pSess.session_number}` : '',
                                 pSess.lesson_number ? `L${pSess.lesson_number}` : ''
@@ -2816,11 +2818,11 @@ export default function CalendarPage() {
                             </span>
                           )}
                         </div>
-                        <h4 className="text-sm font-bold text-foreground m-0">
+                        <h4 className="text-sm font-bold text-slate-900 m-0 leading-tight">
                           {formatLessonLabel(pSess.athlete_name, pSess.session_number, pSess.lesson_number)}
                         </h4>
-                        <p className="text-xs text-muted-foreground m-0 flex items-center gap-1">
-                          <MapPin size={11} className="text-[#00E676]" /> {pSess.location || "Bell Memorial Park"}
+                        <p className="text-xs text-slate-500 m-0 flex items-center gap-1">
+                          <MapPin size={11} className="text-emerald-600" /> {pSess.location || "Bell Memorial Park"}
                         </p>
                         {(() => {
                           const t = pSess.takeaways || extractTakeawaysFromNotes(pSess.notes);
@@ -2921,14 +2923,14 @@ export default function CalendarPage() {
                       setSelectedDate(target);
                       setViewMode("month");
                     }}
-                    className="bg-card border border-border/80 hover:border-[#00E676] rounded-2xl p-4 transition-all cursor-pointer shadow-xs hover:shadow-md group space-y-3"
+                    className="bg-card border border-border hover:border-foreground/30 rounded-[20px] p-4 transition-all cursor-pointer shadow-xs hover:shadow-md group space-y-3"
                   >
                     <div className="flex items-center justify-between pb-2 border-b border-border/50">
-                      <h4 className="text-sm font-bold text-foreground group-hover:text-[#00E676] transition-colors m-0">
+                      <h4 className="text-sm font-bold text-foreground group-hover:text-foreground/80 transition-colors m-0">
                         {monthName}
                       </h4>
                       {monthEventsCount > 0 && (
-                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-[#00E676]/20 text-[#00E676] rounded-md">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-muted text-foreground border border-border rounded-md">
                           {monthEventsCount} {monthEventsCount === 1 ? 'event' : 'events'}
                         </span>
                       )}
@@ -2938,7 +2940,7 @@ export default function CalendarPage() {
                     <div>
                       <div className="grid grid-cols-7 gap-1 text-center mb-1">
                         {["M", "T", "W", "T", "F", "S", "S"].map((lbl, idx) => (
-                          <span key={idx} className="text-[9px] font-black text-muted-foreground/60">
+                          <span key={idx} className="text-[9px] font-bold text-muted-foreground/60">
                             {lbl}
                           </span>
                         ))}
@@ -2959,9 +2961,9 @@ export default function CalendarPage() {
                               key={cIdx}
                               className={`h-5 flex items-center justify-center rounded text-[10px] font-bold ${
                                 isTodayCell
-                                  ? "bg-[#00E676] text-black font-black"
+                                  ? "bg-foreground text-background font-bold shadow-xs"
                                   : hasEvents
-                                    ? "bg-muted text-foreground font-black ring-1 ring-[#00E676]/50"
+                                    ? "bg-muted text-foreground font-semibold ring-1 ring-border"
                                     : "text-muted-foreground/80 hover:bg-muted/40"
                               }`}
                             >
@@ -2977,7 +2979,7 @@ export default function CalendarPage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
 
       {/* Unified Multi-Tab Add Event Modal */}
       {showUnifiedAddModal && (
@@ -2985,70 +2987,70 @@ export default function CalendarPage() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowUnifiedAddModal(false);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+          className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 bg-black/80 backdrop-blur-sm flex justify-center items-start sm:items-center cursor-pointer"
         >
-          <div className="bg-card border border-border rounded-[32px] p-6 max-w-lg w-full shadow-2xl animate-fade-in cursor-default space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="relative bg-card border border-border rounded-[28px] p-6 max-w-lg w-full shadow-2xl animate-fade-in cursor-default space-y-5 my-auto max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-4">
               <div>
                 <h3 className="text-lg font-bold tracking-tight text-foreground">Add New Event</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">Schedule training, coaching lessons, games, or practices</p>
               </div>
               <button 
                 onClick={() => setShowUnifiedAddModal(false)} 
-                className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
               >
                 ✕
               </button>
             </div>
 
             {/* Event Type Tabs */}
-            <div className="grid grid-cols-4 gap-1 bg-muted/80 p-1 rounded-2xl border border-border/60">
+            <div className="grid grid-cols-4 gap-1.5 bg-muted/70 p-1.5 rounded-2xl border border-border">
               <button
                 type="button"
                 onClick={() => setAddModalTab('training')}
-                className={`py-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                className={`py-2 rounded-xl text-xs font-semibold transition-all flex flex-col items-center gap-1 ${
                   addModalTab === 'training'
-                    ? "bg-[#00E676] text-black shadow-xs font-black"
+                    ? "bg-foreground text-background shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Dumbbell size={14} />
+                <Dumbbell size={15} />
                 <span>Training</span>
               </button>
               <button
                 type="button"
                 onClick={() => setAddModalTab('lesson')}
-                className={`py-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                className={`py-2 rounded-xl text-xs font-semibold transition-all flex flex-col items-center gap-1 ${
                   addModalTab === 'lesson'
-                    ? "bg-emerald-400 text-black shadow-xs font-black"
+                    ? "bg-foreground text-background shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Users size={14} />
+                <Users size={15} />
                 <span>Lesson</span>
               </button>
               <button
                 type="button"
                 onClick={() => setAddModalTab('game')}
-                className={`py-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                className={`py-2 rounded-xl text-xs font-semibold transition-all flex flex-col items-center gap-1 ${
                   addModalTab === 'game'
-                    ? "bg-amber-400 text-black shadow-xs font-black"
+                    ? "bg-foreground text-background shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Award size={14} />
+                <Award size={15} />
                 <span>Game</span>
               </button>
               <button
                 type="button"
                 onClick={() => setAddModalTab('practice')}
-                className={`py-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                className={`py-2 rounded-xl text-xs font-semibold transition-all flex flex-col items-center gap-1 ${
                   addModalTab === 'practice'
-                    ? "bg-blue-400 text-black shadow-xs font-black"
+                    ? "bg-foreground text-background shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Shield size={14} />
+                <Shield size={15} />
                 <span>Practice</span>
               </button>
             </div>
@@ -3058,101 +3060,101 @@ export default function CalendarPage() {
               <form onSubmit={handleCreateTraining} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                     <input 
                       type="date" 
                       value={trainingDate}
                       onChange={(e) => setTrainingDate(e.target.value)}
                       required
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                     <input 
                       type="time" 
                       value={trainingTime}
                       onChange={(e) => setTrainingTime(e.target.value)}
                       required
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Focus / Training Objective</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Focus / Training Objective</label>
                   <input 
                     type="text" 
                     value={trainingFocus}
                     onChange={(e) => setTrainingFocus(e.target.value)}
                     placeholder="e.g. S&C Smith Squats 55 lb / On-Ice Edge Work"
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Strength Protocols & Loads (Comma-separated)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Strength Protocols & Loads (Comma-separated)</label>
                   <input 
                     type="text" 
                     value={trainingStrength}
                     onChange={(e) => setTrainingStrength(e.target.value)}
                     placeholder="e.g. Smith front squat: 55 lb/side, RDL: 70 lb (3x8), DB Press: 60 lb"
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Athletic / Plyo Drills</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Athletic / Plyo Drills</label>
                     <input 
                       type="text" 
                       value={trainingAthletic}
                       onChange={(e) => setTrainingAthletic(e.target.value)}
                       placeholder="e.g. Skater bounds 3x5, Box jumps"
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Performance Cues</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Performance Cues</label>
                     <input 
                       type="text" 
                       value={trainingCues}
                       onChange={(e) => setTrainingCues(e.target.value)}
                       placeholder="e.g. GET LOW → LOAD → PUSH → STICK"
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Workout Reflections / Notes</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Workout Reflections / Notes</label>
                   <input 
                     type="text" 
                     value={trainingNotes}
                     onChange={(e) => setTrainingNotes(e.target.value)}
                     placeholder="e.g. Felt explosive out of stance, smooth hip hinge"
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                   <input 
                     type="text" 
                     value={trainingLocation}
                     onChange={(e) => setTrainingLocation(e.target.value)}
                     placeholder="e.g. The Ice / Planet Fitness / Studio"
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button 
                     type="button" 
                     onClick={() => setShowUnifiedAddModal(false)}
-                    className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all"
+                    className="flex-1 py-3 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold uppercase tracking-wider rounded-xl transition-all"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit" 
                     disabled={dbSaving}
-                    className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
                   >
                     {dbSaving && <Loader2 size={12} className="animate-spin" />}
                     Add Training Session
@@ -3165,7 +3167,7 @@ export default function CalendarPage() {
             {addModalTab === 'lesson' && (
               <form onSubmit={handleCreateLesson} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Athlete / Client</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Athlete / Client</label>
                   {rosterGoalies.length > 0 ? (
                     <select
                       value={lessonRosterId}
@@ -3176,7 +3178,7 @@ export default function CalendarPage() {
                           if (found) setLessonAthleteName(found.name);
                         }
                       }}
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     >
                       <option value="">Select Goalie from Roster...</option>
                       {rosterGoalies.map(g => (
@@ -3192,76 +3194,76 @@ export default function CalendarPage() {
                       onChange={(e) => setLessonAthleteName(e.target.value)}
                       placeholder="e.g. Athlete Name"
                       required
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none mt-2"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none mt-2"
                     />
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                     <input 
                       type="date" 
                       value={lessonDate}
                       onChange={(e) => setLessonDate(e.target.value)}
                       required
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                     <input 
                       type="time" 
                       value={lessonTime}
                       onChange={(e) => setLessonTime(e.target.value)}
                       required
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                     <input 
                       type="text" 
                       value={lessonLocation}
                       onChange={(e) => setLessonLocation(e.target.value)}
                       placeholder="e.g. Field 1 / Turf"
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Lesson # (Optional)</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Lesson # (Optional)</label>
                     <input 
                       type="number" 
                       value={lessonNumber}
                       onChange={(e) => setLessonNumber(e.target.value)}
                       placeholder="e.g. 5"
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Drills / Focus Notes</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Drills / Focus Notes</label>
                   <input 
                     type="text" 
                     value={lessonNotes}
                     onChange={(e) => setLessonNotes(e.target.value)}
                     placeholder="e.g. Low bounce arc play & clear triggers"
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button 
                     type="button" 
                     onClick={() => setShowUnifiedAddModal(false)}
-                    className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all"
+                    className="flex-1 py-3 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold uppercase tracking-wider rounded-xl transition-all"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit" 
                     disabled={dbSaving}
-                    className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
                   >
                     {dbSaving && <Loader2 size={12} className="animate-spin" />}
                     Book Coaching Lesson
@@ -3274,55 +3276,55 @@ export default function CalendarPage() {
             {addModalTab === 'game' && (
               <form onSubmit={handleCreateGame} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Opponent</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Opponent</label>
                   <input 
                     type="text" 
                     value={gameOpponent}
                     onChange={(e) => setGameOpponent(e.target.value)}
-                    placeholder="e.g. Gladiators / Crusaders"
+                    placeholder="e.g. Opponent Team"
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                     <input 
                       type="date" 
                       value={gameDate}
                       onChange={(e) => setGameDate(e.target.value)}
                       required
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                     <input 
                       type="time" 
                       value={gameTime}
                       onChange={(e) => setGameTime(e.target.value)}
                       required
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                     <input 
                       type="text" 
                       value={gameLocation}
                       onChange={(e) => setGameLocation(e.target.value)}
                       placeholder="e.g. Home / Away Arena"
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Game Type</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Game Type</label>
                     <select
                       value={gameType}
                       onChange={(e) => setGameType(e.target.value)}
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     >
                       <option value="game">Regular Season Game</option>
                       <option value="playoff">Playoff Game</option>
@@ -3334,14 +3336,14 @@ export default function CalendarPage() {
                   <button 
                     type="button" 
                     onClick={() => setShowUnifiedAddModal(false)}
-                    className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all"
+                    className="flex-1 py-3 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold uppercase tracking-wider rounded-xl transition-all"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit" 
                     disabled={dbSaving}
-                    className="flex-1 py-3 bg-amber-400 hover:bg-amber-300 text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
                   >
                     {dbSaving && <Loader2 size={12} className="animate-spin" />}
                     Add Game
@@ -3355,58 +3357,58 @@ export default function CalendarPage() {
               <form onSubmit={handleCreatePractice} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                     <input 
                       type="date" 
                       value={practiceDate}
                       onChange={(e) => setPracticeDate(e.target.value)}
                       required
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                     <input 
                       type="time" 
                       value={practiceTime}
                       onChange={(e) => setPracticeTime(e.target.value)}
                       required
-                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                      className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                   <input 
                     type="text" 
                     value={practiceLocation}
                     onChange={(e) => setPracticeLocation(e.target.value)}
                     placeholder="e.g. Rink B / Practice Turf"
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Practice Drills & Notes</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Practice Drills & Notes</label>
                   <input 
                     type="text" 
                     value={practiceNotes}
                     onChange={(e) => setPracticeNotes(e.target.value)}
                     placeholder="e.g. Angle tracking and zone breakouts"
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button 
                     type="button" 
                     onClick={() => setShowUnifiedAddModal(false)}
-                    className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all"
+                    className="flex-1 py-3 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold uppercase tracking-wider rounded-xl transition-all"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit" 
                     disabled={dbSaving}
-                    className="flex-1 py-3 bg-blue-400 hover:bg-blue-300 text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
                   >
                     {dbSaving && <Loader2 size={12} className="animate-spin" />}
                     Add Practice
@@ -3417,67 +3419,66 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
-
       {/* Edit Game Modal */}
       {editingGame && (
         <div 
           onClick={(e) => {
             if (e.target === e.currentTarget) setEditingGame(null);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+          className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 bg-black/80 backdrop-blur-sm flex justify-center items-start sm:items-center cursor-pointer"
         >
-          <div className="bg-card border border-border rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+          <div className="relative bg-card border border-border rounded-[28px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default space-y-4 my-auto max-h-[85vh] overflow-y-auto">
             <h3 className="text-lg font-bold tracking-tight mb-4">Edit Scheduled Game</h3>
             <form onSubmit={handleUpdateGame} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Opponent</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Opponent</label>
                 <input 
                   type="text" 
                   value={editGameOpponent}
                   onChange={(e) => setEditGameOpponent(e.target.value)}
                   placeholder="e.g. Crusaders Lacrosse"
                   required
-                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                   <input 
                     type="date" 
                     value={editGameDate}
                     onChange={(e) => setEditGameDate(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                   <input 
                     type="time" 
                     value={editGameTime}
                     onChange={(e) => setEditGameTime(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                 <input 
                   type="text" 
                   value={editGameLocation}
                   onChange={(e) => setEditGameLocation(e.target.value)}
                   placeholder="e.g. Home Field or Away"
-                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Game Type</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Game Type</label>
                 <select
                   value={editGameType}
                   onChange={(e) => setEditGameType(e.target.value)}
-                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 >
                   <option value="game">Regular Season Game</option>
                   <option value="playoff">Playoff Game</option>
@@ -3491,14 +3492,14 @@ export default function CalendarPage() {
                 <button 
                   type="button" 
                   onClick={() => setEditingGame(null)}
-                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes
@@ -3522,7 +3523,7 @@ export default function CalendarPage() {
                       <button
                         type="button"
                         onClick={() => setGameDeleteConfirm(false)}
-                        className="px-4 py-1.5 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                        className="px-4 py-1.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
                       >
                         Nevermind
                       </button>
@@ -3530,7 +3531,7 @@ export default function CalendarPage() {
                         type="button"
                         onClick={handleDeleteGame}
                         disabled={dbSaving}
-                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                       >
                         {dbSaving && <Loader2 size={10} className="animate-spin" />}
                         Confirm Delete
@@ -3550,51 +3551,51 @@ export default function CalendarPage() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setEditingPractice(null);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+          className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 bg-black/80 backdrop-blur-sm flex justify-center items-start sm:items-center cursor-pointer"
         >
-          <div className="bg-card border border-border rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+          <div className="relative bg-card border border-border rounded-[28px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default space-y-4 my-auto max-h-[85vh] overflow-y-auto">
             <h3 className="text-lg font-bold tracking-tight mb-4">Edit Practice Session</h3>
             <form onSubmit={handleUpdatePractice} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                   <input 
                     type="date" 
                     value={editPracticeDate}
                     onChange={(e) => setEditPracticeDate(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                   <input 
                     type="time" 
                     value={editPracticeTime}
                     onChange={(e) => setEditPracticeTime(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Location</label>
                 <input 
                   type="text" 
                   value={editPracticeLocation}
                   onChange={(e) => setEditPracticeLocation(e.target.value)}
                   placeholder="e.g. Practice Turf 2"
-                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Practice Notes</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Practice Notes</label>
                 <input 
                   type="text" 
                   value={editPracticeNotes}
                   onChange={(e) => setEditPracticeNotes(e.target.value)}
                   placeholder="e.g. Extra focus on stick work"
-                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 />
               </div>
               {editPracticeError && (
@@ -3604,14 +3605,14 @@ export default function CalendarPage() {
                 <button 
                   type="button" 
                   onClick={() => setEditingPractice(null)}
-                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes
@@ -3635,7 +3636,7 @@ export default function CalendarPage() {
                       <button
                         type="button"
                         onClick={() => setPracticeDeleteConfirm(false)}
-                        className="px-4 py-1.5 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                        className="px-4 py-1.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
                       >
                         Nevermind
                       </button>
@@ -3643,7 +3644,7 @@ export default function CalendarPage() {
                         type="button"
                         onClick={handleDeletePractice}
                         disabled={dbSaving}
-                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                       >
                         {dbSaving && <Loader2 size={10} className="animate-spin" />}
                         Confirm Delete
@@ -3666,42 +3667,42 @@ export default function CalendarPage() {
               setSeasonError("");
             }
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+          className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 bg-black/80 backdrop-blur-sm flex justify-center items-start sm:items-center cursor-pointer"
         >
-          <div className="bg-card border border-border rounded-[32px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default">
+          <div className="relative bg-card border border-border rounded-[28px] p-6 max-w-md w-full shadow-2xl animate-fade-in cursor-default space-y-4 my-auto max-h-[85vh] overflow-y-auto">
             <h3 className="text-lg font-bold tracking-tight mb-1">Edit Season</h3>
             <p className="text-xs text-muted-foreground mb-5">Update your season name or dates.</p>
             <form onSubmit={handleUpdateSeason} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Season Name</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Season Name</label>
                 <input
                   type="text"
                   value={seasonNameInput}
                   onChange={(e) => setSeasonNameInput(e.target.value)}
                   placeholder="e.g. Spring 2026"
                   required
-                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Start Date</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Start Date</label>
                   <input
                     type="date"
                     value={seasonStartInput}
                     onChange={(e) => setSeasonStartInput(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">End Date</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">End Date</label>
                   <input
                     type="date"
                     value={seasonEndInput}
                     onChange={(e) => setSeasonEndInput(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
               </div>
@@ -3712,14 +3713,14 @@ export default function CalendarPage() {
                 <button
                   type="button"
                   onClick={() => { setShowSeasonModal(false); setSeasonError(""); }}
-                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes
@@ -3736,16 +3737,16 @@ export default function CalendarPage() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setEditingLesson(null);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+          className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 bg-black/80 backdrop-blur-sm flex justify-center items-start sm:items-center cursor-pointer"
         >
-          <div className="bg-card border border-border rounded-[32px] p-6 max-w-lg w-full shadow-2xl animate-fade-in cursor-default space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-card border border-border rounded-[28px] p-6 max-w-lg w-full shadow-2xl animate-fade-in cursor-default space-y-4 my-auto max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 bg-[#00E676] text-black rounded-lg">
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 bg-foreground text-background rounded-lg shadow-xs">
                     COACHING LESSON
                   </span>
-                  <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 rounded-lg">
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 bg-muted border border-border text-muted-foreground rounded-lg">
                     LACROSSE
                   </span>
                 </div>
@@ -3753,7 +3754,7 @@ export default function CalendarPage() {
               </div>
               <button 
                 onClick={() => setEditingLesson(null)} 
-                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors cursor-pointer"
+                className="text-muted-foreground hover:text-foreground p-1.5 rounded-xl hover:bg-muted transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -3762,7 +3763,7 @@ export default function CalendarPage() {
             <form onSubmit={handleUpdateLesson} className="space-y-4">
               {/* Goalie Selection */}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Goalie / Athlete</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Goalie / Athlete</label>
                 <select
                   value={editLessonRosterId}
                   onChange={(e) => {
@@ -3772,7 +3773,7 @@ export default function CalendarPage() {
                       if (r) setEditLessonAthleteName(r.name);
                     }
                   }}
-                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 >
                   <option value="">Select Goalie from Roster...</option>
                   {rosterGoalies.map((g) => (
@@ -3786,7 +3787,7 @@ export default function CalendarPage() {
                     value={editLessonAthleteName}
                     onChange={(e) => setEditLessonAthleteName(e.target.value)}
                     placeholder="Enter athlete full name..."
-                    className="w-full mt-2 text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full mt-2 text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 )}
               </div>
@@ -3794,25 +3795,25 @@ export default function CalendarPage() {
               {/* SX and LY Numbers */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Session # (SX)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Session # (SX)</label>
                   <input 
                     type="number"
                     min="1"
                     value={editLessonSessionNum}
                     onChange={(e) => setEditLessonSessionNum(e.target.value)}
                     placeholder="e.g. 1"
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none font-mono"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Lesson # (LY)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Lesson # (LY)</label>
                   <input 
                     type="number"
                     min="1"
                     value={editLessonLessonNum}
                     onChange={(e) => setEditLessonLessonNum(e.target.value)}
                     placeholder="e.g. 4"
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none font-mono"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none font-mono"
                   />
                 </div>
               </div>
@@ -3820,48 +3821,48 @@ export default function CalendarPage() {
               {/* Date & Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                   <input 
                     type="date" 
                     value={editLessonDate}
                     onChange={(e) => setEditLessonDate(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                   <input 
                     type="time" 
                     value={editLessonTime}
                     onChange={(e) => setEditLessonTime(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Location */}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location / Facility</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Location / Facility</label>
                 <input 
                   type="text" 
                   value={editLessonLocation}
                   onChange={(e) => setEditLessonLocation(e.target.value)}
                   placeholder="e.g. Bell Memorial Park"
-                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 />
               </div>
 
               {/* Notes & Coach Takeaways */}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Coach Takeaways / Notes & Drills</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Coach Takeaways / Notes & Drills</label>
                 <textarea 
                   rows={4}
                   value={editLessonNotes}
                   onChange={(e) => setEditLessonNotes(e.target.value)}
                   placeholder="Session notes, feedback, and key focal points..."
-                  className="w-full text-sm font-medium bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none resize-none leading-relaxed"
+                  className="w-full text-sm font-medium bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none resize-none leading-relaxed"
                 />
               </div>
 
@@ -3873,14 +3874,14 @@ export default function CalendarPage() {
                 <button 
                   type="button" 
                   onClick={() => setEditingLesson(null)}
-                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes
@@ -3904,7 +3905,7 @@ export default function CalendarPage() {
                       <button
                         type="button"
                         onClick={() => setLessonDeleteConfirm(false)}
-                        className="px-4 py-1.5 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                        className="px-4 py-1.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
                       >
                         Nevermind
                       </button>
@@ -3912,7 +3913,7 @@ export default function CalendarPage() {
                         type="button"
                         onClick={handleDeleteLesson}
                         disabled={dbSaving}
-                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                       >
                         {dbSaving && <Loader2 size={10} className="animate-spin" />}
                         Confirm Delete
@@ -3932,16 +3933,16 @@ export default function CalendarPage() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setEditingTraining(null);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-pointer"
+          className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 bg-black/80 backdrop-blur-sm flex justify-center items-start sm:items-center cursor-pointer"
         >
-          <div className="bg-card border border-border rounded-[32px] p-6 max-w-lg w-full shadow-2xl animate-fade-in cursor-default space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-card border border-border rounded-[28px] p-6 max-w-lg w-full shadow-2xl animate-fade-in cursor-default space-y-4 my-auto max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 bg-[#00E676] text-black rounded-lg">
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 bg-foreground text-background rounded-lg shadow-xs">
                     TRAINING
                   </span>
-                  <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 rounded-lg">
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 bg-muted border border-border text-muted-foreground rounded-lg">
                     WORKOUT
                   </span>
                 </div>
@@ -3949,7 +3950,7 @@ export default function CalendarPage() {
               </div>
               <button 
                 onClick={() => setEditingTraining(null)} 
-                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors cursor-pointer"
+                className="text-muted-foreground hover:text-foreground p-1.5 rounded-xl hover:bg-muted transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -3958,74 +3959,74 @@ export default function CalendarPage() {
             <form onSubmit={handleUpdateTraining} className="space-y-4">
               {/* Workout Focus */}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Workout Focus / Title</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Workout Focus / Title</label>
                 <input 
                   type="text" 
                   value={editTrainingFocus}
                   onChange={(e) => setEditTrainingFocus(e.target.value)}
                   placeholder="e.g. Leg Day, Explosive Power, Mobility..."
                   required
-                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 />
               </div>
 
               {/* Date & Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Date</label>
                   <input 
                     type="date" 
                     value={editTrainingDate}
                     onChange={(e) => setEditTrainingDate(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Time</label>
                   <input 
                     type="time" 
                     value={editTrainingTime}
                     onChange={(e) => setEditTrainingTime(e.target.value)}
                     required
-                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                    className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Location */}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Location / Facility</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Location / Facility</label>
                 <input 
                   type="text" 
                   value={editTrainingLocation}
                   onChange={(e) => setEditTrainingLocation(e.target.value)}
                   placeholder="e.g. Gym / Training Facility"
-                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-semibold bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 />
               </div>
 
               {/* Strength & Conditioning Protocols */}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Strength Protocols (comma separated)</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Strength Protocols (comma separated)</label>
                 <input 
                   type="text" 
                   value={editTrainingStrength}
                   onChange={(e) => setEditTrainingStrength(e.target.value)}
                   placeholder="e.g. Back Squat 4x5, Box Jumps 3x5, Hip Thrusts"
-                  className="w-full text-sm font-medium bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none"
+                  className="w-full text-sm font-medium bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none"
                 />
               </div>
 
               {/* Directives / Notes */}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Directives / Notes</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Directives / Notes</label>
                 <textarea 
                   rows={3}
                   value={editTrainingNotes}
                   onChange={(e) => setEditTrainingNotes(e.target.value)}
                   placeholder="Key cues, focus points, recovery targets..."
-                  className="w-full text-sm font-medium bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-[#00E676] focus:outline-none resize-none leading-relaxed"
+                  className="w-full text-sm font-medium bg-muted border border-border rounded-xl px-4 py-3 text-foreground focus:border-foreground/40 focus:outline-none resize-none leading-relaxed"
                 />
               </div>
 
@@ -4037,14 +4038,14 @@ export default function CalendarPage() {
                 <button 
                   type="button" 
                   onClick={() => setEditingTraining(null)}
-                  className="flex-1 py-3 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={dbSaving}
-                  className="flex-1 py-3 bg-[#00E676] hover:bg-[#00C853] text-black text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-foreground hover:bg-foreground/90 text-background text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                 >
                   {dbSaving && <Loader2 size={12} className="animate-spin" />}
                   Save Changes
@@ -4068,7 +4069,7 @@ export default function CalendarPage() {
                       <button
                         type="button"
                         onClick={() => setTrainingDeleteConfirm(false)}
-                        className="px-4 py-1.5 bg-muted hover:bg-muted-foreground/20 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                        className="px-4 py-1.5 bg-muted hover:bg-muted/80 border border-border text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
                       >
                         Nevermind
                       </button>
@@ -4076,7 +4077,7 @@ export default function CalendarPage() {
                         type="button"
                         onClick={handleDeleteTraining}
                         disabled={dbSaving}
-                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                       >
                         {dbSaving && <Loader2 size={10} className="animate-spin" />}
                         Confirm Delete
@@ -4089,8 +4090,6 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
-
-
 
       <MobileBottomNav />
     </div>

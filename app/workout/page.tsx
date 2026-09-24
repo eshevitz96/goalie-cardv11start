@@ -132,7 +132,7 @@ export default function MissionCardPage() {
                 // Set default dummy contract for offline mode
                 setActiveContract({
                     id: "5c60360d-6ea8-4db3-ac00-ec4065681e9a",
-                    name: "Gladiators (Local)",
+                    name: "Professional Goalie (Local)",
                     bottlenecks: ["landing_quality", "right_side_balance", "conditioning"]
                 });
                 setContractLoading(false);

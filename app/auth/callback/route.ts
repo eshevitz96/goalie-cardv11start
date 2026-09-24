@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     console.log(`[Auth Callback] Origin: ${origin}, Next: ${next}, Has Code: ${!!code}, Has TokenHash: ${!!tokenHash}`);
 
     if (code || tokenHash) {
-        const supabase = createClient();
+        const supabase = await createClient();
         let authError = null;
 
         if (code) {

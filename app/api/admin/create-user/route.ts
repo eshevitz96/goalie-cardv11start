@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
     try {
         // 1. Verify caller is authenticated admin
-        const serverSupabase = createServerSupabase();
+        const serverSupabase = await createServerSupabase();
         const { data: { user: caller } } = await serverSupabase.auth.getUser();
 
         if (!caller) {

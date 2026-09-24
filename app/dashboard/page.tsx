@@ -16,6 +16,7 @@ import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { DigitalSignatureModal } from "@/components/goalie/DigitalSignatureModal";
 import { getGoalieBookingProfile, fetchCoachDashboardCounts } from "@/app/training/book/actions";
+import { usePerformanceRealtime } from "@/hooks/usePerformanceRealtime";
 import { twMerge } from "tailwind-merge";
 
 function normalizeSportDisplay(rawSport: string | null | undefined): string | null {
@@ -55,7 +56,12 @@ export default function Dashboard() {
     });
     const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(true);
     const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
+    const [resolvedGoalieId, setResolvedGoalieId] = useState<string | null>(null);
     const [performanceScore, setPerformanceScore] = useState<number | string>(0);
+    const { score: realtimeScore } = usePerformanceRealtime(resolvedGoalieId || auth.userId || userData?.publicUserId);
+    const effectivePerformanceScore = (realtimeScore !== "..." && realtimeScore !== "Baseline Pending" && realtimeScore !== 0) 
+        ? realtimeScore 
+        : (performanceScore || "Baseline Pending");
     const [isPro, setIsPro] = useState(false);
     const [credits, setCredits] = useState(0);
     const [showProgress, setShowProgress] = useState(true);
@@ -64,7 +70,6 @@ export default function Dashboard() {
     const [coachWeekCount, setCoachWeekCount] = useState(0);
     const [coachRosterCount, setCoachRosterCount] = useState(0);
     const [paidSubmissionData, setPaidSubmissionData] = useState<any>(null);
-    const [resolvedGoalieId, setResolvedGoalieId] = useState<string | null>(null);
     const [showActionsOverlay, setShowActionsOverlay] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const { seasonLabel: hookSeasonLabel } = useSeasonTimeline(userData?.sport || rosterData?.sport || null);
@@ -660,7 +665,7 @@ export default function Dashboard() {
                         sport={userData?.sport || rosterData?.sport || null}
                         id={rosterData?.id}
                         isPro={isPro}
-                        performanceScore={performanceScore}
+                        performanceScore={effectivePerformanceScore}
                         initials={userData?.initials}
                         gcNumber={userData?.gcNumber}
                         isIncomplete={isProfileIncomplete}
@@ -747,7 +752,7 @@ export default function Dashboard() {
                                     <div className="relative z-10">
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[#00E676] bg-[#00E676]/10 px-2 py-0.5 rounded-full">
-                                                CoachCard Command Center
+                                                Coach Card Command Center
                                             </span>
                                             <span className="text-[10px] font-bold text-muted-foreground">
                                                 {coachWeekCount} {coachWeekCount === 1 ? 'Lesson' : 'Lessons'} This Week

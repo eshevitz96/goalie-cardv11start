@@ -12,6 +12,7 @@ import { GlobalSearch } from '@/components/shared/GlobalSearch';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/utils/supabase/client';
 import { PerformanceAvatar } from '@/components/ui/PerformanceAvatar';
+import { usePerformanceRealtime } from '@/hooks/usePerformanceRealtime';
 
 interface GoalieHeaderProps {
     activeGoalieName: string;
@@ -23,30 +24,9 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const [performanceScore, setPerformanceScore] = useState(0);
     const { userId, userRole } = useAuth();
-
-    useEffect(() => {
-        if (!userId) return;
-        
-        const fetchScore = async () => {
-            try {
-                const { data: latestSnapshot } = await supabase
-                    .from('performance_index_snapshots')
-                    .select('score')
-                    .eq('user_id', userId)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-                setPerformanceScore(latestSnapshot?.score ?? 0);
-            } catch (e) {
-                console.warn("Failed to fetch performance baseline snapshots in GoalieHeader:", e);
-                setPerformanceScore(0);
-            }
-        };
-        
-        fetchScore();
-    }, [userId]);
+    const { score: liveScore } = usePerformanceRealtime(userId);
+    const performanceScore = typeof liveScore === 'number' ? liveScore : (Number(liveScore) || 0);
 
     // Robust menu-switching logic to prevent overlap
     const toggleUserMenu = () => {

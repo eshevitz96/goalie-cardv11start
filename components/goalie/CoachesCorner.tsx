@@ -20,27 +20,35 @@ export function CoachesCorner({ activeGoalie, hasCoach, onPickCoach, onAddVideo 
     };
 
     return (
-        <div className="glass rounded-[2rem] p-6 relative overflow-hidden bg-gradient-to-br from-card to-background border border-border/50 flex flex-col">
-            {/* Trophy Icon Watermark */}
-            <div className="absolute top-4 right-6 opacity-10 pointer-events-none">
-                <Medal size={60} strokeWidth={1} className="text-muted-foreground" />
+        <div className="rounded-[28px] p-6 md:p-8 relative overflow-hidden bg-card border border-border hover:border-foreground/30 flex flex-col justify-between transition-all shadow-sm font-sans">
+            {/* Watermark */}
+            <div className="absolute top-6 right-6 opacity-5 pointer-events-none">
+                <Medal size={72} strokeWidth={1.5} className="text-foreground" />
             </div>
             
             <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-black text-base text-foreground flex items-center gap-2 tracking-tight">
-                        <ShieldCheck size={18} className="text-foreground" /> Coaches Corner
-                    </h3>
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center text-foreground">
+                            <ShieldCheck size={18} strokeWidth={2.5} />
+                        </div>
+                        <h3 className="font-bold text-base md:text-lg text-foreground tracking-tight m-0">
+                            Coaches Corner
+                        </h3>
+                    </div>
+                    <span className="px-2.5 py-1 bg-muted rounded-md text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Coach Card
+                    </span>
                 </div>
 
                 <div className="space-y-4">
                     {hasCoach || activeGoalie.coachDetails ? (
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shrink-0 shadow-inner">
-                                <span className="font-black text-base">{(activeGoalie.coach || "E").charAt(0)}</span>
+                        <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-muted/50 border border-border/60">
+                            <div className="w-11 h-11 rounded-xl bg-foreground text-background flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+                                <span>{(activeGoalie.coach || "E").charAt(0)}</span>
                             </div>
                             <div>
-                                <div className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Assigned Coach</div>
+                                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Assigned Coach</div>
                                 <div className="font-bold text-foreground text-sm leading-tight">{activeGoalie.coach || "Coach Elliott"}</div>
                             </div>
                         </div>
@@ -48,29 +56,29 @@ export function CoachesCorner({ activeGoalie, hasCoach, onPickCoach, onAddVideo 
                         <div className="py-2">
                              <button 
                                 onClick={onPickCoach}
-                                className="w-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl py-3 px-4 flex items-center justify-center gap-2 transition-all group"
+                                className="w-full bg-foreground text-background hover:bg-foreground/90 rounded-xl py-3 px-4 font-semibold text-xs transition-all active:scale-[0.98] cursor-pointer shadow-sm text-center"
                             >
-                                <span className="text-[10px] font-black uppercase tracking-widest leading-none group-hover:scale-105 transition-transform">Connect with Coach</span>
+                                Connect with Coach
                             </button>
                         </div>
                     )}
                 </div>
             </div>
 
-            <div className="relative z-10 pt-4 mt-6 border-t border-border/40">
+            <div className="relative z-10 pt-4 mt-6 border-t border-border">
                 {/* Highlights Section */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[.2em]">Highlights</span>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Highlights</span>
                         <button 
                             onClick={onAddVideo}
-                            className="text-[9px] font-black text-blue-500 hover:bg-blue-500/5 transition-colors border border-blue-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5 whitespace-nowrap"
+                            className="text-xs font-semibold px-3 py-1 bg-muted border border-border hover:bg-muted/80 rounded-xl text-foreground transition-all cursor-pointer"
                         >
                             + Add Video
                         </button>
                     </div>
-                    <p className="text-[10px] font-medium text-muted-foreground italic">
-                        Share game clips for review.
+                    <p className="text-xs text-muted-foreground m-0">
+                        Share game clips for personalized technical review.
                     </p>
                 </div>
             </div>
