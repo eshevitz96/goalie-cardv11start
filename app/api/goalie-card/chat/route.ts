@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/utils/supabase/admin';
-import { ATHLETE_PROFILE_METRICS, ATHLETE_TRAINING_HISTORY, LEARNED_PATTERNS } from '@/lib/athleteTrainingHistory';
+import { ATHLETE_PROFILE_METRICS, LEARNED_PATTERNS } from '@/lib/athleteTrainingHistory';
+import { 
+    AthleteTrackRepository, 
+    formatDecisionContextForPrompt, 
+    DecisionLoadContext, 
+    NextPerformanceLookahead 
+} from '@/lib/repositories/athleteTrackRepository';
 import { 
     ExecutionProvenanceMode, 
     ExecutionProvenance, 
@@ -21,15 +27,10 @@ interface ChatMessage {
     provenance?: ExecutionProvenance;
 }
 
-const formatAthleteHistorySummary = () => {
-    const recent = ATHLETE_TRAINING_HISTORY.slice(-8);
-    return recent.map(r => `- [${r.date}] ${r.title} (${r.type}): ${r.notes || ''} ${r.cues ? `Cues: ${r.cues.join(', ')}` : ''}`).join('\n');
-};
-
-const GOALIE_SYSTEM_PROMPT = `
+const BASE_GOALIE_SYSTEM_PROMPT = `
 You are GOALIE CARD — the elite personal coaching engine and training intelligence partner for professional goaltender Elliott Shevitz.
 
-ATHLETE DOSSIER & COMPREHENSIVE TRAINING HISTORY:
+ATHLETE DOSSIER & ATHLETIC OBJECTIVES:
 - Name: Elliott Shevitz
 - Primary Roles: 
   1. Professional Ice Hockey Goaltender (Personal athletic training & competitive contract)
@@ -58,9 +59,7 @@ LACROSSE GOALIE COACHING EXPERTISE & EXACT TERMINOLOGY:
     - Primary Levels: **High**, **Hips**, **Low** (e.g. stick-side high, off-stick hip, off-stick low, 5-hole/bounce).
     - Note: "Shoulder" is only a specific placement descriptor of where the ball was located, not a primary level.
   * Strictly Banned Terminology: NEVER use generic AI jargon like "12-yard cylinder". Use Elliott's exact cues above.
-  * Workload Accounting: When Elliott coaches multiple lacrosse lessons on the field (throwing, demoing stance, standing on turf), recognize this as real physical demand on feet, lower back, and shoulders, and factor it into his daily recovery planning.
-- Recent Training History Log:
-${formatAthleteHistorySummary()}
+  * Workload Accounting: When Elliott coaches lacrosse lessons on the field (throwing, demoing stance, standing on turf), recognize this as real physical demand on feet, lower back, and shoulders, and factor it into his daily recovery planning. However, coaching is NOT his own completed workout.
 
 STRICT PRIVACY & DATA CONFIDENTIALITY (MANDATORY):
 - These conversations are strictly private, personal, and confidential to Elliott.
@@ -75,59 +74,96 @@ STRICT SAFETY & SCOPE BOUNDARIES (CRITICAL):
 2. MEDICAL & SEVERE ORTHOPEDIC INJURY BOUNDARY:
    - Do not diagnose acute structural tears (torn ACL/MCL/labrum), concussions, or surgical trauma.
    - For sharp/traumatic pain, advise immediate evaluation by a sports orthopedic physician or PT.
-   - Provide conservative athletic load adjustments (e.g. decompressing hip capsule, adductor flush, avoiding heavy axial loading).
+   - Provide conservative athletic load adjustments (e.g. conservative volume reduction, non-axial accessory work, active recovery).
 
 NATURAL COACHING DIALOGUE & INTELLIGENCE MANDATE:
-1. PURE NATURAL LANGUAGE:
-   - Talk to Elliott naturally, directly, and conversationally, exactly like a high-level private goalie coach.
-   - DO NOT use rigid, formulaic section headers like "### WHERE TO GO NEXT" or "### WHERE NOT TO GO".
-   - DO NOT write robotic, repetitive essays. Weave guidance, focus areas, and movement boundaries naturally into your sentences.
-2. SHORT & ADAPTIVE RESPONSES:
-   - If Elliott sends a short check-in, greeting, or number (e.g. "how are we", "3" for groin tightness, "done with skate"), reply in 1–3 natural, punchy sentences.
-3. LONG-TERM MEMORY & CONVERSATIONAL CONTINUITY:
-   - Remember previous conversations, past soreness reports, and upcoming games. If he discussed his adductors yesterday or an upcoming match on Friday, maintain that contextual continuity across threads.
+1. CONVERSATIONAL COACHING & NATURAL DIALOGUE:
+   - Talk to Elliott naturally, directly, and conversationally, like a high-level private goalie coach.
+   - Preserve natural coaching language, continuity, personality, and context. Concision must never become robotic.
+   - For check-ins, reflections, questions, disagreements, technical discussions, readiness reports, in-session updates, athlete decisions, and follow-up inquiries, set responseMode to "conversation" and respond naturally and contextually. Do NOT force ordinary conversational exchanges into a workout template.
+   - The athlete must be free to:
+     * Challenge a recommendation or ask "why?"
+     * Report that something feels easier or harder
+     * Report soreness, fatigue, or readiness shifts
+     * Disagree with the coach or change plans
+     * Discuss an on-ice performance or technical mechanics
+     * Check in naturally without immediately receiving a templated workout card.
+   - Goalie Card reasons with Elliott rather than simply emitting cards. When Elliott disagrees or challenges advice, do not automatically capitulate; reconsider thoughtfully using Athlete Track history, current state, Contract priorities, and evidence.
+
+2. DEFAULT TRAINING RECOMMENDATION UX (WHEN PRESCRIBING A MISSION):
+   - When Goalie Card is prescribing a workout or daily training plan, set responseMode to "mission" and populate the structured "mission" object using the scan-first information hierarchy (WHAT → WHY → PLAN → GUARDRAIL):
+     * WHAT: 1 concise sentence stating today's objective/session and approximate duration.
+     * WHY: 1–2 concise sentences explaining decisive factual context (recency, readiness, upcoming event).
+     * PLAN: Array of structured exercise items with name, sets, reps, load, duration, and notes.
+     * GUARDRAIL: 1 concise line covering RPE reserve, stop/reassess criteria, or performance-preservation constraint.
+   - Default Mission responses must remain concise and scan-first—easy to read during a workout. Deeper physiological reasoning belongs in follow-up dialogue or the Explain experience.
+   - Mission Revision Boundary: Preserve the invariant "ORIGINAL PLANNED MISSION → MISSION REVISION(S) → ATHLETE DECISION(S) → ACTUAL EXECUTION". If conversational feedback changes the plan, generate the appropriate revision without overwriting the original Mission.
+
+3. PRE-PERFORMANCE & PRE-ICE DECISION SPECTRUM (~1 DAY OUT):
+   - When a relevant on-ice performance is ~1 day away, evaluate a spectrum rather than treating the choice as a binary between heavy lifting vs. pure recovery:
+     a. Movement Preparation / Active Recovery: Appropriate when current readiness, acute soreness, movement quality, fatigue, or recent workload indicates additional training stress is unlikely to be useful.
+     b. Controlled Submaximal / Maintenance Strength: Must remain an active option when context supports it, including when:
+        - Current symptoms are mild and not movement-altering,
+        - Recent workload has been predominantly conditioning/on-ice rather than strength,
+        - Sufficient time has elapsed since meaningful strength exposure,
+        - Volume/load can be constrained to preserve readiness for the upcoming performance.
+        - Base Heuristic: RPE <= 7 may be used as the current BASE_COACHING_HEURISTIC for this session type, not an immutable rule. Established athlete-specific evidence may supersede it through the existing epistemic architecture.
+     c. Full / High-Fatigue Strength: Generally disfavored ~1 day before a priority performance when it creates meaningful risk of residual fatigue. Do not make this an absolute prohibition; evaluate against Contract priorities, importance of upcoming performance, current readiness, and established athlete-specific evidence.
+   - This spectrum must NOT become a hard rule that the athlete should lift the day before ice. Evaluate all three options from actual context.
+
+4. SYMPTOM GROUNDING MANDATE:
+   - Strictly ground current symptoms in the athlete's current report.
+   - If Elliott reports generalized soreness (e.g. "body is a little sore, nothing crazy"), DO NOT silently convert that into current hip, groin, adductor, or other localized soreness merely because those areas exist elsewhere in Athlete Track history.
+   - Historical tissue information provides context but must remain clearly distinguishable from current reported state.
+
+5. LONG-TERM MEMORY & CONVERSATIONAL CONTINUITY:
+   - Maintain accurate contextual continuity across threads based strictly on the provided Athlete Track intelligence.
+   - Unknown values (e.g. unknown duration or load) must remain unknown. Do not invent missing durations, reps, or sets.
+   - Do not convert temporary observations into permanent learned patterns.
 
 ACTION CARDS MANDATE:
-- Set "actionCard": null for casual greetings, status checks, or general questions.
+- Set "actionCard": null for casual greetings, status checks, general questions, or non-workout coaching.
+- Explicit Negation Rule: NEVER create a training actionCard if Elliott explicitly states it was "not a workout", "didn't train", "didn't lift", "skipped", or "just coaching".
 - Set "actionCard" ONLY in these two explicit scenarios:
-  1. Training Workout discussed or completed (including running/cardio, HIIT, yoga/mobility, on-ice skate, gym/lifting, lacrosse coaching):
-     - CRITICAL: If Elliott mentions multiple workouts (e.g., "I ran 3 miles and did yoga flow"), combine them into the title and routine breakdown (e.g., "3-Mile Run & Yoga Recovery Flow"). Never miss a mentioned run, skate, or lift!
-     {
-       "type": "training_session",
-       "title": "Clean Combined Title (e.g. 3-Mile Run & Yoga Recovery Flow or 38-min Deck of Cards HIIT)",
-       "data": {
-         "title": "Clean Session Title",
-         "type": "strength" | "conditioning" | "sport" | "recovery" | "other",
-         "duration": 45,
-         "date": "YYYY-MM-DD",
-         "details": "Routine breakdown of everything completed (e.g. 3-mile run + 30m yoga & hip flow)",
-         "recoveryNotes": "Tissue readiness or fatigue notes"
-       }
-     }
-  2. Calendar Event discussed (e.g. "I have a stick 'n puck on Thursday at 2pm", "Game on Friday at 7pm", "meeting with trainer tomorrow"):
-     {
-       "type": "calendar_event",
-       "title": "Event Title (e.g. On-Ice Stick 'n Puck)",
-       "data": {
-         "title": "On-Ice Stick 'n Puck",
-         "date": "YYYY-MM-DD",
-         "time": "2:00 PM",
-         "location": "Local Rink",
-         "sport": "Hockey",
-         "details": "Edge priming and low-angle tracking"
-       }
-     }
+  1. Training Workout completed or explicitly discussed for logging (combine multiple workouts into title and details if applicable).
+  2. Calendar Event discussed (e.g. scheduled skate or match).
 
-OUTPUT FORMAT:
-Always return valid JSON:
+OUTPUT FORMAT & SCHEMA REQUIREMENTS:
+Always return valid JSON with this exact schema:
 {
-  "reply": "Natural conversational coaching response (concise, direct, coach tone, zero rigid template headers)",
+  "responseMode": "conversation" | "mission",
+  "reply": "<Conversational coaching message: full natural response if responseMode is conversation; or concise introductory/framing message if responseMode is mission>",
+  "mission": null OR {
+    "what": "<1 concise sentence stating today's focus and estimated total duration>",
+    "why": "<1-2 concise sentences summarizing the factual context justifying this session (recency, readiness, upcoming event)>",
+    "plan": [
+      {
+        "name": "<Exercise, drill, or movement name>",
+        "sets": "<Target sets count or range, or null>",
+        "reps": "<Target reps count, range, or duration, or null>",
+        "load": "<Prescribed load or intensity constraint, or null>",
+        "duration": "<Estimated duration for this block if applicable, or null>",
+        "notes": "<Key technical cue or setup instruction, or null>"
+      }
+    ],
+    "guardrail": "<1 concise line stating safety boundary, RPE ceiling, or stop criterion>"
+  },
+  "decisionFactors": [
+    "<Factual context item from Deterministic Decision Context used to make this decision>"
+  ],
   "actionCard": null OR {
     "type": "training_session" | "calendar_event",
-    "title": "Short Title",
-    "data": { ... }
+    "title": "<Short Title>",
+    "data": {
+      "title": "<Session or Event Title>",
+      "type": "strength" | "conditioning" | "sport" | "recovery" | "other",
+      "duration": "<Duration in minutes as number, or null if unmeasured>",
+      "date": "YYYY-MM-DD",
+      "details": "<Routine breakdown or event details>",
+      "recoveryNotes": "<Readiness or recovery notes, or null>"
+    }
   },
-  "suggestedThreadTitle": "Short 3-5 word title for this conversation thread if new (e.g. Adductor Flush & Friday Prep)"
+  "suggestedThreadTitle": "<Short 3-5 word title for this conversation thread if new>"
 }
 `;
 
@@ -369,13 +405,9 @@ export async function POST(req: Request) {
             });
         }
 
-        // 3. Synthesize Cross-Thread Long-Term Memory & Ingest Live Database Records
+        // 3. Synthesize Cross-Thread Long-Term Memory & Ingest Optional DB Lookahead
         let crossThreadMemory = "No previous thread memories.";
-        let liveDatabaseSessionsSummary = "No manual training sessions recorded in database yet.";
-        let liveWellnessSummary = "No active soreness reported.";
-        let liveUpcomingSchedule = "No upcoming events scheduled.";
-        let lookaheadSource = "None (No Scheduled Events)";
-        const historyThroughDate = ATHLETE_PROFILE_METRICS.historyThrough || "2026-09-16";
+        let liveDbLookahead: NextPerformanceLookahead | undefined = undefined;
 
         try {
             // A. Fetch recent threads and chat takeaways for cross-session intelligence
@@ -398,62 +430,54 @@ export async function POST(req: Request) {
                 crossThreadMemory = threadSummaries.slice(0, 10).join('\n');
             }
 
-            // B. Fetch recent training_sessions
-            let sessionQuery = supabaseAdmin
-                .from('training_sessions')
-                .select('*')
-                .order('session_date', { ascending: false })
-                .limit(15);
-
-            if (resolvedPublicId && resolvedAuthId) {
-                sessionQuery = sessionQuery.or(`user_id.eq.${resolvedPublicId},user_id.eq.${resolvedAuthId}`);
-            } else if (effectiveUserId) {
-                sessionQuery = sessionQuery.eq('user_id', effectiveUserId);
-            }
-
-            const { data: dbSessions } = await sessionQuery;
-            if (dbSessions && dbSessions.length > 0) {
-                liveDatabaseSessionsSummary = dbSessions.map((s: any) => 
-                    `- [Date: ${s.session_date}] ${s.title} (Type: ${s.training_type}, Duration: ${s.duration_minutes} min): ${s.notes_summary ? s.notes_summary.replace(/\n+/g, ' | ') : 'Completed'}`
-                ).join('\n');
-            }
-
-            // C. Fetch recent reflections & wellness
-            let refQuery = supabaseAdmin
-                .from('reflections')
-                .select('*')
-                .neq('activity_type', 'goalie_card_chat')
-                .order('created_at', { ascending: false })
-                .limit(6);
-
-            if (effectiveUserId) {
-                refQuery = refQuery.or(`user_id.eq.${effectiveUserId},author_id.eq.${effectiveUserId}`);
-            }
-
-            const { data: dbReflections } = await refQuery;
-            if (dbReflections && dbReflections.length > 0) {
-                liveWellnessSummary = dbReflections.map((r: any) => 
-                    `- [${new Date(r.created_at).toLocaleDateString()}] Soreness: ${r.soreness || 'None'}, Notes: ${r.content || r.takeaways || ''}`
-                ).join('\n');
-            }
-
-            // D. Fetch upcoming events
+            // B. Check for upcoming events in live database
             const { data: dbEvents } = await supabaseAdmin
                 .from('events')
                 .select('*')
-                .gte('date', todayStr)
+                .gte('date', activeThreadDate)
                 .order('date', { ascending: true })
-                .limit(6);
+                .limit(1);
 
             if (dbEvents && dbEvents.length > 0) {
-                lookaheadSource = "Live Events DB";
-                liveUpcomingSchedule = dbEvents.map((e: any) => 
-                    `- [${e.date}] ${e.name} (${e.sport || 'Event'}${e.scouting_report ? ` - ${e.scouting_report}` : ''})`
-                ).join('\n');
+                const e = dbEvents[0];
+                const today = new Date(activeThreadDate);
+                const evtDate = new Date(e.date);
+                const diffDays = Math.ceil((evtDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                liveDbLookahead = {
+                    eventDate: e.date,
+                    eventType: (e.sport || 'event').toLowerCase(),
+                    eventName: e.name,
+                    daysRemaining: Math.max(0, diffDays),
+                    source: 'LIVE_DB'
+                };
             }
         } catch (dbErr) {
-            console.warn("[Live Context Query Fallback]:", dbErr);
+            console.warn("[Live Context Query Warning]:", dbErr);
         }
+
+        // C. Assemble Unified Athlete Track Decision Context
+        let decisionContext: DecisionLoadContext;
+        try {
+            decisionContext = AthleteTrackRepository.getDecisionContext(activeThreadDate, liveDbLookahead);
+        } catch (contextError: any) {
+            console.error("[AthleteTrackRepository Context Assembly Error]:", contextError);
+            return NextResponse.json({
+                reply: "Goalie Card is operating in degraded mode. Unified Athlete Track context assembly failed, so live coaching intelligence cannot safely evaluate your workload.",
+                actionCard: null,
+                provenance: {
+                    mode: 'OFFLINE_UNAVAILABLE',
+                    historyThroughDate: 'ERROR_DEGRADED',
+                    completedTrainingThrough: null,
+                    athleteStateThrough: null,
+                    activityContextThrough: null,
+                    nextPerformance: null,
+                    lookaheadSource: 'None (Assembly Failed)',
+                    details: 'Context assembly failure: ' + (contextError?.message || 'Unknown error')
+                }
+            });
+        }
+
+        const formattedTrackIntelligence = formatDecisionContextForPrompt(decisionContext);
 
         // 4. Build Active Thread Conversation History
         const formattedHistory = Array.isArray(messages) && messages.length > 0
@@ -461,16 +485,9 @@ export async function POST(req: Request) {
             : '';
 
         const dynamicFullPrompt = `
-${GOALIE_SYSTEM_PROMPT}
+${BASE_GOALIE_SYSTEM_PROMPT}
 
-LIVE DATABASE SESSIONS:
-${liveDatabaseSessionsSummary}
-
-LATEST WELLNESS & SORENESS LOGS:
-${liveWellnessSummary}
-
-UPCOMING SCHEDULE & COMPETITION:
-${liveUpcomingSchedule}
+${formattedTrackIntelligence}
 
 CROSS-THREAD LONG-TERM MEMORY (PAST TOPICS & DISCUSSIONS ACROSS SESSIONS):
 ${crossThreadMemory}
@@ -484,6 +501,9 @@ CURRENT THREAD INFO:
 `;
 
         let replyText = "";
+        let responseMode: 'conversation' | 'mission' = 'conversation';
+        let mission: any = null;
+        let decisionFactors: string[] = [];
         let actionCard: ChatMessage['actionCard'] = undefined;
         let suggestedThreadTitle = "";
         let provenanceMode: ExecutionProvenanceMode = 'OFFLINE_UNAVAILABLE';
@@ -494,12 +514,12 @@ CURRENT THREAD INFO:
 
         if (geminiApiKey) {
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [
-                            { role: 'user', parts: [{ text: `${dynamicFullPrompt}\n\nElliott's Latest Message: "${userMessage}"\n\nRespond naturally as his coach in required JSON format with "reply", "actionCard" (null or training_session/calendar_event), and "suggestedThreadTitle". Remember: When proposing a training card, state that you've drafted the card for review. Never claim it is already logged to the database.` }] }
+                            { role: 'user', parts: [{ text: `${dynamicFullPrompt}\n\nElliott's Latest Message: "${userMessage}"\n\nRespond naturally as his coach in required JSON schema with "responseMode", "reply", "mission" (structured or null), "decisionFactors", "actionCard" (null or training_session/calendar_event), and "suggestedThreadTitle". Remember: When proposing a training card, state that you've drafted the card for review. Never claim it is already logged to the database.` }] }
                         ],
                         generationConfig: {
                             responseMimeType: "application/json"
@@ -512,7 +532,10 @@ CURRENT THREAD INFO:
                     const rawJson = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (rawJson) {
                         const parsed = JSON.parse(rawJson);
-                        replyText = parsed.reply;
+                        replyText = parsed.reply || "";
+                        mission = parsed.mission || null;
+                        responseMode = parsed.responseMode || (mission ? 'mission' : 'conversation');
+                        decisionFactors = Array.isArray(parsed.decisionFactors) ? parsed.decisionFactors : [];
                         actionCard = parsed.actionCard || undefined;
                         suggestedThreadTitle = parsed.suggestedThreadTitle || "";
                         provenanceMode = 'AI_COACH';
@@ -544,7 +567,10 @@ CURRENT THREAD INFO:
                     const rawContent = openAiData.choices?.[0]?.message?.content;
                     if (rawContent) {
                         const parsed = JSON.parse(rawContent);
-                        replyText = parsed.reply;
+                        replyText = parsed.reply || "";
+                        mission = parsed.mission || null;
+                        responseMode = parsed.responseMode || (mission ? 'mission' : 'conversation');
+                        decisionFactors = Array.isArray(parsed.decisionFactors) ? parsed.decisionFactors : [];
                         actionCard = parsed.actionCard || undefined;
                         suggestedThreadTitle = parsed.suggestedThreadTitle || "";
                         provenanceMode = 'AI_COACH';
@@ -586,10 +612,14 @@ CURRENT THREAD INFO:
 
         const provenance: ExecutionProvenance = {
             mode: provenanceMode,
-            historyThroughDate,
-            lookaheadSource,
+            historyThroughDate: decisionContext.freshness.completedTrainingThrough || '2026-09-16',
+            completedTrainingThrough: decisionContext.freshness.completedTrainingThrough,
+            athleteStateThrough: decisionContext.freshness.athleteStateThrough,
+            activityContextThrough: decisionContext.freshness.activityContextThrough,
+            nextPerformance: decisionContext.freshness.nextPerformance,
+            lookaheadSource: decisionContext.freshness.nextPerformance?.source || 'LOCAL_STORE',
             details: provenanceMode === 'AI_COACH' 
-                ? 'Generated via Multimodal AI Coach Model' 
+                ? 'Generated via Multimodal AI Coach Model with Unified Athlete Track Context' 
                 : (provenanceMode === 'DETERMINISTIC_ACTION' 
                     ? 'Structured Deterministic Template Action' 
                     : 'Offline Mode (AI Coaching & Live Context Unavailable)')
@@ -610,6 +640,9 @@ CURRENT THREAD INFO:
                         threadTitle: activeThreadTitle,
                         threadDate: activeThreadDate,
                         is_private_chat: true,
+                        responseMode,
+                        mission: mission || null,
+                        decisionFactors,
                         provenance
                     },
                     actionCard: actionCard || null
@@ -620,6 +653,9 @@ CURRENT THREAD INFO:
 
         return NextResponse.json({
             reply: replyText,
+            mission,
+            responseMode,
+            decisionFactors,
             actionCard,
             threadId: activeThreadId,
             threadTitle: activeThreadTitle,

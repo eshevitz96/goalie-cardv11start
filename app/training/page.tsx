@@ -63,6 +63,21 @@ interface Message {
     sender: 'goalie' | 'goalie_card';
     text: string;
     timestamp: string;
+    responseMode?: 'conversation' | 'mission';
+    mission?: {
+        what: string;
+        why: string;
+        plan: Array<{
+            name: string;
+            sets?: string | number | null;
+            reps?: string | number | null;
+            load?: string | null;
+            duration?: string | number | null;
+            notes?: string | null;
+        }>;
+        guardrail: string;
+    } | null;
+    decisionFactors?: string[];
     actionCard?: {
         type: 'training_session' | 'calendar_event' | 'logged_session' | 'prescribed_protocol' | string;
         title: string;
@@ -481,6 +496,9 @@ export default function TrainingPage() {
                 sender: 'goalie_card',
                 text: data.reply || "Tracking your workload.",
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                responseMode: data.responseMode,
+                mission: data.mission || null,
+                decisionFactors: Array.isArray(data.decisionFactors) ? data.decisionFactors : [],
                 actionCard: data.actionCard || undefined,
                 provenance: data.provenance || undefined
             };
@@ -543,10 +561,10 @@ export default function TrainingPage() {
 
         try {
             const cardData = msg.actionCard?.data || {};
-            const title = cardData.title || msg.actionCard?.title || "Goalie Training Session";
+            const title = cardData.title || msg.actionCard?.title || (msg.mission ? msg.mission.what : "Goalie Training Session");
             const duration = Number(cardData.duration) || 30;
-            const type = cardData.type || 'strength';
-            const notes = cardData.details || msg.text.slice(0, 200);
+            const type = cardData.type || (msg.mission?.what?.toLowerCase().includes('recovery') ? 'recovery' : msg.mission?.what?.toLowerCase().includes('condition') ? 'conditioning' : 'strength');
+            const notes = cardData.details || (msg.mission ? `${msg.mission.what}\n\nPrescribed Plan:\n${msg.mission.plan?.map(p => `- ${p.name}: ${[p.sets ? `${p.sets} sets` : null, p.reps ? `${p.reps}` : null, p.load, p.duration].filter(Boolean).join(', ')}${p.notes ? ` (${p.notes})` : ''}`).join('\n')}\n\nGuardrail: ${msg.mission.guardrail}` : msg.text.slice(0, 200));
 
             const res = await fetch('/api/goalie-card/actions', {
                 method: 'POST',
@@ -584,11 +602,11 @@ export default function TrainingPage() {
 
         try {
             const cardData = msg.actionCard?.data || {};
-            const title = cardData.title || msg.actionCard?.title || "Scheduled Event";
+            const title = cardData.title || msg.actionCard?.title || (msg.mission ? msg.mission.what : "Scheduled Event");
             const date = cardData.date || todayDateStr;
             const time = cardData.time || "TBD";
             const location = cardData.location || "Local Rink / Gym";
-            const notes = cardData.details || msg.text.slice(0, 200);
+            const notes = cardData.details || (msg.mission ? `${msg.mission.what}\n\nPlan:\n${msg.mission.plan?.map(p => `- ${p.name}`).join('\n')}\n\nGuardrail: ${msg.mission.guardrail}` : msg.text.slice(0, 200));
 
             const res = await fetch('/api/goalie-card/actions', {
                 method: 'POST',
@@ -1315,6 +1333,151 @@ export default function TrainingPage() {
                                                         }} />
                                                     );
                                                 })}
+
+                                                {/* STRUCTURED MISSION PRESCRIPTION (SCAN-FIRST UX: WHAT -> WHY -> PLAN -> GUARDRAIL) */}
+                                                {msg.sender === 'goalie_card' && msg.mission && (
+                                                    <div className="mt-3 pt-3 border-t border-border/60 space-y-2.5">
+                                                        {/* WHAT Header */}
+                                                        <div className="bg-primary/10 border border-primary/20 rounded-xl p-2.5">
+                                                            <span className="text-[10px] font-mono font-bold tracking-wider text-primary uppercase block mb-0.5">
+                                                                Today's Mission (WHAT)
+                                                            </span>
+                                                            <p className="text-xs font-bold text-foreground leading-snug">
+                                                                {msg.mission.what}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* WHY Context */}
+                                                        {msg.mission.why && (
+                                                            <div className="px-1 text-[11px] text-muted-foreground leading-relaxed">
+                                                                <strong className="text-foreground font-semibold">Context (WHY): </strong>
+                                                                {msg.mission.why}
+                                                            </div>
+                                                        )}
+
+                                                        {/* PLAN Exercises */}
+                                                        {msg.mission.plan && msg.mission.plan.length > 0 && (
+                                                            <div className="space-y-1.5 pt-0.5">
+                                                                <span className="text-[10px] font-mono font-bold tracking-wider text-muted-foreground uppercase px-1">
+                                                                    Prescribed Plan ({msg.mission.plan.length} Movements)
+                                                                </span>
+                                                                <div className="space-y-1.5">
+                                                                    {msg.mission.plan.map((item, itemIdx) => (
+                                                                        <div key={itemIdx} className="bg-muted/40 border border-border/40 rounded-xl p-2 text-xs space-y-1">
+                                                                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                                                <span className="font-bold text-foreground">{item.name}</span>
+                                                                                <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                                                                                    {item.sets && (
+                                                                                        <span className="bg-background px-1.5 py-0.5 rounded border border-border/50 font-mono font-semibold">
+                                                                                            {item.sets} {typeof item.sets === 'number' || !String(item.sets).includes('set') ? 'sets' : ''}
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {item.reps && (
+                                                                                        <span className="bg-background px-1.5 py-0.5 rounded border border-border/50 font-mono font-semibold">
+                                                                                            {item.reps} {typeof item.reps === 'number' || (!String(item.reps).includes('rep') && !String(item.reps).includes('s') && !String(item.reps).includes('min')) ? 'reps' : ''}
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {item.load && (
+                                                                                        <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 font-mono font-semibold">
+                                                                                            {item.load}
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {item.duration && (
+                                                                                        <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20 font-mono font-semibold">
+                                                                                            {item.duration}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                            {item.notes && (
+                                                                                <p className="text-[11px] text-muted-foreground italic leading-tight pt-0.5">
+                                                                                    {item.notes}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* GUARDRAIL Banner */}
+                                                        {msg.mission.guardrail && (
+                                                            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                                                                <AlertCircle size={14} className="flex-shrink-0 mt-0.5 text-amber-500" />
+                                                                <div>
+                                                                    <span className="font-bold block text-[10px] tracking-wide uppercase font-mono mb-0.5">Guardrail & Limit</span>
+                                                                    <span className="leading-snug text-[11px]">{msg.mission.guardrail}</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Decision Factors Badges */}
+                                                        {msg.decisionFactors && msg.decisionFactors.length > 0 && (
+                                                            <div className="pt-1 px-1">
+                                                                <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider block mb-1">
+                                                                    Decision Context Facts
+                                                                </span>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {msg.decisionFactors.map((df, dfIdx) => (
+                                                                        <span key={dfIdx} className="text-[9px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground border border-border/40">
+                                                                            • {df}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Quick Action Buttons for Mission */}
+                                                        {!isTrainingCard && (
+                                                            <div className="flex items-center gap-2 pt-1">
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={addedToTrainingIds.has(msg.id)}
+                                                                    onClick={() => handleAddToTraining(msg)}
+                                                                    className={`flex-1 py-1.5 px-2.5 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1.5 transition-all shadow-sm ${
+                                                                        addedToTrainingIds.has(msg.id)
+                                                                            ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 cursor-default'
+                                                                            : 'bg-foreground text-background hover:bg-foreground/90'
+                                                                    }`}
+                                                                >
+                                                                    {addedToTrainingIds.has(msg.id) ? (
+                                                                        <>
+                                                                            <Check size={12} />
+                                                                            <span>Added to Training</span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Plus size={12} />
+                                                                            <span>Add to Training</span>
+                                                                        </>
+                                                                    )}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={addedToCalendarIds.has(msg.id)}
+                                                                    onClick={() => handleAddToCalendar(msg)}
+                                                                    className={`flex-1 py-1.5 px-2.5 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1.5 transition-all border shadow-sm ${
+                                                                        addedToCalendarIds.has(msg.id)
+                                                                            ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 cursor-default'
+                                                                            : 'bg-background hover:bg-muted border-border text-foreground'
+                                                                    }`}
+                                                                >
+                                                                    {addedToCalendarIds.has(msg.id) ? (
+                                                                        <>
+                                                                            <Check size={12} />
+                                                                            <span>Added to Calendar</span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <CalendarIcon size={12} />
+                                                                            <span>Add to Calendar</span>
+                                                                        </>
+                                                                    )}
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
 
                                                 {/* ACTION CARDS: TRAINING (TWO SEPARATE BUTTONS) */}
                                                 {msg.sender === 'goalie_card' && isTrainingCard && (

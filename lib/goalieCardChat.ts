@@ -1,10 +1,40 @@
-import { ATHLETE_PROFILE_METRICS } from './athleteTrainingHistory';
+export type ResponseMode = 'conversation' | 'mission';
+
+export interface MissionExerciseItem {
+    name: string;
+    sets?: string | number | null;
+    reps?: string | number | null;
+    load?: string | null;
+    duration?: string | number | null;
+    notes?: string | null;
+}
+
+export interface StructuredMissionPrescription {
+    what: string;
+    why: string;
+    plan: MissionExerciseItem[];
+    guardrail: string;
+}
+
+export interface GoalieCardChatResponse {
+    responseMode?: ResponseMode;
+    reply: string;
+    mission?: StructuredMissionPrescription | null;
+    decisionFactors?: string[];
+    actionCard?: ActionCardData | null;
+    suggestedThreadTitle?: string;
+    provenance?: ExecutionProvenance;
+}
 
 export type ExecutionProvenanceMode = 'AI_COACH' | 'DETERMINISTIC_ACTION' | 'OFFLINE_UNAVAILABLE';
 
 export interface ExecutionProvenance {
     mode: ExecutionProvenanceMode;
     historyThroughDate: string;
+    completedTrainingThrough?: string | null;
+    athleteStateThrough?: string | null;
+    activityContextThrough?: string | null;
+    nextPerformance?: any;
     lookaheadSource: string;
     details?: string;
 }
