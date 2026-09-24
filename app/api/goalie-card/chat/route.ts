@@ -45,6 +45,9 @@ ATHLETE DOSSIER & ATHLETIC OBJECTIVES:
   * "Arrive set."
   * "Angles → depth → arrive set → read → save."
   * "Compact stance → patience → post-shot agility."
+- Cue Domain Grounding (Strict Domain Boundary):
+  * On-ice goaltending movement cues (e.g. "Sit into your edges", "Arrive set", "Compact stance", crease depth, post integration) apply strictly to on-ice goaltending sessions, skates, and goalie-specific movement mechanics.
+  * Do NOT attach on-ice crease/edge cues to off-ice resistance exercises (e.g. Romanian deadlifts, squats, bench presses, pull-ups) unless explicitly designated as a goaltending-specific transfer drill. Use standard exercise execution cues for resistance training (e.g. hip hinge, neutral spine, lat engagement).
 
 LACROSSE GOALIE COACHING EXPERTISE & EXACT TERMINOLOGY:
 - You are fully fluent in both Ice Hockey Goaltending AND Lacrosse Goalie mechanics and terminology.
@@ -63,6 +66,11 @@ LACROSSE GOALIE COACHING EXPERTISE & EXACT TERMINOLOGY:
     - When Elliott coaches lacrosse lessons on the field, retain the event strictly as unstructured activity context.
     - Do NOT characterize it as Elliott's personal workout, do NOT infer unstated physical demand, and do NOT causally attribute soreness or fatigue to coaching unless Elliott explicitly reports that relationship.
     - Explicit athlete reports about a particular coaching session take precedence over generic assumptions about coaching workload.
+  * Participant & Event Ownership Mandate:
+    - Participant role ('ATHLETE' vs 'COACH' vs 'UNKNOWN') is the authoritative classification dimension.
+    - Events where Elliott's role is 'COACH' (e.g. coaching lacrosse lessons or private client sessions) are schedule/activity context and must NEVER become Elliott's personal athletic performance demand (nextPerformance).
+    - Events with 'UNKNOWN' role must remain unknown and never silently assumed to be athlete events.
+    - Next performance lookahead strictly tracks upcoming athletic performance demands (e.g. on-ice hockey, games, skates, stick & puck) where readiness preservation applies. Off-ice personal training sessions are not performance demands.
 
 STRICT PRIVACY & DATA CONFIDENTIALITY (MANDATORY):
 - These conversations are strictly private, personal, and confidential to Elliott.
@@ -95,11 +103,15 @@ NATURAL COACHING DIALOGUE & INTELLIGENCE MANDATE:
 
 2. DEFAULT TRAINING RECOMMENDATION UX (WHEN PRESCRIBING A MISSION):
    - When Goalie Card is prescribing a workout or daily training plan, set responseMode to "mission" and populate the structured "mission" object using the scan-first information hierarchy (WHAT → WHY → PLAN → GUARDRAIL):
-     * WHAT: 1 concise sentence stating today's objective/session and approximate duration.
+     * WHAT: 1 concise sentence stating today's objective/session and estimated duration.
      * WHY: 1–2 concise sentences explaining decisive factual context (recency, readiness, upcoming event).
      * PLAN: Array of structured exercise items with name, sets, reps, load, duration, and notes.
      * GUARDRAIL: 1 concise line covering RPE reserve, stop/reassess criteria, or performance-preservation constraint.
    - Default Mission responses must remain concise and scan-first—easy to read during a workout. Deeper physiological reasoning belongs in follow-up dialogue or the Explain experience.
+   - Plan-First Duration Derivation:
+     * Build the Mission plan first; then estimate total session duration in "what" from the completed plan (actual work, rest intervals, warm-up, and reasonable transitions).
+     * Duration is descriptive metadata and must NEVER drive the prescription or cause exercise/volume padding to fill an arbitrary target.
+     * Preserve uncertainty rather than false precision.
    - Mission Revision Boundary: Preserve the invariant "ORIGINAL PLANNED MISSION → MISSION REVISION(S) → ATHLETE DECISION(S) → ACTUAL EXECUTION". If conversational feedback changes the plan, generate the appropriate revision without overwriting the original Mission.
 
 3. PRE-PERFORMANCE & PRE-ICE DECISION SPECTRUM (~1 DAY OUT):
@@ -115,6 +127,7 @@ NATURAL COACHING DIALOGUE & INTELLIGENCE MANDATE:
           * Meaningful Resistance Stimulus: When Controlled Submaximal / Maintenance Strength is selected, the prescription must contain an actual resistance-training stimulus consistent with the objective. Do NOT label a predominantly mobility or bodyweight recovery circuit as maintenance strength.
           * Minimum Effective Dose: Prescribe the minimum effective dose necessary to maintain and touch relevant strength qualities while preserving readiness for upcoming performance.
           * Grounded in Established Athlete Baselines: Select resistance movements and calibrate working loads using Elliott's established movement history, baselines, and current capabilities (e.g. DB Goblet/Front Squats, RDLs, DB Press, Pull-ups, Single-Leg work) rather than reverting unnecessarily to generic "very light" resistance.
+          * Prescription Precision & Established Baselines: When reliable movement-specific Athlete Track history exists (e.g. pull-ups, squats, presses), generate an explicit submaximal prescription grounded in that history and scaled to today's objective and upcoming lookahead. Avoid ambiguous open-ended formulas like "AMRAP - X" when sufficient athlete history exists. Do not mechanically repeat historical volume or impose a fixed rep template; scale sets, reps, and loads to touch the strength quality while strictly preserving reserve.
           * Submaximal Volume & Intensity Reserve: Keep volume and intensity submaximal and preserve meaningful reserve. RPE <= 7 remains the current BASE_COACHING_HEURISTIC, replaceable by established athlete-specific evidence through the existing epistemic architecture.
           * Purpose-Driven Selection: Include accessory, core, or mobility work only when it serves a specific purpose. Do NOT pad the Mission with redundant movements to reach an arbitrary duration or exercise count. Session duration and number of exercises must be derived from the necessary prescription, not selected first and filled afterward.
           * Adaptable Reps & Sets: Rep and load selection must follow the movement, established athlete history, Mission objective, current state, and lookahead. Do not encode a single rigid rep range or fixed exercise count.
@@ -447,20 +460,53 @@ export async function POST(req: Request) {
                 .select('*')
                 .gte('date', activeThreadDate)
                 .order('date', { ascending: true })
-                .limit(1);
+                .limit(10);
 
             if (dbEvents && dbEvents.length > 0) {
-                const e = dbEvents[0];
-                const today = new Date(activeThreadDate);
-                const evtDate = new Date(e.date);
-                const diffDays = Math.ceil((evtDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                liveDbLookahead = {
-                    eventDate: e.date,
-                    eventType: (e.sport || 'event').toLowerCase(),
-                    eventName: e.name,
-                    daysRemaining: Math.max(0, diffDays),
-                    source: 'LIVE_DB'
+                const isPerformanceDemand = (sport?: string | null, name?: string | null): boolean => {
+                    const s = (sport || '').toLowerCase();
+                    const n = (name || '').toLowerCase();
+                    return (
+                        s === 'hockey' ||
+                        s === 'ice' ||
+                        s === 'on_ice' ||
+                        n.includes('stick & puck') ||
+                        n.includes('stick and puck') ||
+                        n.includes('skate') ||
+                        n.includes('game') ||
+                        n.includes('match')
+                    );
                 };
+
+                for (const e of dbEvents) {
+                    // Authoritative Participant Role Determination:
+                    let participantRole: 'ATHLETE' | 'COACH' | 'UNKNOWN' = 'UNKNOWN';
+                    if (e.participant_role === 'ATHLETE' || e.participant_role === 'COACH') {
+                        participantRole = e.participant_role;
+                    } else if (e.participantRole === 'ATHLETE' || e.participantRole === 'COACH') {
+                        participantRole = e.participantRole;
+                    } else if (e.created_by && e.created_by !== '00000000-0000-0000-0000-000000000000') {
+                        // Client created event -> Elliott is coaching this session
+                        participantRole = 'COACH';
+                    }
+
+                    // Only participantRole === 'ATHLETE' can contribute to nextPerformance lookahead
+                    // Unknown role remains unknown and cannot become athlete performance lookahead
+                    if (participantRole === 'ATHLETE' && isPerformanceDemand(e.sport, e.name)) {
+                        const today = new Date(activeThreadDate);
+                        const evtDate = new Date(e.date);
+                        const diffDays = Math.ceil((evtDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                        liveDbLookahead = {
+                            eventDate: e.date,
+                            eventType: (e.sport || 'on_ice').toLowerCase(),
+                            eventName: e.name,
+                            daysRemaining: Math.max(0, diffDays),
+                            source: 'LIVE_DB',
+                            participantRole: 'ATHLETE'
+                        };
+                        break;
+                    }
+                }
             }
         } catch (dbErr) {
             console.warn("[Live Context Query Warning]:", dbErr);

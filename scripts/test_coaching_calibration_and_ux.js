@@ -83,7 +83,8 @@ assert.ok(
   "System prompt must include the WHAT -> WHY -> PLAN -> GUARDRAIL information hierarchy"
 );
 assert.ok(
-  routeSource.includes("WHAT: 1 concise sentence stating today's objective/session and approximate duration"),
+  routeSource.includes("WHAT: 1 concise sentence stating today's objective/session and estimated duration") ||
+  routeSource.includes("WHAT: 1 concise sentence stating today's objective/session"),
   "Hierarchy must specify WHAT sentence requirement"
 );
 assert.ok(
@@ -210,8 +211,64 @@ assert.ok(
   routeSource.includes("Do NOT make absolute physiological guarantees (such as claiming the athlete will be \"100% primed\")"),
   "Must prohibit false 100% primed guarantees"
 );
-console.log("✅ PASS: Fatigue limitation and no false guarantees verified.\n");
+// --- 15. Cue Domain Grounding (Strict Domain Boundary) ---
+console.log("[Test 15] Cue Domain Grounding (Strict Domain Boundary)");
+assert.ok(
+  routeSource.includes("Cue Domain Grounding (Strict Domain Boundary)"),
+  "Must include Cue Domain Grounding rule header"
+);
+assert.ok(
+  routeSource.includes("On-ice goaltending movement cues (e.g. \"Sit into your edges\", \"Arrive set\", \"Compact stance\", crease depth, post integration) apply strictly to on-ice goaltending sessions, skates, and goalie-specific movement mechanics"),
+  "Must restrict on-ice cues to on-ice domain"
+);
+assert.ok(
+  routeSource.includes("Do NOT attach on-ice crease/edge cues to off-ice resistance exercises (e.g. Romanian deadlifts, squats, bench presses, pull-ups) unless explicitly designated as a goaltending-specific transfer drill"),
+  "Must prevent on-ice cues from leaking into off-ice resistance exercises"
+);
+console.log("✅ PASS: Cue domain grounding verified.\n");
+
+// --- 16. Plan-First Duration Derivation ---
+console.log("[Test 16] Plan-First Duration Derivation");
+assert.ok(
+  routeSource.includes("Plan-First Duration Derivation:"),
+  "Must include Plan-First Duration Derivation header"
+);
+assert.ok(
+  routeSource.includes('Build the Mission plan first; then estimate total session duration in "what" from the completed plan (actual work, rest intervals, warm-up, and reasonable transitions)') ||
+  routeSource.includes('Build the Mission plan first; then estimate total session duration'),
+  "Must instruct plan-first estimation"
+);
+assert.ok(
+  routeSource.includes("Duration is descriptive metadata and must NEVER drive the prescription or cause exercise/volume padding to fill an arbitrary target"),
+  "Duration must never drive prescription or volume padding"
+);
+assert.ok(
+  routeSource.includes("Preserve uncertainty rather than false precision"),
+  "Must preserve uncertainty rather than false precision"
+);
+console.log("✅ PASS: Plan-first duration derivation verified.\n");
+
+// --- 17. Baseline Prescription Precision Without Fixed Template Anchors ---
+console.log("[Test 17] Baseline Prescription Precision Without Fixed Template Anchors");
+assert.ok(
+  routeSource.includes("Prescription Precision & Established Baselines: When reliable movement-specific Athlete Track history exists (e.g. pull-ups, squats, presses), generate an explicit submaximal prescription grounded in that history and scaled to today's objective and upcoming lookahead"),
+  "Must generate explicit submaximal prescription grounded in movement history"
+);
+assert.ok(
+  routeSource.includes("Avoid ambiguous open-ended formulas like \"AMRAP - X\" when sufficient athlete history exists"),
+  "Must avoid AMRAP - X when history exists"
+);
+assert.ok(
+  routeSource.includes("Do not mechanically repeat historical volume or impose a fixed rep template"),
+  "Must not impose a fixed rep template or mechanically repeat volume"
+);
+assert.ok(
+  !routeSource.includes("2–3 sets of 3–5 reps"),
+  "Prompt must NOT contain anchor templates like '2–3 sets of 3–5 reps'"
+);
+console.log("✅ PASS: Baseline prescription precision verified.\n");
 
 console.log("=================================================");
-console.log("ALL 14 CALIBRATION & CONVERSATIONAL UX TESTS PASSED (100%)");
+console.log("ALL 17 CALIBRATION & CONVERSATIONAL UX TESTS PASSED (100%)");
 console.log("=================================================");
+

@@ -40,6 +40,7 @@ export interface CanonicalAthleteEntry {
   title: string;
   epistemicType: EntryEpistemicType;
   trainingType?: 'on_ice' | 'off_ice' | 'recovery' | 'game' | 'travel' | 'baseline' | 'film' | 'other';
+  participantRole?: 'ATHLETE' | 'COACH' | 'UNKNOWN';
   durationMins?: number | null; // Nullable — unknown load remains unknown
   confidence: DateConfidence;
   phase?: string;
@@ -69,6 +70,7 @@ export interface NextPerformanceLookahead {
   eventName: string | null;
   daysRemaining: number | null;
   source: 'LIVE_DB' | 'LOCAL_STORE' | 'NONE';
+  participantRole?: 'ATHLETE' | 'COACH' | 'UNKNOWN';
 }
 
 export interface TrackFreshness {
@@ -207,6 +209,7 @@ export class AthleteTrackRepository {
         title: entry.title,
         epistemicType,
         trainingType: entry.type,
+        participantRole: (entry as any).participantRole || 'ATHLETE',
         durationMins: null, // Unknown/unreported in historical baseline; do not fabricate defaults
         confidence: entry.confidence || 'EXACT',
         phase: entry.phase,
@@ -349,19 +352,42 @@ export class AthleteTrackRepository {
     let athleteStateThrough: string | null = null;
     let activityContextThrough: string | null = null;
 
-    let nextPerf: NextPerformanceLookahead = upcomingEvent || {
+    const isPerformanceDemand = (type?: string | null, title?: string | null): boolean => {
+      const t = (type || '').toLowerCase();
+      const n = (title || '').toLowerCase();
+      return (
+        t === 'on_ice' ||
+        t === 'game' ||
+        t === 'skate' ||
+        t === 'hockey' ||
+        n.includes('stick') ||
+        n.includes('skate') ||
+        n.includes('game') ||
+        n.includes('on-ice') ||
+        n.includes('on ice')
+      );
+    };
+
+    let nextPerf: NextPerformanceLookahead = {
       eventDate: null,
       eventType: null,
       eventName: null,
       daysRemaining: null,
-      source: 'NONE'
+      source: 'NONE',
+      participantRole: undefined
     };
+
+    // If upcomingEvent is passed, it must have participantRole === 'ATHLETE' and be a performance demand
+    if (upcomingEvent && upcomingEvent.participantRole === 'ATHLETE' && isPerformanceDemand(upcomingEvent.eventType, upcomingEvent.eventName)) {
+      nextPerf = upcomingEvent;
+    }
 
     for (const entry of timeline) {
       // Planned events do not advance historical track freshness
       if (entry.epistemicType === 'PLANNED_EVENT') {
         const refDate = targetDate || new Date().toISOString().slice(0, 10);
-        if (!nextPerf.eventDate && entry.date >= refDate) {
+        // Only participantRole === 'ATHLETE' and performance-relevant demand can become nextPerformance
+        if (!nextPerf.eventDate && entry.date >= refDate && entry.participantRole === 'ATHLETE' && isPerformanceDemand(entry.trainingType, entry.title)) {
           const today = new Date(refDate);
           const evtDate = new Date(entry.date);
           const diffDays = Math.ceil((evtDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -370,7 +396,8 @@ export class AthleteTrackRepository {
             eventType: entry.trainingType || 'on_ice',
             eventName: entry.title,
             daysRemaining: Math.max(0, diffDays),
-            source: 'LOCAL_STORE'
+            source: 'LOCAL_STORE',
+            participantRole: 'ATHLETE'
           };
         }
         continue;
@@ -587,7 +614,7 @@ export function formatDecisionContextForPrompt(ctx: DecisionLoadContext): string
     `- As Of Date:                       ${df.asOfDate}`,
     `- Days Since Last Strength:        ${df.daysSinceLastStrength !== null ? `${df.daysSinceLastStrength} days (Last: ${df.lastStrengthDate} "${df.lastStrengthSessionTitle}")` : 'None recorded'}`,
     `- Days Since Last On-Ice:          ${df.daysSinceLastOnIce !== null ? `${df.daysSinceLastOnIce} days (Last: ${df.lastOnIceDate} "${df.lastOnIceSessionTitle}")` : 'None recorded'}`,
-    `- Next Planned Performance:         ${df.nextPerformance.eventDate ? `${df.nextPerformance.eventDate} "${df.nextPerformance.eventName}" (Type: ${df.nextPerformance.eventType}, in ${df.nextPerformance.daysRemaining} days, Status: PLANNED)` : 'None scheduled'}`,
+    `- Next Planned Performance:         ${df.nextPerformance.eventDate ? `${df.nextPerformance.eventDate} "${df.nextPerformance.eventName}" (Type: ${df.nextPerformance.eventType}, in ${df.nextPerformance.daysRemaining} days, Role: ${df.nextPerformance.participantRole || 'ATHLETE'}, Status: PLANNED)` : 'None scheduled'}`,
     `- Exposures (Last 7 Days):          Strength: ${df.exposures7d.strength}, On-Ice: ${df.exposures7d.onIce}, Conditioning/HIIT: ${df.exposures7d.conditioning}, Recovery: ${df.exposures7d.recovery}, Unstructured Activity: ${df.exposures7d.unstructuredActivity}`,
     `- Exposures (Last 14 Days):         Strength: ${df.exposures14d.strength}, On-Ice: ${df.exposures14d.onIce}, Conditioning/HIIT: ${df.exposures14d.conditioning}, Recovery: ${df.exposures14d.recovery}, Unstructured Activity: ${df.exposures14d.unstructuredActivity}`,
     `- Current Athlete State:`,
@@ -603,7 +630,7 @@ export function formatDecisionContextForPrompt(ctx: DecisionLoadContext): string
     `- completedTrainingThrough: ${f.completedTrainingThrough || 'None (Unknown)'}`,
     `- athleteStateThrough:      ${f.athleteStateThrough || 'None (Unknown)'}`,
     `- activityContextThrough:  ${f.activityContextThrough || 'None (Unknown)'}`,
-    `- nextPerformance:          ${f.nextPerformance.eventDate ? `${f.nextPerformance.eventDate} | "${f.nextPerformance.eventName}" (Type: ${f.nextPerformance.eventType}, in ${f.nextPerformance.daysRemaining} days, Source: ${f.nextPerformance.source})` : 'None scheduled'}`
+    `- nextPerformance:          ${f.nextPerformance.eventDate ? `${f.nextPerformance.eventDate} | "${f.nextPerformance.eventName}" (Type: ${f.nextPerformance.eventType}, in ${f.nextPerformance.daysRemaining} days, Role: ${f.nextPerformance.participantRole || 'ATHLETE'}, Source: ${f.nextPerformance.source})` : 'None scheduled'}`
   ];
 
   // 3. Active Unified Timeline (Recent active records, excluding future planned events from completed history)

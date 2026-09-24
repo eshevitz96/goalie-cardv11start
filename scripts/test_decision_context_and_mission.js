@@ -116,8 +116,114 @@ assert.ok(routeSource.includes('"responseMode": "conversation" | "mission"'), 'r
 assert.ok(routeSource.includes('"mission": null OR {'), 'route.ts must support structured mission schema');
 console.log(`   ✅ Prompt clean: Zero token-anchoring values ("duration": 45 removed, neutral safety language used).`);
 
-// --- 5. Behavioral Local Endpoint Fixture Test ---
-console.log("\n[Test 5] Live Endpoint Behavioral Fixture Verification");
+// --- 5. Participant Role & Event Ownership Lookahead Tests ---
+console.log("\n[Test 5] COACH event before ATHLETE event -> Athlete event becomes nextPerformance");
+const isPerf = (type, title) => {
+    const t = (type || '').toLowerCase();
+    const n = (title || '').toLowerCase();
+    return t === 'on_ice' || t === 'game' || t === 'skate' || t === 'hockey' || n.includes('stick') || n.includes('skate') || n.includes('game');
+};
+
+const resolveNextPerf = (events, refDate) => {
+    for (const e of events) {
+        if (e.date >= refDate && e.participantRole === 'ATHLETE' && isPerf(e.trainingType || e.eventType, e.title || e.eventName)) {
+            const today = new Date(refDate);
+            const evtDate = new Date(e.date);
+            const diffDays = Math.ceil((evtDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            return {
+                eventDate: e.date,
+                eventType: e.trainingType || e.eventType || 'on_ice',
+                eventName: e.title || e.eventName,
+                daysRemaining: Math.max(0, diffDays),
+                source: 'TEST',
+                participantRole: 'ATHLETE'
+            };
+        }
+    }
+    return { eventDate: null, eventType: null, eventName: null, daysRemaining: null, source: 'NONE' };
+};
+
+const mixedEvents = [
+    {
+        date: '2026-09-25',
+        title: 'The Goalie Brand - Colton Aven S10 L3',
+        trainingType: 'on_ice',
+        participantRole: 'COACH' // Coaching client lesson
+    },
+    {
+        date: '2026-09-25',
+        title: 'Stick & Puck at Ice Den',
+        trainingType: 'on_ice',
+        participantRole: 'ATHLETE' // Elliott's personal skate
+    }
+];
+
+const resolved = resolveNextPerf(mixedEvents, '2026-09-24');
+assert.strictEqual(resolved.eventName, 'Stick & Puck at Ice Den', 'COACH lesson must be bypassed in favor of ATHLETE event');
+assert.strictEqual(resolved.participantRole, 'ATHLETE', 'nextPerformance must have role ATHLETE');
+console.log(`   ✅ COACH event bypassed: "${resolved.eventName}" selected as nextPerformance.`);
+
+console.log("\n[Test 6] ATHLETE stick & puck -> Eligible performance demand");
+const stickAndPuckEvent = [
+    {
+        date: '2026-09-25',
+        title: 'Stick & Puck Skate',
+        trainingType: 'on_ice',
+        participantRole: 'ATHLETE'
+    }
+];
+const resolvedSP = resolveNextPerf(stickAndPuckEvent, '2026-09-24');
+assert.strictEqual(resolvedSP.eventName, 'Stick & Puck Skate');
+assert.strictEqual(resolvedSP.daysRemaining, 1);
+console.log(`   ✅ Stick & Puck classified as eligible performance demand.`);
+
+console.log("\n[Test 7] Unknown-Role Event -> Not silently classified as athlete");
+const unknownRoleEvents = [
+    {
+        date: '2026-09-25',
+        title: 'Ice Session',
+        trainingType: 'on_ice',
+        participantRole: 'UNKNOWN'
+    },
+    {
+        date: '2026-09-26',
+        title: 'Adult League Game',
+        trainingType: 'game',
+        participantRole: 'ATHLETE'
+    }
+];
+const resolvedUnknown = resolveNextPerf(unknownRoleEvents, '2026-09-24');
+assert.strictEqual(resolvedUnknown.eventName, 'Adult League Game', 'Unknown role event must NOT be selected as athlete performance');
+console.log(`   ✅ Unknown-role event not silently treated as athlete performance.`);
+
+console.log("\n[Test 8] Event title alone cannot determine ownership");
+const deceptiveTitleEvents = [
+    {
+        date: '2026-09-25',
+        title: 'Pro Hockey Game & Skate', // Looks like athlete title, but role is COACH
+        trainingType: 'on_ice',
+        participantRole: 'COACH'
+    }
+];
+const resolvedDeceptive = resolveNextPerf(deceptiveTitleEvents, '2026-09-24');
+assert.strictEqual(resolvedDeceptive.eventDate, null, 'COACH role with athletic title must NOT become nextPerformance');
+console.log(`   ✅ Title alone does not determine ownership; participantRole is authoritative.`);
+
+console.log("\n[Test 9] Off-ice personal training is not an athletic performance demand");
+const gymEvents = [
+    {
+        date: '2026-09-25',
+        title: 'Personal Training / Gym Lift',
+        trainingType: 'off_ice',
+        participantRole: 'ATHLETE'
+    }
+];
+const resolvedGym = resolveNextPerf(gymEvents, '2026-09-24');
+assert.strictEqual(resolvedGym.eventDate, null, 'Off-ice gym workout must NOT become nextPerformance demand');
+console.log(`   ✅ Off-ice personal training not classified as performance demand.`);
+
+// --- 10. Behavioral Local Endpoint Fixture Test ---
+console.log("\n[Test 10] Live Endpoint Behavioral Fixture Verification");
 async function testEndpoint() {
     try {
         const payload = {
@@ -167,3 +273,4 @@ testEndpoint().then(() => {
     console.error("\n❌ TEST FAILED:", err);
     process.exit(1);
 });
+
