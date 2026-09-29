@@ -138,20 +138,25 @@ export class StateExtractionEngine {
     }
 
     // 6. Soreness & Discomfort Behavior Extraction
-    // Location scanning
-    if (/\b(hip|hips)\b/.test(text)) sorenessLocations.push('hips');
-    if (/\b(adductor|adductors|groin)\b/.test(text)) sorenessLocations.push('adductors');
-    if (/\b(leg|legs|quad|quads)\b/.test(text)) sorenessLocations.push('legs' as any);
-    if (/\b(back|lower back|spine)\b/.test(text)) sorenessLocations.push('lower_back');
-    if (/\b(shoulder|shoulders|neck)\b/.test(text)) sorenessLocations.push('shoulders');
-    if (/\b(ankle|ankles|feet)\b/.test(text)) sorenessLocations.push('ankles_feet');
-    if (/\b(core|abs|oblique)\b/.test(text)) sorenessLocations.push('core');
+    // Check for explicit negation of soreness/pain (e.g. "not sore at all", "no soreness", "body not sore", "no pain")
+    const isNegatedSoreness = /\b(not sore|not at all sore|not sore at all|no sore|no soreness|zero soreness|body not sore|not in pain|no pain|zero pain)\b/.test(text);
+
+    // Location scanning (only if not negated)
+    if (!isNegatedSoreness) {
+      if (/\b(hip|hips)\b/.test(text)) sorenessLocations.push('hips');
+      if (/\b(adductor|adductors|groin)\b/.test(text)) sorenessLocations.push('adductors');
+      if (/\b(leg|legs|quad|quads)\b/.test(text)) sorenessLocations.push('legs' as any);
+      if (/\b(back|lower back|spine)\b/.test(text)) sorenessLocations.push('lower_back');
+      if (/\b(shoulder|shoulders|neck)\b/.test(text)) sorenessLocations.push('shoulders');
+      if (/\b(ankle|ankles|feet)\b/.test(text)) sorenessLocations.push('ankles_feet');
+      if (/\b(core|abs|oblique)\b/.test(text)) sorenessLocations.push('core');
+    }
 
     // Behavior classification
-    const hasProgressivePain = /\b(sharp pain|shooting pain|getting worse|hurts to move|worsening|movement altering)\b/.test(text);
-    const hasTransientPattern = /\b(loosen|loosens up|fine once moving|stiff at first|transient|warms up|goes away)\b/.test(text);
-    const hasPersistentPattern = /\b(always tight|chronic|usual tightness|manageable soreness)\b/.test(text);
-    const hasAnySorenessWord = /\b(sore|tight|stiff|achy|discomfort|hurts|pain)\b/.test(text);
+    const hasProgressivePain = !isNegatedSoreness && /\b(sharp pain|shooting pain|getting worse|hurts to move|worsening|movement altering)\b/.test(text);
+    const hasTransientPattern = !isNegatedSoreness && /\b(loosen|loosens up|fine once moving|stiff at first|transient|warms up|goes away)\b/.test(text);
+    const hasPersistentPattern = !isNegatedSoreness && /\b(always tight|chronic|usual tightness|manageable soreness)\b/.test(text);
+    const hasAnySorenessWord = !isNegatedSoreness && /\b(sore|tight|stiff|achy|discomfort|hurts|pain)\b/.test(text);
 
     if (hasProgressivePain) {
       sorenessBehavior = 'movement_altering';
@@ -166,6 +171,9 @@ export class StateExtractionEngine {
       // Default non-progressive soreness mentions without explicit behavior
       sorenessBehavior = 'transient_resolves';
       sorenessNotes = "Soreness noted; requires warmup movement reassessment.";
+    } else if (isNegatedSoreness) {
+      sorenessBehavior = 'none';
+      sorenessNotes = "No soreness or pain reported.";
     }
 
     const extractionConfidence = ambiguities.length > 0 ? 'AMBIGUOUS' : 'HIGH';

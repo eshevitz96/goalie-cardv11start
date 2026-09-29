@@ -406,15 +406,15 @@ export class AthleteTrackRepository {
       // If targetDate provided, bound historical freshness calculation
       if (targetDate && entry.date > targetDate) continue;
 
-      // Completed Training advances completedTrainingThrough
-      if (entry.epistemicType === 'COMPLETED_TRAINING') {
+      // Completed Training advances completedTrainingThrough (ATHLETE role only)
+      if (entry.epistemicType === 'COMPLETED_TRAINING' && (entry.participantRole === 'ATHLETE' || entry.participantRole === undefined)) {
         if (!completedTrainingThrough || entry.date > completedTrainingThrough) {
           completedTrainingThrough = entry.date;
         }
       }
 
-      // Athlete reflections/soreness advance athleteStateThrough
-      if (entry.epistemicType === 'ATHLETE_STATE' || entry.athleteReflection || (entry.notes && entry.notes.toLowerCase().includes('sore'))) {
+      // Athlete reflections/soreness advance athleteStateThrough (ATHLETE role only)
+      if ((entry.epistemicType === 'ATHLETE_STATE' || entry.athleteReflection || (entry.notes && entry.notes.toLowerCase().includes('sore'))) && (entry.participantRole === 'ATHLETE' || entry.participantRole === undefined)) {
         if (!athleteStateThrough || entry.date > athleteStateThrough) {
           athleteStateThrough = entry.date;
         }
@@ -438,7 +438,8 @@ export class AthleteTrackRepository {
    * Computes deterministic factual metrics derived directly from the canonical timeline.
    */
   static getDeterministicFacts(timeline: CanonicalAthleteEntry[], asOfDate: string, freshness: TrackFreshness): DeterministicDecisionFacts {
-    const completed = timeline.filter(e => e.epistemicType === 'COMPLETED_TRAINING' && e.date <= asOfDate);
+    // Only athlete completed workouts count toward physical workout metrics
+    const completed = timeline.filter(e => e.epistemicType === 'COMPLETED_TRAINING' && (e.participantRole === 'ATHLETE' || e.participantRole === undefined) && e.date <= asOfDate);
 
     // Helpers to classify training exposures
     const isStrength = (e: CanonicalAthleteEntry) => 
@@ -496,10 +497,10 @@ export class AthleteTrackRepository {
       });
 
       return {
-        strength: windowEntries.filter(e => e.epistemicType === 'COMPLETED_TRAINING' && isStrength(e)).length,
-        onIce: windowEntries.filter(e => e.epistemicType === 'COMPLETED_TRAINING' && isOnIce(e)).length,
-        conditioning: windowEntries.filter(e => e.epistemicType === 'COMPLETED_TRAINING' && isConditioning(e)).length,
-        recovery: windowEntries.filter(e => (e.epistemicType === 'COMPLETED_TRAINING' || e.epistemicType === 'ATHLETE_STATE') && isRecovery(e)).length,
+        strength: windowEntries.filter(e => e.epistemicType === 'COMPLETED_TRAINING' && (e.participantRole === 'ATHLETE' || e.participantRole === undefined) && isStrength(e)).length,
+        onIce: windowEntries.filter(e => e.epistemicType === 'COMPLETED_TRAINING' && (e.participantRole === 'ATHLETE' || e.participantRole === undefined) && isOnIce(e)).length,
+        conditioning: windowEntries.filter(e => e.epistemicType === 'COMPLETED_TRAINING' && (e.participantRole === 'ATHLETE' || e.participantRole === undefined) && isConditioning(e)).length,
+        recovery: windowEntries.filter(e => (e.epistemicType === 'COMPLETED_TRAINING' || e.epistemicType === 'ATHLETE_STATE') && (e.participantRole === 'ATHLETE' || e.participantRole === undefined) && isRecovery(e)).length,
         unstructuredActivity: windowEntries.filter(e => e.epistemicType === 'UNSTRUCTURED_ACTIVITY').length
       };
     };
@@ -523,13 +524,14 @@ export class AthleteTrackRepository {
     // 4. Current Athlete State Extraction
     const latestStateEntry = [...timeline]
       .reverse()
-      .find(e => (e.epistemicType === 'ATHLETE_STATE' || Boolean(e.athleteReflection) || Boolean(e.rawAthleteReport)) && e.date <= asOfDate);
+      .find(e => (e.epistemicType === 'ATHLETE_STATE' || Boolean(e.athleteReflection) || Boolean(e.rawAthleteReport)) && (e.participantRole === 'ATHLETE' || e.participantRole === undefined) && e.date <= asOfDate);
 
     const rawReport = latestStateEntry ? (latestStateEntry.rawAthleteReport || latestStateEntry.athleteReflection || latestStateEntry.notes || null) : null;
     let reportedSoreness: string | null = null;
     if (rawReport) {
       const lower = rawReport.toLowerCase();
-      if (lower.includes('sore')) {
+      const isNegatedSoreness = lower.includes('not sore') || lower.includes('no sore') || lower.includes('zero sore') || lower.includes('not at all sore') || lower.includes('not sore at all') || lower.includes('body not sore') || lower.includes('no pain') || lower.includes('not in pain');
+      if (lower.includes('sore') && !isNegatedSoreness) {
         reportedSoreness = lower.includes('little sore') || lower.includes('mild') 
           ? 'Generalized mild soreness' 
           : 'Soreness reported';
@@ -540,8 +542,8 @@ export class AthleteTrackRepository {
       rawReport,
       reportedSoreness,
       movementImpairment: 'NOT_REPORTED', // Invariant: athlete did not report impairment; never hallucinate impairment state
-      reportedFatigue: rawReport && rawReport.toLowerCase().includes('sweating') ? 'Post-conditioning fatigue noted previously' : null,
-      reportedReadiness: rawReport && (rawReport.toLowerCase().includes('good') || rawReport.toLowerCase().includes('sharp')) ? 'Positive' : null
+      reportedFatigue: rawReport && (rawReport.toLowerCase().includes('sweating') || (rawReport.toLowerCase().includes('legs are tired') && !rawReport.toLowerCase().includes('feel good') && !rawReport.toLowerCase().includes('feeling good') && !rawReport.toLowerCase().includes('recovered'))) ? 'Post-workout fatigue noted' : null,
+      reportedReadiness: rawReport && (rawReport.toLowerCase().includes('good') || rawReport.toLowerCase().includes('sharp') || rawReport.toLowerCase().includes('great')) ? 'Positive' : null
     };
 
     return {

@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe";
 import { INITIAL_TRAINING_SLOTS, TrainingSlot } from "@/constants/trainingAvailability";
 import { extractTakeawaysFromNotes } from "@/lib/utils";
+import { CoachScheduleRepository } from "@/lib/coach/coachScheduleRepository";
 
 const COACH_NOTIFICATION_EMAILS = [
     "eshevitz96@gmail.com",
@@ -119,7 +120,26 @@ export async function getAvailableTrainingSlots() {
             }
         }
 
-        // B. Merge template slots as fallbacks if not explicitly managed in DB
+        // B. Merge coach schedule repository blocks (authoritative local/offline store)
+        const localBlocks = CoachScheduleRepository.getAllBlocks();
+        for (const b of localBlocks) {
+            const key = `${b.date}_${b.startTime}`;
+            if (!slotsMap.has(key)) {
+                slotsMap.set(key, {
+                    id: b.id,
+                    date: b.date,
+                    startTime: b.startTime,
+                    endTime: b.endTime,
+                    timeDisplay: `${b.startTime} – ${b.endTime}`,
+                    location: b.location,
+                    maxCapacity: 1,
+                    isBooked: b.status === 'BOOKED' || b.status === 'COMPLETED',
+                    spotsLeft: b.status === 'AVAILABLE' ? 1 : 0
+                });
+            }
+        }
+
+        // C. Merge template slots as fallbacks if not explicitly managed
         const todayIso = new Date().toISOString().split('T')[0];
         for (const tSlot of INITIAL_TRAINING_SLOTS) {
             if (tSlot.date < todayIso) continue;
@@ -1317,6 +1337,26 @@ export async function fetchCoachOSData(userId?: string, userEmail?: string) {
                 takeaways: extractedTakeaways
             };
         });
+
+        // Merge booked lessons from CoachScheduleRepository
+        const localSchedule = CoachScheduleRepository.getAllBlocks();
+        for (const block of localSchedule) {
+            if (block.status === 'BOOKED' || block.status === 'COMPLETED') {
+                const alreadyExists = hydratedSessions.some(s => s.id === block.id || (s.date && s.date.startsWith(block.date) && s.athlete_name?.toLowerCase() === (block.client || '').toLowerCase()));
+                if (!alreadyExists) {
+                    hydratedSessions.push({
+                        id: block.id,
+                        date: `${block.date}T${block.startTime.includes(':') ? block.startTime : '17:00'}`,
+                        location: block.location,
+                        notes: block.notes || `Private Lacrosse Goalie Lesson - ${block.client}`,
+                        athlete_name: block.client || "Athlete",
+                        team: "Private Client",
+                        is_completed: block.status === 'COMPLETED',
+                        takeaways: extractTakeawaysFromNotes(block.notes)
+                    });
+                }
+            }
+        }
 
         // 4. Build comprehensive athlete roster
         const athleteMap = new Map<string, AthleteRosterItem>();

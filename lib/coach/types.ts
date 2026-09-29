@@ -1,3 +1,22 @@
+export type CoachSlotStatus = 'AVAILABLE' | 'BOOKED' | 'COMPLETED' | 'CANCELED';
+
+export interface CoachScheduleBlock {
+    id: string;
+    coachId?: string;
+    date: string; // YYYY-MM-DD
+    startTime: string; // HH:mm or e.g. '17:00' / '5:00 PM'
+    endTime: string; // HH:mm or e.g. '18:00' / '6:00 PM'
+    location: string;
+    status: CoachSlotStatus;
+    participantRole: 'COACH';
+    client?: string; // Named client, only present when BOOKED, COMPLETED, or CANCELED
+    notes?: string;
+    durationMins?: number;
+    previousStatus?: CoachSlotStatus;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 export interface AthleteProfile {
     user_id: string; // UUID mapping (replaces athlete_id)
     baselines: {

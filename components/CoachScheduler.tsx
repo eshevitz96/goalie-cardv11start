@@ -20,6 +20,7 @@ import {
     AlignLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { WEEKLY_COACH_SLOTS_SEPT29_OCT04 } from "@/constants/trainingAvailability";
 
 const PRESET_LOCATIONS = [
     "Bell Memorial Park",
@@ -335,11 +336,53 @@ export function CoachScheduler() {
                 }
             }
 
+            // 5. Merge weekly coach slots template (Sept 29 - Oct 4) as authoritative baseline
+            for (const s of WEEKLY_COACH_SLOTS_SEPT29_OCT04) {
+                const parseSlotHour = (timeStr: string): number => {
+                    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                    if (match) {
+                        let h = parseInt(match[1], 10);
+                        const isPM = match[3].toUpperCase() === 'PM';
+                        if (isPM && h !== 12) h += 12;
+                        if (!isPM && h === 12) h = 0;
+                        return h;
+                    }
+                    return 17;
+                };
+
+                const startH = parseSlotHour(s.startTime);
+                const startDate = new Date(`${s.date}T${String(startH).padStart(2, '0')}:00:00`);
+                const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+                const startIso = startDate.toISOString();
+
+                const matchExisting = mergedList.find(m => {
+                    if (!m.start_time) return false;
+                    const mDate = new Date(m.start_time);
+                    return mDate.toISOString().split('T')[0] === s.date && Math.abs(mDate.getTime() - startDate.getTime()) < 30 * 60 * 1000;
+                });
+
+                if (!matchExisting) {
+                    mergedList.push({
+                        id: s.id,
+                        coach_id: user?.id || 'coach-elliott',
+                        start_time: startIso,
+                        end_time: endDate.toISOString(),
+                        location: s.location,
+                        is_booked: s.status === 'BOOKED',
+                        status: s.status || (s.client ? 'BOOKED' : 'AVAILABLE'),
+                        athlete_name: s.client || (s.status === 'BOOKED' ? 'Booked' : undefined),
+                        participantRole: 'COACH',
+                        is_session_source: false
+                    });
+                }
+            }
+
             // Deduplicate by start_time (keep booked slot if duplicate)
             const finalSlotsMap = new Map<string, any>();
             for (const s of mergedList) {
-                if (!finalSlotsMap.has(s.start_time) || s.is_booked) {
-                    finalSlotsMap.set(s.start_time, s);
+                const key = s.start_time ? new Date(s.start_time).toISOString() : s.id;
+                if (!finalSlotsMap.has(key) || s.is_booked) {
+                    finalSlotsMap.set(key, s);
                 }
             }
 
@@ -849,39 +892,57 @@ export function CoachScheduler() {
                                                             const sTime = new Date(slot.start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                                                             const eTime = new Date(slot.end_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                                                             const locName = getSlotLocation(slot);
+                                                            const status = slot.status || (slot.is_booked ? 'BOOKED' : 'AVAILABLE');
 
                                                             return (
                                                                 <div
                                                                     key={slot.id}
                                                                     className={`p-2.5 sm:p-3 rounded-xl border transition-all text-left flex flex-col justify-between gap-1.5 min-h-[62px] group relative ${
-                                                                        slot.is_booked
+                                                                        status === 'BOOKED'
                                                                             ? 'bg-muted/60 border-border/80 text-foreground'
+                                                                            : status === 'COMPLETED'
+                                                                            ? 'bg-muted/40 border-border/60 text-muted-foreground'
+                                                                            : status === 'CANCELED'
+                                                                            ? 'bg-amber-500/5 border-amber-500/20 text-muted-foreground'
                                                                             : 'bg-[#00E676]/10 border-[#00E676]/30 hover:border-[#00E676]/60 text-foreground'
                                                                     }`}
                                                                 >
                                                                     {/* Row 1: Time on left | Status/Athlete Badge on right */}
                                                                     <div className="flex items-center justify-between gap-2">
                                                                         <div className="flex items-center gap-1.5 text-xs font-black text-foreground truncate">
-                                                                            <Clock size={12} className={slot.is_booked ? "text-muted-foreground shrink-0" : "text-[#00E676] shrink-0"} />
+                                                                            <Clock size={12} className={status === 'AVAILABLE' ? "text-[#00E676] shrink-0" : "text-muted-foreground shrink-0"} />
                                                                             <span className="truncate">{sTime} – {eTime}</span>
                                                                         </div>
 
                                                                         <div className="flex items-center gap-1 shrink-0">
-                                                                            {slot.is_booked ? (
+                                                                            {status === 'BOOKED' ? (
                                                                                 <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted text-foreground border border-border">
                                                                                     <Lock size={9} className="text-muted-foreground shrink-0" />
-                                                                                    <span className="truncate max-w-[120px]">{slot.athlete_name || "Booked"}</span>
+                                                                                    <span className="text-[#00E676] mr-0.5">BOOKED</span>
+                                                                                    {slot.athlete_name && (
+                                                                                        <span className="truncate max-w-[100px]">• {slot.athlete_name}</span>
+                                                                                    )}
                                                                                     {slot.lesson_code && (
                                                                                         <span className="text-[8px] text-[#00E676] font-bold">({slot.lesson_code})</span>
                                                                                     )}
                                                                                 </span>
+                                                                            ) : status === 'COMPLETED' ? (
+                                                                                <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
+                                                                                    <Check size={9} className="text-[#00E676] shrink-0" />
+                                                                                    <span>COMPLETED</span>
+                                                                                    {slot.athlete_name && <span className="truncate max-w-[100px]">• {slot.athlete_name}</span>}
+                                                                                </span>
+                                                                            ) : status === 'CANCELED' ? (
+                                                                                <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/30">
+                                                                                    CANCELED
+                                                                                </span>
                                                                             ) : (
                                                                                 <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#00E676]/20 text-[#00E676] border border-[#00E676]/30">
-                                                                                    Open Slot
+                                                                                    AVAILABLE
                                                                                 </span>
                                                                             )}
 
-                                                                            {!slot.is_booked && !slot.is_session_source && (
+                                                                            {status === 'AVAILABLE' && !slot.is_session_source && (
                                                                                 <button
                                                                                     type="button"
                                                                                     onClick={(e) => {
@@ -969,11 +1030,17 @@ export function CoachScheduler() {
                                                     const eTime = new Date(slot.end_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                                                     const locName = getSlotLocation(slot);
 
+                                                    const slotStatus = slot.status || (slot.is_booked ? 'BOOKED' : 'AVAILABLE');
+
                                                     return (
                                                         <div
                                                             key={slot.id}
                                                             className={`p-2 rounded-xl border transition-all text-left flex flex-col justify-between gap-1 min-h-[58px] group relative ${
-                                                                slot.is_booked
+                                                                slotStatus === 'COMPLETED'
+                                                                    ? 'bg-blue-500/10 border-blue-500/20 text-foreground'
+                                                                    : slotStatus === 'CANCELED'
+                                                                    ? 'bg-destructive/10 border-destructive/20 text-muted-foreground opacity-60'
+                                                                    : slotStatus === 'BOOKED' || slot.is_booked
                                                                     ? 'bg-muted/60 border-border/70 text-foreground'
                                                                     : 'bg-[#00E676]/10 border-[#00E676]/25 hover:border-[#00E676]/50'
                                                             }`}
@@ -983,8 +1050,12 @@ export function CoachScheduler() {
                                                                     {sTime} – {eTime}
                                                                 </span>
                                                                 <div className="flex items-center gap-1 shrink-0">
-                                                                    {slot.is_booked ? (
+                                                                    {slotStatus === 'BOOKED' || slot.is_booked ? (
                                                                         <Lock size={9} className="text-muted-foreground" />
+                                                                    ) : slotStatus === 'COMPLETED' ? (
+                                                                        <CheckCircle2 size={9} className="text-blue-400" />
+                                                                    ) : slotStatus === 'CANCELED' ? (
+                                                                        <XCircle size={9} className="text-destructive" />
                                                                     ) : (
                                                                         !slot.is_session_source && (
                                                                             <button
@@ -1003,15 +1074,27 @@ export function CoachScheduler() {
                                                                 </div>
                                                             </div>
 
-                                                            {/* Athlete Name / Location */}
+                                                            {/* Athlete Name / Location / Status */}
                                                             <div className="flex items-center justify-between gap-1 text-[9px] font-bold text-muted-foreground">
                                                                 <div className="flex items-center gap-1 truncate">
                                                                     <MapPin size={9} className="text-[#00E676] shrink-0" />
                                                                     <span className="truncate">{locName}</span>
                                                                 </div>
-                                                                {slot.is_booked && (
+                                                                {slotStatus === 'BOOKED' || slot.is_booked ? (
                                                                     <span className="text-[8px] font-black text-foreground bg-card/80 px-1 py-0.2 rounded border border-border/50 truncate max-w-[70px]">
                                                                         {slot.athlete_name || "Booked"}
+                                                                    </span>
+                                                                ) : slotStatus === 'COMPLETED' ? (
+                                                                    <span className="text-[8px] font-black text-blue-400 bg-blue-500/10 px-1 py-0.2 rounded border border-blue-500/20 truncate">
+                                                                        Done
+                                                                    </span>
+                                                                ) : slotStatus === 'CANCELED' ? (
+                                                                    <span className="text-[8px] font-black text-destructive bg-destructive/10 px-1 py-0.2 rounded border border-destructive/20 truncate">
+                                                                        Canceled
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-[8px] font-black text-[#00E676] bg-[#00E676]/10 px-1 py-0.2 rounded border border-[#00E676]/20">
+                                                                        Open
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -1047,27 +1130,54 @@ export function CoachScheduler() {
                                 const startDate = new Date(slot.start_time);
                                 const endDate = new Date(slot.end_time);
                                 const locName = getSlotLocation(slot);
+                                const slotStatus = slot.status || (slot.is_booked ? 'BOOKED' : 'AVAILABLE');
 
                                 return (
                                     <motion.div
                                         layout
                                         key={slot.id}
                                         className={`flex items-center justify-between p-3.5 bg-card border rounded-2xl group transition-all shadow-2xs ${
-                                            slot.is_booked ? 'border-border/80 bg-muted/40' : 'border-[#00E676]/30 hover:border-[#00E676]/60'
+                                            slotStatus === 'COMPLETED'
+                                                ? 'border-blue-500/20 bg-blue-500/5'
+                                                : slotStatus === 'CANCELED'
+                                                ? 'border-destructive/20 bg-destructive/5 opacity-60'
+                                                : slotStatus === 'BOOKED' || slot.is_booked
+                                                ? 'border-border/80 bg-muted/40'
+                                                : 'border-[#00E676]/30 hover:border-[#00E676]/60'
                                         }`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className={`p-2.5 rounded-xl border ${
-                                                slot.is_booked 
-                                                    ? 'bg-muted text-muted-foreground border-border' 
+                                                slotStatus === 'COMPLETED'
+                                                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                                    : slotStatus === 'CANCELED'
+                                                    ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                                    : slotStatus === 'BOOKED' || slot.is_booked
+                                                    ? 'bg-muted text-muted-foreground border-border'
                                                     : 'bg-[#00E676]/10 text-[#00E676] border-[#00E676]/20'
                                             }`}>
-                                                {slot.is_booked ? <Lock size={16} /> : <Clock size={16} />}
+                                                {slotStatus === 'COMPLETED' ? (
+                                                    <CheckCircle2 size={16} />
+                                                ) : slotStatus === 'CANCELED' ? (
+                                                    <XCircle size={16} />
+                                                ) : slotStatus === 'BOOKED' || slot.is_booked ? (
+                                                    <Lock size={16} />
+                                                ) : (
+                                                    <Clock size={16} />
+                                                )}
                                             </div>
                                             <div>
                                                 <div className="text-xs font-bold text-foreground flex items-center gap-2">
                                                     <span>{startDate.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                                    {slot.is_booked ? (
+                                                    {slotStatus === 'COMPLETED' ? (
+                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
+                                                            Completed: {slot.athlete_name} {slot.lesson_code ? `(${slot.lesson_code})` : ''}
+                                                        </span>
+                                                    ) : slotStatus === 'CANCELED' ? (
+                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-destructive/10 text-destructive border border-destructive/20 rounded">
+                                                            Canceled: {slot.athlete_name || 'Slot'}
+                                                        </span>
+                                                    ) : slotStatus === 'BOOKED' || slot.is_booked ? (
                                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-muted text-muted-foreground border border-border rounded">
                                                             Booked: {slot.athlete_name} {slot.lesson_code ? `(${slot.lesson_code})` : ''}
                                                         </span>
