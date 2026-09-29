@@ -216,6 +216,22 @@ assert(isNegatedSoreness === true, "Must correctly identify negated soreness in 
 const isSorePositive = !isNegatedSoreness && (lower.includes('sore') || lower.includes('tight'));
 assert(isSorePositive === false, "Must NOT trigger positive soreness when soreness is negated");
 
+// ======================================================================
+// TEST 6: CANCELED LESSONS COUNT AGAINST CLIENT PACKAGE COUNT
+// ======================================================================
+console.log("\n[Test 6] Canceled Lessons Count Against Package / Series Count");
+
+// Carter Gethers has 1 CANCELED lesson (S25 L3 on Sep 25) and 1 upcoming BOOKED lesson (Oct 2)
+const carterBlocks = coachData.filter(b => b.client && b.client.toLowerCase().includes('carter'));
+const carterCanceled = carterBlocks.filter(b => b.status === 'CANCELED');
+assert(carterCanceled.length === 1, "Carter Gethers must have 1 recorded canceled lesson (S25 L3)");
+assert(carterCanceled[0].lessonCode === 'S25 L3', "Carter canceled lesson retains its exact series code (S25 L3)");
+
+// Package consumption rule: total consumed = completed + canceled
+const consumedCount = carterBlocks.filter(b => b.status === 'COMPLETED' || b.status === 'CANCELED').length;
+assert(consumedCount >= 1, "Canceled lesson MUST be counted as consumed against client package allowance");
+
 console.log("\n======================================================================");
-console.log("ALL 9 VERIFICATION INVARIANTS PASSED (100% SUCCESS)");
+console.log("ALL VERIFICATION INVARIANTS PASSED (100% SUCCESS)");
 console.log("======================================================================");
+

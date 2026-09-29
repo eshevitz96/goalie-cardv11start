@@ -168,4 +168,34 @@ export class CoachScheduleRepository {
     this.saveBlocks(blocks);
     return { success: true, block: updated };
   }
+
+  /**
+   * Returns all booked/delivered/canceled lessons for a specific client.
+   * Invariant: Canceled lessons still count toward the package lesson count (e.g. S25 L3).
+   */
+  static getClientLessonSummary(clientName: string): {
+    totalConsumed: number;
+    completedCount: number;
+    canceledCount: number;
+    bookedCount: number;
+    lessons: CoachScheduleBlock[];
+  } {
+    const all = this.getAllBlocks();
+    const clientBlocks = all.filter(b => 
+      b.client && b.client.toLowerCase().includes(clientName.toLowerCase().trim())
+    );
+
+    const completedCount = clientBlocks.filter(b => b.status === 'COMPLETED').length;
+    const canceledCount = clientBlocks.filter(b => b.status === 'CANCELED').length;
+    const bookedCount = clientBlocks.filter(b => b.status === 'BOOKED').length;
+
+    return {
+      totalConsumed: completedCount + canceledCount, // Both completed and canceled lessons consume package count
+      completedCount,
+      canceledCount,
+      bookedCount,
+      lessons: clientBlocks
+    };
+  }
 }
+
