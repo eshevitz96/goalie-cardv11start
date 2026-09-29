@@ -252,7 +252,7 @@ export class CoachScheduleRepository {
   static rescheduleLesson(
     oldSlotId: string, 
     newSlotId: string
-  ): { success: boolean; newBlock?: CoachScheduleBlock; error?: string } {
+  ): { success: boolean; block?: CoachScheduleBlock; newBlock?: CoachScheduleBlock; error?: string } {
     const blocks = this.getAllBlocks();
     const oldIdx = blocks.findIndex(b => b.id === oldSlotId);
     const newIdx = blocks.findIndex(b => b.id === newSlotId);
