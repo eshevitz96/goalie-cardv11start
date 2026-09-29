@@ -79,12 +79,12 @@ const completedStrengthSept29 = athleteData.filter(e => e.date === '2026-09-29' 
 assert(completedStrengthSept29.length === 0, "Tuesday strength must NOT be marked as COMPLETED_TRAINING yet (remains PLANNED / in-progress)");
 
 // ======================================================================
-// TEST 3: COACH CARD LACROSSE SCHEDULE (SEPT 29 – OCT 4)
+// TEST 3: COACH CARD LACROSSE SCHEDULE (HISTORICAL + UPCOMING)
 // ======================================================================
 console.log("\n[Test 3] Coach Card Lacrosse Schedule Structure & Roles");
 
 assert(Array.isArray(coachData), "coachData must be an array of blocks");
-assert(coachData.length === 16, `Must have exactly 16 coach blocks for Sept 29 - Oct 4 (found ${coachData.length})`);
+assert(coachData.length === 21, `Must have exactly 21 coach blocks (5 historical + 16 upcoming, found ${coachData.length})`);
 
 coachData.forEach(block => {
   assert(block.participantRole === 'COACH', `Block ${block.id} must have participantRole: COACH`);
@@ -96,20 +96,48 @@ coachData.forEach(block => {
   }
 });
 
-// Verify Booked Lessons
-const bookedBlocks = coachData.filter(b => b.status === 'BOOKED');
-assert(bookedBlocks.length === 3, `Must have exactly 3 booked lessons (Carter, Hunter, Brock), found ${bookedBlocks.length}`);
+// Verify 5 Historical Lessons (Sep 24 - Sep 26)
+const historicalBlocks = coachData.filter(b => b.date < '2026-09-29');
+assert(historicalBlocks.length === 5, `Must have 5 historical coach sessions, found ${historicalBlocks.length}`);
 
-const carterBlock = bookedBlocks.find(b => b.client === 'Carter');
-assert(!!carterBlock, "Must have booked lesson for Carter");
+// 1. Jake Franklin S21 L2
+const jake = historicalBlocks.find(b => b.client === 'Jake Franklin');
+assert(!!jake && jake.status === 'COMPLETED' && jake.lessonCode === 'S21 L2', "Jake Franklin lesson must be COMPLETED (S21 L2)");
+assert(jake.notes.includes("String to keep stick together"), "Jake notes must preserve stick & grip coaching cues");
+
+// 2. Carter Gethers S25 L3
+const carterPast = historicalBlocks.find(b => b.client === 'Carter Gethers');
+assert(!!carterPast && carterPast.status === 'CANCELED' && carterPast.lessonCode === 'S25 L3', "Carter Gethers past lesson must be CANCELED (S25 L3)");
+assert(carterPast.notes.includes("hurt elbow"), "Carter past lesson must preserve hurt elbow / ER visit note");
+
+// 3. Hunter Cortjens S16 L3
+const hunterPast = historicalBlocks.find(b => b.client === 'Hunter Cortjens');
+assert(!!hunterPast && hunterPast.status === 'COMPLETED' && hunterPast.lessonCode === 'S16 L3', "Hunter Cortjens past lesson must be COMPLETED (S16 L3)");
+assert(hunterPast.notes.includes("hands steady, dipping and feet shifting"), "Hunter past lesson must preserve patience & feet cues");
+
+// 4. Susie McElheny S13 L1
+const susie = historicalBlocks.find(b => b.client === 'Susie McElheny');
+assert(!!susie && susie.status === 'COMPLETED' && susie.lessonCode === 'S13 L1', "Susie McElheny lesson must be COMPLETED (S13 L1)");
+assert(susie.notes.includes("top hand control and drive through the shot"), "Susie lesson must preserve top hand control cues");
+
+// 5. Brock Gebhardt S28 L1
+const brockPast = historicalBlocks.find(b => b.client === 'Brock Gebhardt' && b.date === '2026-09-26');
+assert(!!brockPast && brockPast.status === 'COMPLETED' && brockPast.lessonCode === 'S28 L1', "Brock Gebhardt past lesson must be COMPLETED (S28 L1)");
+
+// Verify Upcoming Booked Lessons (Sept 29 - Oct 4)
+const upcomingBooked = coachData.filter(b => b.date >= '2026-09-29' && b.status === 'BOOKED');
+assert(upcomingBooked.length === 3, `Must have exactly 3 upcoming booked lessons (Carter, Hunter, Brock), found ${upcomingBooked.length}`);
+
+const carterBlock = upcomingBooked.find(b => b.client === 'Carter');
+assert(!!carterBlock, "Must have upcoming booked lesson for Carter");
 assert(carterBlock.date === '2026-10-02' && carterBlock.startTime === '5:00 PM' && carterBlock.location === 'Lambert', "Carter lesson must be Fri Oct 2, 5pm at Lambert");
 
-const hunterBlock = bookedBlocks.find(b => b.client === 'Hunter');
-assert(!!hunterBlock, "Must have booked lesson for Hunter");
+const hunterBlock = upcomingBooked.find(b => b.client === 'Hunter');
+assert(!!hunterBlock, "Must have upcoming booked lesson for Hunter");
 assert(hunterBlock.date === '2026-10-02' && hunterBlock.startTime === '6:00 PM' && hunterBlock.location === 'Lambert', "Hunter lesson must be Fri Oct 2, 6pm at Lambert");
 
-const brockBlock = bookedBlocks.find(b => b.client === 'Brock');
-assert(!!brockBlock, "Must have booked lesson for Brock");
+const brockBlock = upcomingBooked.find(b => b.client === 'Brock');
+assert(!!brockBlock, "Must have upcoming booked lesson for Brock");
 assert(brockBlock.date === '2026-10-03' && brockBlock.startTime === '9:00 AM' && brockBlock.location.includes('Bell'), "Brock lesson must be Sat Oct 3, 9am at Bell");
 
 // ======================================================================

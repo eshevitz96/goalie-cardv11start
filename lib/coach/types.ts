@@ -10,6 +10,7 @@ export interface CoachScheduleBlock {
     status: CoachSlotStatus;
     participantRole: 'COACH';
     client?: string; // Named client, only present when BOOKED, COMPLETED, or CANCELED
+    lessonCode?: string; // e.g. 'S21 L2', 'S13 L1', 'S25 L3'
     notes?: string;
     durationMins?: number;
     previousStatus?: CoachSlotStatus;
