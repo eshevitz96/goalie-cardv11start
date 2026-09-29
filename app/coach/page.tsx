@@ -204,8 +204,9 @@ export default function CoachDashboard() {
 
                 if (clientSessions || clientRosters) {
                     const fallbackRosters = clientRosters || [];
-                    const fallbackSessions = (clientSessions || []).map(sess => {
+                    const fallbackSessions: SessionWithAthlete[] = (clientSessions || []).map(sess => {
                         const matchRoster = fallbackRosters.find(r => r.id === sess.roster_id || (sess.notes && r.goalie_name && sess.notes.includes(r.goalie_name)));
+                        const isComp = (sess.status === 'completed' || sess.notes?.includes('[Session Completed'));
                         return {
                             id: sess.id,
                             date: sess.date,
@@ -219,14 +220,14 @@ export default function CoachDashboard() {
                             team: matchRoster?.team || "",
                             email: matchRoster?.email || matchRoster?.guardian_email || "",
                             phone: matchRoster?.phone || "",
-                            status: (sess.status === 'completed' || sess.notes?.includes('[Session Completed')) ? 'COMPLETED' : (sess.status || 'UNKNOWN'),
+                            status: isComp ? 'COMPLETED' : (sess.status || 'UNKNOWN'),
                             outcome_evidence: sess.status === 'completed' ? 'EXPLICIT_STATUS' : sess.notes?.includes('[Session Completed') ? 'LEGACY_COMPLETION_MARKER' : 'UNKNOWN',
                             source: 'LEGACY_IMPORT',
-                            is_completed: sess.notes?.includes('[Session Completed') || sess.status === 'completed'
+                            is_completed: isComp
                         };
                     });
 
-                    const fallbackAthletes = fallbackRosters.map(r => ({
+                    const fallbackAthletes: AthleteRosterItem[] = fallbackRosters.map(r => ({
                         id: r.id,
                         goalie_name: r.goalie_name || "Athlete",
                         team: r.team || "",
