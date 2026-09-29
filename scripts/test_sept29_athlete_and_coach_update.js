@@ -88,7 +88,7 @@ assert(coachData.length === 21, `Must have exactly 21 coach blocks (5 historical
 
 coachData.forEach(block => {
   assert(block.participantRole === 'COACH', `Block ${block.id} must have participantRole: COACH`);
-  assert(['AVAILABLE', 'BOOKED', 'COMPLETED', 'CANCELED'].includes(block.status), `Block ${block.id} has invalid status ${block.status}`);
+  assert(['AVAILABLE', 'BOOKED', 'COMPLETED', 'CANCELED', 'CANCELED_NO_CHARGE', 'CANCELED_LATE_CHARGE', 'NO_SHOW'].includes(block.status), `Block ${block.id} has invalid status ${block.status}`);
   
   if (block.status === 'AVAILABLE') {
     assert(!block.client, `AVAILABLE Block ${block.id} must NOT have a client (no placeholder client)`);
@@ -106,8 +106,8 @@ assert(!!jake && jake.status === 'COMPLETED' && jake.lessonCode === 'S21 L2', "J
 assert(jake.notes.includes("String to keep stick together"), "Jake notes must preserve stick & grip coaching cues");
 
 // 2. Carter Gethers S25 L3
-const carterPast = historicalBlocks.find(b => b.client === 'Carter Gethers');
-assert(!!carterPast && carterPast.status === 'CANCELED' && carterPast.lessonCode === 'S25 L3', "Carter Gethers past lesson must be CANCELED (S25 L3)");
+const carterPast = historicalBlocks.find(b => b.client === 'Carter Gethers' || (b.clientId === 'gc-client-carter-gethers' && b.date === '2026-09-25'));
+assert(!!carterPast && (carterPast.status === 'CANCELED_LATE_CHARGE' || carterPast.status === 'CANCELED') && carterPast.lessonCode === 'S25 L3', "Carter Gethers past lesson must be CANCELED_LATE_CHARGE (S25 L3)");
 assert(carterPast.notes.includes("hurt elbow"), "Carter past lesson must preserve hurt elbow / ER visit note");
 
 // 3. Hunter Cortjens S16 L3
@@ -221,14 +221,16 @@ assert(isSorePositive === false, "Must NOT trigger positive soreness when sorene
 // ======================================================================
 console.log("\n[Test 6] Canceled Lessons Count Against Package / Series Count");
 
-// Carter Gethers has 1 CANCELED lesson (S25 L3 on Sep 25) and 1 upcoming BOOKED lesson (Oct 2)
-const carterBlocks = coachData.filter(b => b.client && b.client.toLowerCase().includes('carter'));
-const carterCanceled = carterBlocks.filter(b => b.status === 'CANCELED');
+// Carter Gethers has 1 CANCELED_LATE_CHARGE lesson (S25 L3 on Sep 25) and 1 upcoming BOOKED lesson (Oct 2)
+const carterBlocks = coachData.filter(b => (b.client && b.client.toLowerCase().includes('carter')) || b.clientId === 'gc-client-carter-gethers');
+const carterCanceled = carterBlocks.filter(b => b.status === 'CANCELED' || b.status === 'CANCELED_LATE_CHARGE' || b.status === 'CANCELED_NO_CHARGE');
 assert(carterCanceled.length === 1, "Carter Gethers must have 1 recorded canceled lesson (S25 L3)");
 assert(carterCanceled[0].lessonCode === 'S25 L3', "Carter canceled lesson retains its exact series code (S25 L3)");
+assert(carterCanceled[0].status === 'CANCELED_LATE_CHARGE', "Carter canceled lesson has status CANCELED_LATE_CHARGE");
+assert(carterCanceled[0].consumesLessonCredit === true, "Carter late canceled lesson consumes lesson credit");
 
-// Package consumption rule: total consumed = completed + canceled
-const consumedCount = carterBlocks.filter(b => b.status === 'COMPLETED' || b.status === 'CANCELED').length;
+// Package consumption rule: total consumed = completed + late canceled
+const consumedCount = carterBlocks.filter(b => b.status === 'COMPLETED' || b.status === 'CANCELED_LATE_CHARGE' || (b.status === 'CANCELED' && b.consumesLessonCredit !== false)).length;
 assert(consumedCount >= 1, "Canceled lesson MUST be counted as consumed against client package allowance");
 
 console.log("\n======================================================================");

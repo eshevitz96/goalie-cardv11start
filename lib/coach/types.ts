@@ -1,4 +1,13 @@
-export type CoachSlotStatus = 'AVAILABLE' | 'BOOKED' | 'COMPLETED' | 'CANCELED';
+export type CoachSlotStatus = 
+    | 'AVAILABLE' 
+    | 'BOOKED' 
+    | 'COMPLETED' 
+    | 'CANCELED' 
+    | 'CANCELED_NO_CHARGE' 
+    | 'CANCELED_LATE_CHARGE' 
+    | 'NO_SHOW';
+
+export type CancellationClassification = 'CANCELED_NO_CHARGE' | 'CANCELED_LATE_CHARGE';
 
 export interface CoachScheduleBlock {
     id: string;
@@ -9,8 +18,15 @@ export interface CoachScheduleBlock {
     location: string;
     status: CoachSlotStatus;
     participantRole: 'COACH';
-    client?: string; // Named client, only present when BOOKED, COMPLETED, or CANCELED
+    clientId?: string; // Canonical Client UUID
+    client?: string; // Named client string for display
     lessonCode?: string; // e.g. 'S21 L2', 'S13 L1', 'S25 L3'
+    lessonId?: string; // Canonical Lesson UUID in sessions table
+    scheduledStartAt?: string; // Canonical ISO timestamp (America/New_York)
+    canceledAt?: string; // Canonical ISO timestamp of cancellation event
+    cancellationNoticeMinutes?: number; // Derived minutes of advance notice
+    cancellationClassification?: CancellationClassification;
+    consumesLessonCredit?: boolean; // True if late cancellation or completed
     notes?: string;
     durationMins?: number;
     previousStatus?: CoachSlotStatus;

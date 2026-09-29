@@ -904,8 +904,10 @@ export function CoachScheduler() {
                                                                             ? 'bg-muted/60 border-border/80 text-foreground'
                                                                             : status === 'COMPLETED'
                                                                             ? 'bg-muted/40 border-border/60 text-muted-foreground'
-                                                                            : status === 'CANCELED'
-                                                                            ? 'bg-amber-500/5 border-amber-500/20 text-muted-foreground'
+                                                                            : status === 'CANCELED_LATE_CHARGE'
+                                                                            ? 'bg-amber-500/10 border-amber-500/30 text-foreground'
+                                                                            : status === 'CANCELED_NO_CHARGE' || status === 'CANCELED'
+                                                                            ? 'bg-muted/30 border-border/50 text-muted-foreground opacity-60'
                                                                             : 'bg-[#00E676]/10 border-[#00E676]/30 hover:border-[#00E676]/60 text-foreground'
                                                                     }`}
                                                                 >
@@ -933,6 +935,16 @@ export function CoachScheduler() {
                                                                                     <Check size={9} className="text-[#00E676] shrink-0" />
                                                                                     <span>COMPLETED</span>
                                                                                     {slot.athlete_name && <span className="truncate max-w-[100px]">• {slot.athlete_name}</span>}
+                                                                                </span>
+                                                                            ) : status === 'CANCELED_LATE_CHARGE' ? (
+                                                                                <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                                                                                    <span>CANCELED • LATE</span>
+                                                                                    <span className="text-[8px] text-amber-400 font-bold">(1 Credit Used)</span>
+                                                                                </span>
+                                                                            ) : status === 'CANCELED_NO_CHARGE' ? (
+                                                                                <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground border border-border">
+                                                                                    <span>CANCELED • EARLY</span>
+                                                                                    <span className="text-[8px] text-emerald-400 font-bold">(No Charge)</span>
                                                                                 </span>
                                                                             ) : status === 'CANCELED' ? (
                                                                                 <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/30">
@@ -1040,8 +1052,10 @@ export function CoachScheduler() {
                                                             className={`p-2 rounded-xl border transition-all text-left flex flex-col justify-between gap-1 min-h-[58px] group relative ${
                                                                 slotStatus === 'COMPLETED'
                                                                     ? 'bg-blue-500/10 border-blue-500/20 text-foreground'
-                                                                    : slotStatus === 'CANCELED'
-                                                                    ? 'bg-destructive/10 border-destructive/20 text-muted-foreground opacity-60'
+                                                                    : slotStatus === 'CANCELED_LATE_CHARGE'
+                                                                    ? 'bg-amber-500/10 border-amber-500/30 text-foreground'
+                                                                    : slotStatus === 'CANCELED_NO_CHARGE' || slotStatus === 'CANCELED'
+                                                                    ? 'bg-muted/40 border-border/50 text-muted-foreground opacity-60'
                                                                     : slotStatus === 'BOOKED' || slot.is_booked
                                                                     ? 'bg-muted/60 border-border/70 text-foreground'
                                                                     : 'bg-[#00E676]/10 border-[#00E676]/25 hover:border-[#00E676]/50'
@@ -1056,8 +1070,8 @@ export function CoachScheduler() {
                                                                         <Lock size={9} className="text-muted-foreground" />
                                                                     ) : slotStatus === 'COMPLETED' ? (
                                                                         <CheckCircle2 size={9} className="text-blue-400" />
-                                                                    ) : slotStatus === 'CANCELED' ? (
-                                                                        <XCircle size={9} className="text-destructive" />
+                                                                    ) : slotStatus === 'CANCELED_LATE_CHARGE' || slotStatus === 'CANCELED_NO_CHARGE' || slotStatus === 'CANCELED' ? (
+                                                                        <XCircle size={9} className="text-amber-500" />
                                                                     ) : (
                                                                         !slot.is_session_source && (
                                                                             <button
@@ -1090,8 +1104,12 @@ export function CoachScheduler() {
                                                                     <span className="text-[8px] font-black text-blue-400 bg-blue-500/10 px-1 py-0.2 rounded border border-blue-500/20 truncate">
                                                                         Done
                                                                     </span>
-                                                                ) : slotStatus === 'CANCELED' ? (
-                                                                    <span className="text-[8px] font-black text-destructive bg-destructive/10 px-1 py-0.2 rounded border border-destructive/20 truncate">
+                                                                ) : slotStatus === 'CANCELED_LATE_CHARGE' ? (
+                                                                    <span className="text-[8px] font-black text-amber-500 bg-amber-500/10 px-1 py-0.2 rounded border border-amber-500/20 truncate">
+                                                                        Late (Charged)
+                                                                    </span>
+                                                                ) : slotStatus === 'CANCELED_NO_CHARGE' || slotStatus === 'CANCELED' ? (
+                                                                    <span className="text-[8px] font-black text-muted-foreground bg-muted/60 px-1 py-0.2 rounded border border-border/50 truncate">
                                                                         Canceled
                                                                     </span>
                                                                 ) : (
@@ -1141,8 +1159,10 @@ export function CoachScheduler() {
                                         className={`flex items-center justify-between p-3.5 bg-card border rounded-2xl group transition-all shadow-2xs ${
                                             slotStatus === 'COMPLETED'
                                                 ? 'border-blue-500/20 bg-blue-500/5'
-                                                : slotStatus === 'CANCELED'
-                                                ? 'border-destructive/20 bg-destructive/5 opacity-60'
+                                                : slotStatus === 'CANCELED_LATE_CHARGE'
+                                                ? 'border-amber-500/20 bg-amber-500/5'
+                                                : slotStatus === 'CANCELED_NO_CHARGE' || slotStatus === 'CANCELED'
+                                                ? 'border-border/50 bg-muted/20 opacity-60'
                                                 : slotStatus === 'BOOKED' || slot.is_booked
                                                 ? 'border-border/80 bg-muted/40'
                                                 : 'border-[#00E676]/30 hover:border-[#00E676]/60'
@@ -1152,15 +1172,17 @@ export function CoachScheduler() {
                                             <div className={`p-2.5 rounded-xl border ${
                                                 slotStatus === 'COMPLETED'
                                                     ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                                    : slotStatus === 'CANCELED'
-                                                    ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                                    : slotStatus === 'CANCELED_LATE_CHARGE'
+                                                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                                    : slotStatus === 'CANCELED_NO_CHARGE' || slotStatus === 'CANCELED'
+                                                    ? 'bg-muted/60 text-muted-foreground border-border/50'
                                                     : slotStatus === 'BOOKED' || slot.is_booked
                                                     ? 'bg-muted text-muted-foreground border-border'
                                                     : 'bg-[#00E676]/10 text-[#00E676] border-[#00E676]/20'
                                             }`}>
                                                 {slotStatus === 'COMPLETED' ? (
                                                     <CheckCircle2 size={16} />
-                                                ) : slotStatus === 'CANCELED' ? (
+                                                ) : slotStatus === 'CANCELED_LATE_CHARGE' || slotStatus === 'CANCELED_NO_CHARGE' || slotStatus === 'CANCELED' ? (
                                                     <XCircle size={16} />
                                                 ) : slotStatus === 'BOOKED' || slot.is_booked ? (
                                                     <Lock size={16} />
@@ -1175,8 +1197,16 @@ export function CoachScheduler() {
                                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
                                                             Completed: {slot.athlete_name} {slot.lesson_code ? `(${slot.lesson_code})` : ''}
                                                         </span>
+                                                    ) : slotStatus === 'CANCELED_LATE_CHARGE' ? (
+                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded">
+                                                            Canceled • Late: {slot.athlete_name || 'Lesson'} (1 Credit Used)
+                                                        </span>
+                                                    ) : slotStatus === 'CANCELED_NO_CHARGE' ? (
+                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-muted/60 text-muted-foreground border border-border/50 rounded">
+                                                            Canceled • Early: {slot.athlete_name || 'Lesson'} (No Charge)
+                                                        </span>
                                                     ) : slotStatus === 'CANCELED' ? (
-                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-destructive/10 text-destructive border border-destructive/20 rounded">
+                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-muted/60 text-muted-foreground border border-border/50 rounded">
                                                             Canceled: {slot.athlete_name || 'Slot'}
                                                         </span>
                                                     ) : slotStatus === 'BOOKED' || slot.is_booked ? (

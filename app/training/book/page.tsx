@@ -656,8 +656,8 @@ function BookTrainingContent() {
                                     <h4 className="text-sm font-bold text-foreground">
                                         {selectedSlotIds.length} Session{selectedSlotIds.length > 1 ? 's' : ''} Ready to Book
                                     </h4>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        Coach Elliott will be automatically notified with your confirmed schedule.
+                                    <p className="text-[11px] text-amber-500/90 font-medium mt-0.5">
+                                        Cancellations require at least 24 hours notice. Cancellations made less than 24 hours before your lesson count toward your lesson package.
                                     </p>
                                 </div>
                             </div>
@@ -699,6 +699,9 @@ function BookTrainingContent() {
                                 <p className="text-xs text-muted-foreground">
                                     Enter your details so Coach Elliott can link your session and notify you.
                                 </p>
+                                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-500 font-medium mt-2">
+                                    Notice: Cancellations require at least 24 hours notice. Cancellations made less than 24 hours before your lesson count toward your lesson package.
+                                </div>
                             </div>
 
                             <div className="space-y-4 pt-1">
