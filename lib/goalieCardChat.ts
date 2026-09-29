@@ -58,20 +58,39 @@ export function hasExplicitNegation(text: string): boolean {
     return negationPatterns.some(pattern => pattern.test(lower));
 }
 
+export function isQuestionOrInquiry(text: string): boolean {
+    const lower = text.toLowerCase().trim();
+    if (lower.includes('?')) return true;
+    const inquiryPatterns = [
+        /\b(is|are|was|were|did|do|does|can|could|should|would|will)\s+(my|the|this|that|it|our|latest|session|workout|skate)\b/i,
+        /\b(how\s+many|what\s+did|when\s+was|where\s+is|show\s+me|tell\s+me|check|view|see)\b/i,
+        /\b(visible|recorded|saved|tracked|logged\s+yet|in\s+the\s+database)\b/i
+    ];
+    return inquiryPatterns.some(pattern => pattern.test(lower));
+}
+
 export function detectExplicitAction(text: string, todayStr: string): { 
     actionCard?: ActionCardData;
     replyText?: string;
     mode: ExecutionProvenanceMode;
 } | null {
-    const lower = text.toLowerCase();
+    const lower = text.toLowerCase().trim();
     
     // If user explicitly stated this was NOT a workout / skipped / took off
     if (hasExplicitNegation(text)) {
         return null;
     }
 
+    // Questions, inquiries, or reading past sessions must NEVER return an actionCard
+    if (isQuestionOrInquiry(text)) {
+        return null;
+    }
+
     // Explicit Calendar Event Request (e.g. "schedule a skate on thursday at 2pm", "add stick 'n puck to calendar")
-    if (lower.includes('calendar') || lower.includes('schedule') || lower.includes('put that on my calendar') || lower.includes('add to calendar')) {
+    if (
+        (lower.startsWith('schedule') || lower.startsWith('add to calendar') || lower.startsWith('book') || lower.includes('put on my calendar')) &&
+        (lower.includes('skate') || lower.includes('puck') || lower.includes('ice') || lower.includes('gym') || lower.includes('lift'))
+    ) {
         let eventTitle = "On-Ice Session";
         let time = "10:00 AM";
         let location = "Local Rink";
@@ -104,11 +123,10 @@ export function detectExplicitAction(text: string, todayStr: string): {
         };
     }
 
-    // Explicit Training Log Request (explicit commands or specific workout statements WITHOUT negation)
-    const isExplicitLogCommand = lower.startsWith('logged:') || lower.startsWith('completed:') || lower.startsWith('log:');
-    const isSpecificWorkoutTemplate = lower.includes('deck of cards') || lower.includes('hiit workout') || lower.includes('5k run') || lower.includes('intervals run');
+    // Explicit Training Log Request (ONLY explicit commands like "log:", "logged:", "record:")
+    const isExplicitLogCommand = lower.startsWith('logged:') || lower.startsWith('completed:') || lower.startsWith('log:') || lower.startsWith('log my') || lower.startsWith('record:');
 
-    if (isExplicitLogCommand || isSpecificWorkoutTemplate) {
+    if (isExplicitLogCommand) {
         let sessionTitle = "Conditioning & Recovery Session";
         let duration = 40;
         let sessionType = "other";

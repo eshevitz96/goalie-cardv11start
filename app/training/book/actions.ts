@@ -5,6 +5,7 @@ import { getStripe } from "@/lib/stripe";
 import { INITIAL_TRAINING_SLOTS, TrainingSlot } from "@/constants/trainingAvailability";
 import { extractTakeawaysFromNotes } from "@/lib/utils";
 import { CoachScheduleRepository } from "@/lib/coach/coachScheduleRepository";
+import { formatFirstInitialLastName } from "@/lib/coach/types";
 
 const COACH_NOTIFICATION_EMAILS = [
     "eshevitz96@gmail.com",
@@ -841,34 +842,40 @@ export async function completeTrainingSessionAndNotify(payload: {
     coachNotes?: string;
 }) {
     try {
-        const supabase = getSupabaseAdmin();
         const { sessionId, athleteName, clientEmail, coachNotes } = payload;
+        const supabase = getSupabaseAdmin();
 
-        // 1. Fetch session
+        // 1. Update CoachScheduleRepository if block exists
+        const coachRepoResult = CoachScheduleRepository.completeLesson(sessionId, coachNotes);
+
+        // 2. Fetch session from Supabase
         const { data: session } = await supabase
             .from('sessions')
             .select('*')
             .eq('id', sessionId)
-            .single();
+            .maybeSingle();
 
-        if (!session) {
+        if (!session && !coachRepoResult.success) {
             return { error: "Session record not found." };
         }
 
-        const resolvedName = athleteName || "Athlete";
-        const sessionDateStr = session.date ? new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today';
-        const sessionLocation = session.location || 'Field';
+        const resolvedName = athleteName || coachRepoResult.block?.client || "Athlete";
+        const rawDate = session?.date || coachRepoResult.block?.scheduledStartAt || coachRepoResult.block?.date;
+        const sessionDateStr = rawDate ? new Date(rawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today';
+        const sessionLocation = session?.location || coachRepoResult.block?.location || 'Field';
 
-        // 2. Update session with completion stamp & coach notes
-        const existingNotes = session.notes || '';
-        const updatedNotes = `${existingNotes} \n\n[Session Completed on ${new Date().toISOString()}] Coach Notes: ${coachNotes || 'Completed on field.'}`.trim();
+        // 3. Update session with completion stamp & coach notes if in database
+        if (session) {
+            const existingNotes = session.notes || '';
+            const updatedNotes = `${existingNotes} \n\n[Session Completed on ${new Date().toISOString()}] Coach Notes: ${coachNotes || 'Completed on field.'}`.trim();
 
-        await supabase
-            .from('sessions')
-            .update({
-                notes: updatedNotes
-            })
-            .eq('id', sessionId);
+            await supabase
+                .from('sessions')
+                .update({
+                    notes: updatedNotes
+                })
+                .eq('id', sessionId);
+        }
 
         // 3. Auto-resolve client email and takeaway notes
         const extractedTakeaways = (coachNotes && coachNotes !== 'Completed on field.' && coachNotes !== 'Session wrapped on field.')
@@ -1131,6 +1138,10 @@ export interface SessionWithAthlete {
     phone?: string;
     is_completed?: boolean;
     takeaways?: string;
+    status?: string;
+    lesson_code?: string;
+    outcome_evidence?: 'EXPLICIT_STATUS' | 'LEGACY_COMPLETION_MARKER' | 'EXPLICIT_CANCELLATION' | 'UNKNOWN';
+    source?: 'LEGACY_IMPORT' | 'CANONICAL_SCHEDULING' | 'ROSTER_UPLOAD';
 }
 
 export interface AthleteRosterItem {
@@ -1314,9 +1325,40 @@ export async function fetchCoachOSData(userId?: string, userEmail?: string) {
                 }
             }
 
-            const isCompleted = sess.notes?.includes('[Session Completed') || 
-                               sess.status === 'completed' || 
-                               (sess.date && new Date(sess.date).getTime() < Date.now() && !sess.notes?.includes('Pending'));
+            // Canonical Outcome Model for Legacy Records
+            let outcomeStatus: string = 'UNKNOWN';
+            let outcomeEvidence: 'EXPLICIT_STATUS' | 'LEGACY_COMPLETION_MARKER' | 'EXPLICIT_CANCELLATION' | 'UNKNOWN' = 'UNKNOWN';
+            let isCompleted = false;
+
+            const rawStatus = (sess.status || '').toLowerCase().trim();
+            const rawNotes = sess.notes || '';
+
+            if (rawStatus === 'completed' || rawStatus === 'complete') {
+                outcomeStatus = 'COMPLETED';
+                outcomeEvidence = 'EXPLICIT_STATUS';
+                isCompleted = true;
+            } else if (rawNotes.includes('[Session Completed') || rawNotes.includes('[COMPLETED') || rawNotes.includes('Session Completed')) {
+                outcomeStatus = 'COMPLETED';
+                outcomeEvidence = 'LEGACY_COMPLETION_MARKER';
+                isCompleted = true;
+            } else if (rawStatus.includes('cancel') || rawNotes.toLowerCase().includes('cancel') || rawNotes.toLowerCase().includes('cancelled')) {
+                outcomeStatus = (rawStatus.includes('late') || rawNotes.toLowerCase().includes('late')) ? 'CANCELED_LATE_CHARGE' : 'CANCELED_NO_CHARGE';
+                outcomeEvidence = 'EXPLICIT_CANCELLATION';
+                isCompleted = false;
+            } else if (rawStatus === 'no_show' || rawNotes.toLowerCase().includes('no show') || rawNotes.toLowerCase().includes('no-show')) {
+                outcomeStatus = 'NO_SHOW';
+                outcomeEvidence = 'EXPLICIT_STATUS';
+                isCompleted = false;
+            } else if (rawStatus === 'booked' || rawStatus === 'scheduled') {
+                outcomeStatus = 'BOOKED';
+                outcomeEvidence = 'EXPLICIT_STATUS';
+                isCompleted = false;
+            } else {
+                // Past timestamp with no outcome evidence -> UNKNOWN / UNRECONCILED (Never assume completed)
+                outcomeStatus = 'UNKNOWN';
+                outcomeEvidence = 'UNKNOWN';
+                isCompleted = false;
+            }
 
             const extractedTakeaways = extractTakeawaysFromNotes(sess.notes) || sess.takeaways || "";
 
@@ -1333,27 +1375,69 @@ export async function fetchCoachOSData(userId?: string, userEmail?: string) {
                 team,
                 email,
                 phone,
+                status: outcomeStatus,
+                outcome_evidence: outcomeEvidence,
+                source: 'LEGACY_IMPORT',
                 is_completed: isCompleted,
                 takeaways: extractedTakeaways
             };
         });
 
-        // Merge booked lessons from CoachScheduleRepository
+        // Merge booked and completed lessons from CoachScheduleRepository
         const localSchedule = CoachScheduleRepository.getAllBlocks();
         for (const block of localSchedule) {
-            if (block.status === 'BOOKED' || block.status === 'COMPLETED') {
-                const alreadyExists = hydratedSessions.some(s => s.id === block.id || (s.date && s.date.startsWith(block.date) && s.athlete_name?.toLowerCase() === (block.client || '').toLowerCase()));
-                if (!alreadyExists) {
-                    hydratedSessions.push({
-                        id: block.id,
-                        date: `${block.date}T${block.startTime.includes(':') ? block.startTime : '17:00'}`,
-                        location: block.location,
-                        notes: block.notes || `Private Lacrosse Goalie Lesson - ${block.client}`,
-                        athlete_name: block.client || "Athlete",
-                        team: "Private Client",
-                        is_completed: block.status === 'COMPLETED',
-                        takeaways: extractTakeawaysFromNotes(block.notes)
-                    });
+            if (block.status === 'BOOKED' || block.status === 'COMPLETED' || block.status === 'CANCELED_LATE_CHARGE' || block.status === 'CANCELED_NO_CHARGE' || block.status === 'CANCELED') {
+                const matchRoster = rosterList.find(r => 
+                    (block.clientId && (r.id === block.clientId || r.linked_user_id === block.clientId)) ||
+                    (r.goalie_name && block.client && (
+                        r.goalie_name.toLowerCase() === block.client.toLowerCase() ||
+                        formatFirstInitialLastName(r.goalie_name).toLowerCase() === formatFirstInitialLastName(block.client).toLowerCase()
+                    ))
+                );
+
+                const athleteName = matchRoster?.goalie_name || (block.client ? formatFirstInitialLastName(block.client) : "Athlete");
+                const team = matchRoster?.team || "Private Client";
+                const email = matchRoster?.email || matchRoster?.guardian_email || "";
+                const phone = matchRoster?.phone || "";
+                const canonicalDate = block.scheduledStartAt || CoachScheduleRepository.parseScheduledStartAt(block.date, block.startTime);
+
+                const alreadyExistsIdx = hydratedSessions.findIndex(s => 
+                    s.id === block.id || 
+                    (block.lessonId && s.id === block.lessonId) ||
+                    (s.date && canonicalDate && s.date === canonicalDate && formatFirstInitialLastName(s.athlete_name) === formatFirstInitialLastName(athleteName))
+                );
+
+                const blockEvidence = block.status === 'COMPLETED' ? 'EXPLICIT_STATUS'
+                    : (block.status === 'CANCELED_LATE_CHARGE' || block.status === 'CANCELED_NO_CHARGE') ? 'EXPLICIT_CANCELLATION'
+                    : 'EXPLICIT_STATUS';
+
+                const sessionObj: SessionWithAthlete = {
+                    id: block.id,
+                    date: canonicalDate,
+                    location: block.location,
+                    notes: block.notes || `Private Lacrosse Goalie Lesson - ${athleteName}`,
+                    athlete_name: athleteName,
+                    team,
+                    email,
+                    phone,
+                    status: block.status,
+                    outcome_evidence: blockEvidence,
+                    source: 'CANONICAL_SCHEDULING',
+                    is_completed: block.status === 'COMPLETED',
+                    session_number: block.lessonCode ? parseInt(block.lessonCode.match(/S(\d+)/)?.[1] || "1", 10) : undefined,
+                    lesson_number: block.lessonCode ? parseInt(block.lessonCode.match(/L(\d+)/)?.[1] || "1", 10) : undefined,
+                    goalie_id: block.clientId,
+                    roster_id: matchRoster?.id,
+                    takeaways: extractTakeawaysFromNotes(block.notes)
+                };
+
+                if (alreadyExistsIdx >= 0) {
+                    hydratedSessions[alreadyExistsIdx] = {
+                        ...hydratedSessions[alreadyExistsIdx],
+                        ...sessionObj
+                    };
+                } else {
+                    hydratedSessions.push(sessionObj);
                 }
             }
         }
@@ -1447,6 +1531,20 @@ export async function fetchCoachOSData(userId?: string, userEmail?: string) {
         });
 
         const finalAthletes = Array.from(athleteMap.values());
+
+        // Synchronize dynamic lesson accounting from CoachScheduleRepository
+        finalAthletes.forEach(ath => {
+            const summary = CoachScheduleRepository.getClientLessonSummary(ath.goalie_name, ath.lesson_count || 4);
+            if (summary.lessons.length > 0) {
+                ath.completed_lessons = summary.completedLessonCount;
+                ath.remaining_lessons = summary.remainingLessonCredits !== null 
+                    ? summary.remainingLessonCredits 
+                    : Math.max(0, (ath.lesson_count || 4) - summary.consumedLessonCredits);
+                if (summary.completedLessonCount > (ath.session_count || 0)) {
+                    ath.session_count = summary.completedLessonCount;
+                }
+            }
+        });
 
         // Attach real-time Stripe billing dates and subscription pause status
         const getOrdinal = (day: number) => {
@@ -1688,6 +1786,57 @@ export async function getCalendarPrivateLessons() {
                 takeaways: extractTakeawaysFromNotes(sess.notes) || sess.takeaways || ""
             };
         });
+
+        // Merge CoachScheduleRepository blocks into calendar hydrated sessions
+        const localSchedule = CoachScheduleRepository.getAllBlocks();
+        for (const block of localSchedule) {
+            if (block.status === 'BOOKED' || block.status === 'COMPLETED' || block.status === 'CANCELED_LATE_CHARGE' || block.status === 'CANCELED_NO_CHARGE' || block.status === 'CANCELED') {
+                const matchRoster = rosterList.find(r => 
+                    (block.clientId && (r.id === block.clientId || r.linked_user_id === block.clientId)) ||
+                    (r.goalie_name && block.client && (
+                        r.goalie_name.toLowerCase() === block.client.toLowerCase() ||
+                        formatFirstInitialLastName(r.goalie_name).toLowerCase() === formatFirstInitialLastName(block.client).toLowerCase()
+                    ))
+                );
+
+                const athleteName = matchRoster?.goalie_name || (block.client ? formatFirstInitialLastName(block.client) : "Athlete");
+                const team = matchRoster?.team || "Private Client";
+                const email = matchRoster?.email || matchRoster?.guardian_email || "";
+                const canonicalDate = block.scheduledStartAt || CoachScheduleRepository.parseScheduledStartAt(block.date, block.startTime);
+
+                const alreadyExistsIdx = hydrated.findIndex(s => 
+                    s.id === block.id || 
+                    (block.lessonId && s.id === block.lessonId) ||
+                    (s.date && canonicalDate && s.date === canonicalDate && formatFirstInitialLastName(s.athlete_name) === formatFirstInitialLastName(athleteName))
+                );
+
+                const sessionObj = {
+                    id: block.id,
+                    date: canonicalDate,
+                    start_time: canonicalDate,
+                    location: block.location || "Field / Training Facility",
+                    notes: block.notes || `Private Lacrosse Goalie Lesson - ${athleteName}`,
+                    session_number: block.lessonCode ? parseInt(block.lessonCode.match(/S(\d+)/)?.[1] || "1", 10) : undefined,
+                    lesson_number: block.lessonCode ? parseInt(block.lessonCode.match(/L(\d+)/)?.[1] || "1", 10) : undefined,
+                    goalie_id: block.clientId,
+                    roster_id: matchRoster?.id,
+                    athlete_name: athleteName,
+                    team,
+                    email,
+                    sport: "Lacrosse",
+                    takeaways: extractTakeawaysFromNotes(block.notes) || ""
+                };
+
+                if (alreadyExistsIdx >= 0) {
+                    hydrated[alreadyExistsIdx] = {
+                        ...hydrated[alreadyExistsIdx],
+                        ...sessionObj
+                    };
+                } else {
+                    hydrated.push(sessionObj);
+                }
+            }
+        }
 
         const athletes = rosterList
             .filter(r => r.goalie_name && !r.goalie_name.toLowerCase().includes('test') && !r.goalie_name.toLowerCase().includes('elliott'))

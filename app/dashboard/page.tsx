@@ -651,35 +651,16 @@ export default function Dashboard() {
                 <div className="col-span-1 md:col-span-4 lg:col-span-3 w-full flex flex-col items-center">
                     <GoalieCard
                         name={rosterData?.goalie_name || userData?.fullName}
-                        team={rosterData?.team || (userData?.teams && userData.teams[0]) || "Unattached"}
-                        gradYear={rosterData?.grad_year}
-                        height={rosterData?.height || rosterData?.raw_data?.height}
-                        weight={rosterData?.weight || rosterData?.raw_data?.weight}
-                        catchHand={rosterData?.catch_hand || userData?.handedness}
-                        showProgress={showProgress}
-                        credits={credits}
-                        session={rosterData?.session_count || 0}
-                        lesson={rosterData?.lesson_count || 0}
-                        games={gamesCount}
-                        practices={practicesCount}
+                        team={rosterData?.team || (userData?.teams && userData.teams[0]) || undefined}
+                        teams={userData?.teams || (rosterData?.team ? [rosterData.team] : null)}
+                        catchHand={userData?.handedness || rosterData?.catch_hand}
                         sport={userData?.sport || rosterData?.sport || null}
+                        userId={userData?.publicUserId || resolvedGoalieId || auth.userId || undefined}
                         id={rosterData?.id}
-                        isPro={isPro}
-                        performanceScore={effectivePerformanceScore}
-                        initials={userData?.initials}
                         gcNumber={userData?.gcNumber}
                         isIncomplete={isProfileIncomplete}
                         className="w-full"
                     />
-                    
-                    {/* Toggle counts button */}
-                    <button 
-                        onClick={() => setShowProgress(!showProgress)}
-                        className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors group cursor-pointer"
-                    >
-                        <div className={`w-1.5 h-1.5 rounded-full border transition-colors ${showProgress ? 'bg-[#00E676] border-[#00E676]' : 'border-muted-foreground'}`} />
-                        <span>{showProgress ? 'Hide' : 'Show'} Activity Counts</span>
-                    </button>
                 </div>
 
                 {/* Right Column (or Bottom on Mobile): Greeting + Actions + Tiles + Pulse */}

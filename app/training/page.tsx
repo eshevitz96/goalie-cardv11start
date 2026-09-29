@@ -401,14 +401,34 @@ export default function TrainingPage() {
     const handleCompleteStep2 = async () => {
         setIsSubmittingCheckin(true);
         try {
-            if (hasTrained) {
+            if (hasTrained && sessionsList.length > 0) {
+                let loggedCount = 0;
                 for (const sess of sessionsList) {
+                    const sessionDate = sess.date || todayDateStr;
+                    const sessionTitle = sess.title?.trim() || getContractWeekAndDay(sessionDate);
+
+                    // De-duplication check: skip if (date, title) already exists for this user
+                    if (activeUserId && activeUserId !== '00000000-0000-0000-0000-000000000000') {
+                        const { data: existing } = await supabase
+                            .from('training_sessions')
+                            .select('id')
+                            .eq('user_id', activeUserId)
+                            .eq('session_date', sessionDate)
+                            .ilike('title', sessionTitle)
+                            .limit(1);
+
+                        if (existing && existing.length > 0) {
+                            console.log(`[handleCompleteStep2] Skipping duplicate session: ${sessionTitle} on ${sessionDate}`);
+                            continue;
+                        }
+                    }
+
                     await saveTrainingSession({
-                        title: sess.title,
+                        title: sessionTitle,
                         sessionType: (['team', 'private', 'wall_ball', 'footwork', 'reaction', 'film', 'coach_mission'].includes(sess.type) ? sess.type : 'other') as any,
                         durationMins: Number(sess.durationMins) || 30,
-                        sessionDate: sess.date || todayDateStr,
-                        notes: `${sess.routineNotes}\n${sess.fatigueNotes}`,
+                        sessionDate: sessionDate,
+                        notes: `${sess.routineNotes}\n${sess.fatigueNotes}`.trim(),
                         userId: activeUserId,
                         userEmail: auth.userEmail,
                         reflection: {
@@ -416,8 +436,11 @@ export default function TrainingPage() {
                             tightness: `${bodyNotes} | Groin Strain Level: ${groinTightness}/5`
                         }
                     });
+                    loggedCount++;
                 }
-                toast.success(`Logged ${sessionsList.length} session(s) to Calendar.`);
+                if (loggedCount > 0) {
+                    toast.success(`Logged ${loggedCount} new session(s) to Calendar.`);
+                }
             }
 
             if (groinTightness >= 3) {
@@ -515,42 +538,7 @@ export default function TrainingPage() {
                 setActiveThreadTitle(data.threadTitle);
             }
 
-            // If training session was recognized in chat, sync draft form
-            if (data.actionCard?.type === 'training_session' || data.actionCard?.type === 'logged_session') {
-                const cardData = data.actionCard.data || {};
-                const cardTitle = cardData.title || getContractWeekAndDay();
-                const cardDuration = Number(cardData.duration) || 30;
-                const cardType = (cardData.type === 'footwork' ? 'conditioning' : cardData.type === 'reaction' ? 'recovery' : cardData.type || 'strength') as any;
-                const cardDetails = cardData.details || '';
-                const cardRecovery = cardData.recoveryNotes || '';
-
-                setSessionsList(prev => {
-                    if (prev.length === 1 && !prev[0].routineNotes && !prev[0].durationMins) {
-                        return [{
-                            id: prev[0].id,
-                            date: todayDateStr,
-                            title: cardTitle,
-                            durationMins: cardDuration,
-                            type: cardType,
-                            routineNotes: cardDetails,
-                            fatigueNotes: cardRecovery
-                        }];
-                    }
-                    return [
-                        ...prev,
-                        {
-                            id: `sess-${Date.now()}`,
-                            date: todayDateStr,
-                            title: cardTitle,
-                            durationMins: cardDuration,
-                            type: cardType,
-                            routineNotes: cardDetails,
-                            fatigueNotes: cardRecovery
-                        }
-                    ];
-                });
-                setHasTrained(true);
-            }
+            // Chat responses must never append to sessionsList or mutate draft form
 
             fetchThreadsAndMessages();
 

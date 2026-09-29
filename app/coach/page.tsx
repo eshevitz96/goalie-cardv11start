@@ -47,6 +47,10 @@ interface SessionWithAthlete {
     phone?: string;
     is_completed?: boolean;
     takeaways?: string;
+    status?: string;
+    lesson_code?: string;
+    outcome_evidence?: 'EXPLICIT_STATUS' | 'LEGACY_COMPLETION_MARKER' | 'EXPLICIT_CANCELLATION' | 'UNKNOWN';
+    source?: 'LEGACY_IMPORT' | 'CANONICAL_SCHEDULING' | 'ROSTER_UPLOAD';
 }
 
 interface AthleteRosterItem {
@@ -105,7 +109,7 @@ export default function CoachDashboard() {
     const [completingId, setCompletingId] = useState<string | null>(null);
 
     // Compute week boundary dates (Monday 00:00 to Sunday 23:59)
-    const { mondayStart, sundayEnd } = useMemo(() => {
+    const { mondayStart, sundayEnd, startOfToday } = useMemo(() => {
         const today = new Date();
         const dayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon
         const daysSinceMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
@@ -118,7 +122,10 @@ export default function CoachDashboard() {
         sun.setDate(mon.getDate() + 6);
         sun.setHours(23, 59, 59, 999);
 
-        return { mondayStart: mon, sundayEnd: sun };
+        const startDay = new Date(today);
+        startDay.setHours(0, 0, 0, 0);
+
+        return { mondayStart: mon, sundayEnd: sun, startOfToday: startDay };
     }, []);
 
     const fetchDashboardData = async () => {
@@ -212,7 +219,10 @@ export default function CoachDashboard() {
                             team: matchRoster?.team || "",
                             email: matchRoster?.email || matchRoster?.guardian_email || "",
                             phone: matchRoster?.phone || "",
-                            is_completed: sess.notes?.includes('[Session Completed') || (sess.date && new Date(sess.date).getTime() < Date.now())
+                            status: (sess.status === 'completed' || sess.notes?.includes('[Session Completed')) ? 'COMPLETED' : (sess.status || 'UNKNOWN'),
+                            outcome_evidence: sess.status === 'completed' ? 'EXPLICIT_STATUS' : sess.notes?.includes('[Session Completed') ? 'LEGACY_COMPLETION_MARKER' : 'UNKNOWN',
+                            source: 'LEGACY_IMPORT',
+                            is_completed: sess.notes?.includes('[Session Completed') || sess.status === 'completed'
                         };
                     });
 
@@ -287,20 +297,18 @@ export default function CoachDashboard() {
             } else if (scheduleFilter === 'march2026') {
                 return sessTime >= new Date(2026, 2, 1).getTime();
             } else if (scheduleFilter === 'upcoming') {
-                const startOfToday = new Date();
-                startOfToday.setHours(0, 0, 0, 0);
-                return sessTime >= startOfToday.getTime();
+                return (!sess.is_completed || sess.status === 'BOOKED') && sessTime >= startOfToday.getTime();
             }
             return true;
         });
-    }, [sessions, scheduleFilter, searchQuery, mondayStart, sundayEnd]);
+    }, [sessions, scheduleFilter, searchQuery, mondayStart, sundayEnd, startOfToday]);
 
-    // Sessions count for this week specifically
+    // Sessions count for this week specifically (Booked lessons occurring in active week)
     const weekSessionsCount = useMemo(() => {
         return sessions.filter(sess => {
             const parsed = parseSafeDate(sess.date);
             const sessTime = parsed ? parsed.getTime() : 0;
-            return sessTime >= mondayStart.getTime() && sessTime <= sundayEnd.getTime();
+            return sessTime >= mondayStart.getTime() && sessTime <= sundayEnd.getTime() && (!sess.is_completed || sess.status === 'BOOKED');
         }).length;
     }, [sessions, mondayStart, sundayEnd]);
 
@@ -313,19 +321,18 @@ export default function CoachDashboard() {
         }).length;
     }, [sessions]);
 
-    // Sessions count for upcoming
+    // Sessions count for upcoming (future canonical Lesson records with BOOKED status)
     const upcomingSessionsCount = useMemo(() => {
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
         return sessions.filter(sess => {
             const parsed = parseSafeDate(sess.date);
-            return parsed ? parsed.getTime() >= startOfToday.getTime() : false;
+            const sessTime = parsed ? parsed.getTime() : 0;
+            return (!sess.is_completed || sess.status === 'BOOKED') && sessTime >= startOfToday.getTime();
         }).length;
-    }, [sessions]);
+    }, [sessions, startOfToday]);
 
     // Completed sessions count
     const completedSessionsCount = useMemo(() => {
-        return sessions.filter(s => s.is_completed).length;
+        return sessions.filter(s => s.is_completed || s.status === 'COMPLETED').length;
     }, [sessions]);
 
     // Active vs Pending athletes (ensuring all non-pending athletes show in roster)

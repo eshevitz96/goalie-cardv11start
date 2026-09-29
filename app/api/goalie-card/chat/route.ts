@@ -11,7 +11,8 @@ import {
     ExecutionProvenanceMode, 
     ExecutionProvenance, 
     hasExplicitNegation, 
-    detectExplicitAction 
+    detectExplicitAction,
+    isQuestionOrInquiry 
 } from '@/lib/goalieCardChat';
 import { deriveMissionDuration, MissionDuration } from '@/lib/missionDuration';
 
@@ -147,11 +148,12 @@ NATURAL COACHING DIALOGUE & INTELLIGENCE MANDATE:
    - Do not convert temporary observations into permanent learned patterns.
 
 ACTION CARDS MANDATE:
-- Set "actionCard": null for casual greetings, status checks, general questions, or non-workout coaching.
-- Explicit Negation Rule: NEVER create a training actionCard if Elliott explicitly states it was "not a workout", "didn't train", "didn't lift", "skipped", or "just coaching".
+- Set "actionCard": null for all questions, inquiries, reading past sessions, status checks, general conversation, or non-logging dialogue.
+- STRICT RULE: Reading or answering questions (e.g. "is my latest session logged?", "what did I do yesterday?", "how many sessions have I logged?") must NEVER return an actionCard. Answering questions must never emit a card.
 - Set "actionCard" ONLY in these two explicit scenarios:
-  1. Training Workout completed or explicitly discussed for logging (combine multiple workouts into title and details if applicable).
-  2. Calendar Event discussed (e.g. scheduled skate or match).
+  1. Training Workout: The athlete explicitly commands to LOG a completed workout (e.g. "Log my workout...", "Completed: ...").
+  2. Calendar Event: The athlete explicitly commands to SCHEDULE an upcoming event (e.g. "Schedule a skate on Friday at 2pm").
+- Explicit Negation Rule: NEVER create a training actionCard if Elliott explicitly states it was "not a workout", "didn't train", "didn't lift", "skipped", or "just coaching".
 
 OUTPUT FORMAT & SCHEMA REQUIREMENTS:
 Always return valid JSON with this exact schema:
@@ -667,6 +669,11 @@ CURRENT THREAD INFO:
                     replyText = "Goalie Card is operating in offline mode. Live AI coaching intelligence and full Athlete Track context are currently unavailable. No automated coaching directive or training card was inferred.";
                 }
             }
+        }
+
+        // Guardrail: Questions or inquiries must NEVER return an actionCard
+        if (isQuestionOrInquiry(userMessage)) {
+            actionCard = undefined;
         }
 
         // Derive structured mission duration at server boundary after complete plan[] exists
