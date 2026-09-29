@@ -228,18 +228,6 @@
     "createdAt": "2026-09-29T08:00:00.000Z"
   },
   {
-    "id": "coach-slot-2026-10-03-0800",
-    "date": "2026-10-03",
-    "startTime": "8:00 AM",
-    "endTime": "9:00 AM",
-    "scheduledStartAt": "2026-10-03T08:00:00-04:00",
-    "location": "Bell Memorial Park",
-    "status": "AVAILABLE",
-    "participantRole": "COACH",
-    "durationMins": 60,
-    "createdAt": "2026-09-29T08:00:00.000Z"
-  },
-  {
     "id": "coach-slot-2026-10-03-0900",
     "date": "2026-10-03",
     "startTime": "9:00 AM",
@@ -253,18 +241,6 @@
     "durationMins": 60,
     "consumesLessonCredit": false,
     "notes": "Private Lacrosse Goalie Lesson - Brock Gebhardt",
-    "createdAt": "2026-09-29T08:00:00.000Z"
-  },
-  {
-    "id": "coach-slot-2026-10-03-1000",
-    "date": "2026-10-03",
-    "startTime": "10:00 AM",
-    "endTime": "11:00 AM",
-    "scheduledStartAt": "2026-10-03T10:00:00-04:00",
-    "location": "Bell Memorial Park",
-    "status": "AVAILABLE",
-    "participantRole": "COACH",
-    "durationMins": 60,
     "createdAt": "2026-09-29T08:00:00.000Z"
   },
   {

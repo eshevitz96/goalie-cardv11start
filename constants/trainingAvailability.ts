@@ -41,9 +41,7 @@ export const WEEKLY_COACH_SLOTS_SEPT29_OCT04: TrainingSlot[] = [
     { id: "coach-slot-2026-10-02-1800", date: "2026-10-02", startTime: "6:00 PM", endTime: "7:00 PM", timeDisplay: "6:00 PM – 7:00 PM", location: "Lambert", maxCapacity: 1, status: "BOOKED", client: "H. Cortjens", participantRole: "COACH" },
     
     // Saturday Oct 3 — Bell
-    { id: "coach-slot-2026-10-03-0800", date: "2026-10-03", startTime: "8:00 AM", endTime: "9:00 AM", timeDisplay: "8:00 AM – 9:00 AM", location: "Bell Memorial Park", maxCapacity: 1, status: "AVAILABLE", participantRole: "COACH" },
     { id: "coach-slot-2026-10-03-0900", date: "2026-10-03", startTime: "9:00 AM", endTime: "10:00 AM", timeDisplay: "9:00 AM – 10:00 AM", location: "Bell Memorial Park", maxCapacity: 1, status: "BOOKED", client: "B. Gebhardt", participantRole: "COACH" },
-    { id: "coach-slot-2026-10-03-1000", date: "2026-10-03", startTime: "10:00 AM", endTime: "11:00 AM", timeDisplay: "10:00 AM – 11:00 AM", location: "Bell Memorial Park", maxCapacity: 1, status: "AVAILABLE", participantRole: "COACH" },
     
     // Sunday Oct 4 — Bell
     { id: "coach-slot-2026-10-04-0900", date: "2026-10-04", startTime: "9:00 AM", endTime: "10:00 AM", timeDisplay: "9:00 AM – 10:00 AM", location: "Bell Memorial Park", maxCapacity: 1, status: "AVAILABLE", participantRole: "COACH" },

@@ -84,7 +84,7 @@ assert(completedStrengthSept29.length === 0, "Tuesday strength must NOT be marke
 console.log("\n[Test 3] Coach Card Lacrosse Schedule Structure & Roles");
 
 assert(Array.isArray(coachData), "coachData must be an array of blocks");
-assert(coachData.length === 21, `Must have exactly 21 coach blocks (5 historical + 16 upcoming, found ${coachData.length})`);
+assert(coachData.length === 19, `Must have exactly 19 coach blocks (5 historical + 14 upcoming, found ${coachData.length})`);
 
 coachData.forEach(block => {
   assert(block.participantRole === 'COACH', `Block ${block.id} must have participantRole: COACH`);
