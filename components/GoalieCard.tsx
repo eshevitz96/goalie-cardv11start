@@ -42,14 +42,14 @@ interface UserIdentityData {
     fullName: string;
     email: string | null;
     handedness: string | null;
-    primarySport: string;
+    primarySport: string | null;
     teams: string[] | null;
-    gcNumber: string;
+    gcNumber: string | null;
 }
 
 interface ContractData {
     id: string;
-    name: string;
+    name: string | null;
     objective: string | null;
     phase: string | null;
     startDate: string | null;
@@ -158,12 +158,12 @@ export function GoalieCard({
     const [identity, setIdentity] = useState<UserIdentityData>({
         firstName: '',
         lastName: '',
-        fullName: propName || 'Goalie',
+        fullName: propName || '',
         email: null,
         handedness: formatCatchHand(propCatchHand),
-        primarySport: propSport || 'Hockey',
+        primarySport: propSport || null,
         teams: null,
-        gcNumber: propGcNumber || 'GC-0000'
+        gcNumber: propGcNumber || null
     });
 
     const [contract, setContract] = useState<ContractData | null>(null);
@@ -193,62 +193,81 @@ export function GoalieCard({
                 }
 
                 // 2. Fetch User Identity directly from LIVE `users` table
-                let effectiveUserId = targetId;
+                let userPublicId: string | null = null;
+                let userAuthId: string | null = null;
                 let loadedIdentity: UserIdentityData = {
                     firstName: '',
                     lastName: '',
-                    fullName: propName || 'Goalie',
+                    fullName: propName || '',
                     email: userEmail,
                     handedness: formatCatchHand(propCatchHand),
-                    primarySport: propSport || 'Hockey',
+                    primarySport: propSport || null,
                     teams: null,
-                    gcNumber: propGcNumber || 'GC-0000'
+                    gcNumber: propGcNumber || null
                 };
 
-                if (targetId) {
-                    const { data: userRow } = await supabase
-                        .from('users')
-                        .select('id, auth_user_id, email, first_name, last_name, display_name, handedness, primary_sport, teams, gc_number')
-                        .or(`id.eq.${targetId},auth_user_id.eq.${targetId}`)
-                        .maybeSingle();
+                let userQuery = supabase
+                    .from('users')
+                    .select('id, auth_user_id, email, first_name, last_name, display_name, handedness, primary_sport, teams, gc_number');
 
-                    if (userRow) {
-                        effectiveUserId = userRow.id || userRow.auth_user_id || targetId;
-                        if (userRow.email) userEmail = userRow.email;
-
-                        const fName = userRow.first_name || '';
-                        const lName = userRow.last_name || '';
-                        const resolvedFull = (fName || lName) 
-                            ? `${fName} ${lName}`.trim() 
-                            : (userRow.display_name || propName || 'Goalie');
-
-                        let parsedTeams: string[] | null = null;
-                        if (Array.isArray(userRow.teams) && userRow.teams.length > 0) {
-                            parsedTeams = userRow.teams.filter((t: any) => typeof t === 'string' && t.trim() !== '');
-                            if (parsedTeams.length === 0) parsedTeams = null;
-                        } else if (typeof userRow.teams === 'string' && userRow.teams.trim() !== '') {
-                            parsedTeams = [userRow.teams.trim()];
-                        }
-
-                        loadedIdentity = {
-                            firstName: fName,
-                            lastName: lName,
-                            fullName: resolvedFull,
-                            email: userRow.email || userEmail,
-                            handedness: formatCatchHand(userRow.handedness || propCatchHand),
-                            primarySport: userRow.primary_sport || propSport || 'Hockey',
-                            teams: parsedTeams,
-                            gcNumber: userRow.gc_number ? `GC-${String(userRow.gc_number).padStart(4, '0')}` : (propGcNumber || 'GC-0000')
-                        };
+                if (targetId && targetId !== '00000000-0000-0000-0000-000000000000') {
+                    if (userEmail) {
+                        userQuery = userQuery.or(`id.eq.${targetId},auth_user_id.eq.${targetId},email.ilike.${userEmail.trim()}`);
+                    } else {
+                        userQuery = userQuery.or(`id.eq.${targetId},auth_user_id.eq.${targetId}`);
                     }
+                } else if (userEmail) {
+                    userQuery = userQuery.ilike('email', userEmail.trim());
+                }
+
+                const { data: userRow } = await userQuery.limit(1).maybeSingle();
+
+                if (userRow) {
+                    userPublicId = userRow.id;
+                    userAuthId = userRow.auth_user_id || userRow.id;
+                    if (userRow.email) userEmail = userRow.email;
+
+                    const fName = userRow.first_name || '';
+                    const lName = userRow.last_name || '';
+                    const resolvedFull = (fName || lName) 
+                        ? `${fName} ${lName}`.trim() 
+                        : (userRow.display_name || propName || '');
+
+                    let parsedTeams: string[] | null = null;
+                    if (Array.isArray(userRow.teams) && userRow.teams.length > 0) {
+                        parsedTeams = userRow.teams.filter((t: any) => typeof t === 'string' && t.trim() !== '');
+                        if (parsedTeams.length === 0) parsedTeams = null;
+                    } else if (typeof userRow.teams === 'string' && userRow.teams.trim() !== '') {
+                        parsedTeams = [userRow.teams.trim()];
+                    }
+
+                    loadedIdentity = {
+                        firstName: fName,
+                        lastName: lName,
+                        fullName: resolvedFull,
+                        email: userRow.email || userEmail,
+                        handedness: formatCatchHand(userRow.handedness || propCatchHand),
+                        primarySport: userRow.primary_sport || propSport || null,
+                        teams: parsedTeams,
+                        gcNumber: userRow.gc_number ? `GC-${String(userRow.gc_number).padStart(4, '0')}` : (propGcNumber || null)
+                    };
                 }
 
                 if (isMounted) setIdentity(loadedIdentity);
 
-                if (!effectiveUserId) {
+                // Collect all candidate user identifiers to query related tables
+                const candidateUserIds = Array.from(new Set([
+                    userPublicId,
+                    userAuthId,
+                    targetId
+                ].filter(Boolean))) as string[];
+
+                if (candidateUserIds.length === 0) {
                     if (isMounted) setLoading(false);
                     return;
                 }
+
+                const userOrFilter = candidateUserIds.map(uid => `user_id.eq.${uid}`).join(',');
 
                 // 3. Fetch Active Contract directly from LIVE `contracts` table
                 // contracts where user_id = auth user and status = 'active': name, objective, phase, start_date.
@@ -256,7 +275,7 @@ export function GoalieCard({
                 const { data: contractRow } = await supabase
                     .from('contracts')
                     .select('id, user_id, name, objective, phase, start_date, status')
-                    .or(`user_id.eq.${effectiveUserId},user_id.eq.${targetId}`)
+                    .or(userOrFilter)
                     .eq('status', 'active')
                     .order('start_date', { ascending: false })
                     .limit(1)
@@ -265,7 +284,7 @@ export function GoalieCard({
                 if (contractRow) {
                     activeContract = {
                         id: contractRow.id,
-                        name: contractRow.name || 'Return to Hockey',
+                        name: contractRow.name,
                         objective: contractRow.objective,
                         phase: contractRow.phase,
                         startDate: contractRow.start_date
@@ -280,7 +299,7 @@ export function GoalieCard({
                 let iceQuery = supabase
                     .from('training_sessions')
                     .select('session_date')
-                    .or(`user_id.eq.${effectiveUserId},user_id.eq.${targetId}`)
+                    .or(userOrFilter)
                     .eq('training_type', 'on_ice')
                     .eq('status', 'complete');
 
@@ -321,16 +340,21 @@ export function GoalieCard({
                     if (duByEmail?.id) dailyUserId = duByEmail.id;
                 }
 
-                if (!dailyUserId && effectiveUserId) {
-                    const { data: duById } = await supabase
-                        .from('daily_users')
-                        .select('id')
-                        .eq('id', effectiveUserId)
-                        .maybeSingle();
-                    if (duById?.id) dailyUserId = duById.id;
+                if (!dailyUserId) {
+                    for (const candidateId of candidateUserIds) {
+                        const { data: duById } = await supabase
+                            .from('daily_users')
+                            .select('id')
+                            .eq('id', candidateId)
+                            .maybeSingle();
+                        if (duById?.id) {
+                            dailyUserId = duById.id;
+                            break;
+                        }
+                    }
                 }
 
-                if (!dailyUserId && loadedIdentity.fullName && loadedIdentity.fullName !== 'Goalie') {
+                if (!dailyUserId && loadedIdentity.fullName) {
                     const { data: duByName } = await supabase
                         .from('daily_users')
                         .select('id')
@@ -373,32 +397,42 @@ export function GoalieCard({
 
                 // 6. Focus / Next Test: from latest `missions` row for this contract (directive / blocks.coach_focus)
                 // If none, hide the section; no hard-coded cues.
+                let missionRows: any[] | null = null;
                 if (activeContract?.id) {
-                    const { data: missionRows } = await supabase
+                    const { data: mData } = await supabase
                         .from('missions')
                         .select('directive, blocks, created_at, mission_date')
                         .eq('contract_id', activeContract.id)
                         .order('created_at', { ascending: false })
                         .limit(1);
+                    missionRows = mData;
+                }
 
-                    if (missionRows && missionRows.length > 0) {
-                        const m = missionRows[0];
-                        let directiveVal: string | null = null;
+                if (!missionRows || missionRows.length === 0) {
+                    const { data: mDataUser } = await supabase
+                        .from('missions')
+                        .select('directive, blocks, created_at, mission_date')
+                        .or(userOrFilter)
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+                    missionRows = mDataUser;
+                }
 
-                        if (m.directive && typeof m.directive === 'string' && m.directive.trim() !== '') {
-                            directiveVal = m.directive.trim();
-                        } else if (m.blocks && typeof m.blocks === 'object') {
-                            const bFocus = (m.blocks as any).coach_focus || (m.blocks as any).directive;
-                            if (typeof bFocus === 'string' && bFocus.trim() !== '') {
-                                directiveVal = bFocus.trim();
-                            }
+                if (missionRows && missionRows.length > 0) {
+                    const m = missionRows[0];
+                    let directiveVal: string | null = null;
+
+                    if (m.directive && typeof m.directive === 'string' && m.directive.trim() !== '') {
+                        directiveVal = m.directive.trim();
+                    } else if (m.blocks && typeof m.blocks === 'object') {
+                        const bFocus = (m.blocks as any).coach_focus || (m.blocks as any).directive;
+                        if (typeof bFocus === 'string' && bFocus.trim() !== '') {
+                            directiveVal = bFocus.trim();
                         }
+                    }
 
-                        if (isMounted) {
-                            setFocusMission(directiveVal ? { directive: directiveVal } : null);
-                        }
-                    } else {
-                        if (isMounted) setFocusMission(null);
+                    if (isMounted) {
+                        setFocusMission(directiveVal ? { directive: directiveVal } : null);
                     }
                 } else {
                     if (isMounted) setFocusMission(null);
@@ -409,7 +443,7 @@ export function GoalieCard({
                 const { data: futureIceSessions } = await supabase
                     .from('training_sessions')
                     .select('session_date, title')
-                    .or(`user_id.eq.${effectiveUserId},user_id.eq.${targetId}`)
+                    .or(userOrFilter)
                     .eq('training_type', 'on_ice')
                     .neq('status', 'complete')
                     .gt('session_date', todayStr)
@@ -505,11 +539,11 @@ export function GoalieCard({
     // Phase Label (never derived from dates)
     const phaseLabel = formatPhaseLabel(contract?.phase);
 
-    // Bottom Line Info
-    const primarySportDisplay = identity.primarySport ? (identity.primarySport.charAt(0).toUpperCase() + identity.primarySport.slice(1)) : "Hockey";
-    const contractTitleDisplay = contract?.name || "Return to Hockey";
-    const sinceDateDisplay = contract?.startDate ? `Since ${formatDateDisplay(contract.startDate)}` : "Since Jun 22, 2026";
-    const bottomLineString = `${primarySportDisplay} · ${contractTitleDisplay} · ${sinceDateDisplay}`;
+    // Bottom Line Info (Zero hardcoded fallbacks)
+    const primarySportDisplay = identity.primarySport ? (identity.primarySport.charAt(0).toUpperCase() + identity.primarySport.slice(1)) : "";
+    const contractTitleDisplay = contract?.name || "";
+    const sinceDateDisplay = contract?.startDate ? `Since ${formatDateDisplay(contract.startDate)}` : "";
+    const bottomLineString = [primarySportDisplay, contractTitleDisplay, sinceDateDisplay].filter(Boolean).join(' · ');
 
     return (
         <div 
@@ -534,10 +568,12 @@ export function GoalieCard({
                         {identity.handedness && (
                             <span>{identity.handedness}</span>
                         )}
-                        {identity.handedness && identity.primarySport && (
+                        {identity.handedness && primarySportDisplay && (
                             <span className="w-1 h-1 rounded-full bg-neutral-600" />
                         )}
-                        <span>{primarySportDisplay}</span>
+                        {primarySportDisplay && (
+                            <span>{primarySportDisplay}</span>
+                        )}
                     </div>
 
                     {/* Team line ONLY if users.teams is non-empty */}
@@ -567,7 +603,7 @@ export function GoalieCard({
                         {morningState.hasEntry ? (
                             <div className="w-16 h-16 rounded-full bg-[#00E676]/10 border-2 border-[#00E676] flex flex-col items-center justify-center text-center p-1 shadow-lg shadow-[#00E676]/10">
                                 <span className="text-[10px] font-black text-[#00E676] uppercase tracking-wider leading-none">
-                                    {morningState.mood || "LOGGED"}
+                                    {morningState.mood}
                                 </span>
                                 <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-widest mt-0.5">
                                     Today
@@ -657,9 +693,11 @@ export function GoalieCard({
                 <p className="m-0 text-[11px] font-medium text-neutral-300 tracking-tight truncate pr-2">
                     {bottomLineString}
                 </p>
-                <span className="shrink-0 text-[9px] font-mono text-neutral-500 font-bold uppercase tracking-widest">
-                    {identity.gcNumber}
-                </span>
+                {identity.gcNumber && (
+                    <span className="shrink-0 text-[9px] font-mono text-neutral-500 font-bold uppercase tracking-widest">
+                        {identity.gcNumber}
+                    </span>
+                )}
             </div>
         </div>
     );
