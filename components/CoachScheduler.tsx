@@ -17,7 +17,9 @@ import {
     Lock,
     User,
     LayoutGrid,
-    AlignLeft
+    AlignLeft,
+    CheckCircle2,
+    XCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { WEEKLY_COACH_SLOTS_SEPT29_OCT04 } from "@/constants/trainingAvailability";
