@@ -140,3 +140,74 @@ export interface LearningResult {
         conditioningDelta: number;
     };
 }
+
+/**
+ * Format client/athlete name to First Initial + Last Name (e.g. "C. Gethers", "H. Cortjens", "B. Gebhardt")
+ */
+export function formatFirstInitialLastName(name?: string): string {
+    if (!name || !name.trim()) return '';
+    const trimmed = name.trim();
+
+    // Known roster mappings for single names or canonical IDs
+    const KNOWN_MAP: Record<string, string> = {
+        'carter': 'C. Gethers',
+        'carter gethers': 'C. Gethers',
+        'gc-client-carter-gethers': 'C. Gethers',
+        'hunter': 'H. Cortjens',
+        'hunter cortjens': 'H. Cortjens',
+        'gc-client-hunter-cortjens': 'H. Cortjens',
+        'brock': 'B. Gebhardt',
+        'brock gebhardt': 'B. Gebhardt',
+        'gc-client-brock-gebhardt': 'B. Gebhardt',
+        'jake': 'J. Franklin',
+        'jake franklin': 'J. Franklin',
+        'gc-client-jake-franklin': 'J. Franklin',
+        'susie': 'S. McElheny',
+        'susie mcelheny': 'S. McElheny',
+        'gc-client-susie-mcelheny': 'S. McElheny',
+        'judah': 'J. Barker',
+        'judah barker': 'J. Barker',
+        'sophia': 'S. Hall',
+        'sophia hall': 'S. Hall',
+        'sophie': 'S. Hall',
+        'sophie hall': 'S. Hall',
+        'gabe': 'G. Stone',
+        'gabe stone': 'G. Stone',
+        'gabriel': 'G. Stone',
+        'gabriel stone': 'G. Stone',
+        'birdie': 'B. Wilson',
+        'birdie wilson': 'B. Wilson',
+        'colton': 'C. Aven',
+        'colton aven': 'C. Aven',
+        'madelyn': 'M. Evans',
+        'madelyn evans': 'M. Evans',
+        'jay': 'J. Bhoopathy',
+        'jay bhoopathy': 'J. Bhoopathy',
+        'dominic': 'D. Doldo',
+        'dominic doldo': 'D. Doldo',
+        'landon': 'L. Holcombe',
+        'landon holcombe': 'L. Holcombe',
+        'grant': 'G. Freeman',
+        'grant freeman': 'G. Freeman',
+    };
+
+    const lower = trimmed.toLowerCase();
+    if (KNOWN_MAP[lower]) {
+        return KNOWN_MAP[lower];
+    }
+
+    // Already formatted as "X. Lastname"
+    if (/^[A-Za-z]\.\s+[A-Za-z'-]+$/.test(trimmed)) {
+        return `${trimmed.charAt(0).toUpperCase()}.${trimmed.slice(2)}`;
+    }
+
+    // Format "First Last" -> "F. Last"
+    const parts = trimmed.split(/\s+/);
+    if (parts.length >= 2) {
+        const firstInitial = parts[0].charAt(0).toUpperCase();
+        const lastName = parts.slice(1).join(' ');
+        return `${firstInitial}. ${lastName}`;
+    }
+
+    return trimmed;
+}

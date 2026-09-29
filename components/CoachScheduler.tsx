@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { WEEKLY_COACH_SLOTS_SEPT29_OCT04 } from "@/constants/trainingAvailability";
+import { formatFirstInitialLastName } from "@/lib/coach/types";
 
 const PRESET_LOCATIONS = [
     "Bell Memorial Park",
@@ -364,6 +365,7 @@ export function CoachScheduler() {
                 });
 
                 if (!matchExisting) {
+                    const clientFormatted = s.client ? formatFirstInitialLastName(s.client) : undefined;
                     mergedList.push({
                         id: s.id,
                         coach_id: user?.id || 'coach-elliott',
@@ -372,7 +374,7 @@ export function CoachScheduler() {
                         location: s.location,
                         is_booked: s.status === 'BOOKED',
                         status: s.status || (s.client ? 'BOOKED' : 'AVAILABLE'),
-                        athlete_name: s.client || (s.status === 'BOOKED' ? 'Booked' : undefined),
+                        athlete_name: clientFormatted || (s.status === 'BOOKED' ? 'Booked' : undefined),
                         participantRole: 'COACH',
                         is_session_source: false
                     });
@@ -924,7 +926,7 @@ export function CoachScheduler() {
                                                                                     <Lock size={9} className="text-muted-foreground shrink-0" />
                                                                                     <span className="text-[#00E676] mr-0.5">BOOKED</span>
                                                                                     {slot.athlete_name && (
-                                                                                        <span className="truncate max-w-[100px]">• {slot.athlete_name}</span>
+                                                                                        <span className="truncate max-w-[100px]">• {formatFirstInitialLastName(slot.athlete_name)}</span>
                                                                                     )}
                                                                                     {slot.lesson_code && (
                                                                                         <span className="text-[8px] text-[#00E676] font-bold">({slot.lesson_code})</span>
@@ -934,16 +936,18 @@ export function CoachScheduler() {
                                                                                 <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
                                                                                     <Check size={9} className="text-[#00E676] shrink-0" />
                                                                                     <span>COMPLETED</span>
-                                                                                    {slot.athlete_name && <span className="truncate max-w-[100px]">• {slot.athlete_name}</span>}
+                                                                                    {slot.athlete_name && <span className="truncate max-w-[100px]">• {formatFirstInitialLastName(slot.athlete_name)}</span>}
                                                                                 </span>
                                                                             ) : status === 'CANCELED_LATE_CHARGE' ? (
                                                                                 <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-500 border border-amber-500/30">
                                                                                     <span>CANCELED • LATE</span>
+                                                                                    {slot.athlete_name && <span className="truncate max-w-[100px]">• {formatFirstInitialLastName(slot.athlete_name)}</span>}
                                                                                     <span className="text-[8px] text-amber-400 font-bold">(1 Credit Used)</span>
                                                                                 </span>
                                                                             ) : status === 'CANCELED_NO_CHARGE' ? (
                                                                                 <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground border border-border">
                                                                                     <span>CANCELED • EARLY</span>
+                                                                                    {slot.athlete_name && <span className="truncate max-w-[100px]">• {formatFirstInitialLastName(slot.athlete_name)}</span>}
                                                                                     <span className="text-[8px] text-emerald-400 font-bold">(No Charge)</span>
                                                                                 </span>
                                                                             ) : status === 'CANCELED' ? (
@@ -1098,7 +1102,7 @@ export function CoachScheduler() {
                                                                 </div>
                                                                 {slotStatus === 'BOOKED' || slot.is_booked ? (
                                                                     <span className="text-[8px] font-black text-foreground bg-card/80 px-1 py-0.2 rounded border border-border/50 truncate max-w-[70px]">
-                                                                        {slot.athlete_name || "Booked"}
+                                                                        {formatFirstInitialLastName(slot.athlete_name) || "Booked"}
                                                                     </span>
                                                                 ) : slotStatus === 'COMPLETED' ? (
                                                                     <span className="text-[8px] font-black text-blue-400 bg-blue-500/10 px-1 py-0.2 rounded border border-blue-500/20 truncate">
@@ -1195,23 +1199,23 @@ export function CoachScheduler() {
                                                     <span>{startDate.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
                                                     {slotStatus === 'COMPLETED' ? (
                                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
-                                                            Completed: {slot.athlete_name} {slot.lesson_code ? `(${slot.lesson_code})` : ''}
+                                                            Completed: {formatFirstInitialLastName(slot.athlete_name)} {slot.lesson_code ? `(${slot.lesson_code})` : ''}
                                                         </span>
                                                     ) : slotStatus === 'CANCELED_LATE_CHARGE' ? (
                                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded">
-                                                            Canceled • Late: {slot.athlete_name || 'Lesson'} (1 Credit Used)
+                                                            Canceled • Late: {formatFirstInitialLastName(slot.athlete_name) || 'Lesson'} (1 Credit Used)
                                                         </span>
                                                     ) : slotStatus === 'CANCELED_NO_CHARGE' ? (
                                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-muted/60 text-muted-foreground border border-border/50 rounded">
-                                                            Canceled • Early: {slot.athlete_name || 'Lesson'} (No Charge)
+                                                            Canceled • Early: {formatFirstInitialLastName(slot.athlete_name) || 'Lesson'} (No Charge)
                                                         </span>
                                                     ) : slotStatus === 'CANCELED' ? (
                                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-muted/60 text-muted-foreground border border-border/50 rounded">
-                                                            Canceled: {slot.athlete_name || 'Slot'}
+                                                            Canceled: {formatFirstInitialLastName(slot.athlete_name) || 'Slot'}
                                                         </span>
                                                     ) : slotStatus === 'BOOKED' || slot.is_booked ? (
                                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-muted text-muted-foreground border border-border rounded">
-                                                            Booked: {slot.athlete_name} {slot.lesson_code ? `(${slot.lesson_code})` : ''}
+                                                            Booked: {formatFirstInitialLastName(slot.athlete_name)} {slot.lesson_code ? `(${slot.lesson_code})` : ''}
                                                         </span>
                                                     ) : (
                                                         <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-[#00E676]/20 text-[#00E676] rounded">

@@ -260,22 +260,25 @@ try {
   const allBlocks = CoachScheduleRepositoryTest.getAllBlocks();
 
   // Carter Gethers
-  const carterOct2 = allBlocks.find(b => b.client === 'Carter' && b.date === '2026-10-02');
+  const carterOct2 = allBlocks.find(b => (b.client === 'C. Gethers' || b.client === 'Carter' || b.clientId === 'gc-client-carter-gethers') && b.date === '2026-10-02');
   assert(!!carterOct2, "Carter Oct 2 booking must exist");
   assert(carterOct2.clientId === 'gc-client-carter-gethers', "Carter booking must have canonical clientId 'gc-client-carter-gethers'");
+  assert(carterOct2.client === 'C. Gethers', "Carter booking client display name must be formatted as 'C. Gethers'");
   assert(carterOct2.status === 'BOOKED', "Carter Oct 2 session must be in BOOKED status");
   assert(carterOct2.participantRole === 'COACH', "Carter booking must have participantRole: COACH");
 
   // Hunter Cortjens
-  const hunterOct2 = allBlocks.find(b => b.client === 'Hunter' && b.date === '2026-10-02');
+  const hunterOct2 = allBlocks.find(b => (b.client === 'H. Cortjens' || b.client === 'Hunter' || b.clientId === 'gc-client-hunter-cortjens') && b.date === '2026-10-02');
   assert(!!hunterOct2, "Hunter Oct 2 booking must exist");
   assert(hunterOct2.clientId === 'gc-client-hunter-cortjens', "Hunter booking must have canonical clientId 'gc-client-hunter-cortjens'");
+  assert(hunterOct2.client === 'H. Cortjens', "Hunter booking client display name must be formatted as 'H. Cortjens'");
   assert(hunterOct2.status === 'BOOKED', "Hunter Oct 2 session must be in BOOKED status");
 
   // Brock Gebhardt
-  const brockOct3 = allBlocks.find(b => b.client === 'Brock' && b.date === '2026-10-03');
+  const brockOct3 = allBlocks.find(b => (b.client === 'B. Gebhardt' || b.client === 'Brock' || b.clientId === 'gc-client-brock-gebhardt') && b.date === '2026-10-03');
   assert(!!brockOct3, "Brock Oct 3 booking must exist");
   assert(brockOct3.clientId === 'gc-client-brock-gebhardt', "Brock booking must have canonical clientId 'gc-client-brock-gebhardt'");
+  assert(brockOct3.client === 'B. Gebhardt', "Brock booking client display name must be formatted as 'B. Gebhardt'");
   assert(brockOct3.status === 'BOOKED', "Brock Oct 3 session must be in BOOKED status");
 
   // ======================================================================

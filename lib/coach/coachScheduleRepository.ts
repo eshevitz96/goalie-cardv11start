@@ -14,7 +14,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { CoachScheduleBlock, CoachSlotStatus } from './types';
+import { CoachScheduleBlock, CoachSlotStatus, formatFirstInitialLastName } from './types';
 
 export class CoachScheduleRepository {
   private static getFilePath(): string {
@@ -328,10 +328,13 @@ export class CoachScheduleRepository {
   } {
     const all = this.getAllBlocks();
     const query = clientIdOrName.toLowerCase().trim();
+    const formattedQuery = formatFirstInitialLastName(clientIdOrName).toLowerCase();
 
     const clientBlocks = all.filter(b => {
       if (b.clientId && b.clientId.toLowerCase() === query) return true;
       if (b.client && b.client.toLowerCase().includes(query)) return true;
+      if (b.client && formatFirstInitialLastName(b.client).toLowerCase() === formattedQuery) return true;
+      if (b.clientId && b.clientId.toLowerCase().includes(query.replace(/[^a-z]/g, ''))) return true;
       return false;
     });
 
@@ -361,7 +364,7 @@ export class CoachScheduleRepository {
 
     return {
       clientId: canonicalClientId,
-      clientName: primaryClient,
+      clientName: formatFirstInitialLastName(primaryClient),
       completedLessonCount,
       scheduledLessonCount,
       chargedLessonCount,
