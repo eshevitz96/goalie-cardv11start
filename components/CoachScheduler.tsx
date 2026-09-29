@@ -220,6 +220,15 @@ export function CoachScheduler() {
                 }
             }
 
+            // Load custom location map
+            let customLocs: Record<string, string> = {};
+            try {
+                if (typeof window !== 'undefined') {
+                    const raw = localStorage.getItem('coach_slot_locations');
+                    if (raw) customLocs = JSON.parse(raw);
+                }
+            } catch (e) {}
+
             // 3. Process Coach Availability Slots
             for (const [startTime, slot] of Array.from(seenAvail.entries())) {
                 const slotStartTime = new Date(startTime).getTime();
@@ -235,7 +244,7 @@ export function CoachScheduler() {
                     const { athleteName, lessonCode } = resolveAthleteInfo(matchingSession);
                     const loc = matchingSession.location 
                         ? matchingSession.location.split('\n')[0].trim() 
-                        : (slot.location || getTemplateLocation(slot.start_time));
+                        : (slot.location || customLocs[slot.start_time] || getTemplateLocation(slot.start_time));
 
                     mergedList.push({
                         ...slot,
@@ -280,7 +289,7 @@ export function CoachScheduler() {
 
                     const loc = slot.location 
                         ? slot.location.split('\n')[0].trim() 
-                        : getTemplateLocation(slot.start_time);
+                        : (customLocs[slot.start_time] || getTemplateLocation(slot.start_time));
 
                     mergedList.push({
                         ...slot,
@@ -293,7 +302,7 @@ export function CoachScheduler() {
                 } else {
                     const loc = slot.location 
                         ? slot.location.split('\n')[0].trim() 
-                        : getTemplateLocation(slot.start_time);
+                        : (customLocs[slot.start_time] || getTemplateLocation(slot.start_time));
 
                     mergedList.push({
                         ...slot,
@@ -466,12 +475,30 @@ export function CoachScheduler() {
 
             const startDateTime = new Date(`${selectedDate}T${selectedTime}`);
             const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60 * 1000);
+            const startIso = startDateTime.toISOString();
 
+            // 1. Remove from dismissed list if it was previously dismissed & persist custom location
+            try {
+                if (typeof window !== 'undefined') {
+                    const raw = localStorage.getItem('coach_dismissed_slots');
+                    if (raw) {
+                        const list = JSON.parse(raw);
+                        const filtered = list.filter((id: string) => id !== `slot_${startIso}` && !id.includes(selectedDate));
+                        localStorage.setItem('coach_dismissed_slots', JSON.stringify(filtered));
+                    }
+                    
+                    const rawLocs = localStorage.getItem('coach_slot_locations') || '{}';
+                    const locMap = JSON.parse(rawLocs);
+                    locMap[startIso] = activeLocationName;
+                    localStorage.setItem('coach_slot_locations', JSON.stringify(locMap));
+                }
+            } catch (e) {}
+
+            // 2. Insert into Supabase coach_availability table with valid schema columns
             const { error } = await supabase.from('coach_availability').insert({
                 coach_id: user.id,
-                start_time: startDateTime.toISOString(),
+                start_time: startIso,
                 end_time: endDateTime.toISOString(),
-                location: activeLocationName,
                 is_booked: false
             });
 

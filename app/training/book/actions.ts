@@ -555,10 +555,11 @@ export async function bookTrainingSlots(payload: {
             }
 
             // Mark coach_availability as booked if this was a database slot
-            if (slot.id && !slot.id.startsWith('slot-')) {
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slot.id || '');
+            if (isUUID) {
                 await supabase
                     .from('coach_availability')
-                    .update({ is_booked: true, notes: formattedTitle })
+                    .update({ is_booked: true })
                     .eq('id', slot.id);
             }
 
