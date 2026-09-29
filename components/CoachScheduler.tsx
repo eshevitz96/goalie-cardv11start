@@ -390,7 +390,21 @@ export function CoachScheduler() {
                 }
             }
 
-            const uniqueSlots = Array.from(finalSlotsMap.values());
+            // Filter out any dismissed slots
+            let dismissedSlots: string[] = [];
+            try {
+                if (typeof window !== 'undefined') {
+                    const raw = localStorage.getItem('coach_dismissed_slots');
+                    if (raw) dismissedSlots = JSON.parse(raw);
+                }
+            } catch (e) {}
+
+            const uniqueSlots = Array.from(finalSlotsMap.values()).filter(s => {
+                if (dismissedSlots.includes(s.id)) return false;
+                if (s.start_time && dismissedSlots.includes(`slot_${s.start_time}`)) return false;
+                return true;
+            });
+
             uniqueSlots.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
             setSlots(uniqueSlots);
         } catch (err) {
@@ -483,14 +497,40 @@ export function CoachScheduler() {
         }
 
         try {
-            const { error } = await supabase.from('coach_availability').delete().eq('id', slot.id);
-            if (!error) {
-                setSlots(prev => prev.filter(s => s.id !== slot.id));
-            } else {
-                alert("Error removing slot: " + error.message);
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slot.id || '');
+            if (isUUID) {
+                const { error } = await supabase.from('coach_availability').delete().eq('id', slot.id);
+                if (error) {
+                    console.error("Error removing DB slot:", error);
+                    alert("Error removing slot: " + error.message);
+                    return;
+                }
+            } else if (slot.start_time) {
+                // If it's a non-UUID ID, clean up any matching database records with this start_time if present
+                try {
+                    await supabase.from('coach_availability').delete().eq('start_time', slot.start_time);
+                } catch (e) {
+                    console.warn("Non-critical DB cleanup note:", e);
+                }
             }
-        } catch (err) {
+
+            // Persist dismissed slot to local storage so dismissed template slots do not re-appear
+            try {
+                const dismissedKey = slot.id || (slot.start_time ? `slot_${slot.start_time}` : null);
+                if (dismissedKey && typeof window !== 'undefined') {
+                    const raw = localStorage.getItem('coach_dismissed_slots') || '[]';
+                    const list = JSON.parse(raw);
+                    if (!list.includes(dismissedKey)) {
+                        list.push(dismissedKey);
+                        localStorage.setItem('coach_dismissed_slots', JSON.stringify(list));
+                    }
+                }
+            } catch (e) {}
+
+            setSlots(prev => prev.filter(s => s.id !== slot.id && (!slot.start_time || s.start_time !== slot.start_time)));
+        } catch (err: any) {
             console.error("Error deleting slot:", err);
+            alert("Error removing slot: " + (err?.message || "Failed to remove slot"));
         }
     };
 
