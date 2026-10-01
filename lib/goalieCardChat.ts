@@ -28,8 +28,17 @@ export interface GoalieCardChatResponse {
 
 export type ExecutionProvenanceMode = 'AI_COACH' | 'DETERMINISTIC_ACTION' | 'OFFLINE_UNAVAILABLE';
 
+export type ProvenanceReasonCode = 
+    | 'AUTH_UNAVAILABLE' 
+    | 'ATHLETE_CONTEXT_UNAVAILABLE' 
+    | 'DATABASE_UNAVAILABLE' 
+    | 'AI_PROVIDER_UNAVAILABLE' 
+    | 'AI_RESPONSE_INVALID' 
+    | 'INTERNAL_ERROR';
+
 export interface ExecutionProvenance {
     mode: ExecutionProvenanceMode;
+    reasonCode?: ProvenanceReasonCode;
     historyThroughDate: string;
     completedTrainingThrough?: string | null;
     athleteStateThrough?: string | null;

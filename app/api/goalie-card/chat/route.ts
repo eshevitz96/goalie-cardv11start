@@ -9,6 +9,7 @@ import {
 } from '@/lib/repositories/athleteTrackRepository';
 import { 
     ExecutionProvenanceMode, 
+    ProvenanceReasonCode,
     ExecutionProvenance, 
     hasExplicitNegation, 
     detectExplicitAction,
@@ -356,6 +357,31 @@ export async function GET(req: Request) {
     }
 }
 
+// Helper to parse JSON model outputs safely
+function parseModelJsonResponse(rawText?: string): any {
+    if (!rawText) return null;
+    let clean = rawText.trim();
+    if (clean.startsWith('```json')) {
+        clean = clean.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (clean.startsWith('```')) {
+        clean = clean.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    try {
+        return JSON.parse(clean);
+    } catch (e) {
+        const start = clean.indexOf('{');
+        const end = clean.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            try {
+                return JSON.parse(clean.slice(start, end + 1));
+            } catch {
+                return null;
+            }
+        }
+        return null;
+    }
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -526,6 +552,7 @@ export async function POST(req: Request) {
                 actionCard: null,
                 provenance: {
                     mode: 'OFFLINE_UNAVAILABLE',
+                    reasonCode: 'ATHLETE_CONTEXT_UNAVAILABLE',
                     historyThroughDate: 'ERROR_DEGRADED',
                     completedTrainingThrough: null,
                     athleteStateThrough: null,
@@ -567,9 +594,11 @@ CURRENT THREAD INFO:
         let actionCard: ChatMessage['actionCard'] = undefined;
         let suggestedThreadTitle = "";
         let provenanceMode: ExecutionProvenanceMode = 'OFFLINE_UNAVAILABLE';
+        let failureReasonCode: ProvenanceReasonCode | undefined = undefined;
+        let failureDetails: string | undefined = undefined;
 
-        // 5. Query Gemini API
-        const geminiApiKey = process.env.GEMINI_API_KEY;
+        // 5. Query Gemini API (Primary Model: gemini-2.5-flash)
+        const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
         const openAiApiKey = process.env.OPENAI_API_KEY;
 
         if (geminiApiKey) {
@@ -587,27 +616,41 @@ CURRENT THREAD INFO:
                     })
                 });
 
-                console.log("[Gemini API Request URL]:", `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey ? 'PRESENT' : 'MISSING'}`);
-                console.log("[Gemini API Status]:", res.status);
                 if (res.ok) {
                     const geminiData = await res.json();
                     const rawJson = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (rawJson) {
-                        const parsed = JSON.parse(rawJson);
-                        replyText = parsed.reply || "";
+                    const parsed = parseModelJsonResponse(rawJson);
+                    if (parsed) {
+                        replyText = parsed.reply || parsed.text || parsed.message || parsed.coachingDirective || parsed.response || "";
                         mission = parsed.mission || null;
                         responseMode = parsed.responseMode || (mission ? 'mission' : 'conversation');
                         decisionFactors = Array.isArray(parsed.decisionFactors) ? parsed.decisionFactors : [];
                         actionCard = parsed.actionCard || undefined;
                         suggestedThreadTitle = parsed.suggestedThreadTitle || "";
+                        if (replyText) {
+                            provenanceMode = 'AI_COACH';
+                        } else {
+                            failureReasonCode = 'AI_RESPONSE_INVALID';
+                            failureDetails = 'Model returned JSON without a text reply field';
+                        }
+                    } else if (rawJson && rawJson.trim().length > 0) {
+                        replyText = rawJson.trim();
+                        responseMode = 'conversation';
                         provenanceMode = 'AI_COACH';
+                    } else {
+                        failureReasonCode = 'AI_RESPONSE_INVALID';
+                        failureDetails = 'Model candidate content was empty or unparseable';
                     }
                 } else {
                     const errBody = await res.text();
-                    console.warn("[Gemini API Error Body]:", res.status, errBody);
+                    console.error("[Gemini API Error]:", res.status, errBody);
+                    failureReasonCode = 'AI_PROVIDER_UNAVAILABLE';
+                    failureDetails = `Gemini API returned status ${res.status}: ${errBody.slice(0, 100)}`;
                 }
-            } catch (aiErr) {
-                console.warn("[Gemini API Fallback]:", aiErr);
+            } catch (aiErr: any) {
+                console.error("[Gemini API Exception]:", aiErr);
+                failureReasonCode = 'AI_PROVIDER_UNAVAILABLE';
+                failureDetails = `Gemini fetch exception: ${aiErr?.message || 'Unknown network error'}`;
             }
         } else if (openAiApiKey) {
             try {
@@ -630,20 +673,33 @@ CURRENT THREAD INFO:
                 if (res.ok) {
                     const openAiData = await res.json();
                     const rawContent = openAiData.choices?.[0]?.message?.content;
-                    if (rawContent) {
-                        const parsed = JSON.parse(rawContent);
-                        replyText = parsed.reply || "";
+                    const parsed = parseModelJsonResponse(rawContent);
+                    if (parsed) {
+                        replyText = parsed.reply || parsed.text || parsed.message || parsed.coachingDirective || parsed.response || "";
                         mission = parsed.mission || null;
                         responseMode = parsed.responseMode || (mission ? 'mission' : 'conversation');
                         decisionFactors = Array.isArray(parsed.decisionFactors) ? parsed.decisionFactors : [];
                         actionCard = parsed.actionCard || undefined;
                         suggestedThreadTitle = parsed.suggestedThreadTitle || "";
-                        provenanceMode = 'AI_COACH';
+                        if (replyText) {
+                            provenanceMode = 'AI_COACH';
+                        }
                     }
+                } else {
+                    const errBody = await res.text();
+                    console.error("[OpenAI API Error]:", res.status, errBody);
+                    failureReasonCode = 'AI_PROVIDER_UNAVAILABLE';
+                    failureDetails = `OpenAI API returned status ${res.status}`;
                 }
-            } catch (openAiErr) {
-                console.warn("[OpenAI API Fallback]:", openAiErr);
+            } catch (openAiErr: any) {
+                console.error("[OpenAI API Exception]:", openAiErr);
+                failureReasonCode = 'AI_PROVIDER_UNAVAILABLE';
+                failureDetails = `OpenAI fetch exception: ${openAiErr?.message || 'Unknown network error'}`;
             }
+        } else {
+            failureReasonCode = 'AI_PROVIDER_UNAVAILABLE';
+            failureDetails = 'No AI API Key (GEMINI_API_KEY/GOOGLE_API_KEY) found in environment';
+            console.error("[Goalie Card Configuration Error]: Missing GEMINI_API_KEY / GOOGLE_API_KEY in server environment.");
         }
 
         // 6. Natural Heuristic Fallback if AI unavailable
@@ -687,17 +743,18 @@ CURRENT THREAD INFO:
 
         const provenance: ExecutionProvenance = {
             mode: provenanceMode,
-            historyThroughDate: decisionContext.freshness.completedTrainingThrough || '2026-09-16',
+            reasonCode: provenanceMode === 'OFFLINE_UNAVAILABLE' ? (failureReasonCode || 'AI_PROVIDER_UNAVAILABLE') : undefined,
+            historyThroughDate: decisionContext.freshness.completedTrainingThrough || '2026-09-30',
             completedTrainingThrough: decisionContext.freshness.completedTrainingThrough,
             athleteStateThrough: decisionContext.freshness.athleteStateThrough,
             activityContextThrough: decisionContext.freshness.activityContextThrough,
             nextPerformance: decisionContext.freshness.nextPerformance,
-            lookaheadSource: decisionContext.freshness.nextPerformance?.source || 'LOCAL_STORE',
+            lookaheadSource: decisionContext.freshness.nextPerformance?.source || 'NONE',
             details: provenanceMode === 'AI_COACH' 
                 ? 'Generated via Multimodal AI Coach Model with Unified Athlete Track Context' 
                 : (provenanceMode === 'DETERMINISTIC_ACTION' 
                     ? 'Structured Deterministic Template Action' 
-                    : 'Offline Mode (AI Coaching & Live Context Unavailable)')
+                    : (failureDetails || 'Offline Mode (AI Coaching & Live Context Unavailable)'))
         };
 
         // 7. Persist Goalie Card Reply to Private DB Record
@@ -744,9 +801,10 @@ CURRENT THREAD INFO:
             actionCard: null,
             provenance: {
                 mode: 'OFFLINE_UNAVAILABLE',
-                historyThroughDate: ATHLETE_PROFILE_METRICS.historyThrough || '2026-09-16',
+                reasonCode: 'INTERNAL_ERROR',
+                historyThroughDate: ATHLETE_PROFILE_METRICS.historyThrough || '2026-09-30',
                 lookaheadSource: 'None (Error Fallback)',
-                details: 'Error fallback handler invoked'
+                details: 'Error fallback handler invoked: ' + (error?.message || 'Unknown internal error')
             }
         });
     }
