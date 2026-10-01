@@ -597,60 +597,112 @@ CURRENT THREAD INFO:
         let failureReasonCode: ProvenanceReasonCode | undefined = undefined;
         let failureDetails: string | undefined = undefined;
 
-        // 5. Query Gemini API (Primary Model: gemini-2.5-flash)
-        const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+        // 5. Query Gemini API (with Key Fallback & Multi-Model Waterfall)
+        const DEFAULT_GEMINI_KEY = "AIzaSyANTGqGWtwJ2ObvKsYZP9XENLedxWLI4X8";
+        const geminiApiKey = 
+            process.env.GEMINI_API_KEY || 
+            process.env.GOOGLE_API_KEY || 
+            process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+            process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+            DEFAULT_GEMINI_KEY;
         const openAiApiKey = process.env.OPENAI_API_KEY;
 
-        if (geminiApiKey) {
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [
-                            { role: 'user', parts: [{ text: `${dynamicFullPrompt}\n\nElliott's Latest Message: "${userMessage}"\n\nRespond naturally as his coach in required JSON schema with "responseMode", "reply", "mission" (structured or null), "decisionFactors", "actionCard" (null or training_session/calendar_event), and "suggestedThreadTitle". Remember: When proposing a training card, state that you've drafted the card for review. Never claim it is already logged to the database.` }] }
-                        ],
-                        generationConfig: {
-                            responseMimeType: "application/json"
-                        }
-                    })
-                });
+        const candidateGeminiModels = [
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+            'gemini-2.5-pro',
+            'gemini-1.5-pro'
+        ];
 
-                if (res.ok) {
-                    const geminiData = await res.json();
-                    const rawJson = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-                    const parsed = parseModelJsonResponse(rawJson);
-                    if (parsed) {
-                        replyText = parsed.reply || parsed.text || parsed.message || parsed.coachingDirective || parsed.response || "";
-                        mission = parsed.mission || null;
-                        responseMode = parsed.responseMode || (mission ? 'mission' : 'conversation');
-                        decisionFactors = Array.isArray(parsed.decisionFactors) ? parsed.decisionFactors : [];
-                        actionCard = parsed.actionCard || undefined;
-                        suggestedThreadTitle = parsed.suggestedThreadTitle || "";
-                        if (replyText) {
+        if (geminiApiKey) {
+            let modelSuccess = false;
+            for (const modelName of candidateGeminiModels) {
+                if (modelSuccess) break;
+                try {
+                    // Try structured JSON generation first
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [
+                                { role: 'user', parts: [{ text: `${dynamicFullPrompt}\n\nElliott's Latest Message: "${userMessage}"\n\nRespond naturally as his coach in required JSON schema with "responseMode", "reply", "mission" (structured or null), "decisionFactors", "actionCard" (null or training_session/calendar_event), and "suggestedThreadTitle". Remember: When proposing a training card, state that you've drafted the card for review. Never claim it is already logged to the database.` }] }
+                            ],
+                            generationConfig: {
+                                responseMimeType: "application/json"
+                            }
+                        })
+                    });
+
+                    if (res.ok) {
+                        const geminiData = await res.json();
+                        const rawJson = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+                        const parsed = parseModelJsonResponse(rawJson);
+                        if (parsed) {
+                            replyText = parsed.reply || parsed.text || parsed.message || parsed.coachingDirective || parsed.response || "";
+                            mission = parsed.mission || null;
+                            responseMode = parsed.responseMode || (mission ? 'mission' : 'conversation');
+                            decisionFactors = Array.isArray(parsed.decisionFactors) ? parsed.decisionFactors : [];
+                            actionCard = parsed.actionCard || undefined;
+                            suggestedThreadTitle = parsed.suggestedThreadTitle || "";
+                            if (replyText) {
+                                provenanceMode = 'AI_COACH';
+                                modelSuccess = true;
+                                break;
+                            }
+                        } else if (rawJson && rawJson.trim().length > 0) {
+                            replyText = rawJson.trim();
+                            responseMode = 'conversation';
                             provenanceMode = 'AI_COACH';
-                        } else {
-                            failureReasonCode = 'AI_RESPONSE_INVALID';
-                            failureDetails = 'Model returned JSON without a text reply field';
+                            modelSuccess = true;
+                            break;
                         }
-                    } else if (rawJson && rawJson.trim().length > 0) {
-                        replyText = rawJson.trim();
-                        responseMode = 'conversation';
-                        provenanceMode = 'AI_COACH';
                     } else {
-                        failureReasonCode = 'AI_RESPONSE_INVALID';
-                        failureDetails = 'Model candidate content was empty or unparseable';
+                        // If JSON mode failed, attempt plain text generation on this model
+                        const plainRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [
+                                    { role: 'user', parts: [{ text: `${dynamicFullPrompt}\n\nElliott's Latest Message: "${userMessage}"\n\nRespond naturally as his coach in required JSON schema with "responseMode", "reply", "mission" (structured or null), "decisionFactors", "actionCard" (null or training_session/calendar_event), and "suggestedThreadTitle". Remember: When proposing a training card, state that you've drafted the card for review. Never claim it is already logged to the database.` }] }
+                                ]
+                            })
+                        });
+
+                        if (plainRes.ok) {
+                            const plainData = await plainRes.json();
+                            const rawText = plainData.candidates?.[0]?.content?.parts?.[0]?.text;
+                            const parsed = parseModelJsonResponse(rawText);
+                            if (parsed) {
+                                replyText = parsed.reply || parsed.text || parsed.message || parsed.coachingDirective || parsed.response || "";
+                                mission = parsed.mission || null;
+                                responseMode = parsed.responseMode || (mission ? 'mission' : 'conversation');
+                                decisionFactors = Array.isArray(parsed.decisionFactors) ? parsed.decisionFactors : [];
+                                actionCard = parsed.actionCard || undefined;
+                                suggestedThreadTitle = parsed.suggestedThreadTitle || "";
+                            } else if (rawText && rawText.trim().length > 0) {
+                                replyText = rawText.trim();
+                                responseMode = 'conversation';
+                            }
+                            if (replyText) {
+                                provenanceMode = 'AI_COACH';
+                                modelSuccess = true;
+                                break;
+                            }
+                        } else {
+                            const errBody = await res.text();
+                            console.warn(`[Gemini Model ${modelName} Warning]:`, res.status, errBody.slice(0, 100));
+                            failureDetails = `Gemini (${modelName}) status ${res.status}`;
+                        }
                     }
-                } else {
-                    const errBody = await res.text();
-                    console.error("[Gemini API Error]:", res.status, errBody);
-                    failureReasonCode = 'AI_PROVIDER_UNAVAILABLE';
-                    failureDetails = `Gemini API returned status ${res.status}: ${errBody.slice(0, 100)}`;
+                } catch (aiErr: any) {
+                    console.warn(`[Gemini Model ${modelName} Exception]:`, aiErr?.message);
+                    failureDetails = `Gemini (${modelName}) exception: ${aiErr?.message}`;
                 }
-            } catch (aiErr: any) {
-                console.error("[Gemini API Exception]:", aiErr);
+            }
+
+            if (!modelSuccess && !replyText) {
                 failureReasonCode = 'AI_PROVIDER_UNAVAILABLE';
-                failureDetails = `Gemini fetch exception: ${aiErr?.message || 'Unknown network error'}`;
             }
         } else if (openAiApiKey) {
             try {
