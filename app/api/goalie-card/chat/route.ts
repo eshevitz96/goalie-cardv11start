@@ -597,14 +597,12 @@ CURRENT THREAD INFO:
         let failureReasonCode: ProvenanceReasonCode | undefined = undefined;
         let failureDetails: string | undefined = undefined;
 
-        // 5. Query Gemini API (with Key Fallback & Multi-Model Waterfall)
-        const DEFAULT_GEMINI_KEY = "AIzaSyANTGqGWtwJ2ObvKsYZP9XENLedxWLI4X8";
+        // 5. Query Gemini API (with Multi-Model Waterfall)
         const geminiApiKey = 
             process.env.GEMINI_API_KEY || 
             process.env.GOOGLE_API_KEY || 
             process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-            process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
-            DEFAULT_GEMINI_KEY;
+            process.env.NEXT_PUBLIC_GEMINI_API_KEY;
         const openAiApiKey = process.env.OPENAI_API_KEY;
 
         const candidateGeminiModels = [
