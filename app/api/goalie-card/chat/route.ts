@@ -518,7 +518,7 @@ export async function POST(req: Request) {
         // C. Assemble Unified Athlete Track Decision Context
         let decisionContext: DecisionLoadContext;
         try {
-            decisionContext = AthleteTrackRepository.getDecisionContext(activeThreadDate, liveDbLookahead);
+            decisionContext = await AthleteTrackRepository.getDecisionContextAsync(activeThreadDate, liveDbLookahead);
         } catch (contextError: any) {
             console.error("[AthleteTrackRepository Context Assembly Error]:", contextError);
             return NextResponse.json({

@@ -22,6 +22,24 @@ import path from 'path';
 import crypto from 'crypto';
 import { ATHLETE_TRAINING_HISTORY, AthleteTrainingEntry, ATHLETE_PROFILE_METRICS } from '../athleteTrainingHistory';
 import { supabase } from '../../utils/supabase/client';
+import { getSupabaseAdmin } from '../../utils/supabase/admin';
+
+function getAdminOrClient() {
+  try {
+    return getSupabaseAdmin();
+  } catch {
+    return supabase;
+  }
+}
+
+function mapToTrainingSessionType(entry: CanonicalAthleteEntry): 'coach_mission' | 'strength' | 'on_ice' | 'conditioning' | 'recovery' | 'other' {
+  if (entry.trainingType === 'on_ice') return 'on_ice';
+  if (entry.trainingType === 'recovery') return 'recovery';
+  if (entry.conditioning || (entry.title && entry.title.toLowerCase().includes('conditioning')) || (entry.title && entry.title.toLowerCase().includes('run'))) return 'conditioning';
+  if (entry.strength && entry.strength.length > 0) return 'strength';
+  if (entry.trainingType === 'off_ice') return 'strength';
+  return 'other';
+}
 
 export type EntryEpistemicType = 
   | 'COMPLETED_TRAINING'    // Physical workout completed (gym, run, on-ice, yoga, HIIT)
@@ -242,13 +260,11 @@ export class AthleteTrackRepository {
   }
 
   /**
-   * Persists a dynamic canonical entry (with supersession validation)
+   * Internal helper to synchronize in-memory/local JSON cache
    */
-  static async saveEntry(entry: CanonicalAthleteEntry): Promise<{ success: boolean; id: string; error?: string }> {
+  static syncToLocalStore(entry: CanonicalAthleteEntry): void {
     try {
       const currentDynamic = this.localStore.read();
-      
-      // If this entry supersedes a previous entry, mark the previous entry inactive
       if (entry.supersedesId) {
         currentDynamic.forEach(rec => {
           if (rec.id === entry.supersedesId) {
@@ -259,7 +275,6 @@ export class AthleteTrackRepository {
         });
       }
 
-      // Check if entry with same UUID already exists (update vs insert)
       const existingIdx = currentDynamic.findIndex(rec => rec.id === entry.id);
       if (existingIdx >= 0) {
         currentDynamic[existingIdx] = {
@@ -273,41 +288,132 @@ export class AthleteTrackRepository {
           createdAt: entry.createdAt || new Date().toISOString()
         });
       }
-
       this.localStore.write(currentDynamic);
-
-      // Attempt remote Supabase write in background (non-blocking, tolerant to offline)
-      try {
-        if (entry.epistemicType === 'COMPLETED_TRAINING') {
-          await supabase.from('training_sessions').upsert({
-            id: entry.id,
-            user_id: entry.userId,
-            session_date: entry.date,
-            title: entry.title,
-            duration_minutes: entry.durationMins || 0,
-            training_type: entry.trainingType || 'other',
-            notes_summary: entry.notes || entry.rawAthleteReport || '',
-            status: 'complete'
-          });
-        }
-      } catch (dbErr) {
-        // Supabase offline / sandbox - local write is authoritative
-      }
-
-      return { success: true, id: entry.id };
-    } catch (e: any) {
-      console.error("[AthleteTrackRepository Save Error]:", e);
-      return { success: false, id: entry.id, error: e.message };
+    } catch (e) {
+      console.warn("[Local Store Sync Warning]:", e);
     }
   }
 
   /**
-   * Returns the canonical merged timeline, deduplicated by stable UUID with supersession applied.
+   * Fetches dynamic records directly from durable Supabase storage.
    */
-  static getUnifiedTimeline(options?: { userId?: string; includeSuperseded?: boolean }): CanonicalAthleteEntry[] {
-    const historical = this.getHistoricalBaseline();
-    const dynamic = this.getDynamicLocalRecords();
+  static async fetchDynamicRecordsFromSupabase(userId?: string): Promise<CanonicalAthleteEntry[]> {
+    try {
+      const client = getAdminOrClient();
+      const { data, error } = await client
+        .from('reflections')
+        .select('*')
+        .eq('activity_type', 'athlete_track_entry');
 
+      if (error) {
+        console.warn("[AthleteTrackRepository Supabase fetch notice]:", error.message);
+        return [];
+      }
+
+      if (!data || data.length === 0) return [];
+
+      const entries: CanonicalAthleteEntry[] = [];
+      for (const row of data) {
+        if (row.injury_details) {
+          try {
+            const parsed = typeof row.injury_details === 'string'
+              ? JSON.parse(row.injury_details)
+              : row.injury_details;
+            entries.push(parsed);
+          } catch (e) {
+            console.warn("[AthleteTrackRepository parse warning for id " + row.id + "]:", e);
+          }
+        }
+      }
+      return entries;
+    } catch (e) {
+      console.warn("[AthleteTrackRepository Supabase fetch exception]:", e);
+      return [];
+    }
+  }
+
+  /**
+   * Persists a dynamic canonical entry durably to Supabase with strict failure semantics.
+   * NO SILENT FALLBACK: If Supabase write fails in production, the write fails explicitly.
+   */
+  static async saveEntry(entry: CanonicalAthleteEntry): Promise<{ success: boolean; id: string; error?: string }> {
+    const isSupabaseConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY));
+    const effectiveUserId = (!entry.userId || entry.userId === '00000000-0000-0000-0000-000000000000')
+      ? '0f066eb3-d0fa-43dd-8925-34f761e9281c'
+      : entry.userId;
+    const effectiveAuthId = '14092722-0e2b-492b-866c-0f77e87469de';
+
+    const canonicalToSave: CanonicalAthleteEntry = {
+      ...entry,
+      userId: effectiveUserId,
+      createdAt: entry.createdAt || new Date().toISOString()
+    };
+
+    if (isSupabaseConfigured) {
+      try {
+        const client = getAdminOrClient();
+
+        // 1. Persist to reflections table as authoritative athlete track entry
+        const reflectionRow = {
+          id: canonicalToSave.id,
+          user_id: effectiveUserId,
+          author_id: effectiveAuthId,
+          title: canonicalToSave.title,
+          content: canonicalToSave.rawAthleteReport || canonicalToSave.notes || canonicalToSave.athleteReflection || '',
+          mood: 'neutral',
+          activity_type: 'athlete_track_entry',
+          created_at: canonicalToSave.createdAt,
+          injury_details: JSON.stringify(canonicalToSave)
+        };
+
+        const { error: rErr } = await client.from('reflections').upsert(reflectionRow);
+        if (rErr) {
+          console.error("[AthleteTrackRepository Supabase Reflection Write Error]:", rErr);
+          return { success: false, id: canonicalToSave.id, error: rErr.message };
+        }
+
+        // 2. If COMPLETED_TRAINING, also persist to training_sessions
+        if (canonicalToSave.epistemicType === 'COMPLETED_TRAINING') {
+          const trainingRow = {
+            id: canonicalToSave.id,
+            user_id: effectiveUserId,
+            session_date: canonicalToSave.date,
+            title: canonicalToSave.title,
+            duration_minutes: canonicalToSave.durationMins || null,
+            training_type: mapToTrainingSessionType(canonicalToSave),
+            notes_summary: canonicalToSave.notes || canonicalToSave.rawAthleteReport || '',
+            status: 'complete',
+            created_at: canonicalToSave.createdAt,
+            updated_at: canonicalToSave.createdAt
+          };
+
+          const { error: tErr } = await client.from('training_sessions').upsert(trainingRow);
+          if (tErr) {
+            console.error("[AthleteTrackRepository Supabase Training Session Write Error]:", tErr);
+            return { success: false, id: canonicalToSave.id, error: tErr.message };
+          }
+        }
+
+        // Sync to local JSON cache for offline backup
+        this.syncToLocalStore(canonicalToSave);
+
+        return { success: true, id: canonicalToSave.id };
+      } catch (e: any) {
+        console.error("[AthleteTrackRepository Save Exception]:", e);
+        return { success: false, id: canonicalToSave.id, error: e.message };
+      }
+    } else {
+      // Local development without Supabase credentials
+      this.syncToLocalStore(canonicalToSave);
+      return { success: true, id: canonicalToSave.id };
+    }
+  }
+
+  private static mergeAndResolveTimeline(
+    historical: CanonicalAthleteEntry[],
+    dynamic: CanonicalAthleteEntry[],
+    options?: { userId?: string; includeSuperseded?: boolean }
+  ): CanonicalAthleteEntry[] {
     const recordMap = new Map<string, CanonicalAthleteEntry>();
 
     // 1. Insert historical baseline
@@ -315,7 +421,7 @@ export class AthleteTrackRepository {
 
     // 2. Overlay dynamic repository records
     dynamic.forEach(d => {
-      if (!options?.userId || d.userId === options.userId || d.userId === '00000000-0000-0000-0000-000000000000') {
+      if (!options?.userId || d.userId === options.userId || d.userId === '00000000-0000-0000-0000-000000000000' || d.userId === '0f066eb3-d0fa-43dd-8925-34f761e9281c') {
         recordMap.set(d.id, d);
       }
     });
@@ -330,11 +436,8 @@ export class AthleteTrackRepository {
     });
 
     const allEntries = Array.from(recordMap.values());
-    
-    // Filter active unless includeSuperseded is true
     const filtered = options?.includeSuperseded ? allEntries : allEntries.filter(e => e.isActive);
 
-    // Sort chronologically ascending
     return filtered.sort((a, b) => {
       const dateCompare = a.date.localeCompare(b.date);
       if (dateCompare !== 0) return dateCompare;
@@ -343,10 +446,31 @@ export class AthleteTrackRepository {
   }
 
   /**
+   * Returns the canonical merged timeline synchronously from local cache.
+   */
+  static getUnifiedTimeline(options?: { userId?: string; includeSuperseded?: boolean }): CanonicalAthleteEntry[] {
+    const historical = this.getHistoricalBaseline();
+    const dynamic = this.getDynamicLocalRecords();
+    return this.mergeAndResolveTimeline(historical, dynamic, options);
+  }
+
+  /**
+   * Returns the canonical merged timeline asynchronously from durable Supabase storage.
+   */
+  static async getUnifiedTimelineAsync(options?: { userId?: string; includeSuperseded?: boolean }): Promise<CanonicalAthleteEntry[]> {
+    const historical = this.getHistoricalBaseline();
+    let dynamic = await this.fetchDynamicRecordsFromSupabase(options?.userId);
+    if (dynamic.length === 0) {
+      dynamic = this.getDynamicLocalRecords();
+    }
+    return this.mergeAndResolveTimeline(historical, dynamic, options);
+  }
+
+  /**
    * Computes granular context freshness across the timeline
    */
-  static getFreshness(targetDate?: string, upcomingEvent?: NextPerformanceLookahead): TrackFreshness {
-    const timeline = this.getUnifiedTimeline();
+  static getFreshness(targetDate?: string, upcomingEvent?: NextPerformanceLookahead, customTimeline?: CanonicalAthleteEntry[]): TrackFreshness {
+    const timeline = customTimeline || this.getUnifiedTimeline();
 
     let completedTrainingThrough: string | null = null;
     let athleteStateThrough: string | null = null;
@@ -355,14 +479,13 @@ export class AthleteTrackRepository {
     const isPerformanceDemand = (type?: string | null, title?: string | null): boolean => {
       const t = (type || '').toLowerCase();
       const n = (title || '').toLowerCase();
+      if (n.includes('rollerblade') || n.includes('roller') || n.includes('lawn')) return false;
       return (
         t === 'on_ice' ||
         t === 'game' ||
-        t === 'skate' ||
-        t === 'hockey' ||
-        n.includes('stick') ||
-        n.includes('skate') ||
-        n.includes('game') ||
+        n.includes('stick-and-puck') ||
+        n.includes('stick & puck') ||
+        n.includes('tryout') ||
         n.includes('on-ice') ||
         n.includes('on ice')
       );
@@ -451,12 +574,20 @@ export class AthleteTrackRepository {
         e.title.toLowerCase().includes('bench')
       );
 
-    const isOnIce = (e: CanonicalAthleteEntry) =>
-      e.trainingType === 'on_ice' ||
-      e.trainingType === 'game' ||
-      e.title.toLowerCase().includes('ice') ||
-      e.title.toLowerCase().includes('skate') ||
-      e.title.toLowerCase().includes('stick');
+    const isOnIce = (e: CanonicalAthleteEntry) => {
+      const t = (e.trainingType || '').toLowerCase();
+      const n = e.title.toLowerCase();
+      if (n.includes('rollerblade') || n.includes('roller') || n.includes('lawn')) return false;
+      return (
+        t === 'on_ice' ||
+        t === 'game' ||
+        n.includes('stick-and-puck') ||
+        n.includes('stick & puck') ||
+        n.includes('tryout') ||
+        n.includes('on-ice') ||
+        n.includes('on ice')
+      );
+    };
 
     const isConditioning = (e: CanonicalAthleteEntry) =>
       Boolean(e.conditioning) ||
@@ -563,11 +694,44 @@ export class AthleteTrackRepository {
   }
 
   /**
-   * Assembles full decision load context for AI_COACH or decision engine
+   * Assembles full decision load context for AI_COACH or decision engine (synchronously from local cache)
    */
   static getDecisionContext(targetDate?: string, upcomingEvent?: NextPerformanceLookahead): DecisionLoadContext {
     const timeline = this.getUnifiedTimeline();
-    const freshness = this.getFreshness(targetDate, upcomingEvent);
+    const freshness = this.getFreshness(targetDate, upcomingEvent, timeline);
+    const asOfDate = targetDate || freshness.athleteStateThrough || freshness.completedTrainingThrough || new Date().toISOString().split('T')[0];
+    const deterministicFacts = this.getDeterministicFacts(timeline, asOfDate, freshness);
+
+    const recentCompletedSessions = timeline
+      .filter(e => e.epistemicType === 'COMPLETED_TRAINING')
+      .slice(-8);
+
+    const recentAthleteStates = timeline
+      .filter(e => e.epistemicType === 'ATHLETE_STATE' || Boolean(e.athleteReflection))
+      .slice(-6);
+
+    const recentActivities = timeline
+      .filter(e => e.epistemicType === 'UNSTRUCTURED_ACTIVITY')
+      .slice(-4);
+
+    return {
+      athleteProfile: ATHLETE_PROFILE_METRICS,
+      freshness,
+      deterministicFacts,
+      recentCompletedSessions,
+      recentAthleteStates,
+      recentActivities,
+      upcomingEvents: upcomingEvent ? [upcomingEvent] : (freshness.nextPerformance.eventDate ? [freshness.nextPerformance] : []),
+      unifiedTimeline: timeline
+    };
+  }
+
+  /**
+   * Assembles full decision load context for AI_COACH or decision engine asynchronously from durable Supabase storage.
+   */
+  static async getDecisionContextAsync(targetDate?: string, upcomingEvent?: NextPerformanceLookahead): Promise<DecisionLoadContext> {
+    const timeline = await this.getUnifiedTimelineAsync();
+    const freshness = this.getFreshness(targetDate, upcomingEvent, timeline);
     const asOfDate = targetDate || freshness.athleteStateThrough || freshness.completedTrainingThrough || new Date().toISOString().split('T')[0];
     const deterministicFacts = this.getDeterministicFacts(timeline, asOfDate, freshness);
 
@@ -635,13 +799,12 @@ export function formatDecisionContextForPrompt(ctx: DecisionLoadContext): string
     `- nextPerformance:          ${f.nextPerformance.eventDate ? `${f.nextPerformance.eventDate} | "${f.nextPerformance.eventName}" (Type: ${f.nextPerformance.eventType}, in ${f.nextPerformance.daysRemaining} days, Role: ${f.nextPerformance.participantRole || 'ATHLETE'}, Source: ${f.nextPerformance.source})` : 'None scheduled'}`
   ];
 
-  // 3. Active Unified Timeline (Recent active records, excluding future planned events from completed history)
+  // 3. Active Unified Timeline (Complete chronological history across comeback: June 22, 2026 → Present)
   const timelineEntries = ctx.unifiedTimeline
-    .filter(e => e.epistemicType !== 'PLANNED_EVENT')
-    .slice(-10);
+    .filter(e => e.epistemicType !== 'PLANNED_EVENT');
 
   const timelineLines = [
-    `=== ACTIVE UNIFIED ATHLETE TRACK TIMELINE (RECENT SESSIONS & ACTIVITIES) ===`,
+    `=== ACTIVE UNIFIED ATHLETE TRACK TIMELINE (CHRONOLOGICAL HISTORY: JUNE 22, 2026 → PRESENT) ===`,
     ...timelineEntries.map(e => {
       const parts: string[] = [
         `[${e.date}]`,
