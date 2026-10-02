@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { Database, FileSpreadsheet, BarChart3, MessageSquare, CheckCircle2, CreditCard, Lock, LayoutDashboard } from 'lucide-react';
+import { Database, FileSpreadsheet, BarChart3, MessageSquare, CheckCircle2, CreditCard, Lock, LayoutDashboard, ShieldCheck } from 'lucide-react';
 
-type AdminTab = 'roster' | 'insights' | 'sessions' | 'feedback' | 'survey' | 'credits' | 'private-access';
+type AdminTab = 'roster' | 'insights' | 'sessions' | 'feedback' | 'survey' | 'credits' | 'private-access' | 'roles';
 
 interface AdminHeaderProps {
     currentUser: any;
@@ -11,6 +11,7 @@ interface AdminHeaderProps {
 
 const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
     { id: 'roster',         label: 'Roster',          icon: <Database size={15} /> },
+    { id: 'roles',          label: 'Coach Access',    icon: <ShieldCheck size={15} /> },
     { id: 'sessions',       label: 'Events',           icon: <FileSpreadsheet size={15} /> },
     { id: 'feedback',       label: 'Feedback',         icon: <MessageSquare size={15} /> },
     { id: 'survey',         label: 'Survey',           icon: <CheckCircle2 size={15} /> },

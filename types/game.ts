@@ -12,6 +12,7 @@ export interface Clip {
   url: string;
   file: File | null;
   deletedAt?: number;
+  sharedWithCoach?: boolean;
 }
 
 export type ShotTypeType = 

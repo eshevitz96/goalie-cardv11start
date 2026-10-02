@@ -78,6 +78,7 @@ export default function CalendarPage() {
   const [selectedGoalieFilter, setSelectedGoalieFilter] = useState<string>("all");
   const [roleTrackFilter, setRoleTrackFilter] = useState<'all' | 'athlete' | 'coach'>('all');
   const [athleteHockeySessions, setAthleteHockeySessions] = useState<any[]>([]);
+  const [isCoach, setIsCoach] = useState<boolean>(false);
 
   // View state: 'day' | 'week' | 'month' | 'year'
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -297,34 +298,11 @@ export default function CalendarPage() {
       const uid = auth.userId;
       const { startStr, endStr } = queryRange;
 
-      // 1. Fetch coach roster & private training sessions from instantaneous server action
-      const coachData = await getCalendarPrivateLessons();
-      let rosterList: any[] = [];
-      let allSessionsData: any[] = [];
-
-      if (coachData?.success && coachData.athletes && coachData.athletes.length > 0) {
-        rosterList = coachData.athletes;
-        allSessionsData = coachData.sessions || [];
-      } else {
-        const fallback = await fetchCoachOSData(uid || undefined, auth.userEmail || undefined);
-        if (fallback?.success && fallback.athletes && fallback.athletes.length > 0) {
-          rosterList = fallback.athletes;
-          allSessionsData = fallback.sessions || [];
-        }
-      }
-
-      setRosterGoalies(rosterList.map(r => ({ 
-        id: r.id, 
-        name: r.goalie_name, 
-        email: r.email || r.guardian_email || r.athlete_email || "",
-        linked_user_id: r.linked_user_id 
-      })));
-
-      // 2. Fetch user profile, email & identity if authenticated
+      // 1. Fetch user profile, email & identity if authenticated
       let publicUserId: string | undefined;
       let userEmail = "";
       let goalieName = "";
-      let isCoach = true; // default coach access on calendar
+      let isCoachUser = false;
 
       if (uid && uid !== "00000000-0000-0000-0000-000000000000") {
         const [
@@ -339,30 +317,38 @@ export default function CalendarPage() {
         publicUserId = userRes?.id;
         userEmail = (authUserData?.user?.email || userRes?.email || profileRes?.email || "").toLowerCase().trim();
         goalieName = (profileRes?.goalie_name || profileRes?.full_name || "").trim();
-        const isCoachRole = profileRes?.role === 'coach' || (Array.isArray(profileRes?.roles) && profileRes?.roles.includes('coach')) || userRes?.role === 'coach';
-        isCoach = isCoachRole || userEmail === "eshevitz96@gmail.com" || userEmail === "thegoaliebrand@gmail.com" || !goalieName || goalieName.toLowerCase().includes("elliott");
+        const isCoachRole = profileRes?.role === 'coach' || (Array.isArray(profileRes?.roles) && profileRes?.roles.includes('coach')) || userRes?.role === 'coach' || profileRes?.role === 'admin' || userRes?.role === 'admin';
+        isCoachUser = Boolean(isCoachRole);
       }
 
-      // 3. Resolve matching roster IDs for this goalie
-      const matchedRosterIds: string[] = [];
-      const nameKeywords: string[] = [];
-      if (goalieName) nameKeywords.push(goalieName.toLowerCase());
+      setIsCoach(isCoachUser);
 
-      rosterList.forEach(r => {
-        const rEmail = (r.email || r.guardian_email || r.athlete_email || "").toLowerCase().trim();
-        const rName = (r.goalie_name || "").toLowerCase().trim();
+      // 2. Fetch coach roster & private training sessions ONLY if verified coach
+      let rosterList: any[] = [];
+      let allSessionsData: any[] = [];
 
-        const matches = (r.linked_user_id && (r.linked_user_id === uid || r.linked_user_id === publicUserId)) ||
-                        (userEmail && rEmail === userEmail) ||
-                        (goalieName && rName && (rName.includes(goalieName.toLowerCase()) || goalieName.toLowerCase().includes(rName)));
-
-        if (matches) {
-          matchedRosterIds.push(r.id);
-          if (r.goalie_name && !nameKeywords.includes(rName)) {
-            nameKeywords.push(rName);
+      if (isCoachUser) {
+        const coachData = await getCalendarPrivateLessons();
+        if (coachData?.success && coachData.athletes && coachData.athletes.length > 0) {
+          rosterList = coachData.athletes;
+          allSessionsData = coachData.sessions || [];
+        } else {
+          const fallback = await fetchCoachOSData(uid || undefined, userEmail || undefined);
+          if (fallback?.success && fallback.athletes && fallback.athletes.length > 0) {
+            rosterList = fallback.athletes;
+            allSessionsData = fallback.sessions || [];
           }
         }
-      });
+
+        setRosterGoalies(rosterList.map(r => ({ 
+          id: r.id, 
+          name: r.goalie_name, 
+          email: r.email || r.guardian_email || r.athlete_email || "",
+          linked_user_id: r.linked_user_id 
+        })));
+      } else {
+        setRosterGoalies([]);
+      }
 
       // 4. Fetch games and practices for selected range if authenticated
       if (uid && uid !== "00000000-0000-0000-0000-000000000000") {
@@ -514,46 +500,67 @@ export default function CalendarPage() {
       setAthleteHockeySessions(hockeySchedule);
 
       // 5. Process private training sessions (lacrosse coaching lessons)
-      // Hydrate all sessions with real athlete names
-      const hydrated = allSessionsData.map(sess => {
-        let name = sess.athlete_name || "Private Client";
-        if (name === "Private Client" || name === "Athlete") {
-          if (sess.roster_id) {
-            const m = rosterList.find(r => r.id === sess.roster_id);
-            if (m && m.goalie_name) name = m.goalie_name;
-          }
-          if ((name === "Private Client" || name === "Athlete") && sess.goalie_id) {
-            const m = rosterList.find(r => r.linked_user_id === sess.goalie_id || r.id === sess.goalie_id);
-            if (m && m.goalie_name) name = m.goalie_name;
-          }
-          if ((name === "Private Client" || name === "Athlete") && sess.notes) {
-            for (const r of rosterList) {
-              if (sess.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
-                name = r.goalie_name;
-                break;
+      if (isCoachUser) {
+        // Hydrate all sessions with real athlete names
+        const hydrated = allSessionsData.map(sess => {
+          let name = sess.athlete_name || "Private Client";
+          if (name === "Private Client" || name === "Athlete") {
+            if (sess.roster_id) {
+              const m = rosterList.find(r => r.id === sess.roster_id);
+              if (m && m.goalie_name) name = m.goalie_name;
+            }
+            if ((name === "Private Client" || name === "Athlete") && sess.goalie_id) {
+              const m = rosterList.find(r => r.linked_user_id === sess.goalie_id || r.id === sess.goalie_id);
+              if (m && m.goalie_name) name = m.goalie_name;
+            }
+            if ((name === "Private Client" || name === "Athlete") && sess.notes) {
+              for (const r of rosterList) {
+                if (sess.notes.toLowerCase().includes(r.goalie_name.toLowerCase())) {
+                  name = r.goalie_name;
+                  break;
+                }
               }
             }
           }
-        }
-        return {
-          ...sess,
-          athlete_name: name,
-          sport: "Lacrosse"
-        };
-      });
+          return {
+            ...sess,
+            athlete_name: name,
+            sport: "Lacrosse"
+          };
+        });
 
-      // Filter sessions for this user / selected goalie
-      const userSessions = hydrated.filter(s => {
-        if (selectedGoalieFilter !== "all") {
-          const targetRoster = rosterList.find(r => r.id === selectedGoalieFilter);
-          if (s.roster_id === selectedGoalieFilter) return true;
-          if (targetRoster && s.athlete_name && s.athlete_name.toLowerCase() === targetRoster.goalie_name.toLowerCase()) return true;
-          return false;
-        }
-        return true;
-      });
+        // Filter sessions for selected goalie
+        const userSessions = hydrated.filter(s => {
+          if (selectedGoalieFilter !== "all") {
+            const targetRoster = rosterList.find(r => r.id === selectedGoalieFilter);
+            if (s.roster_id === selectedGoalieFilter) return true;
+            if (targetRoster && s.athlete_name && s.athlete_name.toLowerCase() === targetRoster.goalie_name.toLowerCase()) return true;
+            return false;
+          }
+          return true;
+        });
 
-      setPrivateSessions(userSessions);
+        setPrivateSessions(userSessions);
+      } else {
+        // Non-coach (goalie / parent) view: fetch ONLY own sessions via RLS
+        if (uid && uid !== "00000000-0000-0000-0000-000000000000") {
+          const { data: ownSessions } = await supabase
+            .from("sessions")
+            .select("*")
+            .or(`goalie_id.eq.${uid},goalie_id.eq.${publicUserId || uid}`)
+            .gte("date", startStr)
+            .lte("date", endStr);
+          
+          const hydratedOwn = (ownSessions || []).map(sess => ({
+            ...sess,
+            athlete_name: goalieName || "Athlete",
+            sport: sess.sport || "Lacrosse"
+          }));
+          setPrivateSessions(hydratedOwn);
+        } else {
+          setPrivateSessions([]);
+        }
+      }
 
       // 6. Fetch or auto-initialize season
       let activeSeason = null;
@@ -1380,6 +1387,7 @@ export default function CalendarPage() {
 
   // Coaching Lesson Handlers
   const openEditLesson = (sess: any) => {
+    if (!isCoach) return;
     setEditingLesson(sess);
     setLessonDeleteConfirm(false);
     setEditLessonError("");
@@ -1663,6 +1671,9 @@ export default function CalendarPage() {
     const targetDate = defaultDate || selectedDate || currentDate;
     const targetDateStr = formatDateKey(targetDate);
     
+    if (type === 'lesson' && !isCoach) {
+      type = 'training';
+    }
     setAddModalTab(type);
     
     setGameDate(targetDateStr);
@@ -1725,7 +1736,7 @@ export default function CalendarPage() {
 
           {/* Right Group: Filters & Actions */}
           <div className="w-full md:w-auto flex items-center justify-end gap-2 sm:gap-3 flex-wrap">
-            {rosterGoalies.length > 0 && (
+            {isCoach && rosterGoalies.length > 0 && (
               <select
                 value={selectedGoalieFilter}
                 onChange={(e) => setSelectedGoalieFilter(e.target.value)}
@@ -1739,13 +1750,15 @@ export default function CalendarPage() {
               </select>
             )}
 
-            <Link
-              href="/coach"
-              className="px-3.5 py-2 bg-muted border border-border hover:bg-muted/80 text-foreground rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
-              title="Open Coach Card Client & Roster Ledger"
-            >
-              <span>Coach Card Ledger</span>
-            </Link>
+            {isCoach && (
+              <Link
+                href="/coach"
+                className="px-3.5 py-2 bg-muted border border-border hover:bg-muted/80 text-foreground rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
+                title="Open Coach Card Client & Roster Ledger"
+              >
+                <span>Coach Card Ledger</span>
+              </Link>
+            )}
 
             <button 
               onClick={() => openAddEvent("training")} 
@@ -1770,53 +1783,55 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* TRACK SWITCHER BAR */}
-        <div className="bg-card border border-border rounded-[28px] p-4 md:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-muted border border-border flex items-center justify-center text-foreground font-bold shrink-0">
-              <CalendarIcon size={18} strokeWidth={2.5} />
+        {/* TRACK SWITCHER BAR (COACH ONLY) */}
+        {isCoach && (
+          <div className="bg-card border border-border rounded-[28px] p-4 md:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-muted border border-border flex items-center justify-center text-foreground font-bold shrink-0">
+                <CalendarIcon size={18} strokeWidth={2.5} />
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-muted text-foreground border border-border uppercase tracking-wider">
+                  NHL Pro Prospect
+                </span>
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-muted text-foreground border border-border uppercase tracking-wider">
+                  Coach Card • The Goalie Brand
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-muted text-foreground border border-border uppercase tracking-wider">
-                NHL Pro Prospect
-              </span>
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-muted text-foreground border border-border uppercase tracking-wider">
-                Coach Card • The Goalie Brand
-              </span>
-            </div>
-          </div>
 
-          {/* Track Filter Pills */}
-          <div className="flex items-center bg-muted p-1 rounded-2xl border border-border text-xs font-semibold gap-1 self-stretch sm:self-auto overflow-x-auto">
-            <button
-              onClick={() => setRoleTrackFilter('all')}
-              className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                roleTrackFilter === 'all' ? "bg-foreground text-background font-semibold shadow-xs" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Layers size={13} />
-              <span>All Activities</span>
-            </button>
-            <button
-              onClick={() => setRoleTrackFilter('athlete')}
-              className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                roleTrackFilter === 'athlete' ? "bg-foreground text-background font-semibold shadow-xs" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Dumbbell size={13} />
-              <span>Athlete Track (Hockey)</span>
-            </button>
-            <button
-              onClick={() => setRoleTrackFilter('coach')}
-              className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                roleTrackFilter === 'coach' ? "bg-foreground text-background font-semibold shadow-xs" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Users size={13} />
-              <span>Coaching Track (Lacrosse)</span>
-            </button>
+            {/* Track Filter Pills */}
+            <div className="flex items-center bg-muted p-1 rounded-2xl border border-border text-xs font-semibold gap-1 self-stretch sm:self-auto overflow-x-auto">
+              <button
+                onClick={() => setRoleTrackFilter('all')}
+                className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  roleTrackFilter === 'all' ? "bg-foreground text-background font-semibold shadow-xs" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Layers size={13} />
+                <span>All Activities</span>
+              </button>
+              <button
+                onClick={() => setRoleTrackFilter('athlete')}
+                className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  roleTrackFilter === 'athlete' ? "bg-foreground text-background font-semibold shadow-xs" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Dumbbell size={13} />
+                <span>Athlete Track (Hockey)</span>
+              </button>
+              <button
+                onClick={() => setRoleTrackFilter('coach')}
+                className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  roleTrackFilter === 'coach' ? "bg-foreground text-background font-semibold shadow-xs" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Users size={13} />
+                <span>Coaching Track (Lacrosse)</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* VIEW CONTROLLER & DATE NAVIGATOR BAR */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-card border border-border rounded-[28px] p-4 md:p-6 shadow-sm">
@@ -3004,7 +3019,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Event Type Tabs */}
-            <div className="grid grid-cols-4 gap-1.5 bg-muted/70 p-1.5 rounded-2xl border border-border">
+            <div className={`grid ${isCoach ? "grid-cols-4" : "grid-cols-3"} gap-1.5 bg-muted/70 p-1.5 rounded-2xl border border-border`}>
               <button
                 type="button"
                 onClick={() => setAddModalTab('training')}
@@ -3017,18 +3032,20 @@ export default function CalendarPage() {
                 <Dumbbell size={15} />
                 <span>Training</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setAddModalTab('lesson')}
-                className={`py-2 rounded-xl text-xs font-semibold transition-all flex flex-col items-center gap-1 ${
-                  addModalTab === 'lesson'
-                    ? "bg-foreground text-background shadow-xs font-bold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Users size={15} />
-                <span>Lesson</span>
-              </button>
+              {isCoach && (
+                <button
+                  type="button"
+                  onClick={() => setAddModalTab('lesson')}
+                  className={`py-2 rounded-xl text-xs font-semibold transition-all flex flex-col items-center gap-1 ${
+                    addModalTab === 'lesson'
+                      ? "bg-foreground text-background shadow-xs font-bold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Users size={15} />
+                  <span>Lesson</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setAddModalTab('game')}

@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 
 import { getStripe } from "@/lib/stripe";
 
+import { createClient as createSupabaseServerClient } from "@/utils/supabase/server";
+
 function getSupabaseAdmin() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -13,10 +15,38 @@ function getSupabaseAdmin() {
     return createClient(url, key);
 }
 
-export async function fetchAdminRoster(password: string) {
-    // Hardcoded simple protection
-    if (password !== "ShevitzBears23") {
-        return { error: "Incorrect password." };
+async function verifyAdminOrCoach(accessCode?: string): Promise<boolean> {
+    try {
+        const serverSupabase = await createSupabaseServerClient();
+        const { data: { user } } = await serverSupabase.auth.getUser();
+
+        if (user) {
+            const adminClient = getSupabaseAdmin();
+            const [{ data: prof }, { data: usr }] = await Promise.all([
+                adminClient.from('profiles').select('role').eq('id', user.id).maybeSingle(),
+                adminClient.from('users').select('role').eq('auth_user_id', user.id).maybeSingle()
+            ]);
+            const role = prof?.role || usr?.role;
+            if (role === 'coach' || role === 'admin' || user.email === 'eshevitz96@gmail.com') {
+                return true;
+            }
+        }
+
+        const envSecret = process.env.ADMIN_ROSTER_SECRET;
+        if (envSecret && accessCode && accessCode.trim() === envSecret.trim()) {
+            return true;
+        }
+
+        return false;
+    } catch {
+        return false;
+    }
+}
+
+export async function fetchAdminRoster(password?: string) {
+    const isAuthorized = await verifyAdminOrCoach(password);
+    if (!isAuthorized) {
+        return { error: "Unauthorized: Coach or Admin access required." };
     }
 
     try {
@@ -65,9 +95,10 @@ export async function fetchAdminRoster(password: string) {
     }
 }
 
-export async function deleteSubmission(id: string, password: string) {
-    if (password !== "ShevitzBears23") {
-        return { error: "Incorrect password." };
+export async function deleteSubmission(id: string, password?: string) {
+    const isAuthorized = await verifyAdminOrCoach(password);
+    if (!isAuthorized) {
+        return { error: "Unauthorized: Coach or Admin access required." };
     }
 
     try {

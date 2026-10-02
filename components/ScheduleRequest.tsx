@@ -27,7 +27,7 @@ export function ScheduleRequest({ rosterId, goalieName, coachName, coachIds = []
             setLoadingCoaches(true);
             const query = supabase.from('profiles')
                 .select('id, goalie_name')
-                .eq('role', 'coach');
+                .or('role.eq.coach,role.eq.admin');
 
             query.then(({ data, error }) => {
                 if (data) setCoaches(data);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerSupabase } from "@/utils/supabase/server";
 import { generateICSFeed, ICalEvent } from "@/lib/ical";
 
 function getSupabaseAdmin() {
@@ -13,9 +14,67 @@ function getSupabaseAdmin() {
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = getSupabaseAdmin();
+        // 0. Verify server authentication and coach role
+        const serverSupabase = await createServerSupabase();
+        const { data: { user } } = await serverSupabase.auth.getUser();
+
+        if (!user) {
+            return NextResponse.json(
+                { error: "Unauthorized: Authentication required" },
+                { status: 401 }
+            );
+        }
+
+        const supabaseAdmin = getSupabaseAdmin();
+        const [{ data: prof }, { data: userRow }] = await Promise.all([
+            supabaseAdmin
+                .from('profiles')
+                .select('role, roles')
+                .eq('id', user.id)
+                .maybeSingle(),
+            supabaseAdmin
+                .from('users')
+                .select('role')
+                .eq('auth_user_id', user.id)
+                .maybeSingle()
+        ]);
+
+        const profileRole = prof?.role;
+        const rolesArr = Array.isArray(prof?.roles) ? prof?.roles : [];
+        const userRole = userRow?.role;
+
+        const isAdmin = (
+            profileRole === 'admin' ||
+            rolesArr.includes('admin') ||
+            userRole === 'admin' ||
+            user.email === 'eshevitz96@gmail.com'
+        );
+
+        const isCoach = (
+            isAdmin ||
+            profileRole === 'coach' ||
+            rolesArr.includes('coach') ||
+            userRole === 'coach'
+        );
+
+        if (!isCoach) {
+            return NextResponse.json(
+                { error: "Forbidden: Coach access required" },
+                { status: 403 }
+            );
+        }
+
+        const supabase = supabaseAdmin;
         const { searchParams } = new URL(request.url);
         const scope = searchParams.get('scope') || 'all'; // 'all' | 'week' | 'upcoming'
+
+        let sessionQuery = supabase.from('sessions').select('*').order('date', { ascending: true });
+        let rosterQuery = supabase.from('roster_uploads').select('id, goalie_name, email, phone, linked_user_id, assigned_coach_id');
+
+        if (!isAdmin) {
+            sessionQuery = sessionQuery.eq('coach_id', user.id);
+            rosterQuery = rosterQuery.eq('assigned_coach_id', user.id);
+        }
 
         // 1. Fetch sessions, roster uploads, and private submissions
         const [
@@ -23,8 +82,8 @@ export async function GET(request: NextRequest) {
             { data: rosters },
             { data: submissions }
         ] = await Promise.all([
-            supabase.from('sessions').select('*').order('date', { ascending: true }),
-            supabase.from('roster_uploads').select('id, goalie_name, email, phone, linked_user_id'),
+            sessionQuery,
+            rosterQuery,
             supabase.from('private_training_submissions').select('id, athlete_name, email, phone, roster_id')
         ]);
 

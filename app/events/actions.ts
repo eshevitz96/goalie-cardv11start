@@ -2,6 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createSupabaseServerClient } from "@/utils/supabase/server";
+import { verifyCoachAuthorization } from "@/app/training/book/actions";
 
 /**
  * Server action to add an event, bypassing RLS with service role
@@ -56,51 +57,81 @@ export async function addEvent(eventData: {
 }
 
 /**
- * Server action to fetch all events, bypassing RLS
+ * Server action to fetch events, scoped to caller's own events (+ coach/admin sees all)
  */
 export async function getEvents() {
-    const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    try {
+        const supabaseServer = await createSupabaseServerClient();
+        const { data: { user }, error: authError } = await supabaseServer.auth.getUser();
 
-    const { data, error } = await supabaseAdmin
-        .from('events')
-        .select('*')
-        .order('date', { ascending: true });
+        if (authError || !user) {
+            return { success: false, data: [], error: "Authentication required." };
+        }
 
-    if (error) {
-        console.error("[getEvents] Error:", error);
-        return { success: false, data: [], error: error.message };
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        // Check if caller is coach or admin
+        const [{ data: prof }, { data: usr }] = await Promise.all([
+            supabaseAdmin.from('profiles').select('role').eq('id', user.id).maybeSingle(),
+            supabaseAdmin.from('users').select('role').eq('auth_user_id', user.id).maybeSingle()
+        ]);
+
+        const role = prof?.role || usr?.role;
+        const isCoach = role === 'coach' || role === 'admin' || user.email === 'eshevitz96@gmail.com';
+
+        let query = supabaseAdmin
+            .from('events')
+            .select('*')
+            .order('date', { ascending: true });
+
+        if (!isCoach) {
+            query = query.eq('created_by', user.id);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error("[getEvents] Error:", error);
+            return { success: false, data: [], error: error.message };
+        }
+
+        return { success: true, data: data || [] };
+    } catch (err: any) {
+        console.error("[getEvents] Error:", err);
+        return { success: false, data: [], error: err.message };
     }
-
-    return { success: true, data: data || [] };
 }
 
 /**
  * Server action to update an existing event
  */
 export async function updateEvent(eventId: string, eventData: {
-    name: string;
-    date: string;
-    location: string;
-    sport: string;
+    name?: string;
+    date?: string;
+    location?: string;
+    sport?: string;
     scouting_report?: string;
+    shared_with_coach?: boolean;
 }) {
     const supabaseAdmin = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    const updatePayload: any = {};
+    if (eventData.name !== undefined) updatePayload.name = eventData.name;
+    if (eventData.date !== undefined) updatePayload.date = eventData.date;
+    if (eventData.location !== undefined) updatePayload.location = eventData.location;
+    if (eventData.sport !== undefined) updatePayload.sport = eventData.sport;
+    if (eventData.scouting_report !== undefined) updatePayload.scouting_report = eventData.scouting_report;
+    if (eventData.shared_with_coach !== undefined) updatePayload.shared_with_coach = eventData.shared_with_coach;
+
     const { error } = await supabaseAdmin
         .from('events')
-        .update({
-            name: eventData.name,
-            date: eventData.date,
-            location: eventData.location,
-            sport: eventData.sport,
-            scouting_report: eventData.scouting_report
-        })
+        .update(updatePayload)
         .eq('id', eventId);
 
     if (error) {
@@ -168,22 +199,56 @@ export async function deleteEvent(eventId: string) {
 export async function pruneEventVideo(eventId: string, videoUrl: string) {
     if (!eventId || !videoUrl) return { success: false, error: "Missing data" };
 
-    const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     try {
-        // 1. Extract filename from URL (e.g., .../game-film/roster_123.mp4)
-        const parts = videoUrl.split('/');
-        const fileName = parts[parts.length - 1];
+        const supabaseServer = await createSupabaseServerClient();
+        const { data: { user }, error: authError } = await supabaseServer.auth.getUser();
 
-        // 2. Delete from Storage
+        if (authError || !user) {
+            return { success: false, error: "Unauthorized: Active session required" };
+        }
+
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        // 1. Verify access: caller owns event or is coach
+        const { data: eventData, error: eventFetchError } = await supabaseAdmin
+            .from('events')
+            .select('id, created_by, roster_id')
+            .eq('id', eventId)
+            .maybeSingle();
+
+        if (eventFetchError || !eventData) {
+            return { success: false, error: "Event not found" };
+        }
+
+        if (eventData.created_by !== user.id) {
+            const coachAuth = await verifyCoachAuthorization();
+            if (!coachAuth.isAuthorized) {
+                return { success: false, error: "Forbidden: Not authorized to modify this event" };
+            }
+        }
+
+        // 2. Extract relative storage path
+        let storagePath = videoUrl;
+        if (videoUrl.includes('/game-film/')) {
+            storagePath = videoUrl.split('/game-film/')[1];
+        } else if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
+            const parts = videoUrl.split('/');
+            storagePath = parts.slice(-2).join('/'); // e.g. user_id/filename.mp4
+        }
+
+        // 3. Delete from Storage
         const { error: storageError } = await supabaseAdmin.storage
             .from('game-film')
-            .remove([fileName]);
+            .remove([storagePath]);
 
-        // 3. Update Event Record to detach video and mark as 'clipped'
+        if (storageError) {
+            console.warn("[pruneEventVideo] Storage removal warning:", storageError);
+        }
+
+        // 4. Update Event Record to detach video and mark as 'clipped'
         const { error: dbError } = await supabaseAdmin
             .from('events')
             .update({ 

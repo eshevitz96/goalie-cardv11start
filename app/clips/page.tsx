@@ -16,6 +16,7 @@ export default function SeasonClipsPage() {
     const [activeFilter, setActiveFilter] = useState("ALL");
     const [videos, setVideos] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activePlayingVideo, setActivePlayingVideo] = useState<{ name: string; signedUrl: string } | null>(null);
 
     useEffect(() => {
         async function fetchVideos() {
@@ -33,6 +34,22 @@ export default function SeasonClipsPage() {
         }
         fetchVideos();
     }, []);
+
+    const handlePlayVideo = async (video: any) => {
+        if (!video.video_url) return;
+        try {
+            const { getSignedMediaUrl } = await import('@/app/film/actions');
+            const res = await getSignedMediaUrl('game-film', video.video_url);
+            if (res.success && res.signedUrl) {
+                setActivePlayingVideo({ name: video.name, signedUrl: res.signedUrl });
+            } else {
+                alert("Cannot play video: " + (res.error || "Permission denied"));
+            }
+        } catch (err: any) {
+            console.error("Play Video Error:", err);
+            alert("Error loading video: " + err.message);
+        }
+    };
 
     const filteredVideos = videos.filter(v => {
         const matchesSearch = (v.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -123,7 +140,8 @@ export default function SeasonClipsPage() {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: idx * 0.05 }}
-                                className="group relative aspect-[4/5] bg-secondary/10 rounded-[2.5rem] overflow-hidden border border-white/5 hover:border-primary/50 transition-all duration-500 shadow-2xl"
+                                onClick={() => handlePlayVideo(video)}
+                                className="group relative aspect-[4/5] bg-secondary/10 rounded-[2.5rem] overflow-hidden border border-white/5 hover:border-primary/50 transition-all duration-500 shadow-2xl cursor-pointer"
                             >
                                 {/* Video Thumbnail Placeholder with Gradient */}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
@@ -188,6 +206,40 @@ export default function SeasonClipsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Video Playback Modal with Signed URL */}
+            <AnimatePresence>
+                {activePlayingVideo && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
+                        onClick={() => setActivePlayingVideo(null)}
+                    >
+                        <div 
+                            className="bg-card border border-border rounded-3xl p-6 max-w-4xl w-full space-y-4"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-bold text-lg text-foreground uppercase tracking-tight">{activePlayingVideo.name}</h3>
+                                <button 
+                                    onClick={() => setActivePlayingVideo(null)}
+                                    className="p-2 bg-secondary hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <video 
+                                src={activePlayingVideo.signedUrl}
+                                controls
+                                autoPlay
+                                className="w-full rounded-2xl bg-black max-h-[70vh]"
+                            />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </main>
     );
 }

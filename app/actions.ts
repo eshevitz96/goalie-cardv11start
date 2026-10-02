@@ -65,10 +65,10 @@ export async function submitReflection(rosterId: string, entryData: any) {
             soreness: entryData.soreness,
             sleep_quality: entryData.sleep_quality,
             file_url: entryData.file_url,
+            shared_with_coach: entryData.shared_with_coach ?? false,
             created_at: new Date().toISOString()
         };
 
-        // 3. Insert with Admin Privileges
         // 3. Insert Reflection with Admin Privileges
         const { data: reflection, error } = await supabaseAdmin
             .from('reflections')
@@ -99,7 +99,8 @@ export async function submitReflection(rosterId: string, entryData: any) {
                     sport: sport,
                     description: entryData.content,
                     created_by: resolvedAuthorId,
-                    type: entryData.activity_type
+                    type: entryData.activity_type,
+                    shared_with_coach: entryData.shared_with_coach ?? false
                 });
 
                 // Also auto-register the goalie for this event so it shows in their list
@@ -135,6 +136,7 @@ export async function updateReflection(reflectionId: string, rosterId: string, e
         if (entryData.soreness !== undefined) updatePayload.soreness = entryData.soreness;
         if (entryData.sleep_quality !== undefined) updatePayload.sleep_quality = entryData.sleep_quality;
         if (entryData.file_url !== undefined) updatePayload.file_url = entryData.file_url;
+        if (entryData.shared_with_coach !== undefined) updatePayload.shared_with_coach = entryData.shared_with_coach;
 
         const { error } = await supabaseAdmin
             .from('reflections')

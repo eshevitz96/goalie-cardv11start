@@ -18,29 +18,40 @@ export async function POST(req: Request) {
         }
 
         // 2. Looks up stripe_customer_id for the authenticated user from private_training_submissions (match by email)
-        const { data: submission, error: subError } = await supabase
+        const { data: submission } = await supabase
             .from('private_training_submissions')
             .select('stripe_customer_id')
-            .eq('email', email.toLowerCase())
-            .eq('payment_status', 'paid')
+            .or(`email.ilike.${email.trim()},guardian_email.ilike.${email.trim()}`)
             .not('stripe_customer_id', 'is', null)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
 
-        if (subError) {
-            console.error("[PORTAL_DB_ERROR]", subError);
-            return NextResponse.json({ error: "Database lookup failed." }, { status: 500 });
-        }
+        let customerId = submission?.stripe_customer_id;
 
-        const customerId = submission?.stripe_customer_id;
-
-        // 3. Return 404 if no customer ID found
+        // 3. Fallback: Search directly in Stripe for customer by email
         if (!customerId) {
-            return NextResponse.json({ error: "No active subscription found" }, { status: 404 });
+            try {
+                const customers = await stripe.customers.list({
+                    email: email.trim().toLowerCase(),
+                    limit: 1
+                });
+                if (customers.data && customers.data.length > 0) {
+                    customerId = customers.data[0].id;
+                }
+            } catch (stripeErr) {
+                console.warn("[PORTAL_STRIPE_LOOKUP_WARN]", stripeErr);
+            }
         }
 
-        // 4. Call stripe.billingPortal.sessions.create
+        // 4. Return error if no Stripe customer found for this user
+        if (!customerId) {
+            return NextResponse.json({ 
+                error: "No active billing record found for your account. Please complete an initial booking or enrollment." 
+            }, { status: 404 });
+        }
+
+        // 5. Call stripe.billingPortal.sessions.create
         const origin = new URL(req.url).origin;
         const returnUrl = origin.includes('localhost') || origin.includes('127.0.0.1')
             ? `${origin}/profile`
@@ -51,7 +62,7 @@ export async function POST(req: Request) {
             return_url: returnUrl,
         });
 
-        // 5. Returns the portal session URL
+        // 6. Returns the portal session URL
         return NextResponse.json({ url: portalSession.url });
     } catch (error: any) {
         console.error("[STRIPE_PORTAL_ROUTE_ERROR]", error);

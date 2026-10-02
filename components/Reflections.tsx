@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Plus, Save, Smile, Frown, Meh, Maximize2, Minimize2, ChevronRight, X, Paperclip, FileText, Loader2 } from "lucide-react";
+import { BookOpen, Plus, Save, Smile, Frown, Meh, Maximize2, Minimize2, ChevronRight, X, Paperclip, FileText, Loader2, Share2 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { toggleReflectionShareWithCoach } from "@/app/film/actions";
 
 interface Reflection {
     id: string;
@@ -13,6 +14,7 @@ interface Reflection {
     created_at: string;
     author_role?: 'goalie' | 'parent' | 'coach';
     file_url?: string;
+    shared_with_coach?: boolean;
 }
 
 interface ReflectionsProps {
@@ -35,7 +37,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
         injury_details: null,
         injury_expected_return: null,
         soreness: 2,
-        sleep_quality: 8
+        sleep_quality: 8,
+        shared_with_coach: false
     });
     const [loading, setLoading] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -178,7 +181,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                 injury_details: newReflection.injury_details || null,
                 soreness: newReflection.soreness,
                 sleep_quality: newReflection.sleep_quality,
-                file_url: finalFileUrl
+                file_url: finalFileUrl,
+                shared_with_coach: newReflection.shared_with_coach ?? false
             });
         } else {
             const { submitReflection } = await import('@/app/actions');
@@ -193,7 +197,8 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                 injury_details: newReflection.injury_details || null,
                 soreness: newReflection.soreness,
                 sleep_quality: newReflection.sleep_quality,
-                file_url: finalFileUrl
+                file_url: finalFileUrl,
+                shared_with_coach: newReflection.shared_with_coach ?? false
             });
         }
 
@@ -205,11 +210,26 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
         } else {
             setIsWriting(false);
             setEditingId(null);
-            setNewReflection({ title: "", content: "", mood: "neutral", activity_type: null, skip_reason: null });
+            setNewReflection({ title: "", content: "", mood: "neutral", activity_type: null, skip_reason: null, shared_with_coach: false });
             setSelectedFile(null);
             fetchReflections();
         }
         setLoading(false);
+    };
+
+    const handleToggleShare = async (e: React.MouseEvent, reflectionId: string, currentShared: boolean) => {
+        e.stopPropagation();
+        e.preventDefault();
+        try {
+            const res = await toggleReflectionShareWithCoach(reflectionId, !currentShared);
+            if (res.success) {
+                setReflections(prev => prev.map(r => r.id === reflectionId ? { ...r, shared_with_coach: !currentShared } : r));
+            } else {
+                alert("Failed to update share setting: " + res.error);
+            }
+        } catch (err: any) {
+            alert("Error updating share setting: " + err.message);
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -231,27 +251,44 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
         if (!selectedFile || !rosterId) return null;
         setUploading(true);
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const uploadUserId = user?.id || rosterId;
+
             const fileExt = selectedFile.name.split('.').pop();
             const fileName = `${rosterId}_${Date.now()}.${fileExt}`;
-            const filePath = `reflections/${fileName}`;
+            const filePath = `${uploadUserId}/reflections/${fileName}`;
 
-            const { data, error } = await supabase.storage
+            const { error } = await supabase.storage
                 .from('reflection-attachments')
                 .upload(filePath, selectedFile);
 
             if (error) throw error;
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('reflection-attachments')
-                .getPublicUrl(filePath);
-
-            return publicUrl;
+            // Store relative storage path in reflections table (never public URL)
+            return filePath;
         } catch (err: any) {
             console.error("Upload Error:", err);
             alert("Failed to upload file. Entry will be saved without attachment.");
             return null;
         } finally {
             setUploading(false);
+        }
+    };
+
+    const handleOpenAttachment = async (e: React.MouseEvent, fileUrl: string, reflectionId: string) => {
+        e.stopPropagation();
+        e.preventDefault();
+        try {
+            const { getSignedMediaUrl } = await import('@/app/film/actions');
+            const res = await getSignedMediaUrl('reflection-attachments', fileUrl, { reflectionId });
+            if (res.success && res.signedUrl) {
+                window.open(res.signedUrl, '_blank');
+            } else {
+                alert("Unable to access attachment: " + (res.error || "Permission denied"));
+            }
+        } catch (err: any) {
+            console.error("Open Attachment Error:", err);
+            alert("Failed to open attachment: " + err.message);
         }
     };
 
@@ -484,12 +521,24 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                                 value={newReflection.content}
                                 onChange={(e) => setNewReflection({ ...newReflection, content: e.target.value })}
                             />
-                            <div className="mt-3 flex items-center gap-3">
+                            <div className="mt-3 flex items-center gap-3 flex-wrap">
                                 <label className="flex items-center gap-2 cursor-pointer bg-secondary/50 hover:bg-secondary border border-border px-3 py-1.5 rounded-lg transition-colors group">
                                     <Paperclip size={14} className="text-muted-foreground group-hover:text-primary" />
                                     <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Clip PDF</span>
                                     <input type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
                                 </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setNewReflection({ ...newReflection, shared_with_coach: !newReflection.shared_with_coach })}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase transition-all ${
+                                        newReflection.shared_with_coach
+                                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm'
+                                            : 'bg-secondary/50 text-muted-foreground border-border hover:border-foreground/30'
+                                    }`}
+                                >
+                                    <Share2 size={13} className={newReflection.shared_with_coach ? 'text-emerald-400' : 'text-muted-foreground'} />
+                                    <span>{newReflection.shared_with_coach ? 'Shared with Coach' : 'Share with Coach'}</span>
+                                </button>
                                 {selectedFile && (
                                     <div className="flex items-center gap-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20">
                                         <FileText size={12} />
@@ -566,6 +615,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                                     mood: ref.mood || "neutral",
                                     activity_type: ref.title === 'Off Day' || !ref.content || ref.content.startsWith('Reason:') ? 'none' : 'practice',
                                     skip_reason: ref.title === 'Off Day' ? (ref.content?.replace('Reason: ', '') || 'other') : null,
+                                    shared_with_coach: Boolean(ref.shared_with_coach)
                                 });
                                 // Scroll to top smoothly
                                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -585,19 +635,32 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                             <p className="text-xs text-muted-foreground line-clamp-2 group-hover:line-clamp-none transition-all">
                                 {ref.content}
                             </p>
-                            {ref.file_url && (
-                                <div className="mt-2 flex items-center gap-2">
-                                    <a
-                                        href={ref.file_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="flex items-center gap-2 text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded border border-primary/20 hover:bg-primary/20 transition-colors w-fit"
-                                    >
-                                        <FileText size={12} /> View Attachment
-                                    </a>
+                            <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                    {ref.file_url && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleOpenAttachment(e, ref.file_url!, ref.id)}
+                                            className="flex items-center gap-2 text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded border border-primary/20 hover:bg-primary/20 transition-colors w-fit"
+                                        >
+                                            <FileText size={12} /> View Attachment
+                                        </button>
+                                    )}
                                 </div>
-                            )}
+                                <button
+                                    type="button"
+                                    onClick={(e) => handleToggleShare(e, ref.id, Boolean(ref.shared_with_coach))}
+                                    className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded border transition-all ${
+                                        ref.shared_with_coach
+                                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                                            : 'bg-secondary/40 text-muted-foreground border-border/60 hover:text-foreground'
+                                    }`}
+                                    title={ref.shared_with_coach ? "Click to unshare with coach" : "Click to share with coach"}
+                                >
+                                    <Share2 size={11} />
+                                    <span>{ref.shared_with_coach ? 'Shared with Coach' : 'Share with Coach'}</span>
+                                </button>
+                            </div>
                         </motion.div>
                     ))
                 )}

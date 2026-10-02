@@ -65,23 +65,32 @@ export function GameFilmUpload({ rosterId, sport, title = "Game Film Analysis", 
             const oversized = selectedFiles.find(f => f.size > MAX_FILE_SIZE);
             if (oversized) throw new Error(`File ${oversized.name} is too large (>50MB).`);
 
-            const publicUrls: string[] = [];
+            // Resolve active authenticated user ID for scoped bucket directory
+            const { data: { user } } = await supabase.auth.getUser();
+            const uploadUserId = user?.id || rosterId;
+
+            const signedUrls: string[] = [];
+            const { getSignedMediaUrl } = await import('@/app/film/actions');
+
             for (let i = 0; i < selectedFiles.length; i++) {
                 const file = selectedFiles[i];
                 const fileExt = file.name.split('.').pop();
-                const fileName = `${rosterId}_${Date.now()}_clip${i}.${fileExt}`;
+                const storagePath = `${uploadUserId}/${rosterId}_${Date.now()}_clip${i}.${fileExt}`;
                 
                 const { error } = await supabase.storage
                     .from('game-film')
-                    .upload(fileName, file, { cacheControl: '3600', upsert: false });
+                    .upload(storagePath, file, { cacheControl: '3600', upsert: false });
 
                 if (error) throw error;
 
-                const { data: { publicUrl } } = supabase.storage
-                    .from('game-film')
-                    .getPublicUrl(fileName);
+                // Obtain server-generated signed URL for immediate preview/playback
+                const signRes = await getSignedMediaUrl('game-film', storagePath);
+                if (signRes.success && signRes.signedUrl) {
+                    signedUrls.push(signRes.signedUrl);
+                } else {
+                    signedUrls.push(storagePath);
+                }
                 
-                publicUrls.push(publicUrl);
                 setUploadProgress(((i + 1) / selectedFiles.length) * 100);
             }
 
@@ -89,7 +98,7 @@ export function GameFilmUpload({ rosterId, sport, title = "Game Film Analysis", 
             setShowSuccess(true);
             if (onUploadComplete) onUploadComplete({ 
                 type: analysisType, 
-                url: publicUrls.join(','), 
+                url: signedUrls.join(','), 
                 eventId: targetEventId 
             });
             

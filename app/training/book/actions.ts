@@ -1,11 +1,75 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerSupabase } from "@/utils/supabase/server";
 import { getStripe } from "@/lib/stripe";
 import { INITIAL_TRAINING_SLOTS, TrainingSlot } from "@/constants/trainingAvailability";
 import { extractTakeawaysFromNotes } from "@/lib/utils";
 import { CoachScheduleRepository } from "@/lib/coach/coachScheduleRepository";
 import { formatFirstInitialLastName } from "@/lib/coach/types";
+
+export interface CoachAuthResult {
+    isAuthorized: boolean;
+    isCoach: boolean;
+    isAdmin: boolean;
+    userId: string | null;
+    email: string | null;
+    role: string | null;
+}
+
+export async function verifyCoachAuthorization(): Promise<CoachAuthResult> {
+    try {
+        const serverSupabase = await createServerSupabase();
+        const { data: { user } } = await serverSupabase.auth.getUser();
+        if (!user) {
+            return { isAuthorized: false, isCoach: false, isAdmin: false, userId: null, email: null, role: null };
+        }
+
+        const supabaseAdmin = getSupabaseAdmin();
+        const [{ data: prof }, { data: userRow }] = await Promise.all([
+            supabaseAdmin
+                .from('profiles')
+                .select('role, roles, email')
+                .eq('id', user.id)
+                .maybeSingle(),
+            supabaseAdmin
+                .from('users')
+                .select('role, email')
+                .eq('auth_user_id', user.id)
+                .maybeSingle()
+        ]);
+
+        const profileRole = prof?.role;
+        const rolesArr = Array.isArray(prof?.roles) ? prof?.roles : [];
+        const userRole = userRow?.role;
+
+        const isAdmin = (
+            profileRole === 'admin' ||
+            rolesArr.includes('admin') ||
+            userRole === 'admin' ||
+            user.email === 'eshevitz96@gmail.com'
+        );
+
+        const isCoach = (
+            isAdmin ||
+            profileRole === 'coach' ||
+            rolesArr.includes('coach') ||
+            userRole === 'coach'
+        );
+
+        return {
+            isAuthorized: Boolean(isCoach),
+            isCoach: Boolean(isCoach),
+            isAdmin: Boolean(isAdmin),
+            userId: user.id,
+            email: user.email || null,
+            role: isAdmin ? 'admin' : (isCoach ? 'coach' : (profileRole || userRole || 'goalie'))
+        };
+    } catch (e) {
+        console.error("[verifyCoachAuthorization] Error:", e);
+        return { isAuthorized: false, isCoach: false, isAdmin: false, userId: null, email: null, role: null };
+    }
+}
 
 const COACH_NOTIFICATION_EMAILS = [
     "eshevitz96@gmail.com",
@@ -176,29 +240,56 @@ export async function getAvailableTrainingSlots() {
 }
 
 /**
- * Fetch goalie's remaining balance & profile information
+ * Fetch goalie's remaining balance & profile information.
+ * Non-coach users are strictly derived from the authenticated session.
  */
-export async function getGoalieBookingProfile(goalieProfileId: string, userEmail?: string) {
+export async function getGoalieBookingProfile(goalieProfileId?: string, userEmail?: string) {
     try {
         const supabase = getSupabaseAdmin();
-        const trimmedEmail = userEmail?.trim();
+        const serverSupabase = await createServerSupabase();
+        const { data: { user } } = await serverSupabase.auth.getUser();
+
+        if (!user) {
+            return {
+                success: false,
+                goalieName: "Athlete",
+                email: "",
+                lessonsRemaining: 0,
+                totalAllowance: 0,
+                bookedCount: 0,
+                deliveredCount: 0,
+                existingSessions: [],
+                hasPaidAccess: false
+            };
+        }
+
+        const isCoach = await verifyCoachAuthorization();
+        
+        // If not coach/admin, derive goalie identity strictly from the user's authenticated session
+        let targetGoalieId = goalieProfileId;
+        let targetEmail = userEmail?.trim();
+
+        if (!isCoach) {
+            targetGoalieId = user.id;
+            targetEmail = user.email?.trim() || "";
+        }
 
         // 1. Check roster details (Authoritative source for client packages)
         let roster = null;
-        if (goalieProfileId && goalieProfileId !== '00000000-0000-0000-0000-000000000000') {
+        if (targetGoalieId && targetGoalieId !== '00000000-0000-0000-0000-000000000000') {
             const { data } = await supabase
                 .from('roster_uploads')
                 .select('*')
-                .or(`linked_user_id.eq.${goalieProfileId},id.eq.${goalieProfileId}`)
+                .or(`linked_user_id.eq.${targetGoalieId},id.eq.${targetGoalieId}`)
                 .maybeSingle();
             roster = data;
         }
 
-        if (!roster && trimmedEmail) {
+        if (!roster && targetEmail) {
             const { data } = await supabase
                 .from('roster_uploads')
                 .select('*')
-                .or(`email.ilike.${trimmedEmail},guardian_email.ilike.${trimmedEmail},athlete_email.ilike.${trimmedEmail}`)
+                .or(`email.ilike.${targetEmail},guardian_email.ilike.${targetEmail},athlete_email.ilike.${targetEmail}`)
                 .maybeSingle();
             roster = data;
         }
@@ -207,11 +298,11 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
         const { data: balance } = await supabase
             .from('goalie_lesson_balance')
             .select('*')
-            .or(`goalie_id.eq.${goalieProfileId}${trimmedEmail ? `,email.ilike.${trimmedEmail}` : ''}`)
+            .or(`goalie_id.eq.${targetGoalieId}${targetEmail ? `,email.ilike.${targetEmail}` : ''}`)
             .maybeSingle();
 
         let goalieName = roster?.goalie_name || balance?.goalie_name || "Athlete";
-        let email = roster?.email || roster?.guardian_email || balance?.email || trimmedEmail || "";
+        let email = roster?.email || roster?.guardian_email || balance?.email || targetEmail || "";
         let rosterId: string | null = roster?.id || null;
         let linkedUserId: string | null = roster?.linked_user_id || null;
 
@@ -249,9 +340,9 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
 
         // Fetch athlete's upcoming/booked sessions if identified
         let existingSessions: any[] = [];
-        if (rosterId || linkedUserId || (goalieProfileId && goalieProfileId !== '00000000-0000-0000-0000-000000000000')) {
+        if (rosterId || linkedUserId || (targetGoalieId && targetGoalieId !== '00000000-0000-0000-0000-000000000000')) {
             const orFilters = [
-                goalieProfileId && goalieProfileId !== '00000000-0000-0000-0000-000000000000' ? `goalie_id.eq.${goalieProfileId}` : null,
+                targetGoalieId && targetGoalieId !== '00000000-0000-0000-0000-000000000000' ? `goalie_id.eq.${targetGoalieId}` : null,
                 linkedUserId ? `goalie_id.eq.${linkedUserId}` : null,
                 rosterId ? `roster_id.eq.${rosterId}` : null
             ].filter(Boolean).join(',');
@@ -283,7 +374,7 @@ export async function getGoalieBookingProfile(goalieProfileId: string, userEmail
     } catch (err: any) {
         console.error("[getGoalieBookingProfile] Error:", err);
         return {
-            success: true,
+            success: false,
             goalieName: "Athlete",
             email: userEmail || "",
             lessonsRemaining: 0,
@@ -339,8 +430,22 @@ function createGoogleCalendarUrl(slot: TrainingSlot, athleteName: string, sessio
 export async function lookupAthleteByEmail(identifier: string) {
     try {
         const supabase = getSupabaseAdmin();
+        const serverSupabase = await createServerSupabase();
+        const { data: { user } } = await serverSupabase.auth.getUser();
+
+        if (!user) return { found: false };
+
+        const isCoach = await verifyCoachAuthorization();
         const clean = (identifier || '').trim().toLowerCase();
         if (!clean) return { found: false };
+
+        // Non-coaches can only look up their own email/identity
+        if (!isCoach) {
+            const userEmail = (user.email || '').toLowerCase().trim();
+            if (clean !== userEmail) {
+                return { found: false };
+            }
+        }
 
         const { data: roster } = await supabase
             .from('roster_uploads')
@@ -388,6 +493,7 @@ export async function bookTrainingSlots(payload: {
 }) {
     try {
         const supabase = getSupabaseAdmin();
+        const auth = await verifyCoachAuthorization();
         const { goalieProfileId, athleteName, email, selectedSlotIds } = payload;
         const cleanEmail = (email || '').trim();
         const cleanName = (athleteName || '').trim();
@@ -415,6 +521,7 @@ export async function bookTrainingSlots(payload: {
         let resolvedSport = 'Lacrosse';
         let resolvedGoalieId = goalieProfileId;
         let resolvedName = cleanName;
+        let resolvedCoachId: string | null = null;
 
         try {
             const { data: roster } = await supabase
@@ -429,6 +536,7 @@ export async function bookTrainingSlots(payload: {
                 resolvedRosterId = roster.id;
                 resolvedSport = roster.sport || 'Lacrosse';
                 resolvedName = roster.goalie_name || cleanName;
+                resolvedCoachId = roster.assigned_coach_id || null;
                 if (roster.linked_user_id) {
                     resolvedGoalieId = roster.linked_user_id;
                 }
@@ -468,6 +576,9 @@ export async function bookTrainingSlots(payload: {
                 if (sMatch) baseSessionNum = parseInt(sMatch[1], 10);
             }
             completedInPkg = raw.completed_in_package ?? 0;
+            if (rRow?.assigned_coach_id) {
+                resolvedCoachId = rRow.assigned_coach_id;
+            }
         }
 
         if (resolvedRosterId || resolvedGoalieId) {
@@ -536,7 +647,8 @@ export async function bookTrainingSlots(payload: {
                 location: slot.location,
                 notes: formattedTitle,
                 session_number: slotSessionNum,
-                lesson_number: slotLessonNum
+                lesson_number: slotLessonNum,
+                coach_id: auth.isCoach ? auth.userId : (resolvedCoachId || null)
             };
             if (resolvedRosterId) {
                 sessionPayload.roster_id = resolvedRosterId;
@@ -843,21 +955,44 @@ export async function completeTrainingSessionAndNotify(payload: {
     coachNotes?: string;
 }) {
     try {
+        const auth = await verifyCoachAuthorization();
+        if (!auth.isAuthorized) {
+            return { error: "Unauthorized: Coach role required." };
+        }
+
         const { sessionId, athleteName, clientEmail, coachNotes } = payload;
         const supabase = getSupabaseAdmin();
 
-        // 1. Update CoachScheduleRepository if block exists
-        const coachRepoResult = CoachScheduleRepository.completeLesson(sessionId, coachNotes);
-
-        // 2. Fetch session from Supabase
+        // 1. Fetch session from Supabase
         const { data: session } = await supabase
             .from('sessions')
             .select('*')
             .eq('id', sessionId)
             .maybeSingle();
 
+        // 2. Update CoachScheduleRepository if block exists
+        const coachRepoResult = CoachScheduleRepository.completeLesson(sessionId, coachNotes);
+
         if (!session && !coachRepoResult.success) {
             return { error: "Session record not found." };
+        }
+
+        // Ownership verification for non-admin coaches
+        if (!auth.isAdmin && auth.userId && session) {
+            let isOwner = session.coach_id === auth.userId;
+            if (!isOwner && session.roster_id) {
+                const { data: roster } = await supabase
+                    .from('roster_uploads')
+                    .select('assigned_coach_id')
+                    .eq('id', session.roster_id)
+                    .maybeSingle();
+                if (roster?.assigned_coach_id === auth.userId) {
+                    isOwner = true;
+                }
+            }
+            if (!isOwner) {
+                return { error: "Unauthorized: You do not manage this session." };
+            }
         }
 
         const resolvedName = athleteName || coachRepoResult.block?.client || "Athlete";
@@ -991,6 +1126,29 @@ export async function submitSessionTakeaways(payload: {
 
         if (!session) {
             return { error: "Session record not found." };
+        }
+
+        const auth = await verifyCoachAuthorization();
+        if (authorRole === 'coach') {
+            if (!auth.isAuthorized) {
+                return { error: "Unauthorized: Coach role required." };
+            }
+            if (!auth.isAdmin && auth.userId && session) {
+                let isOwner = session.coach_id === auth.userId;
+                if (!isOwner && session.roster_id) {
+                    const { data: roster } = await supabase
+                        .from('roster_uploads')
+                        .select('assigned_coach_id')
+                        .eq('id', session.roster_id)
+                        .maybeSingle();
+                    if (roster?.assigned_coach_id === auth.userId) {
+                        isOwner = true;
+                    }
+                }
+                if (!isOwner) {
+                    return { error: "Unauthorized: You do not manage this session." };
+                }
+            }
         }
 
         const existingNotes = session.notes || '';
@@ -1188,57 +1346,28 @@ async function getCachedStripeSubscriptions() {
     }
 }
 
-/**
- * Loads all CoachOS data directly via elevated Server Role (bypassing RLS barriers)
- */
 export async function fetchCoachOSData(userId?: string, userEmail?: string) {
     try {
-        const supabase = getSupabaseAdmin();
-
-        // 1. Verify coach authorization
-        let isAuthorized = false;
-        const normalizedEmail = userEmail?.toLowerCase()?.trim();
-
-        if (!userId && !userEmail) {
-            isAuthorized = true; // Development fallback
-        } else if (normalizedEmail === 'eshevitz96@gmail.com' || normalizedEmail?.includes('shevitz') || normalizedEmail?.includes('thegoaliebrand')) {
-            isAuthorized = true;
-        } else if (userId) {
-            const [{ data: prof }, { data: userRow }] = await Promise.all([
-                supabase
-                    .from('profiles')
-                    .select('role, roles, email')
-                    .eq('id', userId)
-                    .maybeSingle(),
-                supabase
-                    .from('users')
-                    .select('role, email')
-                    .eq('auth_user_id', userId)
-                    .maybeSingle()
-            ]);
-
-            const profRoles = Array.isArray(prof?.roles) ? prof.roles : [];
-            const userEmailMatch = prof?.email?.toLowerCase() === 'eshevitz96@gmail.com' || userRow?.email?.toLowerCase() === 'eshevitz96@gmail.com';
-
-            if (
-                prof?.role === 'coach' || 
-                prof?.role === 'admin' || 
-                profRoles.includes('coach') || 
-                profRoles.includes('admin') || 
-                userRow?.role === 'coach' || 
-                userRow?.role === 'admin' || 
-                userEmailMatch
-            ) {
-                isAuthorized = true;
-            } else {
-                // Also default to authorized for development/local coach view
-                isAuthorized = true;
-            }
-        } else {
-            isAuthorized = true;
+        const auth = await verifyCoachAuthorization();
+        if (!auth.isAuthorized) {
+            return {
+                success: false,
+                isAuthorized: false,
+                error: "Unauthorized: Coach role required."
+            };
         }
 
-        // 2. Fetch all datasets and Stripe subscriptions concurrently (using cached Stripe subscriptions)
+        const supabase = getSupabaseAdmin();
+
+        // 2. Fetch all datasets and Stripe subscriptions concurrently (scoped to assigned coach unless admin)
+        let rosterQuery = supabase.from('roster_uploads').select('*').order('goalie_name', { ascending: true });
+        let sessionQuery = supabase.from('sessions').select('*').order('date', { ascending: false });
+
+        if (!auth.isAdmin && auth.userId) {
+            rosterQuery = rosterQuery.eq('assigned_coach_id', auth.userId);
+            sessionQuery = sessionQuery.eq('coach_id', auth.userId);
+        }
+
         const [
             { data: allRosters },
             { data: allProfiles },
@@ -1246,16 +1375,22 @@ export async function fetchCoachOSData(userId?: string, userEmail?: string) {
             { data: allSessions },
             stripeSubsList
         ] = await Promise.all([
-            supabase.from('roster_uploads').select('*').order('goalie_name', { ascending: true }),
+            rosterQuery,
             supabase.from('profiles').select('id, goalie_name, full_name, email'),
             supabase.from('private_training_submissions').select('*').order('created_at', { ascending: false }),
-            supabase.from('sessions').select('*').order('date', { ascending: false }),
+            sessionQuery,
             getCachedStripeSubscriptions()
         ]);
 
         const rosterList = allRosters || [];
         const profileList = allProfiles || [];
-        const subList = allSubmissions || [];
+        // Filter submissions to coach's assigned athletes if not admin
+        const rawSubList = allSubmissions || [];
+        const rosterIds = new Set(rosterList.map(r => r.id));
+        const rosterEmails = new Set(rosterList.map(r => (r.email || r.guardian_email || '').toLowerCase()).filter(Boolean));
+        const subList = auth.isAdmin 
+            ? rawSubList 
+            : rawSubList.filter(s => (s.roster_id && rosterIds.has(s.roster_id)) || (s.email && rosterEmails.has(s.email.toLowerCase())));
 
         // 3. Hydrate sessions with full athlete details
         const hydratedSessions: SessionWithAthlete[] = (allSessions || []).map(sess => {
@@ -1583,8 +1718,9 @@ export async function fetchCoachOSData(userId?: string, userEmail?: string) {
 
         // 5. Fetch Active Contracts
         let hydratedContracts: any[] = [];
-        if (userId) {
-            const { data: contractsData } = await supabase
+        const targetCoachId = auth.isAdmin ? (userId || auth.userId) : auth.userId;
+        if (targetCoachId) {
+            let contractsQuery = supabase
                 .from('contracts')
                 .select(`
                     *,
@@ -1594,8 +1730,13 @@ export async function fetchCoachOSData(userId?: string, userEmail?: string) {
                         film_reviews_per_month
                     )
                 `)
-                .eq('coach_id', userId)
                 .eq('status', 'active');
+
+            if (!auth.isAdmin) {
+                contractsQuery = contractsQuery.eq('coach_id', targetCoachId);
+            }
+
+            const { data: contractsData } = await contractsQuery;
 
             if (contractsData && contractsData.length > 0) {
                 const athleteIds = contractsData.map(c => c.athlete_id);
@@ -1632,25 +1773,39 @@ export async function fetchCoachOSData(userId?: string, userEmail?: string) {
 
 export async function fetchCoachDashboardCounts(monStr: string, nextMonStr: string) {
     try {
+        const auth = await verifyCoachAuthorization();
+        if (!auth.isAuthorized) {
+            return {
+                weekSessionsCount: 0,
+                totalRosterCount: 0
+            };
+        }
+
         const supabase = getSupabaseAdmin();
 
-        const [{ count: sCount }, { count: rCount }, { count: subCount }] = await Promise.all([
-            supabase
-                .from('sessions')
-                .select('*', { count: 'exact', head: true })
-                .gte('date', monStr)
-                .lt('date', nextMonStr),
-            supabase
-                .from('roster_uploads')
-                .select('*', { count: 'exact', head: true }),
-            supabase
-                .from('private_training_submissions')
-                .select('*', { count: 'exact', head: true })
+        let sessionCountQuery = supabase
+            .from('sessions')
+            .select('*', { count: 'exact', head: true })
+            .gte('date', monStr)
+            .lt('date', nextMonStr);
+
+        let rosterCountQuery = supabase
+            .from('roster_uploads')
+            .select('*', { count: 'exact', head: true });
+
+        if (!auth.isAdmin && auth.userId) {
+            sessionCountQuery = sessionCountQuery.eq('coach_id', auth.userId);
+            rosterCountQuery = rosterCountQuery.eq('assigned_coach_id', auth.userId);
+        }
+
+        const [{ count: sCount }, { count: rCount }] = await Promise.all([
+            sessionCountQuery,
+            rosterCountQuery
         ]);
 
         return {
             weekSessionsCount: sCount || 0,
-            totalRosterCount: (rCount || 0) + (subCount || 0)
+            totalRosterCount: rCount || 0
         };
     } catch (err) {
         console.error("[fetchCoachDashboardCounts] Error:", err);
@@ -1667,6 +1822,28 @@ export async function toggleStripeSubscriptionPause(params: {
     action: 'pause' | 'resume';
 }) {
     try {
+        const auth = await verifyCoachAuthorization();
+        if (!auth.isAuthorized) {
+            return { error: "Unauthorized: Coach role required." };
+        }
+
+        if (!auth.isAdmin) {
+            const emailToVerify = params.customerEmail?.trim();
+            if (!emailToVerify) {
+                return { error: "Customer email required to verify subscription management permissions." };
+            }
+            const supabase = getSupabaseAdmin();
+            const { data: roster } = await supabase
+                .from('roster_uploads')
+                .select('assigned_coach_id')
+                .or(`email.ilike.${emailToVerify},guardian_email.ilike.${emailToVerify},athlete_email.ilike.${emailToVerify}`)
+                .maybeSingle();
+
+            if (!roster || roster.assigned_coach_id !== auth.userId) {
+                return { error: "Unauthorized: You do not manage this athlete's subscription." };
+            }
+        }
+
         const stripe = getStripe();
         let subId = params.subscriptionId;
 
@@ -1706,15 +1883,34 @@ export async function toggleStripeSubscriptionPause(params: {
  */
 export async function getCalendarPrivateLessons() {
     try {
+        const auth = await verifyCoachAuthorization();
+        if (!auth.isAuthorized) {
+            return {
+                success: false,
+                error: "Unauthorized: Coach role required",
+                sessions: [],
+                athletes: []
+            };
+        }
+
         const supabase = getSupabaseAdmin();
+        
+        let rosterQuery = supabase.from('roster_uploads').select('*').order('goalie_name', { ascending: true });
+        let sessionQuery = supabase.from('sessions').select('*').order('date', { ascending: false });
+
+        if (!auth.isAdmin && auth.userId) {
+            rosterQuery = rosterQuery.eq('assigned_coach_id', auth.userId);
+            sessionQuery = sessionQuery.eq('coach_id', auth.userId);
+        }
+
         const [
             { data: allRosters },
             { data: allProfiles },
             { data: allSessions }
         ] = await Promise.all([
-            supabase.from('roster_uploads').select('*').order('goalie_name', { ascending: true }),
+            rosterQuery,
             supabase.from('profiles').select('id, goalie_name, full_name, email'),
-            supabase.from('sessions').select('*').order('date', { ascending: false })
+            sessionQuery
         ]);
 
         const rosterList = allRosters || [];
@@ -1875,6 +2071,11 @@ export async function saveCalendarLessonUpdate(payload: {
     clientEmail?: string;
 }) {
     try {
+        const auth = await verifyCoachAuthorization();
+        if (!auth.isAuthorized) {
+            return { success: false, error: "Unauthorized: Coach role required." };
+        }
+
         const supabase = getSupabaseAdmin();
         const {
             id,
@@ -1888,6 +2089,35 @@ export async function saveCalendarLessonUpdate(payload: {
             athleteName,
             clientEmail
         } = payload;
+
+        // Verify coach ownership if not admin
+        if (!auth.isAdmin && auth.userId) {
+            const { data: existingSession } = await supabase
+                .from('sessions')
+                .select('id, coach_id, roster_id')
+                .eq('id', id)
+                .maybeSingle();
+
+            if (!existingSession) {
+                return { success: false, error: "Session not found." };
+            }
+
+            let isOwner = existingSession.coach_id === auth.userId;
+            if (!isOwner && existingSession.roster_id) {
+                const { data: roster } = await supabase
+                    .from('roster_uploads')
+                    .select('assigned_coach_id')
+                    .eq('id', existingSession.roster_id)
+                    .maybeSingle();
+                if (roster?.assigned_coach_id === auth.userId) {
+                    isOwner = true;
+                }
+            }
+
+            if (!isOwner) {
+                return { success: false, error: "Unauthorized: You do not manage this session." };
+            }
+        }
 
         let isoDate = date;
         if (!date.includes('T')) {
@@ -1947,8 +2177,6 @@ export async function saveCalendarLessonUpdate(payload: {
             }
         }
 
-        // Takeaway notes are stored in session notes for parents/goalies to view upon login (email dispatch disabled)
-
         // Create in-app notification if user is linked
         if (targetUserId) {
             try {
@@ -1976,7 +2204,42 @@ export async function saveCalendarLessonUpdate(payload: {
  */
 export async function deleteCalendarLesson(id: string) {
     try {
+        const auth = await verifyCoachAuthorization();
+        if (!auth.isAuthorized) {
+            return { success: false, error: "Unauthorized: Coach role required." };
+        }
+
         const supabase = getSupabaseAdmin();
+
+        // Verify coach ownership if not admin
+        if (!auth.isAdmin && auth.userId) {
+            const { data: existingSession } = await supabase
+                .from('sessions')
+                .select('id, coach_id, roster_id')
+                .eq('id', id)
+                .maybeSingle();
+
+            if (!existingSession) {
+                return { success: false, error: "Session not found." };
+            }
+
+            let isOwner = existingSession.coach_id === auth.userId;
+            if (!isOwner && existingSession.roster_id) {
+                const { data: roster } = await supabase
+                    .from('roster_uploads')
+                    .select('assigned_coach_id')
+                    .eq('id', existingSession.roster_id)
+                    .maybeSingle();
+                if (roster?.assigned_coach_id === auth.userId) {
+                    isOwner = true;
+                }
+            }
+
+            if (!isOwner) {
+                return { success: false, error: "Unauthorized: You do not manage this session." };
+            }
+        }
+
         const { error } = await supabase
             .from('sessions')
             .delete()
@@ -2004,6 +2267,11 @@ export async function createCalendarPrivateLesson(payload: {
     athleteName?: string;
 }) {
     try {
+        const auth = await verifyCoachAuthorization();
+        if (!auth.isAuthorized) {
+            return { success: false, error: "Unauthorized: Coach role required." };
+        }
+
         const supabase = getSupabaseAdmin();
         const {
             date,
@@ -2037,17 +2305,22 @@ export async function createCalendarPrivateLesson(payload: {
             start_time: isoDate,
             location: location || "Field / Training Facility",
             notes: formattedNotes,
-            sport: "Lacrosse"
+            sport: "Lacrosse",
+            coach_id: auth.userId || null
         };
 
         if (rosterId && rosterId !== 'custom') {
             insertData.roster_id = rosterId;
-            // Also link goalie_id if roster row has linked_user_id
             const { data: rRow } = await supabase
                 .from('roster_uploads')
-                .select('linked_user_id')
+                .select('linked_user_id, assigned_coach_id')
                 .eq('id', rosterId)
                 .maybeSingle();
+
+            if (!auth.isAdmin && auth.userId && rRow?.assigned_coach_id && rRow.assigned_coach_id !== auth.userId) {
+                return { success: false, error: "Unauthorized: You do not manage this athlete." };
+            }
+
             if (rRow?.linked_user_id) {
                 insertData.goalie_id = rRow.linked_user_id;
             }
@@ -2075,6 +2348,70 @@ export async function createCalendarPrivateLesson(payload: {
     } catch (err: any) {
         console.error("[createCalendarPrivateLesson] Server Error:", err);
         return { success: false, error: err?.message || "Failed to create coaching lesson." };
+    }
+}
+
+/**
+ * Server action: Add an athlete to a coach's roster with server-side assigned_coach_id
+ */
+export async function addCoachAthlete(payload: {
+    goalieName: string;
+    email: string;
+    phone?: string;
+    team?: string;
+    gradYear?: string | number;
+    lessonCount?: number;
+}) {
+    try {
+        const auth = await verifyCoachAuthorization();
+        if (!auth.isAuthorized) {
+            return { success: false, error: "Unauthorized: Coach role required." };
+        }
+
+        const supabase = getSupabaseAdmin();
+        const {
+            goalieName,
+            email,
+            phone,
+            team,
+            gradYear,
+            lessonCount
+        } = payload;
+
+        const cleanEmail = (email || '').trim().toLowerCase();
+        if (!cleanEmail) {
+            return { success: false, error: "Email is required." };
+        }
+        if (!goalieName || !goalieName.trim()) {
+            return { success: false, error: "Athlete name is required." };
+        }
+
+        const insertPayload: any = {
+            goalie_name: goalieName.trim(),
+            email: cleanEmail,
+            phone: phone || null,
+            team: team || "Private Training",
+            grad_year: gradYear || null,
+            lesson_count: lessonCount || 4,
+            payment_status: 'paid',
+            assigned_coach_id: auth.userId
+        };
+
+        const { data: newRoster, error } = await supabase
+            .from('roster_uploads')
+            .upsert(insertPayload, { onConflict: 'email' })
+            .select()
+            .single();
+
+        if (error) {
+            console.error("[addCoachAthlete] DB error:", error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true, athlete: newRoster };
+    } catch (err: any) {
+        console.error("[addCoachAthlete] Server error:", err);
+        return { success: false, error: err?.message || "Failed to add athlete." };
     }
 }
 

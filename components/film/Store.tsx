@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Clip, Shot, SportType, GameReport, ShotTypeType } from '@/types/game';
 import { supabase } from '@/utils/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { fetchFilmReports, toggleClipShareWithCoach } from '@/app/film/actions';
 
 interface AppState {
   reportId: string;
@@ -16,6 +17,7 @@ interface AppState {
   autoPlayEnabled: boolean;
   reports: GameReport[];
   loading: boolean;
+  isCoachView: boolean;
   
   // Actions
   setTitle: (title: string) => void;
@@ -34,6 +36,8 @@ interface AppState {
   loadReport: (report: GameReport) => void;
   saveReport: () => Promise<void>;
   clearSession: () => void;
+  toggleShareWithCoach: (clipId: string) => Promise<void>;
+  refreshReports: () => Promise<void>;
 }
 
 const AppStoreContext = createContext<AppState | undefined>(undefined);
@@ -62,6 +66,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sport, setSport] = useState<SportType>('Hockey');
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
   const [reports, setReports] = useState<GameReport[]>([]);
+  const [isCoachView, setIsCoachView] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Helper mapper to translate user primary_sport to film SportType
@@ -85,7 +90,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Load sport on initialization (respecting localStorage first, then Supabase user profile, then falling back)
+  // Load sport on initialization
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('film-analysis-sport');
@@ -118,77 +123,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadUserPrimarySport();
   }, [userId]);
 
-  // Fetch reports from Supabase when userId is resolved
+  // Fetch reports from Supabase with server-side access control and signed URLs
   const fetchReports = async () => {
     if (!userId) return;
     setLoading(true);
     try {
-      // 1. Fetch user's own game reports via RLS
-      const { data: reportsData, error: reportsError } = await supabase
-        .from('game_reports')
-        .select('*')
-        .eq('user_id', userId)
-        .order('date', { ascending: false });
-
-      if (reportsError) throw reportsError;
-
-      if (!reportsData || reportsData.length === 0) {
-        setReports([]);
-        return;
+      const res = await fetchFilmReports();
+      if (res.success && res.reports) {
+        setReports(res.reports);
+        setIsCoachView(Boolean(res.isCoachView));
+      } else if (res.error) {
+        console.error('Error fetching film reports:', res.error);
       }
-
-      const reportIds = reportsData.map(r => r.id);
-
-      // 2. Parallel fetch clips and shots for these reports
-      const [clipsRes, shotsRes] = await Promise.all([
-        supabase.from('film_clips').select('*').in('report_id', reportIds),
-        supabase.from('film_shots').select('*').in('report_id', reportIds)
-      ]);
-
-      if (clipsRes.error) throw clipsRes.error;
-      if (shotsRes.error) throw shotsRes.error;
-
-      // 3. Assemble the full GameReport objects
-      const assembledReports: GameReport[] = reportsData.map(report => {
-        const reportClips = (clipsRes.data || [])
-          .filter(c => c.report_id === report.id)
-          .map(c => ({
-            id: c.id,
-            name: c.name,
-            size: Number(c.size || 0),
-            url: c.url || '',
-            file: null
-          }));
-
-        const reportShots = (shotsRes.data || [])
-          .filter(s => s.report_id === report.id)
-          .map(s => ({
-            id: s.id,
-            clipId: s.clip_id,
-            timestamp: new Date(s.created_at).getTime(),
-            period: s.period,
-            shotType: s.shot_type as ShotTypeType,
-            isDeflected: s.is_deflected,
-            isScreened: s.is_screened || false,
-            isSave: s.is_save,
-            netLocation: s.net_x !== null && s.net_y !== null ? { x: Number(s.net_x), y: Number(s.net_y) } : null,
-            rinkLocation: s.rink_x !== null && s.rink_y !== null ? { x: Number(s.rink_x), y: Number(s.rink_y) } : null,
-            videoTime: s.video_time !== null ? Number(s.video_time) : undefined
-          }));
-
-        return {
-          id: report.id,
-          title: report.title,
-          date: report.date,
-          sport: report.sport as SportType,
-          clips: reportClips,
-          shots: reportShots
-        };
-      });
-
-      setReports(assembledReports);
     } catch (err) {
-      console.error('Error fetching reports from Supabase:', err);
+      console.error('Error in fetchReports:', err);
     } finally {
       setLoading(false);
     }
@@ -210,7 +158,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       name: file.name,
       size: file.size,
       url: URL.createObjectURL(file),
-      file: file
+      file: file,
+      sharedWithCoach: false
     }));
     setClips(prev => [...prev, ...newClips]);
     if (!activeClipId && newClips.length > 0) {
@@ -218,7 +167,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-    const relinkClip = (clipId: string, file: File) => {
+  const relinkClip = (clipId: string, file: File) => {
     setClips(prev => prev.map(c => {
       if (c.id === clipId) {
         return {
@@ -254,6 +203,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDeletedClips(prev => prev.filter(c => c.id !== clipId));
   };
 
+  const toggleShareWithCoach = async (clipId: string) => {
+    const clip = clips.find(c => c.id === clipId);
+    const newShared = !clip?.sharedWithCoach;
+    
+    // Update local state immediately for snappy UX
+    setClips(prev => prev.map(c => c.id === clipId ? { ...c, sharedWithCoach: newShared } : c));
+
+    try {
+      const res = await toggleClipShareWithCoach(clipId, newShared);
+      if (!res.success) {
+        // Revert on error
+        setClips(prev => prev.map(c => c.id === clipId ? { ...c, sharedWithCoach: !newShared } : c));
+        alert(`Failed to update share setting: ${res.error}`);
+      }
+    } catch (err: any) {
+      setClips(prev => prev.map(c => c.id === clipId ? { ...c, sharedWithCoach: !newShared } : c));
+      alert(`Error toggling share setting: ${err.message}`);
+    }
+  };
+
   const addShot = (shotData: Omit<Shot, 'id' | 'timestamp'>) => {
     const newShot: Shot = {
       ...shotData,
@@ -282,7 +251,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const saveReport = async () => {
-    // Dynamically retrieve the authentic auth.uid() from the active Supabase session
+    // Dynamically retrieve authentic auth.uid() from the active Supabase session
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     const authUid = user?.id || userId;
 
@@ -316,7 +285,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const savedReportId = insertedReport?.id || reportId;
 
-      // 2. Sync clips (delete and insert)
+      // 2. Upload any local clip files to private storage under {authUid}/...
+      const processedClips: Array<{ id: string; name: string; storagePath: string | null; size: number; sharedWithCoach: boolean }> = [];
+
+      for (const clip of clips) {
+        let storagePath: string | null = null;
+
+        if (clip.file) {
+          const sanitizedFileName = clip.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const destPath = `${authUid}/${clip.id}_${sanitizedFileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('game-film')
+            .upload(destPath, clip.file, {
+              cacheControl: '3600',
+              upsert: true
+            });
+
+          if (uploadError) {
+            console.warn(`[saveReport] Storage upload warning for ${clip.name}:`, uploadError);
+            // Fallback: keep existing relative path if any
+            storagePath = clip.url && !clip.url.startsWith('blob:') ? clip.url : destPath;
+          } else {
+            storagePath = destPath;
+          }
+        } else if (clip.url && !clip.url.startsWith('blob:')) {
+          // Already a storage path or URL, strip out host/bucket to keep relative path
+          if (clip.url.includes('/game-film/')) {
+            const parts = clip.url.split('/game-film/');
+            storagePath = parts[1];
+          } else {
+            storagePath = clip.url;
+          }
+        }
+
+        processedClips.push({
+          id: clip.id,
+          name: clip.name,
+          storagePath: storagePath,
+          size: clip.size || 0,
+          sharedWithCoach: Boolean(clip.sharedWithCoach)
+        });
+      }
+
+      // 3. Sync clips (delete and insert)
       const { error: clipsDeleteError } = await supabase
         .from('film_clips')
         .delete()
@@ -327,14 +339,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         alert(`Warning: Failed to clean up old clips: ${clipsDeleteError.message}`);
       }
 
-      if (clips.length > 0) {
-        const insertClips = clips.map(c => ({
+      if (processedClips.length > 0) {
+        const insertClips = processedClips.map(c => ({
           id: c.id,
           report_id: savedReportId,
           user_id: authUid,
           name: c.name,
-          url: c.url || null,
-          size: c.size || 0
+          url: c.storagePath, // Relative storage path only — never public URL
+          size: c.size,
+          shared_with_coach: c.sharedWithCoach
         }));
 
         const { error: clipsError } = await supabase
@@ -348,7 +361,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // 3. Sync shots (delete and insert)
+      // 4. Sync shots (delete and insert)
       const { error: shotsDeleteError } = await supabase
         .from('film_shots')
         .delete()
@@ -388,8 +401,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // 4. Sync aggregate stats to game_sessions (for Dashboard and Profile)
-      // Resolve the public.users.id mapped to this authUid (due to different identity contract on game_sessions)
+      // 5. Sync aggregate stats to game_sessions (for Dashboard and Profile)
       const { data: pubUser, error: pubUserError } = await supabase
         .from('users')
         .select('id')
@@ -408,7 +420,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         let targetGameId = null;
 
-        // Check if game_session already exists and has a game_id
         const { data: existingSession } = await supabase
           .from('game_sessions')
           .select('game_id')
@@ -418,27 +429,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         targetGameId = existingSession?.game_id;
 
         if (!targetGameId) {
-            // Create a canonical games row to satisfy the not-null constraint
-            const { data: newGame, error: newGameError } = await supabase
-                .from('games')
-                .insert({
-                    opponent_name: title || 'Film Session',
-                    game_date: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                    location: 'Film Room'
-                })
-                .select('id')
-                .single();
-            if (!newGameError && newGame) {
-                targetGameId = newGame.id;
-            }
+          const { data: newGame, error: newGameError } = await supabase
+            .from('games')
+            .insert({
+              opponent_name: title || 'Film Session',
+              game_date: date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              location: 'Film Room'
+            })
+            .select('id')
+            .single();
+          if (!newGameError && newGame) {
+            targetGameId = newGame.id;
+          }
         }
 
         const { error: sessionError } = await supabase
           .from('game_sessions')
           .upsert({
-            id: savedReportId, // 1:1 Parity
-            user_id: pubUser.id, // Must be the public.users.id
-            game_id: targetGameId, // Fixes NOT-NULL constraint
+            id: savedReportId,
+            user_id: pubUser.id,
+            game_id: targetGameId,
             status: 'complete',
             started_at: date || new Date().toISOString(),
             completed_at: new Date().toISOString(),
@@ -451,19 +461,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (sessionError) {
           console.error('game_sessions save error (non-blocking):', sessionError);
-          alert(`Warning: Failed to sync game session stats: ${sessionError.message}`);
         }
-      } else {
-        console.log('Skipping game_sessions sync: No matching public.users row found for auth user ID:', authUid);
       }
 
-      // 5. Refresh Reports List
+      // 6. Refresh Reports List
       await fetchReports();
 
     } catch (err) {
       console.error('Failed to save report to Supabase:', err);
       alert(`Error saving report: ${(err as any)?.message || err}`);
-      throw err; // Re-throw so callers like goToLibrary know it failed and keep the session active
+      throw err;
     }
   };
 
@@ -503,7 +510,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadReport,
     saveReport,
     clearSession,
+    toggleShareWithCoach,
+    refreshReports: fetchReports,
     reports,
+    isCoachView,
     loading
   };
 

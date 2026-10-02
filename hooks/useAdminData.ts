@@ -47,7 +47,7 @@ export function useAdminData() {
             setCurrentUser({ ...user, role: effectiveRole });
         }
 
-        const { data } = await supabase.from('profiles').select('id, goalie_name').eq('role', 'coach');
+        const { data } = await supabase.from('profiles').select('id, goalie_name').or('role.eq.coach,role.eq.admin');
         if (data) {
             setCoaches(data.map(c => ({ id: c.id, name: c.goalie_name || 'Unnamed Coach' })));
         }
