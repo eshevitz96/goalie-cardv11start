@@ -119,9 +119,9 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                                         <Settings size={16} /> Account Settings
                                     </Link>
                                     
-                                    {userRole === 'admin' && (
+                                    {(userRole === 'coach' || userRole === 'admin') && (
                                         <Link onClick={() => setIsUserMenuOpen(false)} href="/coach" className="w-full text-left px-3 py-2 rounded-lg text-sm text-primary font-bold hover:bg-primary/10 transition-colors flex items-center gap-2 mb-1">
-                                            <ShieldCheck size={16} /> Admin Dashboard
+                                            <ShieldCheck size={16} /> {userRole === 'admin' ? 'Admin Dashboard' : 'Coach Portal'}
                                         </Link>
                                     )}
 

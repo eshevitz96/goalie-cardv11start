@@ -38,7 +38,7 @@ import {
   X,
   Trash2
 } from "lucide-react";
-import { getCalendarPrivateLessons, fetchCoachOSData, saveCalendarLessonUpdate, deleteCalendarLesson, createCalendarPrivateLesson } from "@/app/training/book/actions";
+import { getCalendarPrivateLessons, fetchCoachOSData, saveCalendarLessonUpdate, deleteCalendarLesson, createCalendarPrivateLesson, verifyCoachAuthorization } from "@/app/training/book/actions";
 import { extractTakeawaysFromNotes } from "@/lib/utils";
 import { useToast } from "@/context/ToastContext";
 
@@ -317,8 +317,8 @@ export default function CalendarPage() {
         publicUserId = userRes?.id;
         userEmail = (authUserData?.user?.email || userRes?.email || profileRes?.email || "").toLowerCase().trim();
         goalieName = (profileRes?.goalie_name || profileRes?.full_name || "").trim();
-        const isCoachRole = profileRes?.role === 'coach' || (Array.isArray(profileRes?.roles) && profileRes?.roles.includes('coach')) || userRes?.role === 'coach' || profileRes?.role === 'admin' || userRes?.role === 'admin';
-        isCoachUser = Boolean(isCoachRole);
+        const coachAuth = await verifyCoachAuthorization();
+        isCoachUser = Boolean(coachAuth.isCoach);
       }
 
       setIsCoach(isCoachUser);

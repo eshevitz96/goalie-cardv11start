@@ -15,7 +15,7 @@ import { v11Engine } from "@/lib/v11-engine";
 import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { DigitalSignatureModal } from "@/components/goalie/DigitalSignatureModal";
-import { getGoalieBookingProfile, fetchCoachDashboardCounts } from "@/app/training/book/actions";
+import { getGoalieBookingProfile, fetchCoachDashboardCounts, verifyCoachAuthorization } from "@/app/training/book/actions";
 import { usePerformanceRealtime } from "@/hooks/usePerformanceRealtime";
 import { twMerge } from "tailwind-merge";
 
@@ -356,8 +356,9 @@ export default function Dashboard() {
                     const weeklyIntentionText = intentionRes?.intention_text || null;
                     setHasWeeklyIntention(!!weeklyIntentionText);
 
-                    // Fetch Coach Mode status and statistics (strictly enrolled coaches/admins)
-                    const isCoach = auth.userRole === 'coach' || auth.userRole === 'admin' || auth.userRoles?.includes('coach') || auth.userRoles?.includes('admin') || auth.userEmail === 'eshevitz96@gmail.com';
+                    // Fetch Coach Mode status and statistics strictly via server-side verifyCoachAuthorization
+                    const coachAuth = await verifyCoachAuthorization();
+                    const isCoach = Boolean(coachAuth.isCoach);
                     setIsCoachMode(isCoach);
 
                     if (isCoach) {
