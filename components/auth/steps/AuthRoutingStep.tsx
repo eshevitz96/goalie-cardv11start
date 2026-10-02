@@ -15,7 +15,10 @@ interface AuthRoutingStepProps {
 export function AuthRoutingStep({ showRoleSelector, userRoles = [] }: AuthRoutingStepProps) {
     const router = useRouter();
 
-    const hasRole = (role: UserRole) => userRoles.includes(role) || userRoles.includes('admin');
+    // Strict role check: only granted profiles.role = 'coach' or 'admin' can access coach workspace
+    const isCoachOrAdmin = userRoles.includes('coach') || userRoles.includes('admin');
+    const isAdmin = userRoles.includes('admin');
+    const isGoalieOrParent = userRoles.includes('goalie') || userRoles.includes('parent');
 
     return (
         <motion.div
@@ -31,7 +34,7 @@ export function AuthRoutingStep({ showRoleSelector, userRoles = [] }: AuthRoutin
                         <p className="text-zinc-500 text-xs font-mono">Select your workspace</p>
                     </div>
 
-                    {hasRole('admin') && (
+                    {isAdmin && (
                         <Button variant="ghost" onClick={() => router.replace('/admin')} className="w-full p-6 bg-zinc-900 border border-zinc-800 hover:border-white hover:bg-black rounded-2xl group transition-all text-left relative overflow-hidden h-auto block">
                             <div className="absolute right-4 top-4 opacity-20 group-hover:opacity-100 transition-opacity">
                                 <GoalieGuardLogo className="text-white" size={32} />
@@ -41,7 +44,7 @@ export function AuthRoutingStep({ showRoleSelector, userRoles = [] }: AuthRoutin
                         </Button>
                     )}
 
-                    {hasRole('coach') && (
+                    {isCoachOrAdmin && (
                         <Button variant="ghost" onClick={() => router.replace('/coach')} className="w-full p-6 bg-zinc-900 border border-zinc-800 hover:border-primary hover:bg-black rounded-2xl group transition-all text-left relative overflow-hidden h-auto block">
                             <div className="absolute right-4 top-4 opacity-20 group-hover:opacity-100 transition-opacity">
                                 <User className="text-primary" size={32} />
@@ -51,7 +54,7 @@ export function AuthRoutingStep({ showRoleSelector, userRoles = [] }: AuthRoutin
                         </Button>
                     )}
 
-                    {(hasRole('goalie') || hasRole('parent')) && (
+                    {isGoalieOrParent && (
                         <Button variant="ghost" onClick={() => router.replace('/dashboard')} className="w-full p-6 bg-zinc-900 border border-zinc-800 hover:border-emerald-500 hover:bg-black rounded-2xl group transition-all text-left relative overflow-hidden h-auto block">
                             <div className="absolute right-4 top-4 opacity-20 group-hover:opacity-100 transition-opacity">
                                 <FileText className="text-emerald-500" size={32} />
