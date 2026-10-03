@@ -42,12 +42,38 @@ export function ParentHeader({ activeGoalie, userRole, handleLogout }: ParentHea
                             </Link>
                         )}
 
+                        <Link href="/parent/payments" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
+                            <Settings size={16} /> Billing & Invoices
+                        </Link>
                         <Link href="/parent/profile" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                             <Settings size={16} /> Account Settings
                         </Link>
                         <Link href="/activate" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                             <Plus size={16} /> Link Access ID
                         </Link>
+
+                        {userRole !== 'coach' && userRole !== 'admin' && (
+                            <button 
+                                onClick={async () => {
+                                    if (confirm("Request Coach Access? Elliott will review and approve your request.")) {
+                                        const { supabase } = await import("@/utils/supabase/client");
+                                        const { data: { user } } = await supabase.auth.getUser();
+                                        if (user?.email) {
+                                            const { requestCoachAccess } = await import("@/app/training/book/actions");
+                                            await requestCoachAccess({
+                                                userId: user.id,
+                                                userEmail: user.email,
+                                                userName: activeGoalie?.name || user.email
+                                            });
+                                        }
+                                        alert("Coach access request submitted for Elliott's review.");
+                                    }
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+                            >
+                                <Briefcase size={14} /> Request Coach Access
+                            </button>
+                        )}
 
 
                         <div className="h-px bg-border my-1" />

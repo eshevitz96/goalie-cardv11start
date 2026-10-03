@@ -27,6 +27,7 @@ import {
     CreditCard
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { CoachScheduler } from "@/components/CoachScheduler";
 import { submitSessionTakeaways, completeTrainingSessionAndNotify, requestCoachAccess, fetchCoachOSData } from "@/app/training/book/actions";
@@ -77,6 +78,7 @@ interface AthleteRosterItem {
 }
 
 export default function CoachDashboard() {
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
     const [currentAuthUser, setCurrentAuthUser] = useState<any>(null);
@@ -187,6 +189,7 @@ export default function CoachDashboard() {
             if (res.isAuthorized === false) {
                 setIsAuthorized(false);
                 setIsLoading(false);
+                router.replace('/dashboard');
                 return;
             }
 

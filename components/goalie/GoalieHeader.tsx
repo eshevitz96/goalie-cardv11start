@@ -125,6 +125,10 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                                         </Link>
                                     )}
 
+                                    <Link onClick={() => setIsUserMenuOpen(false)} href="/parent/payments" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
+                                        <Settings size={16} /> Billing & Invoices
+                                    </Link>
+                                    
                                     <Link onClick={() => setIsUserMenuOpen(false)} href="/activate" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                                         <Plus size={16} /> Activate New Card
                                     </Link>
@@ -132,6 +136,29 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                                     <Link onClick={() => setIsUserMenuOpen(false)} href="/team" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                                         <ShieldCheck size={16} /> Team Dashboard
                                     </Link>
+
+                                    {userRole !== 'coach' && userRole !== 'admin' && (
+                                        <button 
+                                            onClick={async () => {
+                                                setIsUserMenuOpen(false);
+                                                if (confirm("Request Coach Access? Elliott will review and approve your request.")) {
+                                                    const { data: { user } } = await supabase.auth.getUser();
+                                                    if (user?.email) {
+                                                        const { requestCoachAccess } = await import("@/app/training/book/actions");
+                                                        await requestCoachAccess({
+                                                            userId: user.id,
+                                                            userEmail: user.email,
+                                                            userName: activeGoalieName || user.email
+                                                        });
+                                                    }
+                                                    alert("Coach access request submitted for Elliott's review.");
+                                                }
+                                            }}
+                                            className="w-full text-left px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+                                        >
+                                            <ShieldCheck size={14} /> Request Coach Access
+                                        </button>
+                                    )}
 
                                     <div className="h-px bg-border my-1" />
                                     <Button

@@ -402,99 +402,101 @@ export default function CalendarPage() {
         });
       }
 
-      // 2. Project ongoing weekly model for future dates starting post-import (Sept 12, 2026 onwards)
-      const futureStart = new Date("2026-09-12T00:00:00");
-      const rangeEnd = new Date(endStr);
-      const curr = new Date(futureStart);
+      // 2. Project ongoing weekly model for future dates starting post-import (COACH ONLY)
+      if (isCoachUser) {
+        const futureStart = new Date("2026-09-12T00:00:00");
+        const rangeEnd = new Date(endStr);
+        const curr = new Date(futureStart);
 
-      while (curr <= rangeEnd) {
-        const dateKey = formatDateKey(curr);
-        // Do not generate recurring template sessions on dates where athlete history is already recorded
-        if (historyDateSet.has(dateKey)) {
+        while (curr <= rangeEnd) {
+          const dateKey = formatDateKey(curr);
+          // Do not generate recurring template sessions on dates where athlete history is already recorded
+          if (historyDateSet.has(dateKey)) {
+            curr.setDate(curr.getDate() + 1);
+            continue;
+          }
+
+          const dayOfWeek = curr.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+
+          if (dayOfWeek === 3) { // Wednesday: Ice / Development
+            hockeySchedule.push({
+              id: `hockey-wed-${dateKey}`,
+              title: "On-Ice Goalie Development Skate",
+              scheduled_date: dateKey,
+              scheduled_time: "08:30:00",
+              date: dateKey,
+              location: "Ice Arena Rink",
+              focus: "Angles, depth management, edge calibration & rebound redirection",
+              type: "on_ice",
+              confidence: "EXACT",
+              phase: "Current State / Future Model",
+              cues: ["Sit into edges.", "Angles → depth → arrive set → read → save."],
+              sport: "Ice Hockey"
+            });
+          } else if (dayOfWeek === 5) { // Friday: Ice / Play & Performance
+            hockeySchedule.push({
+              id: `hockey-fri-${dateKey}`,
+              title: "Friday Compete / High-Velocity Game Reps",
+              scheduled_date: dateKey,
+              scheduled_time: "08:30:00",
+              date: dateKey,
+              location: "Ice Arena Rink",
+              focus: "Puck battle reads, 2-on-1 backdoor slides, competitive game speed",
+              type: "on_ice",
+              confidence: "EXACT",
+              phase: "Current State / Future Model",
+              cues: ["Arrive set.", "Sit into your edges."],
+              sport: "Ice Hockey"
+            });
+          } else if (dayOfWeek === 1) { // Monday: Early-Week Meaningful Strength
+            hockeySchedule.push({
+              id: `hockey-mon-${dateKey}`,
+              title: "Goalie Strength & Power (Smith Front Squat / RDL)",
+              scheduled_date: dateKey,
+              scheduled_time: "09:00:00",
+              date: dateKey,
+              location: "Planet Fitness",
+              strength: ["Smith front squat: up to 55 lb/side", "RDL: 70 lb (3-sec eccentric)", "Bulgarian split squat: 30–35 lb DBs", "Pull-ups: 4 x 6"],
+              athletic: ["Skater bounds 3 x 5/side", "Jump drop → goalie stance 3 x 5"],
+              type: "off_ice",
+              confidence: "EXACT",
+              phase: "Current State / Future Model",
+              cues: ["GET LOW → LOAD → PUSH → STICK."],
+              sport: "Ice Hockey"
+            });
+          } else if (dayOfWeek === 2 || dayOfWeek === 4) { // Tuesday / Thursday: Short Upper & Trunk Maintenance
+            hockeySchedule.push({
+              id: `hockey-upper-${dateKey}`,
+              title: "Upper Body & Trunk Maintenance",
+              scheduled_date: dateKey,
+              scheduled_time: "10:00:00",
+              date: dateKey,
+              location: "Planet Fitness",
+              strength: ["Incline DB press: 60–65 lb", "Single-arm DB row: 65–70 lb", "DB shoulder press: 40 lb"],
+              core: ["Suitcase carry: 70–75 lb 2x30s", "Dead bugs: 2x10"],
+              type: "off_ice",
+              confidence: "EXACT",
+              phase: "Current State / Future Model",
+              sport: "Ice Hockey"
+            });
+          } else if (dayOfWeek === 0) { // Sunday: Active Recovery
+            hockeySchedule.push({
+              id: `hockey-rec-${dateKey}`,
+              title: "Active Recovery & Dynamic Goalie Mobility",
+              scheduled_date: dateKey,
+              scheduled_time: "10:00:00",
+              date: dateKey,
+              location: "Studio / Recovery Lab",
+              recovery: ["Yoga stretch", "Adductor rockbacks", "Hip flexor flushes & fascia release"],
+              type: "recovery",
+              confidence: "EXACT",
+              phase: "Current State / Future Model",
+              sport: "Ice Hockey"
+            });
+          }
+
           curr.setDate(curr.getDate() + 1);
-          continue;
         }
-
-        const dayOfWeek = curr.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
-
-        if (dayOfWeek === 3) { // Wednesday: Ice / Development
-          hockeySchedule.push({
-            id: `hockey-wed-${dateKey}`,
-            title: "On-Ice Goalie Development Skate",
-            scheduled_date: dateKey,
-            scheduled_time: "08:30:00",
-            date: dateKey,
-            location: "Ice Arena Rink",
-            focus: "Angles, depth management, edge calibration & rebound redirection",
-            type: "on_ice",
-            confidence: "EXACT",
-            phase: "Current State / Future Model",
-            cues: ["Sit into edges.", "Angles → depth → arrive set → read → save."],
-            sport: "Ice Hockey"
-          });
-        } else if (dayOfWeek === 5) { // Friday: Ice / Play & Performance
-          hockeySchedule.push({
-            id: `hockey-fri-${dateKey}`,
-            title: "Friday Compete / High-Velocity Game Reps",
-            scheduled_date: dateKey,
-            scheduled_time: "08:30:00",
-            date: dateKey,
-            location: "Ice Arena Rink",
-            focus: "Puck battle reads, 2-on-1 backdoor slides, competitive game speed",
-            type: "on_ice",
-            confidence: "EXACT",
-            phase: "Current State / Future Model",
-            cues: ["Arrive set.", "Sit into your edges."],
-            sport: "Ice Hockey"
-          });
-        } else if (dayOfWeek === 1) { // Monday: Early-Week Meaningful Strength
-          hockeySchedule.push({
-            id: `hockey-mon-${dateKey}`,
-            title: "Goalie Strength & Power (Smith Front Squat / RDL)",
-            scheduled_date: dateKey,
-            scheduled_time: "09:00:00",
-            date: dateKey,
-            location: "Planet Fitness",
-            strength: ["Smith front squat: up to 55 lb/side", "RDL: 70 lb (3-sec eccentric)", "Bulgarian split squat: 30–35 lb DBs", "Pull-ups: 4 x 6"],
-            athletic: ["Skater bounds 3 x 5/side", "Jump drop → goalie stance 3 x 5"],
-            type: "off_ice",
-            confidence: "EXACT",
-            phase: "Current State / Future Model",
-            cues: ["GET LOW → LOAD → PUSH → STICK."],
-            sport: "Ice Hockey"
-          });
-        } else if (dayOfWeek === 2 || dayOfWeek === 4) { // Tuesday / Thursday: Short Upper & Trunk Maintenance
-          hockeySchedule.push({
-            id: `hockey-upper-${dateKey}`,
-            title: "Upper Body & Trunk Maintenance",
-            scheduled_date: dateKey,
-            scheduled_time: "10:00:00",
-            date: dateKey,
-            location: "Planet Fitness",
-            strength: ["Incline DB press: 60–65 lb", "Single-arm DB row: 65–70 lb", "DB shoulder press: 40 lb"],
-            core: ["Suitcase carry: 70–75 lb 2x30s", "Dead bugs: 2x10"],
-            type: "off_ice",
-            confidence: "EXACT",
-            phase: "Current State / Future Model",
-            sport: "Ice Hockey"
-          });
-        } else if (dayOfWeek === 0) { // Sunday: Active Recovery
-          hockeySchedule.push({
-            id: `hockey-rec-${dateKey}`,
-            title: "Active Recovery & Dynamic Goalie Mobility",
-            scheduled_date: dateKey,
-            scheduled_time: "10:00:00",
-            date: dateKey,
-            location: "Studio / Recovery Lab",
-            recovery: ["Yoga stretch", "Adductor rockbacks", "Hip flexor flushes & fascia release"],
-            type: "recovery",
-            confidence: "EXACT",
-            phase: "Current State / Future Model",
-            sport: "Ice Hockey"
-          });
-        }
-
-        curr.setDate(curr.getDate() + 1);
       }
 
       setAthleteHockeySessions(hockeySchedule);
@@ -575,7 +577,7 @@ export default function CalendarPage() {
         activeSeason = seasonData;
       }
 
-      if (!activeSeason) {
+      if (!activeSeason && isCoachUser) {
         activeSeason = {
           id: "active-season-2026",
           name: "Goalie Brand 2026",
