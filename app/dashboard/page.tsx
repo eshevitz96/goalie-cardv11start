@@ -390,7 +390,8 @@ export default function Dashboard() {
                                 clearTimeout(timeoutId);
                                 const hasPendingLesson = pendData.success && pendData.pending && pendData.pending.length > 0;
                                 const needsIntention = !weeklyIntentionText && (auth.userRole === 'goalie' || auth.userRole === 'parent');
-                                if (hasPendingLesson || needsIntention) {
+                                const isTourDone = (profileRes?.data as any)?.tour_completed_at || localStorage.getItem('tour_completed') === 'true';
+                                if ((hasPendingLesson || needsIntention) && isTourDone) {
                                     setShowActionsOverlay(true);
                                 }
                             })
