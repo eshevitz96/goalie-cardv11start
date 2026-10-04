@@ -859,7 +859,7 @@ export default function Dashboard() {
             <MobileBottomNav />
 
             {/* Pending Actions Overlay (Confirmation & Weekly Intention Flow) */}
-            {showActionsOverlay && resolvedGoalieId && (
+            {showActionsOverlay && !showTour && resolvedGoalieId && (
                 <PendingActionsOverlay
                     goalieProfileId={resolvedGoalieId}
                     publicUserId={userData?.publicUserId || undefined}
