@@ -14,7 +14,7 @@ import { PendingActionsOverlay } from "@/components/goalie/PendingActionsOverlay
 import { v11Engine } from "@/lib/v11-engine";
 import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
 import { BrandLogo } from "@/components/ui/BrandLogo";
-import { DigitalSignatureModal } from "@/components/goalie/DigitalSignatureModal";
+import { FirstLoginTour } from "@/components/shared/FirstLoginTour";
 import { getGoalieBookingProfile, fetchCoachDashboardCounts, verifyCoachAuthorization } from "@/app/training/book/actions";
 import { usePerformanceRealtime } from "@/hooks/usePerformanceRealtime";
 import { twMerge } from "tailwind-merge";
@@ -37,7 +37,7 @@ export default function Dashboard() {
     const router = useRouter();
 
     const [loading, setLoading] = useState(true);
-    const [showSignatureModal, setShowSignatureModal] = useState(false);
+    const [showTour, setShowTour] = useState(false);
     const [userData, setUserData] = useState<any>(null);
     const [rosterData, setRosterData] = useState<any>(null);
     const [activeDays, setActiveDays] = useState<Set<number>>(new Set());
@@ -63,6 +63,12 @@ export default function Dashboard() {
         ? realtimeScore 
         : (performanceScore || "Baseline Pending");
     const [isPro, setIsPro] = useState(false);
+
+    useEffect(() => {
+        const handleOpenTour = () => setShowTour(true);
+        window.addEventListener('open-first-login-tour', handleOpenTour);
+        return () => window.removeEventListener('open-first-login-tour', handleOpenTour);
+    }, []);
     const [credits, setCredits] = useState(0);
     const [showProgress, setShowProgress] = useState(true);
     const [hasLessonRecord, setHasLessonRecord] = useState(false);
@@ -215,9 +221,11 @@ export default function Dashboard() {
                         gcNumber = 'GC-' + String(userResData.gc_number).padStart(4, '0');
                     }
                 }
-                setUserData({ initials, fullName, publicUserId, teams, handedness, gcNumber, sport, digital_signature: (userRes.data as any)?.digital_signature });
-                if (!(userRes.data as any)?.digital_signature && localStorage.getItem('has_digital_signature') !== 'true') {
-                    setShowSignatureModal(true);
+                setUserData({ initials, fullName, publicUserId, teams, handedness, gcNumber, sport });
+                const tourCompleted = (profileRes?.data as any)?.tour_completed_at || localStorage.getItem('tour_completed') === 'true';
+                const isCoachOrAdmin = auth.userRole === 'coach' || auth.userRole === 'admin';
+                if (!tourCompleted && !isCoachOrAdmin) {
+                    setShowTour(true);
                 }
                 setIsOnboardingCompleted(onboarded);
 
@@ -601,7 +609,7 @@ export default function Dashboard() {
  
     return (
         <>
-        {showSignatureModal && <DigitalSignatureModal onComplete={() => setShowSignatureModal(false)} />}
+        {showTour && <FirstLoginTour isOpen={showTour} onClose={() => setShowTour(false)} />}
         <div 
             className="text-foreground font-sans flex flex-col justify-start w-full min-h-screen pb-[calc(120px+env(safe-area-inset-bottom))]"
             style={{ padding: '32px 24px 140px 24px' }}
@@ -619,7 +627,13 @@ export default function Dashboard() {
                                 : (seasonName.toUpperCase().startsWith("SEASON") ? seasonName.toUpperCase() : `Season ${seasonName.toUpperCase()}`)}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3" id="tour-billing-target">
+                        <Link 
+                            href="/parent/payments" 
+                            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            Billing
+                        </Link>
                         <BrandLogo textClassName="text-lg md:text-xl font-medium tracking-tight text-foreground/90 select-none pointer-events-none" />
                     </div>
                 </div>
@@ -698,10 +712,13 @@ export default function Dashboard() {
                     </div>
 
                     {/* Today's Action Card & Coach Mode / Lessons Transparency */}
-                    <div className={twMerge(
-                        "grid grid-cols-1 gap-6 w-full",
-                        (hasLessonRecord || isCoachMode) ? "lg:grid-cols-2" : "grid-cols-1"
-                    )}>
+                    <div 
+                        id="tour-lessons-widget"
+                        className={twMerge(
+                            "grid grid-cols-1 gap-6 w-full",
+                            (hasLessonRecord || isCoachMode) ? "lg:grid-cols-2" : "grid-cols-1"
+                        )}
+                    >
                         {/* Today's Action Card */}
                         <a href={actionCard.navHref} className="flex flex-col justify-between transition-transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer h-full min-h-[192px]">
                             <div 
@@ -779,6 +796,7 @@ export default function Dashboard() {
                     )}>
                         {/* 1. Athlete Training Regimen & Drills */}
                         <Link 
+                            id="tour-training-tile"
                             href="/training" 
                             className="flex flex-col items-center justify-center p-4 bg-card border border-border hover:border-[#00E676]/60 transition-all hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm group"
                         >
@@ -810,6 +828,7 @@ export default function Dashboard() {
 
                         {/* 3. Calendar & Logs */}
                         <Link 
+                            id="tour-calendar-tile"
                             href="/calendar" 
                             className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
                         >
@@ -820,6 +839,7 @@ export default function Dashboard() {
 
                         {/* 4. Film Analysis */}
                         <Link 
+                            id="tour-film-tile"
                             href="/film" 
                             className="flex flex-col items-center justify-center p-4 bg-card border border-border transition-transform hover:scale-[1.02] active:scale-95 text-center rounded-2xl shadow-sm"
                         >

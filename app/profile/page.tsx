@@ -374,10 +374,21 @@ export default function ProfilePage() {
                     </div>
                 )}
 
+                {/* Take the Tour Button */}
+                <Link
+                    href="/dashboard"
+                    onClick={() => {
+                        localStorage.removeItem('tour_completed');
+                    }}
+                    className="w-full mt-4 py-3 bg-muted hover:bg-muted-foreground/20 text-foreground border border-border rounded-2xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 text-center"
+                >
+                    Take the tour
+                </Link>
+
                 {/* Log Out Button */}
                 <button
                     onClick={() => auth.logout()}
-                    className="w-full mt-6 py-4 bg-red-950/20 hover:bg-red-950/40 text-red-400 border border-red-900/30 rounded-[24px] text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full mt-3 py-4 bg-red-950/20 hover:bg-red-950/40 text-red-400 border border-red-900/30 rounded-[24px] text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                     <LogOut size={16} />
                     Log Out

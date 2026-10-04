@@ -125,6 +125,16 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                                         </Link>
                                     )}
 
+                                    <button
+                                        onClick={() => {
+                                            setIsUserMenuOpen(false);
+                                            window.dispatchEvent(new CustomEvent('open-first-login-tour'));
+                                        }}
+                                        className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+                                    >
+                                        <Settings size={16} /> Take the tour
+                                    </button>
+                                    
                                     <Link onClick={() => setIsUserMenuOpen(false)} href="/parent/payments" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                                         <Settings size={16} /> Billing & Invoices
                                     </Link>
