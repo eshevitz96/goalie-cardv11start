@@ -61,18 +61,11 @@ function PostgameContent() {
         monday.setDate(gameDateObj.getDate() - daysSinceMon);
         const monStr = monday.toISOString().split("T")[0];
 
-        const { data: userRes } = await supabase
-          .from("users")
-          .select("id")
-          .eq("auth_user_id", uid)
-          .single();
-        
-        const publicUserId = userRes?.id;
-        if (publicUserId) {
+        if (uid) {
           const { data: intentionData } = await supabase
             .from("weekly_intentions")
             .select("intention_text")
-            .eq("user_id", publicUserId)
+            .eq("user_id", uid)
             .eq("week_start_date", monStr)
             .maybeSingle();
 

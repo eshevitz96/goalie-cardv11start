@@ -22,13 +22,14 @@ async function verifyAdminSession(): Promise<{ isAdmin: boolean; adminUserId: st
         }
 
         const adminClient = getSupabaseAdmin();
-        const [{ data: prof }, { data: usr }] = await Promise.all([
-            adminClient.from('profiles').select('role, roles').eq('id', user.id).maybeSingle(),
-            adminClient.from('users').select('role').eq('auth_user_id', user.id).maybeSingle()
-        ]);
+        const { data: prof } = await adminClient
+            .from('profiles')
+            .select('role, roles')
+            .eq('id', user.id)
+            .maybeSingle();
 
         const rolesArr = Array.isArray(prof?.roles) ? prof?.roles : [];
-        const isAdmin = prof?.role === 'admin' || usr?.role === 'admin' || rolesArr.includes('admin') || user.email === 'eshevitz96@gmail.com';
+        const isAdmin = prof?.role === 'admin' || prof?.role === 'coach' || rolesArr.includes('admin') || user.email === 'eshevitz96@gmail.com';
 
         return {
             isAdmin: Boolean(isAdmin),
@@ -63,22 +64,18 @@ export async function getUsersForRoleManagement(): Promise<{ success: boolean; u
         const adminClient = getSupabaseAdmin();
         const [
             { data: profiles },
-            { data: usersRows },
             { data: rosters }
         ] = await Promise.all([
-            adminClient.from('profiles').select('id, email, full_name, goalie_name, role, roles, created_at').order('created_at', { ascending: false }),
-            adminClient.from('users').select('id, auth_user_id, email, display_name, first_name, last_name, role'),
+            adminClient.from('profiles').select('id, email, full_name, goalie_name, display_name, first_name, last_name, role, roles, created_at').order('created_at', { ascending: false }),
             adminClient.from('roster_uploads').select('id, assigned_coach_id')
         ]);
 
         const rosterList = rosters || [];
-        const usersList = usersRows || [];
 
         const merged: ManagedUser[] = (profiles || []).map(p => {
-            const uRow = usersList.find(u => u.auth_user_id === p.id || (p.email && u.email?.toLowerCase() === p.email.toLowerCase()));
-            const displayName = p.full_name || 
-                               (uRow?.display_name) || 
-                               (uRow?.first_name ? `${uRow.first_name} ${uRow.last_name || ''}`.trim() : '') || 
+            const displayName = p.display_name ||
+                               p.full_name || 
+                               (p.first_name ? `${p.first_name} ${p.last_name || ''}`.trim() : '') || 
                                p.goalie_name || 
                                (p.email ? p.email.split('@')[0] : 'User');
 
@@ -86,10 +83,10 @@ export async function getUsersForRoleManagement(): Promise<{ success: boolean; u
 
             return {
                 id: p.id,
-                email: p.email || uRow?.email || '',
+                email: p.email || '',
                 fullName: displayName,
                 goalieName: p.goalie_name || '',
-                role: p.role || uRow?.role || 'goalie',
+                role: p.role || 'goalie',
                 roles: Array.isArray(p.roles) ? p.roles : [p.role || 'goalie'],
                 createdAt: p.created_at || '',
                 assignedGoaliesCount: assignedCount
@@ -147,12 +144,6 @@ export async function updateUserRole(payload: {
             console.error("[updateUserRole] Profile update error:", profError);
             return { success: false, error: profError.message };
         }
-
-        // Update users table row if linked
-        await adminClient
-            .from('users')
-            .update({ role: newRole })
-            .eq('auth_user_id', targetUserId);
 
         return { success: true };
     } catch (err: any) {

@@ -217,7 +217,7 @@ export function GoalieCard({
                     userEmail = session.user.email || null;
                 }
 
-                // 2. Fetch User Identity directly from LIVE `users` table
+                // 2. Fetch User Identity directly from LIVE `profiles` table
                 let userPublicId: string | null = null;
                 let userAuthId: string | null = null;
                 let loadedIdentity: UserIdentityData = {
@@ -232,14 +232,14 @@ export function GoalieCard({
                 };
 
                 let userQuery = supabase
-                    .from('users')
-                    .select('id, auth_user_id, email, first_name, last_name, display_name, handedness, primary_sport, teams, gc_number');
+                    .from('profiles')
+                    .select('id, email, first_name, last_name, display_name, full_name, goalie_name, handedness, primary_sport, sport, teams, gc_number');
 
                 if (targetId && targetId !== '00000000-0000-0000-0000-000000000000') {
                     if (userEmail) {
-                        userQuery = userQuery.or(`id.eq.${targetId},auth_user_id.eq.${targetId},email.ilike.${userEmail.trim()}`);
+                        userQuery = userQuery.or(`id.eq.${targetId},email.ilike.${userEmail.trim()}`);
                     } else {
-                        userQuery = userQuery.or(`id.eq.${targetId},auth_user_id.eq.${targetId}`);
+                        userQuery = userQuery.eq('id', targetId);
                     }
                 } else if (userEmail) {
                     userQuery = userQuery.ilike('email', userEmail.trim());
@@ -249,21 +249,19 @@ export function GoalieCard({
 
                 if (userRow) {
                     userPublicId = userRow.id;
-                    userAuthId = userRow.auth_user_id || userRow.id;
+                    userAuthId = userRow.id;
                     if (userRow.email) userEmail = userRow.email;
 
-                    const fName = userRow.first_name || '';
-                    const lName = userRow.last_name || '';
-                    const resolvedFull = (fName || lName) 
-                        ? `${fName} ${lName}`.trim() 
-                        : (userRow.display_name || propName || '');
+                    const fName = userRow.first_name || (userRow.full_name ? userRow.full_name.split(' ')[0] : '') || (userRow.goalie_name ? userRow.goalie_name.split(' ')[0] : '');
+                    const lName = userRow.last_name || (userRow.full_name ? userRow.full_name.split(' ').slice(1).join(' ') : '') || (userRow.goalie_name ? userRow.goalie_name.split(' ').slice(1).join(' ') : '');
+                    const resolvedFull = userRow.display_name || userRow.full_name || userRow.goalie_name || ((fName || lName) ? `${fName} ${lName}`.trim() : (propName || ''));
 
                     let parsedTeams: string[] | null = null;
                     if (Array.isArray(userRow.teams) && userRow.teams.length > 0) {
                         parsedTeams = userRow.teams.filter((t: any) => typeof t === 'string' && t.trim() !== '');
                         if (parsedTeams.length === 0) parsedTeams = null;
-                    } else if (typeof userRow.teams === 'string' && userRow.teams.trim() !== '') {
-                        parsedTeams = [userRow.teams.trim()];
+                    } else if (typeof userRow.teams === 'string' && (userRow.teams as string).trim() !== '') {
+                        parsedTeams = [(userRow.teams as string).trim()];
                     }
 
                     loadedIdentity = {
@@ -272,7 +270,7 @@ export function GoalieCard({
                         fullName: resolvedFull,
                         email: userRow.email || userEmail,
                         handedness: formatCatchHand(userRow.handedness || propCatchHand),
-                        primarySport: userRow.primary_sport || propSport || null,
+                        primarySport: userRow.primary_sport || userRow.sport || propSport || null,
                         teams: parsedTeams,
                         gcNumber: userRow.gc_number ? `GC-${String(userRow.gc_number).padStart(4, '0')}` : (propGcNumber || null)
                     };

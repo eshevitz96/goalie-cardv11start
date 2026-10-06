@@ -104,13 +104,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!userId) return;
       try {
         const { data, error } = await supabase
-          .from('users')
-          .select('primary_sport')
-          .eq('auth_user_id', userId)
+          .from('profiles')
+          .select('primary_sport, sport')
+          .eq('id', userId)
           .maybeSingle();
 
-        if (!error && data?.primary_sport) {
-          setSport(mapPrimarySportToSportType(data.primary_sport));
+        const resolvedSport = data?.primary_sport || data?.sport;
+        if (!error && resolvedSport) {
+          setSport(mapPrimarySportToSportType(resolvedSport));
         } else {
           setSport('Mens Lacrosse');
         }
@@ -402,17 +403,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       // 5. Sync aggregate stats to game_sessions (for Dashboard and Profile)
-      const { data: pubUser, error: pubUserError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', authUid)
-        .maybeSingle();
+      const pubUserId = authUid;
 
-      if (pubUserError) {
-        console.error('Failed to resolve public user ID for game_sessions sync:', pubUserError);
-      }
-
-      if (pubUser?.id) {
+      if (pubUserId) {
         const totalShots = shots.length;
         const totalSaves = shots.filter(s => s.isSave).length;
         const goalsAllowed = totalShots - totalSaves;
@@ -447,7 +440,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .from('game_sessions')
           .upsert({
             id: savedReportId,
-            user_id: pubUser.id,
+            user_id: pubUserId,
             game_id: targetGameId,
             status: 'complete',
             started_at: date || new Date().toISOString(),

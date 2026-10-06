@@ -30,22 +30,10 @@ export function usePerformanceRealtime(userId: string | null) {
         }
 
         try {
-            // Check if userId is auth_user_id or public.users.id
-            let targetPublicId = userId;
-            const { data: uData } = await supabase
-                .from('users')
-                .select('id')
-                .or(`auth_user_id.eq.${userId},id.eq.${userId}`)
-                .maybeSingle();
-
-            if (uData?.id) {
-                targetPublicId = uData.id;
-            }
-
             const { data, error } = await supabase
                 .from("performance_index_snapshots")
                 .select("*")
-                .or(`user_id.eq.${targetPublicId},user_id.eq.${userId}`)
+                .eq("user_id", userId)
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();

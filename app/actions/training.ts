@@ -34,30 +34,30 @@ export async function saveTrainingSession(payload: LogWorkoutParams) {
             // Cookie read fallback
         }
 
-        // 2. Resolve public.users record
+        // 2. Resolve profile record
         let userRecord = null;
         if (authUserId) {
             const { data } = await supabaseAdmin
-                .from('users')
-                .select('id, email, auth_user_id')
-                .eq('auth_user_id', authUserId)
+                .from('profiles')
+                .select('id, email')
+                .eq('id', authUserId)
                 .maybeSingle();
             userRecord = data;
         }
 
         if (!userRecord && payload.userId && payload.userId !== '00000000-0000-0000-0000-000000000000') {
             const { data } = await supabaseAdmin
-                .from('users')
-                .select('id, email, auth_user_id')
-                .or(`id.eq.${payload.userId},auth_user_id.eq.${payload.userId}`)
+                .from('profiles')
+                .select('id, email')
+                .eq('id', payload.userId)
                 .maybeSingle();
             userRecord = data;
         }
 
         if (!userRecord && payload.userEmail) {
             const { data } = await supabaseAdmin
-                .from('users')
-                .select('id, email, auth_user_id')
+                .from('profiles')
+                .select('id, email')
                 .ilike('email', payload.userEmail.trim())
                 .maybeSingle();
             userRecord = data;
@@ -66,8 +66,8 @@ export async function saveTrainingSession(payload: LogWorkoutParams) {
         // Dev mode fallback
         if (!userRecord && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEV_BYPASS === 'true')) {
             const { data } = await supabaseAdmin
-                .from('users')
-                .select('id, email, auth_user_id')
+                .from('profiles')
+                .select('id, email')
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
@@ -79,7 +79,7 @@ export async function saveTrainingSession(payload: LogWorkoutParams) {
         }
 
         publicUserId = userRecord.id;
-        authUserId = userRecord.auth_user_id || userRecord.id;
+        authUserId = userRecord.id;
 
 
         // 3. Fetch Roster & Context
@@ -209,13 +209,46 @@ export async function saveTrainingSession(payload: LogWorkoutParams) {
             throw snapError;
         }
 
+        // 6. Check Beta Feedback Prompt Milestone (Every 3rd session for private training clients)
+        let shouldPromptFeedback = false;
+        let totalCompletedSessions = 0;
+
+        try {
+            const userEmail = (userRecord?.email || payload.userEmail || '').toLowerCase().trim();
+            if (userEmail) {
+                const { data: sub } = await supabaseAdmin
+                    .from('private_training_submissions')
+                    .select('id')
+                    .or(`email.ilike.${userEmail},guardian_email.ilike.${userEmail}`)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (sub) {
+                    const { count } = await supabaseAdmin
+                        .from('training_sessions')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('user_id', publicUserId)
+                        .eq('status', 'complete');
+
+                    totalCompletedSessions = count || 0;
+                    if (totalCompletedSessions > 0 && totalCompletedSessions % 3 === 0) {
+                        shouldPromptFeedback = true;
+                    }
+                }
+            }
+        } catch (milestoneErr) {
+            console.warn("[saveTrainingSession] Milestone check warning:", milestoneErr);
+        }
+
         return {
             success: true,
             sessionId: insertedSession.id,
             snapshot: newSnapshot,
             scoreBefore,
             scoreAfter,
-            scoreDelta
+            scoreDelta,
+            shouldPromptFeedback,
+            totalSessions: totalCompletedSessions
         };
 
     } catch (err: any) {

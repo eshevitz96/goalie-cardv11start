@@ -24,7 +24,9 @@ import {
     Check,
     Download,
     Zap,
-    CreditCard
+    CreditCard,
+    Dumbbell,
+    Compass
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,6 +34,9 @@ import { clsx } from "clsx";
 import { CoachScheduler } from "@/components/CoachScheduler";
 import { submitSessionTakeaways, completeTrainingSessionAndNotify, requestCoachAccess, fetchCoachOSData } from "@/app/training/book/actions";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
+import { CoachFeedbackList } from "@/components/coach/CoachFeedbackList";
+import { CoachExerciseLibrary } from "@/components/coach/CoachExerciseLibrary";
+import { CoachPlanApprovalQueue } from "@/components/coach/CoachPlanApprovalQueue";
 
 interface SessionWithAthlete {
     id: string;
@@ -90,8 +95,8 @@ export default function CoachDashboard() {
     const [appError, setAppError] = useState<string | null>(null);
     const [coachId, setCoachId] = useState<string | null>(null);
 
-    // Tab state: 'schedule' | 'athletes' | 'pending' | 'availability' | 'contracts'
-    const [activeTab, setActiveTab] = useState<'schedule' | 'athletes' | 'pending' | 'availability' | 'contracts'>('schedule');
+    // Tab state: 'schedule' | 'athletes' | 'pending' | 'availability' | 'contracts' | 'feedback' | 'exercises' | 'plans'
+    const [activeTab, setActiveTab] = useState<'schedule' | 'athletes' | 'pending' | 'availability' | 'contracts' | 'feedback' | 'exercises' | 'plans'>('schedule');
 
     // Data states
     const [sessions, setSessions] = useState<SessionWithAthlete[]>([]);
@@ -143,22 +148,15 @@ export default function CoachDashboard() {
                 setCoachId(user.id);
 
                 // Fetch user profile for display name & initials
-                const [{ data: userData }, { data: profData }] = await Promise.all([
-                    supabase
-                        .from('users')
-                        .select('first_name, last_name, display_name')
-                        .eq('auth_user_id', user.id)
-                        .maybeSingle(),
-                    supabase
-                        .from('profiles')
-                        .select('goalie_name, full_name')
-                        .eq('id', user.id)
-                        .maybeSingle()
-                ]);
+                const { data: profData } = await supabase
+                    .from('profiles')
+                    .select('first_name, last_name, display_name, goalie_name, full_name')
+                    .eq('id', user.id)
+                    .maybeSingle();
 
-                const rawName = userData?.display_name || 
-                                (userData?.first_name ? `${userData.first_name} ${userData.last_name || ''}`.trim() : null) ||
+                const rawName = profData?.display_name || 
                                 profData?.full_name ||
+                                (profData?.first_name ? `${profData.first_name} ${profData.last_name || ''}`.trim() : null) ||
                                 profData?.goalie_name ||
                                 user.user_metadata?.full_name ||
                                 user.user_metadata?.name ||
@@ -762,6 +760,42 @@ export default function CoachDashboard() {
                             >
                                 <Sparkles size={14} /> Tiers & Contracts ({activeContracts.length})
                             </button>
+
+                            <button
+                                onClick={() => setActiveTab('feedback')}
+                                className={clsx(
+                                    "px-4 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer",
+                                    activeTab === 'feedback' 
+                                        ? "bg-foreground text-background shadow-sm" 
+                                        : "bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                                )}
+                            >
+                                <MessageSquare size={14} /> Client Feedback
+                            </button>
+
+                            <button
+                                onClick={() => setActiveTab('exercises')}
+                                className={clsx(
+                                    "px-4 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer",
+                                    activeTab === 'exercises' 
+                                        ? "bg-foreground text-background shadow-sm" 
+                                        : "bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                                )}
+                            >
+                                <Dumbbell size={14} /> Exercise Library
+                            </button>
+
+                            <button
+                                onClick={() => setActiveTab('plans')}
+                                className={clsx(
+                                    "px-4 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer",
+                                    activeTab === 'plans' 
+                                        ? "bg-foreground text-background shadow-sm" 
+                                        : "bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                                )}
+                            >
+                                <Compass size={14} /> Training Plans
+                            </button>
                         </div>
 
                         {/* TAB CONTENT: 1. SCHEDULE & THIS WEEK'S LESSONS */}
@@ -1291,6 +1325,21 @@ export default function CoachDashboard() {
                                     </div>
                                 )}
                             </div>
+                        )}
+
+                        {/* TAB CONTENT: 6. CLIENT FEEDBACK */}
+                        {activeTab === 'feedback' && (
+                            <CoachFeedbackList />
+                        )}
+
+                        {/* TAB CONTENT: 7. EXERCISE LIBRARY APPROVALS */}
+                        {activeTab === 'exercises' && (
+                            <CoachExerciseLibrary coachId={coachId} />
+                        )}
+
+                        {/* TAB CONTENT: 8. TRAINING PLANS APPROVAL QUEUE */}
+                        {activeTab === 'plans' && (
+                            <CoachPlanApprovalQueue />
                         )}
                     </div>
                 )}

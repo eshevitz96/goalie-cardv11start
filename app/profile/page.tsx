@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, Plus, Calendar, ToggleLeft, ToggleRight, Loader2, LogOut, Edit2, MapPin } from "lucide-react";
+import { ArrowLeft, ChevronLeft, Plus, Calendar, ToggleLeft, ToggleRight, Loader2, LogOut, Edit2, MapPin, MessageSquarePlus } from "lucide-react";
 import { PerformanceAvatar } from "@/components/ui/PerformanceAvatar";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { usePerformanceRealtime } from "@/hooks/usePerformanceRealtime";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
+import { FeedbackModal } from "@/components/feedback/FeedbackModal";
+import { checkFeedbackEligibility } from "@/app/actions/feedback";
 
 export default function ProfilePage() {
     const auth = useAuth();
@@ -25,6 +27,16 @@ export default function ProfilePage() {
     const performanceScore = typeof realtimeScore === 'number' ? realtimeScore : (Number(realtimeScore) || 0);
     const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
     const [isPublicProfile, setIsPublicProfile] = useState<boolean>(false);
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
+    const [isFeedbackEligible, setIsFeedbackEligible] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (auth.userId) {
+            checkFeedbackEligibility().then(res => {
+                setIsFeedbackEligible(res.eligible);
+            }).catch(console.error);
+        }
+    }, [auth.userId]);
 
     useEffect(() => {
         if (!auth.loading && !auth.isAuthenticated) {
@@ -66,15 +78,15 @@ export default function ProfilePage() {
                     return;
                 }
 
-                // 1. Fetch user identity (select specific columns to prevent column-level security RLS errors)
+                // 1. Fetch user identity from profiles
                 const { data: userRes, error: userErr } = await supabase
-                    .from('users')
-                    .select('id, first_name, last_name, display_name, gc_number, primary_sport, teams, grad_year, handedness, profile_tags, height, gpa')
-                    .eq('auth_user_id', uid)
-                    .single();
+                    .from('profiles')
+                    .select('id, first_name, last_name, display_name, full_name, goalie_name, gc_number, primary_sport, sport, teams, grad_year, handedness, profile_tags, height, gpa')
+                    .eq('id', uid)
+                    .maybeSingle();
 
                 if (userErr) {
-                    console.error("Profile page users SELECT query error:", userErr);
+                    console.error("Profile page profiles SELECT query error:", userErr);
                 }
                 
                 let initials = "GC";
@@ -87,11 +99,11 @@ export default function ProfilePage() {
                 let gpaVal = "—";
                 let profileTags: string[] = [];
                 
-                if (userRes && !userErr) {
-                    const f = userRes.first_name || "";
-                    const l = userRes.last_name || "";
+                if (userRes) {
+                    const f = userRes.first_name || (userRes.full_name ? userRes.full_name.split(' ')[0] : '') || (userRes.goalie_name ? userRes.goalie_name.split(' ')[0] : '');
+                    const l = userRes.last_name || (userRes.full_name ? userRes.full_name.split(' ').slice(1).join(' ') : '') || (userRes.goalie_name ? userRes.goalie_name.split(' ').slice(1).join(' ') : '');
                     initials = ((f.charAt(0) || "") + (l.charAt(0) || "")).toUpperCase() || "GC";
-                    fullName = userRes.display_name || `${f} ${l}`.trim() || "Goalie";
+                    fullName = userRes.display_name || userRes.full_name || userRes.goalie_name || `${f} ${l}`.trim() || "Goalie";
                     
                     if (userRes.gc_number) {
                         gcNumber = 'GC-' + String(userRes.gc_number).padStart(4, '0');
@@ -99,7 +111,7 @@ export default function ProfilePage() {
                         gcNumber = 'GC-' + userRes.id.substring(0, 4).toUpperCase();
                     }
 
-                    let sport = userRes.primary_sport || "Lacrosse";
+                    let sport = userRes.primary_sport || userRes.sport || "Lacrosse";
                     if (sport === 'lacrosse_mens') sport = "Men's Lacrosse";
                     else if (sport === 'lacrosse_womens') sport = "Women's Lacrosse";
                     else if (sport.includes('_')) {
@@ -112,7 +124,7 @@ export default function ProfilePage() {
                     const teamName = teamsArray.length > 0 ? teamsArray[0] : "";
                     positionClub = teamName ? `${sport} · ${teamName}` : sport;
 
-                    if (userRes.grad_year) grad_year = userRes.grad_year;
+                    if (userRes.grad_year) grad_year = String(userRes.grad_year);
                     if (userRes.handedness) {
                         handedness = userRes.handedness.charAt(0).toUpperCase() + userRes.handedness.slice(1);
                     }
@@ -123,14 +135,14 @@ export default function ProfilePage() {
                 
                 setUserData({ initials, fullName, gcNumber, positionClub, height, grad_year, handedness, profileTags, gpa: gpaVal });
 
-                // 2. Fetch game sessions for stats
-                if (!userRes?.id) {
+                // 2. Fetch game sessions / games for stats
+                if (!uid) {
                     setStats({ savePct: "—", saves: "—", games: "—" });
                 } else {
                     const { data: gamesRes } = await supabase
-                        .from('game_sessions')
-                        .select('saves, shots_faced')
-                        .eq('user_id', userRes.id);
+                        .from('games')
+                        .select('saves, shots_against')
+                        .eq('user_id', uid);
 
                     if (gamesRes && gamesRes.length > 0) {
                         const gamesCount = gamesRes.length;
@@ -138,7 +150,7 @@ export default function ProfilePage() {
                         let totalShots = 0;
                         gamesRes.forEach(g => {
                             totalSaves += (g.saves || 0);
-                            totalShots += (g.shots_faced || 0);
+                            totalShots += (g.shots_against || 0);
                         });
 
                         let savePct = "—";
@@ -409,6 +421,17 @@ export default function ProfilePage() {
                     Take the tour
                 </Link>
 
+                {/* Feedback Button for Eligible Private Clients */}
+                {isFeedbackEligible && (
+                    <button
+                        onClick={() => setIsFeedbackOpen(true)}
+                        className="w-full mt-3 py-3 bg-secondary/60 hover:bg-secondary text-foreground border border-border rounded-2xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 text-center cursor-pointer"
+                    >
+                        <MessageSquarePlus size={16} />
+                        Feedback
+                    </button>
+                )}
+
                 {/* Log Out Button */}
                 <button
                     onClick={() => auth.logout()}
@@ -530,6 +553,11 @@ export default function ProfilePage() {
                 </div>
             </main>
             <MobileBottomNav />
+
+            <FeedbackModal
+                isOpen={isFeedbackOpen}
+                onClose={() => setIsFeedbackOpen(false)}
+            />
         </div>
     );
 }

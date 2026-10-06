@@ -306,17 +306,15 @@ export default function CalendarPage() {
 
       if (uid && uid !== "00000000-0000-0000-0000-000000000000") {
         const [
-          { data: userRes },
           { data: profileRes },
           { data: authUserData }
         ] = await Promise.all([
-          supabase.from("users").select("id, auth_user_id, email, role").eq("auth_user_id", uid).maybeSingle(),
-          supabase.from("profiles").select("id, email, goalie_name, full_name, role, roles").eq("id", uid).maybeSingle(),
+          supabase.from("profiles").select("id, email, goalie_name, full_name, display_name, role, roles").eq("id", uid).maybeSingle(),
           supabase.auth.getUser()
         ]);
-        publicUserId = userRes?.id;
-        userEmail = (authUserData?.user?.email || userRes?.email || profileRes?.email || "").toLowerCase().trim();
-        goalieName = (profileRes?.goalie_name || profileRes?.full_name || "").trim();
+        publicUserId = uid;
+        userEmail = (authUserData?.user?.email || profileRes?.email || "").toLowerCase().trim();
+        goalieName = (profileRes?.goalie_name || profileRes?.full_name || profileRes?.display_name || "").trim();
         const coachAuth = await verifyCoachAuthorization();
         isCoachUser = Boolean(coachAuth.isCoach);
       }
@@ -902,18 +900,7 @@ export default function CalendarPage() {
         return;
       }
 
-      const { data: userRes } = await supabase
-        .from("users")
-        .select("id")
-        .eq("auth_user_id", uid)
-        .single();
-      
-      const publicUserId = userRes?.id;
-      if (!publicUserId) {
-        const msg = "User profile not found. Please complete account setup first.";
-        setSeasonError(msg);
-        return;
-      }
+      const publicUserId = uid;
 
       const { data, error } = await supabase
         .from("seasons")
@@ -987,12 +974,7 @@ export default function CalendarPage() {
     setDbSaving(true);
     try {
       const uid = auth.userId;
-      const { data: userRes } = await supabase
-        .from("users")
-        .select("id")
-        .eq("auth_user_id", uid)
-        .single();
-      const publicUserId = userRes?.id;
+      const publicUserId = uid;
       
       const trainingPayload = {
         strength: trainingStrength ? trainingStrength.split(',').map(s => s.trim()).filter(Boolean) : [],
@@ -1079,12 +1061,7 @@ export default function CalendarPage() {
     setDbSaving(true);
     try {
       const uid = auth.userId;
-      const { data: userRes } = await supabase
-        .from("users")
-        .select("id")
-        .eq("auth_user_id", uid)
-        .single();
-      const publicUserId = userRes?.id;
+      const publicUserId = uid;
       
       if (uid === "00000000-0000-0000-0000-000000000000" || !publicUserId) {
         const newGame = {
@@ -1153,14 +1130,7 @@ export default function CalendarPage() {
         return;
       }
 
-      const { data: userRes } = await supabase
-        .from("users")
-        .select("id")
-        .eq("auth_user_id", uid)
-        .single();
-      
-      const publicUserId = userRes?.id;
-      if (!publicUserId) throw new Error("Public user not found");
+      const publicUserId = uid;
 
       const { data, error } = await supabase
         .from("practices")
@@ -1549,12 +1519,7 @@ export default function CalendarPage() {
       setGames(updatedGames);
 
       if (uid && uid !== "00000000-0000-0000-0000-000000000000") {
-        const { data: userRes } = await supabase
-          .from("users")
-          .select("id")
-          .eq("auth_user_id", uid)
-          .single();
-        const publicUserId = userRes?.id;
+        const publicUserId = uid;
 
         if (isSyntheticId) {
           // Insert fresh record in games & game_sessions

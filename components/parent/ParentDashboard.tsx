@@ -64,7 +64,7 @@ export function ParentDashboard({
 
                 <ParentHeader activeGoalie={activeGoalie} userRole={userRole} handleLogout={onLogout} />
 
-                {/* Center Content / AI Insights */}
+                {/* Center Content / Recommendations */}
                 <div className="md:col-span-2 mb-8">
                     {showPostGame ? (
                         <motion.div

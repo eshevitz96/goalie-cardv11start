@@ -59,7 +59,7 @@ const SECTIONS = [
         title: "Pricing Research",
         questions: [
             { id: "base_price", label: "Fair price for Base Tier (Logs + Drills)?", type: "number", prefix: "$" },
-            { id: "pro_price", label: "Fair price for Pro Tier (AI + Feedback)?", type: "number", prefix: "$" },
+            { id: "pro_price", label: "Fair price for Pro Tier (Advanced Insights + Feedback)?", type: "number", prefix: "$" },
             { id: "retention", label: "How long should we keep data?", type: "select", options: ["1 Year", "4 Years (HS Career)", "Forever"] }
         ]
     }

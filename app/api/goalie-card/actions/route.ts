@@ -20,38 +20,38 @@ export async function POST(req: Request) {
 
         if (userId && userId !== '00000000-0000-0000-0000-000000000000') {
             const { data: u } = await supabaseAdmin
-                .from('users')
-                .select('id, auth_user_id, email')
-                .or(`id.eq.${userId},auth_user_id.eq.${userId}`)
+                .from('profiles')
+                .select('id, email')
+                .eq('id', userId)
                 .maybeSingle();
             if (u) {
                 resolvedPublicId = u.id;
-                resolvedAuthId = u.auth_user_id || u.id;
+                resolvedAuthId = u.id;
             }
         }
 
         if (!resolvedPublicId && userEmail) {
             const { data: u } = await supabaseAdmin
-                .from('users')
-                .select('id, auth_user_id, email')
+                .from('profiles')
+                .select('id, email')
                 .ilike('email', userEmail.trim())
                 .maybeSingle();
             if (u) {
                 resolvedPublicId = u.id;
-                resolvedAuthId = u.auth_user_id || u.id;
+                resolvedAuthId = u.id;
             }
         }
 
         // Fallback to active athlete
         if (!resolvedPublicId) {
             const { data: u } = await supabaseAdmin
-                .from('users')
-                .select('id, auth_user_id, email')
+                .from('profiles')
+                .select('id, email')
                 .ilike('email', '%eshevitz96%')
                 .maybeSingle();
             if (u) {
                 resolvedPublicId = u.id;
-                resolvedAuthId = u.auth_user_id || u.id;
+                resolvedAuthId = u.id;
             }
         }
 

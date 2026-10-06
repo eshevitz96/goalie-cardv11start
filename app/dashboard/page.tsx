@@ -18,6 +18,8 @@ import { FirstLoginTour } from "@/components/shared/FirstLoginTour";
 import { getGoalieBookingProfile, fetchCoachDashboardCounts, verifyCoachAuthorization } from "@/app/training/book/actions";
 import { checkBillingEligibility } from "@/app/parent/payments/actions";
 import { usePerformanceRealtime } from "@/hooks/usePerformanceRealtime";
+import { checkInterviewStatus } from "@/app/actions/interview";
+import { OnboardingInterviewModal } from "@/components/training/OnboardingInterviewModal";
 import { twMerge } from "tailwind-merge";
 
 function normalizeSportDisplay(rawSport: string | null | undefined): string | null {
@@ -65,11 +67,30 @@ export default function Dashboard() {
         : (performanceScore || "Baseline Pending");
     const [isPro, setIsPro] = useState(false);
     const [hasBillingAccess, setHasBillingAccess] = useState(false);
+    const [showInterview, setShowInterview] = useState(false);
+    const [interviewStatus, setInterviewStatus] = useState<{
+        isPrivateClient: boolean;
+        isCompleted: boolean;
+        profile: any;
+    } | null>(null);
 
     useEffect(() => {
         const handleOpenTour = () => setShowTour(true);
+        const handleOpenInterview = () => setShowInterview(true);
         window.addEventListener('open-first-login-tour', handleOpenTour);
-        return () => window.removeEventListener('open-first-login-tour', handleOpenTour);
+        window.addEventListener('open-training-interview', handleOpenInterview);
+
+        // Check interview status
+        const loadInterview = async () => {
+            const status = await checkInterviewStatus();
+            setInterviewStatus(status);
+        };
+        loadInterview();
+
+        return () => {
+            window.removeEventListener('open-first-login-tour', handleOpenTour);
+            window.removeEventListener('open-training-interview', handleOpenInterview);
+        };
     }, []);
     const [credits, setCredits] = useState(0);
     const [showProgress, setShowProgress] = useState(true);
@@ -99,8 +120,7 @@ export default function Dashboard() {
                         initials: "DV",
                         fullName: "Dev User",
                         publicUserId: "00000000-0000-0000-0000-000000000000",
-                        gcNumber: "GC-0001",
-                        digital_signature: "Dev"
+                        gcNumber: "GC-0001"
                     });
                     setRosterData({
                         id: "00000000-0000-0000-0000-000000000000",
@@ -169,22 +189,12 @@ export default function Dashboard() {
 
                 setResolvedGoalieId(goalieProfileId);
 
-                // 2. Fetch user identity and profile details using resolved goalie ID
-                const [userRes, profileRes] = await Promise.all([
-                    supabase
-                        .from('users')
-                        .select('id, first_name, last_name, display_name, gc_number, onboarding_completed, onboarding_completed_at, created_at, teams, handedness, primary_sport')
-                        .eq('auth_user_id', goalieProfileId)
-                        .maybeSingle(),
-                    supabase
-                        .from('profiles')
-                        .select('goalie_name, sport, grad_year')
-                        .eq('id', goalieProfileId)
-                        .maybeSingle()
-                ]);
-                
-                const userResData = userRes.data;
-                const userErr = userRes.error;
+                // 2. Fetch user identity and profile details directly from profiles table
+                const { data: profData, error: profErr } = await supabase
+                    .from('profiles')
+                    .select('id, first_name, last_name, display_name, full_name, goalie_name, gc_number, onboarding_completed, onboarding_completed_at, created_at, teams, handedness, primary_sport, sport, grad_year, tour_completed_at')
+                    .eq('id', goalieProfileId)
+                    .maybeSingle();
                 
                 let initials = "GC";
                 let fullName = "Goalie";
@@ -198,33 +208,34 @@ export default function Dashboard() {
                 let gcNumber = "GC-0000";
                 let sport = null;
                 
-                const resolvedName = userResData?.display_name || 
-                                     (userResData?.first_name ? `${userResData.first_name} ${userResData.last_name || ''}`.trim() : null) || 
+                const resolvedName = profData?.display_name || 
+                                     profData?.full_name ||
+                                     profData?.goalie_name ||
+                                     (profData?.first_name ? `${profData.first_name} ${profData.last_name || ''}`.trim() : null) || 
                                      rosterRes?.goalie_name || 
-                                     profileRes?.data?.goalie_name || 
                                      "Goalie";
 
                 fullName = resolvedName;
-                firstName = userResData?.first_name || (resolvedName !== "Goalie" ? resolvedName.split(' ')[0] : "Goalie");
+                firstName = profData?.first_name || (resolvedName !== "Goalie" ? resolvedName.split(' ')[0] : "Goalie");
                 const nameParts = resolvedName.split(' ');
                 initials = nameParts.length > 1 ? ((nameParts[0][0] || '') + (nameParts[1][0] || '')).toUpperCase() : (resolvedName.substring(0, 2).toUpperCase() || 'GC');
 
-                const rawSport = userResData?.primary_sport || rosterRes?.sport || profileRes?.data?.sport;
+                const rawSport = profData?.primary_sport || profData?.sport || rosterRes?.sport;
                 sport = normalizeSportDisplay(rawSport);
 
-                if (userResData && !userErr) {
-                    publicUserId = userResData.id;
-                    onboardingCompletedAt = userResData.onboarding_completed_at || null;
-                    userCreatedAt = userResData.created_at || null;
-                    onboarded = userResData.onboarding_completed !== false;
-                    teams = userResData.teams || null;
-                    handedness = userResData.handedness || null;
-                    if (userResData.gc_number) {
-                        gcNumber = 'GC-' + String(userResData.gc_number).padStart(4, '0');
+                if (profData && !profErr) {
+                    publicUserId = profData.id;
+                    onboardingCompletedAt = profData.onboarding_completed_at || null;
+                    userCreatedAt = profData.created_at || null;
+                    onboarded = profData.onboarding_completed !== false;
+                    teams = profData.teams || null;
+                    handedness = profData.handedness || null;
+                    if (profData.gc_number) {
+                        gcNumber = 'GC-' + String(profData.gc_number).padStart(4, '0');
                     }
                 }
                 setUserData({ initials, fullName, publicUserId, teams, handedness, gcNumber, sport });
-                const tourCompleted = (profileRes?.data as any)?.tour_completed_at || localStorage.getItem('tour_completed') === 'true';
+                const tourCompleted = profData?.tour_completed_at || localStorage.getItem('tour_completed') === 'true';
                 const isCoachOrAdmin = auth.userRole === 'coach' || auth.userRole === 'admin';
                 if (!tourCompleted && !isCoachOrAdmin) {
                     setShowTour(true);
@@ -234,7 +245,7 @@ export default function Dashboard() {
                 // Compute profile completeness
                 const hasValidName = resolvedName && resolvedName !== "Goalie" && resolvedName.trim() !== '';
                 const hasValidSport = !!sport;
-                const hasValidGrad = (profileRes?.data?.grad_year !== null && profileRes?.data?.grad_year !== undefined) || 
+                const hasValidGrad = (profData?.grad_year !== null && profData?.grad_year !== undefined) || 
                                      (rosterRes?.grad_year !== null && rosterRes?.grad_year !== undefined);
                 setIsProfileIncomplete(!hasValidName || !hasValidSport || !hasValidGrad);
 
@@ -392,7 +403,7 @@ export default function Dashboard() {
                                 clearTimeout(timeoutId);
                                 const hasPendingLesson = pendData.success && pendData.pending && pendData.pending.length > 0;
                                 const needsIntention = !weeklyIntentionText && (auth.userRole === 'goalie' || auth.userRole === 'parent');
-                                const isTourDone = (profileRes?.data as any)?.tour_completed_at || localStorage.getItem('tour_completed') === 'true';
+                                const isTourDone = profData?.tour_completed_at || localStorage.getItem('tour_completed') === 'true';
                                 if ((hasPendingLesson || needsIntention) && isTourDone) {
                                     setShowActionsOverlay(true);
                                 }
@@ -621,7 +632,27 @@ export default function Dashboard() {
  
     return (
         <>
-        {showTour && <FirstLoginTour isOpen={showTour} onClose={() => setShowTour(false)} />}
+        {showTour && (
+            <FirstLoginTour 
+                isOpen={showTour} 
+                onClose={() => {
+                    setShowTour(false);
+                    if (interviewStatus?.isPrivateClient && !interviewStatus?.isCompleted) {
+                        setShowInterview(true);
+                    }
+                }} 
+            />
+        )}
+        <OnboardingInterviewModal
+            isOpen={showInterview}
+            onClose={() => setShowInterview(false)}
+            initialProfile={interviewStatus?.profile}
+            onComplete={() => {
+                if (interviewStatus) {
+                    setInterviewStatus({ ...interviewStatus, isCompleted: true });
+                }
+            }}
+        />
         <div 
             className="text-foreground font-sans flex flex-col justify-start w-full min-h-screen pb-[calc(120px+env(safe-area-inset-bottom))]"
             style={{ padding: '32px 24px 140px 24px' }}

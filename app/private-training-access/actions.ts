@@ -144,10 +144,6 @@ export async function updateWaiverStatus(submissionId: string, confirmed: boolea
             waiver_completed: confirmed,
             status: 'waiver pending'
         };
-        
-        if (signature) {
-            updatePayload.digital_signature = signature;
-        }
 
         const { error } = await supabaseAdmin
             .from('private_training_submissions')

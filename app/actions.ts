@@ -283,16 +283,16 @@ export async function checkUserStatus(email: string) {
         const supabaseAdmin = getSupabaseAdmin();
         const emailLower = email.toLowerCase().trim();
 
-        // 1. Check if Auth User / User row exists in public.users (current source of truth)
+        // 1. Check if profile exists in profiles table
         const { data: userRow, error: userError } = await supabaseAdmin
-            .from('users')
+            .from('profiles')
             .select('*')
-            .eq('email', emailLower)
-            .maybeSingle(); // Use maybeSingle to avoid error for no rows
+            .ilike('email', emailLower)
+            .maybeSingle();
 
         if (userError) {
-            console.error("User Check Failed:", userError);
-            throw new Error("DB Error checking user record");
+            console.error("Profile Check Failed:", userError);
+            throw new Error("DB Error checking profile record");
         }
 
         if (userRow) {
@@ -300,16 +300,16 @@ export async function checkUserStatus(email: string) {
             const { data: rosterCheck } = await supabaseAdmin
                 .from('roster_uploads')
                 .select('id')
-                .eq('linked_user_id', userRow.auth_user_id)
+                .eq('linked_user_id', userRow.id)
                 .limit(1)
                 .maybeSingle();
 
-            // Map public.users columns to mock profile properties for compatibility with continue-as UI displays
+            // Map profiles columns to profile properties for UI displays
             const mappedProfile = {
-                id: userRow.auth_user_id,
+                id: userRow.id,
                 email: userRow.email,
                 role: userRow.role,
-                goalie_name: userRow.display_name || `${userRow.first_name || ''} ${userRow.last_name || ''}`.trim() || 'Athlete',
+                goalie_name: userRow.display_name || userRow.goalie_name || userRow.full_name || `${userRow.first_name || ''} ${userRow.last_name || ''}`.trim() || 'Athlete',
                 ...userRow
             };
 

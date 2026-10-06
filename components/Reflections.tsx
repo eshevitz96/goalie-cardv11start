@@ -149,7 +149,7 @@ export function Reflections({ rosterId, currentUserRole = 'goalie', isExpanded =
                 localStorage.setItem('demo_reflections', JSON.stringify(updated));
             }
             localStorage.setItem('demo_latest_mood', newEntry.mood); // Signal to parent
-            localStorage.setItem('demo_latest_content', newEntry.content); // Signal text context to AI
+            localStorage.setItem('demo_latest_content', newEntry.content); // Signal text context
             localStorage.setItem('demo_latest_soreness', String(newEntry.soreness));
             localStorage.setItem('demo_latest_sleep', String(newEntry.sleep_quality));
 

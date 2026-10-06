@@ -26,35 +26,25 @@ export async function GET(request: NextRequest) {
         }
 
         const supabaseAdmin = getSupabaseAdmin();
-        const [{ data: prof }, { data: userRow }] = await Promise.all([
-            supabaseAdmin
-                .from('profiles')
-                .select('role, roles')
-                .eq('id', user.id)
-                .maybeSingle(),
-            supabaseAdmin
-                .from('users')
-                .select('role')
-                .eq('auth_user_id', user.id)
-                .maybeSingle()
-        ]);
+        const { data: prof } = await supabaseAdmin
+            .from('profiles')
+            .select('role, roles')
+            .eq('id', user.id)
+            .maybeSingle();
 
         const profileRole = prof?.role;
         const rolesArr = Array.isArray(prof?.roles) ? prof?.roles : [];
-        const userRole = userRow?.role;
 
         const isAdmin = (
             profileRole === 'admin' ||
             rolesArr.includes('admin') ||
-            userRole === 'admin' ||
             user.email === 'eshevitz96@gmail.com'
         );
 
         const isCoach = (
             isAdmin ||
             profileRole === 'coach' ||
-            rolesArr.includes('coach') ||
-            userRole === 'coach'
+            rolesArr.includes('coach')
         );
 
         if (!isCoach) {

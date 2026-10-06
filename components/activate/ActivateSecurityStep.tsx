@@ -47,23 +47,20 @@ export function ActivateSecurityStep({
             </div>
 
             <div className="space-y-4">
-                <div className="bg-secondary/30 rounded-xl p-4 border border-border text-[10px] text-muted-foreground h-40 overflow-y-auto leading-relaxed scrollbar-hide">
-                    <p className="font-bold text-foreground mb-2 text-xs">Terms of Service & Privacy</p>
-                    <div className="space-y-2">
-                        <p>By activating your Goalie Card, you enter into a binding agreement with Goalie Card ("the Company"). You acknowledge that Goalie Card is a performance monitoring and athletic development platform.</p>
-
-                        <p className="font-bold text-foreground/80">1. Data Usage & AI Analysis</p>
-                        <p>We utilize advanced technical models and AI to analyze your training data, reflections, and performance metrics. This data is used to provide personalized feedback and insights. You grant Goalie Card a non-exclusive license to use this data for service improvement and aggregated research.</p>
-
-                        <p className="font-bold text-foreground/80">2. Privacy & Sharing</p>
-                        <p>Your data is strictly shared with assigned coaches, guardians, and organizations you are affiliated with. We do not sell your personal data to third parties. For users under 18, guardian consent is mandatory and verified through parent email linkage.</p>
-
-                        <p className="font-bold text-foreground/80">3. Liability Waiver</p>
-                        <p>Athletic training involves inherent risks. Goalie Card is a tool for development and does not replace qualified medical advice or supervised physical training. You assume all risks associated with the implementation of AI-generated suggestions.</p>
-
-                        <p className="font-bold text-foreground/80">4. Community Guidelines</p>
-                        <p>You agree to provide honest reflections and maintain professional conduct when interacting with the AI Coach and human staff. Misuse of the platform may lead to account suspension.</p>
-                    </div>
+                <div className="bg-secondary/30 rounded-xl p-4 border border-border text-[10px] text-muted-foreground h-40 overflow-y-auto leading-relaxed scrollbar-hide space-y-2">
+                    <p className="font-bold text-foreground mb-2 text-xs">Terms of Service & Data Consent</p>
+                    <p>
+                        <strong className="text-foreground">1. Privacy & Sharing:</strong> Your data is private to you. Your coach sees film, reflections, and training only when you choose to share them. Linked parents or guardians can see their athlete&apos;s account. We use secure third-party service providers to run the app and generate training insights; they process data only to provide these services. We do not sell personal data.
+                    </p>
+                    <p>
+                        <strong className="text-foreground">2. Automated Processing & Training Insights:</strong> To provide personalized training recommendations, workload analysis, and performance insights, your workout logs, reflections, and athletic metrics are processed using automated computational systems and secure third-party service providers. These automated suggestions do not replace qualified medical advice, physical therapy, or in-person coaching supervision.
+                    </p>
+                    <p>
+                        <strong className="text-foreground">3. Minors & Guardian Consent:</strong> If you are under 18, a parent or guardian must complete or approve this sign-up. Parents and guardians consenting on behalf of minors acknowledge and authorize this data processing.
+                    </p>
+                    <p>
+                        <strong className="text-foreground">4. Liability Waiver:</strong> Athletic training carries inherent physical risks. You assume all risks associated with executing any recommended exercises, drills, or training sessions.
+                    </p>
                 </div>
 
                 <div

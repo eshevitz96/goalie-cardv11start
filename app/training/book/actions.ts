@@ -26,35 +26,25 @@ export async function verifyCoachAuthorization(): Promise<CoachAuthResult> {
         }
 
         const supabaseAdmin = getSupabaseAdmin();
-        const [{ data: prof }, { data: userRow }] = await Promise.all([
-            supabaseAdmin
-                .from('profiles')
-                .select('role, roles, email')
-                .eq('id', user.id)
-                .maybeSingle(),
-            supabaseAdmin
-                .from('users')
-                .select('role, email')
-                .eq('auth_user_id', user.id)
-                .maybeSingle()
-        ]);
+        const { data: prof } = await supabaseAdmin
+            .from('profiles')
+            .select('role, roles, email')
+            .eq('id', user.id)
+            .maybeSingle();
 
         const profileRole = prof?.role;
         const rolesArr = Array.isArray(prof?.roles) ? prof?.roles : [];
-        const userRole = userRow?.role;
 
         const isAdmin = (
             profileRole === 'admin' ||
             rolesArr.includes('admin') ||
-            userRole === 'admin' ||
             user.email === 'eshevitz96@gmail.com'
         );
 
         const isCoach = (
             isAdmin ||
             profileRole === 'coach' ||
-            rolesArr.includes('coach') ||
-            userRole === 'coach'
+            rolesArr.includes('coach')
         );
 
         return {
@@ -63,7 +53,7 @@ export async function verifyCoachAuthorization(): Promise<CoachAuthResult> {
             isAdmin: Boolean(isAdmin),
             userId: user.id,
             email: user.email || null,
-            role: isAdmin ? 'admin' : (isCoach ? 'coach' : (profileRole || userRole || 'goalie'))
+            role: isAdmin ? 'admin' : (isCoach ? 'coach' : (profileRole || 'goalie'))
         };
     } catch (e) {
         console.error("[verifyCoachAuthorization] Error:", e);
@@ -294,17 +284,21 @@ export async function getGoalieBookingProfile(goalieProfileId?: string, userEmai
             roster = data;
         }
 
-        // 2. Check goalie_lesson_balance view as fallback
-        const { data: balance } = await supabase
-            .from('goalie_lesson_balance')
-            .select('*')
-            .or(`goalie_id.eq.${targetGoalieId}${targetEmail ? `,email.ilike.${targetEmail}` : ''}`)
-            .maybeSingle();
+        // 2. Check profile details
+        let profData = null;
+        if (targetGoalieId && targetGoalieId !== '00000000-0000-0000-0000-000000000000') {
+            const { data: pData } = await supabase
+                .from('profiles')
+                .select('id, goalie_name, full_name, display_name, email')
+                .eq('id', targetGoalieId)
+                .maybeSingle();
+            profData = pData;
+        }
 
-        let goalieName = roster?.goalie_name || balance?.goalie_name || "Athlete";
-        let email = roster?.email || roster?.guardian_email || balance?.email || targetEmail || "";
+        let goalieName = roster?.goalie_name || profData?.goalie_name || profData?.full_name || profData?.display_name || "Athlete";
+        let email = roster?.email || roster?.guardian_email || profData?.email || targetEmail || "";
         let rosterId: string | null = roster?.id || null;
-        let linkedUserId: string | null = roster?.linked_user_id || null;
+        let linkedUserId: string | null = roster?.linked_user_id || profData?.id || null;
 
         // 3. Fetch private training registration & package selection
         const { data: submission } = await supabase
@@ -319,19 +313,16 @@ export async function getGoalieBookingProfile(goalieProfileId?: string, userEmai
         const rawData = typeof roster?.raw_data === 'object' && roster?.raw_data !== null ? roster.raw_data : {};
         
         const hasRosterPackage = Boolean(roster && (roster.lesson_count > 0 || roster.payment_status === 'paid' || roster.payment_status === 'enrolled'));
-        const hasBalanceRecord = Boolean(balance && balance.lessons_earned > 0);
         const hasActiveSubmission = Boolean(submission && (submission.payment_status === 'paid' || submission.payment_status === 'enrolled'));
-        const isClientEnrolled = hasRosterPackage || hasBalanceRecord || hasActiveSubmission;
+        const isClientEnrolled = hasRosterPackage || hasActiveSubmission;
 
-        let totalAllowance = roster?.lesson_count || (balance?.lessons_earned && balance.lessons_earned > 0 ? balance.lessons_earned : (isClientEnrolled ? 4 : 0));
-        let deliveredCount = rawData.total_2026_lessons ?? roster?.session_count ?? balance?.lessons_delivered ?? 0;
+        let totalAllowance = roster?.lesson_count || (isClientEnrolled ? 4 : 0);
+        let deliveredCount = rawData.total_2026_lessons ?? roster?.session_count ?? 0;
         let bookedCount = rawData.completed_in_package ?? 0;
         
         let lessonsRemaining = 0;
         if (rawData.remaining_in_package !== undefined && rawData.remaining_in_package !== null) {
             lessonsRemaining = Number(rawData.remaining_in_package);
-        } else if (balance?.lessons_remaining !== undefined && balance?.lessons_remaining !== null) {
-            lessonsRemaining = Number(balance.lessons_remaining);
         } else if (roster?.lesson_count) {
             lessonsRemaining = Math.max(0, (roster.lesson_count || 0) - bookedCount);
         } else if (isClientEnrolled) {

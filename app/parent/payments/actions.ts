@@ -54,7 +54,18 @@ export async function checkBillingEligibility(): Promise<{ eligible: boolean }> 
 
         const userEmail = user.email.trim().toLowerCase();
 
-        // 1. Check private_training_submissions match
+        // 1. Check profiles.stripe_customer_id first
+        const { data: prof } = await supabase
+            .from('profiles')
+            .select('stripe_customer_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (prof?.stripe_customer_id) {
+            return { eligible: true };
+        }
+
+        // 2. Check private_training_submissions match
         const { data: submission } = await supabase
             .from('private_training_submissions')
             .select('id, stripe_customer_id')
@@ -66,7 +77,7 @@ export async function checkBillingEligibility(): Promise<{ eligible: boolean }> 
             return { eligible: true };
         }
 
-        // 2. Check Stripe customer directly
+        // 3. Check Stripe customer directly by email
         try {
             const customers = await stripe.customers.list({
                 email: userEmail,
@@ -104,22 +115,35 @@ export async function fetchParentBillingData(): Promise<ParentBillingData> {
 
         const userEmail = user.email.trim().toLowerCase();
 
-        // 1. Look up stripe_customer_id in private_training_submissions
+        // 1. Look up stripe_customer_id in profiles first
         let customerId: string | null = null;
-        const { data: submission } = await supabase
-            .from('private_training_submissions')
+        const { data: prof } = await supabase
+            .from('profiles')
             .select('stripe_customer_id')
-            .or(`email.ilike.${userEmail},guardian_email.ilike.${userEmail}`)
-            .not('stripe_customer_id', 'is', null)
-            .order('created_at', { ascending: false })
-            .limit(1)
+            .eq('id', user.id)
             .maybeSingle();
 
-        if (submission?.stripe_customer_id) {
-            customerId = submission.stripe_customer_id;
+        if (prof?.stripe_customer_id) {
+            customerId = prof.stripe_customer_id;
         }
 
-        // 2. Fallback: Search directly in Stripe for customer by email
+        // 2. Fallback: Check private_training_submissions
+        if (!customerId) {
+            const { data: submission } = await supabase
+                .from('private_training_submissions')
+                .select('stripe_customer_id')
+                .or(`email.ilike.${userEmail},guardian_email.ilike.${userEmail}`)
+                .not('stripe_customer_id', 'is', null)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (submission?.stripe_customer_id) {
+                customerId = submission.stripe_customer_id;
+            }
+        }
+
+        // 3. Fallback: Search directly in Stripe for customer by email
         if (!customerId) {
             try {
                 const customers = await stripe.customers.list({

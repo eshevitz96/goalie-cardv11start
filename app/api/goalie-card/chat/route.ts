@@ -64,7 +64,7 @@ LACROSSE GOALIE COACHING EXPERTISE & EXACT TERMINOLOGY:
   * Shot Levels & Classification (Lacrosse):
     - Primary Levels: **High**, **Hips**, **Low** (e.g. stick-side high, off-stick hip, off-stick low, 5-hole/bounce).
     - Note: "Shoulder" is only a specific placement descriptor of where the ball was located, not a primary level.
-  * Strictly Banned Terminology: NEVER use generic AI jargon like "12-yard cylinder". Use Elliott's exact cues above.
+  * Strictly Banned Terminology: NEVER use incorrect jargon like "12-yard cylinder". Use the exact cues above.
   * Unstructured Activity & Lacrosse Coaching Accounting:
     - When Elliott coaches lacrosse lessons on the field, retain the event strictly as unstructured activity context.
     - Do NOT characterize it as Elliott's personal workout, do NOT infer unstated physical demand, and do NOT causally attribute soreness or fatigue to coaching unless Elliott explicitly reports that relationship.
@@ -112,7 +112,7 @@ NATURAL COACHING DIALOGUE & INTELLIGENCE MANDATE:
      * GUARDRAIL: 1 concise line covering RPE reserve, stop/reassess criteria, or performance-preservation constraint.
    - Default Mission responses must remain concise and scan-first—easy to read during a workout. Deeper physiological reasoning belongs in follow-up dialogue or the Explain experience.
    - Duration Derivation (System Boundary):
-     * The LLM must NEVER generate or guess total session duration in "what" or prose.
+     * The system must NEVER generate or guess total session duration in "what" or prose.
      * Total Mission duration is derived deterministically from the completed "plan" by the system runtime.
      * Focus "what" strictly on the conceptual training objective.
    - Mission Revision Boundary: Preserve the invariant "ORIGINAL PLANNED MISSION → MISSION REVISION(S) → ATHLETE DECISION(S) → ACTUAL EXECUTION". If conversational feedback changes the plan, generate the appropriate revision without overwriting the original Mission.
@@ -211,38 +211,38 @@ export async function GET(req: Request) {
 
         if (userId && userId !== '00000000-0000-0000-0000-000000000000') {
             const { data: u } = await supabaseAdmin
-                .from('users')
-                .select('id, auth_user_id')
-                .or(`id.eq.${userId},auth_user_id.eq.${userId}`)
+                .from('profiles')
+                .select('id, email')
+                .eq('id', userId)
                 .maybeSingle();
             if (u) {
                 resolvedUserId = u.id;
-                resolvedAuthId = u.auth_user_id || u.id;
+                resolvedAuthId = u.id;
             }
         }
 
         if (!resolvedUserId && userEmail) {
             const { data: u } = await supabaseAdmin
-                .from('users')
-                .select('id, auth_user_id')
+                .from('profiles')
+                .select('id, email')
                 .ilike('email', userEmail.trim())
                 .maybeSingle();
             if (u) {
                 resolvedUserId = u.id;
-                resolvedAuthId = u.auth_user_id || u.id;
+                resolvedAuthId = u.id;
             }
         }
 
         // Fallback: Default to primary athlete
         if (!resolvedUserId) {
             const { data: u } = await supabaseAdmin
-                .from('users')
-                .select('id, auth_user_id')
+                .from('profiles')
+                .select('id, email')
                 .ilike('email', '%eshevitz96%')
                 .maybeSingle();
             if (u) {
                 resolvedUserId = u.id;
-                resolvedAuthId = u.auth_user_id || u.id;
+                resolvedAuthId = u.id;
             }
         }
 
@@ -400,38 +400,38 @@ export async function POST(req: Request) {
 
         if (userId && userId !== '00000000-0000-0000-0000-000000000000') {
             const { data: u } = await supabaseAdmin
-                .from('users')
-                .select('id, auth_user_id, email')
-                .or(`id.eq.${userId},auth_user_id.eq.${userId}`)
+                .from('profiles')
+                .select('id, email')
+                .eq('id', userId)
                 .maybeSingle();
             if (u) {
                 resolvedPublicId = u.id;
-                resolvedAuthId = u.auth_user_id || u.id;
+                resolvedAuthId = u.id;
             }
         }
 
         if (!resolvedPublicId && userEmail) {
             const { data: u } = await supabaseAdmin
-                .from('users')
-                .select('id, auth_user_id, email')
+                .from('profiles')
+                .select('id, email')
                 .ilike('email', userEmail.trim())
                 .maybeSingle();
             if (u) {
                 resolvedPublicId = u.id;
-                resolvedAuthId = u.auth_user_id || u.id;
+                resolvedAuthId = u.id;
             }
         }
 
         // Fallback: Default to primary athlete
         if (!resolvedPublicId) {
             const { data: u } = await supabaseAdmin
-                .from('users')
-                .select('id, auth_user_id, email')
+                .from('profiles')
+                .select('id, email')
                 .ilike('email', '%eshevitz96%')
                 .maybeSingle();
             if (u) {
                 resolvedPublicId = u.id;
-                resolvedAuthId = u.auth_user_id || u.id;
+                resolvedAuthId = u.id;
             }
         }
 
@@ -568,7 +568,7 @@ export async function POST(req: Request) {
 
         // 4. Build Active Thread Conversation History
         const formattedHistory = Array.isArray(messages) && messages.length > 0
-            ? messages.slice(-10).map((m: any) => `${m.sender === 'goalie_card' ? 'Goalie Card (Coach)' : 'Elliott'}: ${m.text}`).join('\n')
+            ? messages.slice(-10).map((m: any) => `${m.sender === 'goalie_card' ? 'Goalie Card' : 'Athlete'}: ${m.text}`).join('\n')
             : '';
 
         const dynamicFullPrompt = `
@@ -766,13 +766,13 @@ CURRENT THREAD INFO:
                 actionCard = undefined;
 
                 if (hasExplicitNegation(userMessage)) {
-                    replyText = "Acknowledged: noted that this was coaching/non-workout activity and not a personal training session. [Offline Mode: Live AI coaching intelligence is currently offline, so dynamic directives cannot be generated.]";
+                    replyText = "Acknowledged: noted that this was coaching/non-workout activity and not a personal training session. [Offline Mode: Live coaching intelligence is currently offline, so dynamic directives cannot be generated.]";
                 } else if (inputLower.includes('how are we') || inputLower.includes('how are you')) {
-                    replyText = "Goalie Card is operating in offline mode. Live AI coaching intelligence is currently unavailable. No automated directive was generated.";
+                    replyText = "Goalie Card is operating in offline mode. Live coaching intelligence is currently unavailable. No automated directive was generated.";
                 } else if (inputLower.match(/^\s*[1-5]\s*$/)) {
-                    replyText = `Recorded ${inputLower.trim()}/5 check-in rating. [Offline Mode: Live AI coaching intelligence is currently offline, so dynamic load adjustments cannot be calculated.]`;
+                    replyText = `Recorded ${inputLower.trim()}/5 check-in rating. [Offline Mode: Live coaching intelligence is currently offline, so dynamic load adjustments cannot be calculated.]`;
                 } else {
-                    replyText = "Goalie Card is operating in offline mode. Live AI coaching intelligence and full Athlete Track context are currently unavailable. No automated coaching directive or training card was inferred.";
+                    replyText = "Goalie Card is operating in offline mode. Live coaching intelligence and full Athlete Track context are currently unavailable. No automated coaching directive or training card was inferred.";
                 }
             }
         }
@@ -801,10 +801,10 @@ CURRENT THREAD INFO:
             nextPerformance: decisionContext.freshness.nextPerformance,
             lookaheadSource: decisionContext.freshness.nextPerformance?.source || 'NONE',
             details: provenanceMode === 'AI_COACH' 
-                ? 'Generated via Multimodal AI Coach Model with Unified Athlete Track Context' 
+                ? 'Generated via Goalie Card Coaching Engine with Unified Athlete Track Context' 
                 : (provenanceMode === 'DETERMINISTIC_ACTION' 
                     ? 'Structured Deterministic Template Action' 
-                    : (failureDetails || 'Offline Mode (AI Coaching & Live Context Unavailable)'))
+                    : (failureDetails || 'Offline Mode (Live Context Unavailable)'))
         };
 
         // 7. Persist Goalie Card Reply to Private DB Record
@@ -847,7 +847,7 @@ CURRENT THREAD INFO:
     } catch (error: any) {
         console.error("[Goalie Card Chat Error]:", error);
         return NextResponse.json({
-            reply: "Goalie Card is operating in offline mode. Live AI coaching intelligence is currently unavailable.",
+            reply: "Goalie Card is operating in offline mode. Live coaching intelligence is currently unavailable.",
             actionCard: null,
             provenance: {
                 mode: 'OFFLINE_UNAVAILABLE',

@@ -15,9 +15,9 @@ export default function OnboardingPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 const { data: profile } = await supabase
-                    .from('users')
+                    .from('profiles')
                     .select('onboarding_completed')
-                    .eq('auth_user_id', user.id)
+                    .eq('id', user.id)
                     .maybeSingle();
                 
                 if (profile?.onboarding_completed) {
@@ -152,7 +152,7 @@ export default function OnboardingPage() {
                 console.error("Setup Update Error:", error);
             }
 
-            // 3. CREATE BASELINE REFLECTION (For AI Context)
+            // 3. CREATE BASELINE REFLECTION (For Context)
             try {
                 const conf = parseInt(formData.baseline_confidence) || 5;
                 let mood = 'neutral';
@@ -339,18 +339,18 @@ export default function OnboardingPage() {
                             className="space-y-6"
                         >
                             <div className="h-64 overflow-y-auto bg-card border border-border rounded-2xl p-4 text-xs text-muted-foreground leading-relaxed">
-                                <p className="font-bold text-foreground mb-2">Goalie Card - Beta Terms</p>
+                                <p className="font-bold text-foreground mb-2">Goalie Card - Terms & Data Consent</p>
                                 <p className="mb-2">
-                                    <strong>1. Data Privacy:</strong> We take your data seriously. As part of this Beta, certain performance data may be shared with your assigned coaching staff.
+                                    <strong>1. Privacy & Data Sharing:</strong> Your data is private to you. Your coach sees film, reflections, and training only when you choose to share them. Linked parents or guardians can see their athlete's account. We use secure third-party service providers to run the app and generate training insights; they process data only to provide these services. We do not sell personal data.
                                 </p>
                                 <p className="mb-2">
-                                    <strong>2. AI Usage:</strong> This platform uses Artificial Intelligence to provide training insights. While we strive for accuracy, AI suggestions should not replace professional medical or coaching advice.
+                                    <strong>2. Automated Processing & Training Insights:</strong> To provide personalized training recommendations, workload analysis, and performance insights, your workout logs, reflections, and athletic metrics are processed using automated computational systems and secure third-party service providers. These automated suggestions do not replace qualified medical advice, physical therapy, or in-person coaching supervision.
                                 </p>
                                 <p className="mb-2">
-                                    <strong>3. Minors:</strong> Accounts for users under 13 must be managed by a parent or guardian.
+                                    <strong>3. Minors & Guardian Consent:</strong> If you are under 18, a parent or guardian must complete or approve this sign-up. Parents and guardians consenting on behalf of minors acknowledge and authorize this data processing.
                                 </p>
-                                <p className="italic opacity-50">
-                                    (Full Standard Legal Terms & Privacy Policy Placeholder - To be updated for production release)
+                                <p className="mb-2">
+                                    <strong>4. Liability Waiver:</strong> Athletic training carries inherent physical risks. You assume all risks associated with executing any recommended exercises, drills, or training sessions.
                                 </p>
                             </div>
 

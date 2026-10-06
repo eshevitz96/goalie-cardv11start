@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, Save, Shield, Settings, User, Briefcase, Loader2 } from "lucide-react";
-import { PaymentList } from "@/components/PaymentList";
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
@@ -325,7 +324,22 @@ export default function ParentProfile() {
 
                     {/* Billing / Payments Settings */}
                     <div className="bg-card border border-border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm mt-6">
-                        <PaymentList rosterId={dbId?.toString()} />
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <Briefcase size={18} />
+                            <span className="text-xs font-bold uppercase tracking-wider">Billing & Subscription</span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                                <h3 className="font-bold text-foreground">Manage Billing</h3>
+                                <p className="text-sm text-muted-foreground">View invoices, receipts, payment history and manage payment methods</p>
+                            </div>
+                            <Link href="/parent/payments">
+                                <button className="px-4 py-2 bg-primary text-primary-foreground font-bold text-sm rounded-xl hover:opacity-90 transition-opacity">
+                                    Manage
+                                </button>
+                            </Link>
+                        </div>
                     </div>
 
                     {/* Security Settings */}

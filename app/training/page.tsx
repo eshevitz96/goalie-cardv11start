@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/context/ToastContext';
 import { supabase } from '@/utils/supabase/client';
 import { saveTrainingSession } from '@/app/actions/training';
+import { SessionFeedbackPrompt } from '@/components/feedback/SessionFeedbackPrompt';
 import { 
     Dumbbell, 
     Calendar as CalendarIcon, 
@@ -27,9 +28,12 @@ import {
     Edit2,
     Sparkles,
     ChevronDown,
-    ChevronLeft
+    ChevronLeft,
+    Compass
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { checkInterviewStatus } from '@/app/actions/interview';
+import { OnboardingInterviewModal } from '@/components/training/OnboardingInterviewModal';
 
 interface CompletedSessionInput {
     id: string;
@@ -231,6 +235,26 @@ export default function TrainingPage() {
     const [addedToCalendarIds, setAddedToCalendarIds] = useState<Set<string>>(new Set());
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+    // Interview Modal State (Private Training Clients)
+    const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
+    const [interviewStatus, setInterviewStatus] = useState<{
+        isPrivateClient: boolean;
+        isCompleted: boolean;
+        profile: any;
+    } | null>(null);
+
+    useEffect(() => {
+        const loadInterview = async () => {
+            const status = await checkInterviewStatus();
+            setInterviewStatus(status);
+        };
+        loadInterview();
+
+        const handleOpenInterview = () => setIsInterviewModalOpen(true);
+        window.addEventListener('open-training-interview', handleOpenInterview);
+        return () => window.removeEventListener('open-training-interview', handleOpenInterview);
+    }, [activeUserId]);
+
     // Load user's chat threads & active thread messages
     const fetchThreadsAndMessages = async () => {
         try {
@@ -424,7 +448,7 @@ export default function TrainingPage() {
                         }
                     }
 
-                    await saveTrainingSession({
+                    const saveRes = await saveTrainingSession({
                         title: sessionTitle,
                         sessionType: (['team', 'private', 'wall_ball', 'footwork', 'reaction', 'film', 'coach_mission'].includes(sess.type) ? sess.type : 'other') as any,
                         durationMins: Number(sess.durationMins) || 30,
@@ -437,6 +461,9 @@ export default function TrainingPage() {
                             tightness: `${bodyNotes} | Groin Strain Level: ${groinTightness}/5`
                         }
                     });
+                    if (saveRes?.shouldPromptFeedback) {
+                        window.dispatchEvent(new CustomEvent('open-session-feedback-prompt', { detail: { totalSessions: saveRes.totalSessions } }));
+                    }
                     loggedCount++;
                 }
                 if (loggedCount > 0) {
@@ -473,7 +500,7 @@ export default function TrainingPage() {
 
             setCurrentStep(3);
 
-            // Automatically synchronize with Goalie Card AI Stream
+            // Automatically synchronize with Goalie Card Stream
             const syncSummary = hasTrained
                 ? `Logged completed session(s): ${sessionsList.map(s => `${s.title} (${s.durationMins}m${s.routineNotes ? ` - ${s.routineNotes}` : ''})`).join('; ')}. Physical status: Groin strain level ${groinTightness}/5. Notes: ${bodyNotes || 'Feeling good'}. Adapt my upcoming schedule and game plan.`
                 : `Checked in for today: No workout completed yet. Physical status: Groin strain level ${groinTightness}/5. Notes: ${bodyNotes || 'Fresh'}. Prescribe today's focus.`;
@@ -708,6 +735,33 @@ export default function TrainingPage() {
                 <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch pb-2">
                     {/* LEFT 2 COLUMNS: 3-STEP FLOW */}
                     <div className="lg:col-span-2 flex flex-col h-full min-h-0 lg:overflow-y-auto pr-1 lg:pr-3 space-y-6">
+                        {/* Private Training Setup Banner */}
+                        {interviewStatus?.isPrivateClient && (
+                            <div className="p-4 md:p-5 rounded-2xl bg-card border border-border shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
+                                            {interviewStatus.isCompleted ? 'Training Plan Active' : 'Setup Required'}
+                                        </span>
+                                    </div>
+                                    <h3 className="text-sm md:text-base font-bold text-foreground">
+                                        {interviewStatus.isCompleted ? 'Your Tailored Development Plan' : 'Set Up Your Training Plan'}
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground">
+                                        {interviewStatus.isCompleted 
+                                            ? 'Your goal ladder and routine are active. Tap to review or adjust your availability.'
+                                            : 'Answer 4 quick questions about your summit goal and weekly routine to generate your development structure.'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setIsInterviewModalOpen(true)}
+                                    className="px-4 py-2.5 rounded-xl bg-foreground text-background font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-1.5 shrink-0"
+                                >
+                                    <Compass size={14} /> {interviewStatus.isCompleted ? 'Review Plan Setup' : 'Complete Setup'}
+                                </button>
+                            </div>
+                        )}
+
                         {/* STEPPER PILLS */}
                         <div className="flex items-center justify-between bg-muted/40 p-1.5 rounded-2xl border border-border text-xs font-bold">
                             <button
@@ -1681,6 +1735,17 @@ export default function TrainingPage() {
                     </div>
                 </div>
             </main>
+            <SessionFeedbackPrompt />
+            <OnboardingInterviewModal
+                isOpen={isInterviewModalOpen}
+                onClose={() => setIsInterviewModalOpen(false)}
+                initialProfile={interviewStatus?.profile}
+                onComplete={() => {
+                    if (interviewStatus) {
+                        setInterviewStatus({ ...interviewStatus, isCompleted: true });
+                    }
+                }}
+            />
         </div>
     );
 }

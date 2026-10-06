@@ -67,39 +67,27 @@ export default function WeeklySetupPage() {
         return;
       }
 
-      const { data: userRes } = await supabase
-        .from("users")
-        .select("id")
-        .eq("auth_user_id", uid)
-        .single();
-      
-      const publicUserId = userRes?.id;
-      if (!publicUserId) {
-        setLoading(false);
-        return;
-      }
-
       const nextMon = new Date(weekStartDate);
       nextMon.setDate(nextMon.getDate() + 7);
       const nextMonStr = nextMon.toISOString().split("T")[0];
 
       // 1. Fetch game sessions for this week
       const { data: gamesData } = await supabase
-        .from("game_sessions")
+        .from("games")
         .select("*")
         .eq("user_id", uid)
-        .gte("scheduled_date", weekStartDate)
-        .lt("scheduled_date", nextMonStr);
+        .gte("game_date", weekStartDate)
+        .lt("game_date", nextMonStr);
       
       setGames(gamesData || []);
 
-      // 2. Fetch practices for this week
+      // 2. Fetch events / practices for this week
       const { data: practicesData } = await supabase
-        .from("practices")
+        .from("events")
         .select("*")
-        .eq("user_id", publicUserId)
-        .gte("scheduled_date", weekStartDate)
-        .lt("scheduled_date", nextMonStr);
+        .eq("user_id", uid)
+        .gte("event_date", weekStartDate)
+        .lt("event_date", nextMonStr);
 
       setPractices(practicesData || []);
     } catch (err) {
@@ -146,20 +134,11 @@ export default function WeeklySetupPage() {
         return;
       }
 
-      const { data: userRes } = await supabase
-        .from("users")
-        .select("id")
-        .eq("auth_user_id", uid)
-        .single();
-      
-      const publicUserId = userRes?.id;
-      if (!publicUserId) throw new Error("Public user not found");
-
       // Check if intention exists for this week
       const { data: existingIntention } = await supabase
         .from("weekly_intentions")
         .select("id")
-        .eq("user_id", publicUserId)
+        .eq("user_id", uid)
         .eq("week_start_date", weekStartDate)
         .maybeSingle();
 
@@ -177,7 +156,7 @@ export default function WeeklySetupPage() {
         const { error } = await supabase
           .from("weekly_intentions")
           .insert({
-            user_id: publicUserId,
+            user_id: uid,
             week_start_date: weekStartDate,
             intention_text: focusText.trim()
           });

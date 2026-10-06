@@ -74,12 +74,13 @@ export async function getEvents() {
         );
 
         // Check if caller is coach or admin
-        const [{ data: prof }, { data: usr }] = await Promise.all([
-            supabaseAdmin.from('profiles').select('role').eq('id', user.id).maybeSingle(),
-            supabaseAdmin.from('users').select('role').eq('auth_user_id', user.id).maybeSingle()
-        ]);
+        const { data: prof } = await supabaseAdmin
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
 
-        const role = prof?.role || usr?.role;
+        const role = prof?.role;
         const isCoach = role === 'coach' || role === 'admin' || user.email === 'eshevitz96@gmail.com';
 
         let query = supabaseAdmin

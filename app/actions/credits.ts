@@ -1,6 +1,7 @@
 
 
 import { createClient } from "@supabase/supabase-js";
+import { verifyCoachAuthorization } from "@/app/training/book/actions";
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,6 +18,11 @@ export async function addCredits({
     amount: number;
     description?: string;
 }): Promise<{ success: boolean; error?: string }> {
+    const coachAuth = await verifyCoachAuthorization();
+    if (!coachAuth.isAuthorized) {
+        return { success: false, error: "Unauthorized: Coach or Admin access required." };
+    }
+
     try {
         const { error } = await supabaseAdmin.from('credit_transactions').insert({
             roster_id: rosterId,
@@ -40,6 +46,11 @@ export async function logLessonCredit({
     coachName?: string;
     notes?: string;
 }): Promise<{ success: boolean; error?: string; newBalance?: number }> {
+    const coachAuth = await verifyCoachAuthorization();
+    if (!coachAuth.isAuthorized) {
+        return { success: false, error: "Unauthorized: Coach or Admin access required." };
+    }
+
     try {
         // Check current balance first
         const { data: txs, error: fetchError } = await supabaseAdmin

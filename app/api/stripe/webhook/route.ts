@@ -47,37 +47,21 @@ export async function POST(req: Request) {
                     console.error("Failed to update stripe_customer_id in private_training_submissions:", subErr);
                 }
 
-                // 2. Also write it to public.users.stripe_customer_id if a matching user record exists (match by email)
+                // 2. Also write it to profiles.stripe_customer_id if matching user/profile exists
                 const email = (updatedSubs && updatedSubs[0]?.email) || session.customer_details?.email || metadata.email;
-                if (email) {
-                    const { error: userUpdateError } = await supabase
-                        .from('users')
+                if (userId) {
+                    await supabase
+                        .from('profiles')
                         .update({ stripe_customer_id: customerId })
-                        .eq('email', email.toLowerCase());
-
-                    if (userUpdateError) {
-                        console.error("Failed to sync stripe_customer_id to public.users:", userUpdateError);
-                    }
+                        .eq('id', userId);
+                } else if (email) {
+                    await supabase
+                        .from('profiles')
+                        .update({ stripe_customer_id: customerId })
+                        .ilike('email', email.trim());
                 }
             } catch (err) {
                 console.error("Error processing customer ID sync in webhook:", err);
-            }
-        }
-
-        // 1. Record General Payment (if possible)
-        if (userId) {
-            const { error: paymentError } = await supabase.from("payments").insert({
-                goalie_id: userId,
-                amount: session.amount_total,
-                currency: session.currency,
-                status: "succeeded",
-                stripe_payment_intent_id: session.payment_intent as string,
-                description: metadata.productType || "Stripe Checkout",
-            });
-
-            if (paymentError) {
-                console.error("Supabase payment insert error:", paymentError);
-                // We continue because processing the specific logic below is more important
             }
         }
 
@@ -128,7 +112,7 @@ export async function POST(req: Request) {
                     stripe_payment_intent_id: session.payment_intent as string,
                     stripe_customer_id: customerId,
                     notes: `Stripe Session Completed: ${session.id} | plan:${metadata.planSelected || 'standard'}`
-                }).eq('id', submissionId).select('athlete_name, email, digital_signature, roster_id').single();
+                }).eq('id', submissionId).select('athlete_name, email, roster_id').single();
                 
                 if (subError) {
                     console.error("Training submission sync error:", subError);
@@ -169,8 +153,6 @@ export async function POST(req: Request) {
                                     ${metadata.selectedDates ? `<p><strong>Selected Dates:</strong> ${metadata.selectedDates}</p>` : ''}
                                     ${receiptUrl ? `<p><strong>Receipt/Invoice:</strong> <a href="${receiptUrl}">View Receipt</a></p>` : ''}
                                     <hr />
-                                    <h3>Digital Signature</h3>
-                                    <p><em>"${subData.digital_signature || 'Not provided'}"</em></p>
                                     <p>User accepted all required waivers: Liability Release, Payment Policy, Code of Conduct, and Extended Liability Waiver.</p>
                                 `
                             }),

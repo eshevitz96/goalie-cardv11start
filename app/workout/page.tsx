@@ -963,8 +963,8 @@ export default function MissionCardPage() {
                                 <Sparkles size={20} />
                             </div>
                             <span className="text-[10px] font-bold  tracking-wide text-[#FBBF24]">MISSION COMPLETED & ARCHIVED</span>
-                            <h1 className="text-xl font-bold text-white  tracking-tight mt-0.5">Model Learning Summary</h1>
-                            <p className="m-0 text-[11px] text-zinc-400 mt-1">The Coach analyzed today&apos;s observations and updated your profile parameters.</p>
+                            <h1 className="text-xl font-bold text-white  tracking-tight mt-0.5">Performance Summary</h1>
+                            <p className="m-0 text-[11px] text-zinc-400 mt-1">Your workout was analyzed and your profile parameters have been updated.</p>
                         </header>
 
                         {/* Baseline parameter changes */}

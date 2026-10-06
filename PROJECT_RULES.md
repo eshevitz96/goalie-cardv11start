@@ -27,3 +27,14 @@ These standing rules apply strictly to all development, feature additions, and m
     - **Empty States**: Minimal icon, muted heading, and single clear action.
 12. **Billing Access Control**:
     - The Billing button and navigation link must render ONLY for accounts that possess an active Stripe customer ID or a matched private training enrollment (`private_training_submissions`). Non-paying / non-enrolled users must never see the billing button.
+
+## 3. Content, Tone & Beta Feedback Standards
+13. **Banned Terminology & Neutral Tone**:
+    - The word "AI" (and "artificial intelligence", "LLM", "GPT", "Claude", "model", "bot", "assistant") never appears anywhere a user can see: UI copy, buttons, labels, empty states, emails, tooltips, page titles, metadata.
+    - Conversational features read as plain conversation; they never claim to be a specific person and never show a human name as the speaker.
+14. **Private Training Beta Feedback Loop**:
+    - Private training clients (`private_training_submissions`) participate in a lightweight feedback loop:
+      - An account menu "Feedback" item (one free-text box + optional screenshot).
+      - After every 3rd logged session, one optional, dismissible, non-blocking prompt: "How's Goalie Card working for you?" (1–5 rating + optional note).
+      - All feedback is stored in the `feedback` table (`id`, `user_id`, `kind` ['menu', 'prompt'], `rating`, `body`, `page`, `created_at`; owner insert, coach read).
+      - Coaches can review all client feedback in Coach OS sorted newest first.

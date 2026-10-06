@@ -26,6 +26,7 @@ import { GoalsWidget } from "@/components/GoalsWidget";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { FullAnalyticsLibrary } from "@/components/goalie/FullAnalyticsLibrary";
+import { SessionFeedbackPrompt } from "@/components/feedback/SessionFeedbackPrompt";
 
 // New Components
 import { GoalieHeader } from "@/components/goalie/GoalieHeader";
@@ -864,6 +865,8 @@ export function GoalieDashboard({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <SessionFeedbackPrompt />
         </main>
     );
 }

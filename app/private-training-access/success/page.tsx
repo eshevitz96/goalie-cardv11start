@@ -110,7 +110,7 @@ function PrivateTrainingSuccessContent() {
 
     <div class="signature">
         <p><b>E-Signature</b></p>
-        <span class="signature-font">${submission?.digital_signature || submission?.athlete_name || 'Athlete'}</span>
+        <span class="signature-font">${submission?.athlete_name || 'Athlete'}</span>
         <p style="font-size: 10px; color: #999;">Signed via The Goalie Brand Portal | IP Logged & Verified</p>
     </div>
 

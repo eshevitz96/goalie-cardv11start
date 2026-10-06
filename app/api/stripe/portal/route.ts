@@ -17,19 +17,29 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "User email not found" }, { status: 400 });
         }
 
-        // 2. Looks up stripe_customer_id for the authenticated user from private_training_submissions (match by email)
-        const { data: submission } = await supabase
-            .from('private_training_submissions')
+        // 2. Looks up stripe_customer_id from profiles table first
+        const { data: prof } = await supabase
+            .from('profiles')
             .select('stripe_customer_id')
-            .or(`email.ilike.${email.trim()},guardian_email.ilike.${email.trim()}`)
-            .not('stripe_customer_id', 'is', null)
-            .order('created_at', { ascending: false })
-            .limit(1)
+            .eq('id', user.id)
             .maybeSingle();
 
-        let customerId = submission?.stripe_customer_id;
+        let customerId = prof?.stripe_customer_id;
 
-        // 3. Fallback: Search directly in Stripe for customer by email
+        // 3. Fallback: Check private_training_submissions
+        if (!customerId) {
+            const { data: submission } = await supabase
+                .from('private_training_submissions')
+                .select('stripe_customer_id')
+                .or(`email.ilike.${email.trim()},guardian_email.ilike.${email.trim()}`)
+                .not('stripe_customer_id', 'is', null)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            customerId = submission?.stripe_customer_id;
+        }
+
+        // 4. Fallback: Search directly in Stripe for customer by email
         if (!customerId) {
             try {
                 const customers = await stripe.customers.list({

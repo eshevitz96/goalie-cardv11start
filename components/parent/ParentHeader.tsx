@@ -1,7 +1,12 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { User, Briefcase, Settings, Plus, LogOut } from "lucide-react";
+import { User, Briefcase, Settings, Plus, LogOut, MessageSquarePlus } from "lucide-react";
 import { GoalieGuardLogo } from "@/components/ui/GoalieGuardLogo";
 import { Button } from "@/components/ui/Button";
+import { FeedbackModal } from "@/components/feedback/FeedbackModal";
+import { checkFeedbackEligibility } from "@/app/actions/feedback";
 
 interface ParentHeaderProps {
     activeGoalie: any;
@@ -10,6 +15,14 @@ interface ParentHeaderProps {
 }
 
 export function ParentHeader({ activeGoalie, userRole, handleLogout }: ParentHeaderProps) {
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+    const [isFeedbackEligible, setIsFeedbackEligible] = useState(false);
+
+    useEffect(() => {
+        checkFeedbackEligibility().then(res => {
+            setIsFeedbackEligible(res.eligible);
+        }).catch(console.error);
+    }, []);
     return (
         <header className="flex justify-between items-center mb-8 md:col-span-2">
             <div className="flex flex-col">
@@ -50,6 +63,17 @@ export function ParentHeader({ activeGoalie, userRole, handleLogout }: ParentHea
                         >
                             <Settings size={16} /> Take the tour
                         </button>
+
+                        {isFeedbackEligible && (
+                            <button
+                                onClick={() => {
+                                    setIsFeedbackOpen(true);
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+                            >
+                                <MessageSquarePlus size={16} /> Feedback
+                            </button>
+                        )}
                         <Link href="/parent/payments" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                             <Settings size={16} /> Billing & Invoices
                         </Link>
@@ -67,7 +91,7 @@ export function ParentHeader({ activeGoalie, userRole, handleLogout }: ParentHea
                                         const { supabase } = await import("@/utils/supabase/client");
                                         const { data: { user } } = await supabase.auth.getUser();
                                         if (user?.email) {
-                                            const { requestCoachAccess } = await import("@/app/training/book/actions");
+                                             const { requestCoachAccess } = await import("@/app/training/book/actions");
                                             await requestCoachAccess({
                                                 userId: user.id,
                                                 userEmail: user.email,
@@ -96,6 +120,11 @@ export function ParentHeader({ activeGoalie, userRole, handleLogout }: ParentHea
                     </div>
                 </div>
             </div>
+
+            <FeedbackModal
+                isOpen={isFeedbackOpen}
+                onClose={() => setIsFeedbackOpen(false)}
+            />
         </header>
     );
 }

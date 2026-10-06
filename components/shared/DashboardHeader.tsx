@@ -1,13 +1,15 @@
 "use client";
 
 import React from 'react';
-import { User, Briefcase, Settings, Plus, LogOut, Bell, Search, Menu, X, Grid } from 'lucide-react';
+import { User, Briefcase, Settings, Plus, LogOut, Bell, Search, Menu, X, Grid, MessageSquarePlus } from 'lucide-react';
 import { GoalieGuardLogo } from '@/components/ui/GoalieGuardLogo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { requestRole } from '@/app/actions';
 import { GlobalSearch } from '@/components/shared/GlobalSearch';
 import { useAuth } from '@/hooks/useAuth';
+import { FeedbackModal } from '@/components/feedback/FeedbackModal';
+import { checkFeedbackEligibility } from '@/app/actions/feedback';
 
 interface DashboardHeaderProps {
     activeGoalieName: string;
@@ -32,7 +34,17 @@ export function DashboardHeader({
     const [userMenuOpen, setUserMenuOpen] = React.useState(false);
     const [isSearchOpen, setIsSearchOpen] = React.useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+    const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false);
+    const [isFeedbackEligible, setIsFeedbackEligible] = React.useState(false);
     const { userId } = useAuth();
+
+    React.useEffect(() => {
+        if (userId) {
+            checkFeedbackEligibility().then(res => {
+                setIsFeedbackEligible(res.eligible);
+            }).catch(console.error);
+        }
+    }, [userId]);
 
     // Close menus when clicking outside
     React.useEffect(() => {
@@ -167,6 +179,18 @@ export function DashboardHeader({
                             <Plus size={16} /> Link Access ID
                         </Link>
 
+                        {isFeedbackEligible && (
+                            <button
+                                onClick={() => {
+                                    setUserMenuOpen(false);
+                                    setIsFeedbackOpen(true);
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+                            >
+                                <MessageSquarePlus size={16} /> Feedback
+                            </button>
+                        )}
+
                         {/* Request Coach Access */}
                         {userRole !== 'coach' && userRole !== 'admin' && (
                             <button
@@ -264,6 +288,11 @@ export function DashboardHeader({
                     </div>
                 </div>
             </div>
+
+            <FeedbackModal
+                isOpen={isFeedbackOpen}
+                onClose={() => setIsFeedbackOpen(false)}
+            />
         </header>
     );
 }

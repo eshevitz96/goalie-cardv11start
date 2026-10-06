@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, Plus, LogOut, Bell, Search, ShieldCheck, Users, LayoutDashboard } from 'lucide-react';
+import { User, Settings, Plus, LogOut, Bell, Search, ShieldCheck, Users, LayoutDashboard, MessageSquarePlus } from 'lucide-react';
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -13,6 +13,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/utils/supabase/client';
 import { PerformanceAvatar } from '@/components/ui/PerformanceAvatar';
 import { usePerformanceRealtime } from '@/hooks/usePerformanceRealtime';
+import { FeedbackModal } from '@/components/feedback/FeedbackModal';
+import { checkFeedbackEligibility } from '@/app/actions/feedback';
 
 interface GoalieHeaderProps {
     activeGoalieName: string;
@@ -24,9 +26,19 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+    const [isFeedbackEligible, setIsFeedbackEligible] = useState(false);
     const { userId, userRole } = useAuth();
     const { score: liveScore } = usePerformanceRealtime(userId);
     const performanceScore = typeof liveScore === 'number' ? liveScore : (Number(liveScore) || 0);
+
+    useEffect(() => {
+        if (userId) {
+            checkFeedbackEligibility().then(res => {
+                setIsFeedbackEligible(res.eligible);
+            }).catch(console.error);
+        }
+    }, [userId]);
 
     // Robust menu-switching logic to prevent overlap
     const toggleUserMenu = () => {
@@ -134,6 +146,18 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                                     >
                                         <Settings size={16} /> Take the tour
                                     </button>
+
+                                    {isFeedbackEligible && (
+                                        <button
+                                            onClick={() => {
+                                                setIsUserMenuOpen(false);
+                                                setIsFeedbackOpen(true);
+                                            }}
+                                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+                                        >
+                                            <MessageSquarePlus size={16} /> Feedback
+                                        </button>
+                                    )}
                                     
                                     <Link onClick={() => setIsUserMenuOpen(false)} href="/parent/payments" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
                                         <Settings size={16} /> Billing & Invoices
@@ -238,6 +262,11 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                     </AnimatePresence>
                 </div>
             </div>
+
+            <FeedbackModal
+                isOpen={isFeedbackOpen}
+                onClose={() => setIsFeedbackOpen(false)}
+            />
         </header>
     );
 }

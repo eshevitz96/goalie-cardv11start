@@ -77,28 +77,22 @@ function OnboardingContent() {
       }
 
       try {
-        const [userRes, profileRes] = await Promise.all([
-          supabase
-            .from('users')
-            .select('first_name, last_name, username, date_of_birth, primary_sport, teams, profile_tags, onboarding_completed, grad_year, handedness, height, gpa')
-            .eq('auth_user_id', userId)
-            .maybeSingle(),
-          supabase
-            .from('profiles')
-            .select('goalie_name, sport, grad_year')
-            .eq('id', userId)
-            .maybeSingle()
-        ]);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, full_name, display_name, goalie_name, username, date_of_birth, primary_sport, sport, teams, profile_tags, onboarding_completed, grad_year, handedness, height, gpa')
+          .eq('id', userId)
+          .maybeSingle();
 
-        if (userRes.error) throw userRes.error;
+        if (error) throw error;
 
-        const data = userRes.data;
         if (data) {
-          setFirstName(data.first_name || '');
-          setLastName(data.last_name || '');
+          const fName = data.first_name || (data.full_name ? data.full_name.split(' ')[0] : '') || (data.goalie_name ? data.goalie_name.split(' ')[0] : '');
+          const lName = data.last_name || (data.full_name ? data.full_name.split(' ').slice(1).join(' ') : '') || (data.goalie_name ? data.goalie_name.split(' ').slice(1).join(' ') : '');
+          setFirstName(fName);
+          setLastName(lName);
           setUsername(data.username || '');
           setBirthday(data.date_of_birth || '');
-          setSport(data.primary_sport || null);
+          setSport(data.primary_sport || data.sport || null);
           setTeams(data.teams || []);
           setProfileTags(data.profile_tags || []);
           setGradYear(data.grad_year ? String(data.grad_year) : '');
@@ -109,10 +103,9 @@ function OnboardingContent() {
 
         // Auto-advance to first empty field step if not in edit mode
         if (!isEditMode) {
-          const profile = profileRes?.data;
-          const goalieNameVal = (profile?.goalie_name || '').trim();
-          const sportVal = profile?.sport;
-          const gradYearVal = profile?.grad_year;
+          const goalieNameVal = (data?.goalie_name || data?.full_name || `${data?.first_name || ''} ${data?.last_name || ''}`).trim();
+          const sportVal = data?.primary_sport || data?.sport;
+          const gradYearVal = data?.grad_year;
 
           if (!goalieNameVal) {
             setStep(1);
@@ -174,12 +167,12 @@ function OnboardingContent() {
           return;
         }
 
-        // Uniqueness Check in users table
+        // Uniqueness Check in profiles table
         const { data: existingUser } = await supabase
-          .from('users')
+          .from('profiles')
           .select('username')
           .eq('username', trimmed)
-          .not('auth_user_id', 'eq', userId) // exclude self
+          .not('id', 'eq', userId) // exclude self
           .maybeSingle();
 
         if (existingUser) {
@@ -221,15 +214,19 @@ function OnboardingContent() {
     }
 
     try {
-      // 1. Update public.users matching auth_user_id
-      const { error: userErr } = await supabase
-        .from('users')
+      // Update profiles table only (keyed by id = userId)
+      const { error: profileErr } = await supabase
+        .from('profiles')
         .update({
           first_name: firstName.trim() || null,
           last_name: lastName.trim() || null,
+          full_name: goalieNameVal || null,
+          goalie_name: goalieNameVal || null,
+          display_name: goalieNameVal || null,
           username: username.toLowerCase().trim() || null,
           date_of_birth: birthday || null,
           primary_sport: sport || null,
+          sport: sport || null,
           teams: teams.length > 0 ? teams : null,
           profile_tags: profileTags.length > 0 ? profileTags : null,
           grad_year: gradYearNum,
@@ -238,18 +235,6 @@ function OnboardingContent() {
           gpa: gpa.trim() || null,
           onboarding_completed: isComplete,
           onboarding_completed_at: isComplete ? new Date().toISOString() : null
-        })
-        .eq('auth_user_id', userId);
-
-      if (userErr) throw userErr;
-
-      // 2. Update profiles table
-      const { error: profileErr } = await supabase
-        .from('profiles')
-        .update({
-          goalie_name: goalieNameVal || null,
-          sport: sport || null,
-          grad_year: gradYearNum
         })
         .eq('id', userId);
 
