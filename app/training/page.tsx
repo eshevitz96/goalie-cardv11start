@@ -26,7 +26,8 @@ import {
     History,
     Edit2,
     Sparkles,
-    ChevronDown
+    ChevronDown,
+    ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -639,6 +640,14 @@ export default function TrainingPage() {
                 <div className="w-full max-w-[1600px] mx-auto px-4 md:px-16 flex flex-col md:flex-row justify-between items-center h-full py-3 md:py-0 gap-3 md:gap-0">
                     {/* Left: Brand / Title */}
                     <div className="flex items-center justify-between md:justify-start gap-4 md:gap-12 w-full md:w-auto h-full">
+                        <Link 
+                            href="/dashboard"
+                            className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-[0.95rem] font-medium transition-colors font-sans tracking-tight"
+                        >
+                            <ChevronLeft size={20} strokeWidth={2.5} />
+                            Dashboard
+                        </Link>
+
                         <div className="flex items-center gap-2 md:gap-4 text-xl md:text-2xl">
                             <Link 
                                 href="/dashboard"

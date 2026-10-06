@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Calendar, Video, Target } from "lucide-react";
+import { LayoutDashboard, Calendar, Video, Dumbbell } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 export function MobileBottomNav() {
@@ -21,15 +21,15 @@ export function MobileBottomNav() {
             icon: Calendar,
         },
         {
+            name: "Training",
+            href: "/training",
+            icon: Dumbbell,
+        },
+        {
             name: "Film",
             href: "/film",
             icon: Video,
         },
-        /* {
-            name: "Training",
-            href: "/training",
-            icon: Target,
-        }, */
     ];
 
     return (

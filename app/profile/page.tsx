@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { ArrowLeft, Plus, Calendar, ToggleLeft, ToggleRight, Loader2, LogOut, Edit2, MapPin } from "lucide-react";
+import { ArrowLeft, ChevronLeft, Plus, Calendar, ToggleLeft, ToggleRight, Loader2, LogOut, Edit2, MapPin } from "lucide-react";
 import { PerformanceAvatar } from "@/components/ui/PerformanceAvatar";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { usePerformanceRealtime } from "@/hooks/usePerformanceRealtime";
+import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 
 export default function ProfilePage() {
     const auth = useAuth();
@@ -247,19 +248,42 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans pt-6 pb-20 px-4 md:px-8">
-            <div className="max-w-xl md:max-w-[860px] lg:max-w-5xl xl:max-w-7xl mx-auto">
-                
-                {/* Back Navigation & Brand Logo */}
-                <div className="flex items-center justify-between mb-4 px-2">
-                    <Link href="/dashboard" className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
-                        <ArrowLeft size={18} />
-                        <span className="text-xs font-medium">Back to dashboard</span>
-                    </Link>
-                    <BrandLogo textClassName="text-lg md:text-xl font-medium tracking-tight text-foreground select-none pointer-events-none" />
-                </div>
+        <div className="min-h-screen bg-background text-foreground flex flex-col pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-12 font-sans">
+            {/* Top Navigation & Header - Mirrors App Shell */}
+            <header className="sticky top-0 z-[1100] w-full bg-background border-b border-border h-auto md:h-20">
+                <div className="w-full max-w-[1600px] mx-auto px-4 md:px-16 flex flex-col md:flex-row justify-between items-center h-full py-3 md:py-0 gap-3 md:gap-0">
+                    {/* Left Group: Breadcrumbs & Navigation */}
+                    <div className="flex items-center justify-between md:justify-start gap-4 md:gap-12 w-full md:w-auto h-full">
+                        <Link 
+                            href="/dashboard"
+                            className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-[0.95rem] font-medium transition-colors font-sans tracking-tight"
+                        >
+                            <ChevronLeft size={20} strokeWidth={2.5} />
+                            Dashboard
+                        </Link>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-6 w-full">
+                        <div className="flex items-center gap-2 md:gap-4 text-xl md:text-2xl">
+                            <Link 
+                                href="/dashboard"
+                                className="text-foreground tracking-tight font-sans font-bold text-[1.25rem] md:text-[1.4rem] hover:text-foreground/80 transition-colors"
+                            >
+                                Goalie Card
+                            </Link>
+                            
+                            <span className="text-muted-foreground/30 font-light hidden md:inline">
+                                /
+                            </span>
+                            
+                            <span className="text-muted-foreground font-medium tracking-tight font-sans text-[1.3rem] md:text-[1.5rem] hidden md:inline">
+                                Profile
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main className="w-full max-w-[1600px] mx-auto px-4 py-6 md:px-16 md:py-8 flex-1 flex flex-col">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
                     {/* Left Column (Identity, Profile, Membership, Logout) */}
                     <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-3">
                         {/* Identity Card */}
@@ -504,8 +528,8 @@ export default function ProfilePage() {
                 
                     </div>
                 </div>
-
-            </div>
+            </main>
+            <MobileBottomNav />
         </div>
     );
 }

@@ -17,7 +17,7 @@ const TOUR_STEPS: TourStep[] = [
         id: 'calendar',
         targetId: 'tour-calendar-tile',
         title: 'Calendar',
-        text: 'Your lessons with Elliott show up here. Add your own training around them.'
+        text: 'Your lessons show up here. Build your training around them.'
     },
     {
         id: 'lessons',
@@ -28,20 +28,14 @@ const TOUR_STEPS: TourStep[] = [
     {
         id: 'training',
         targetId: 'tour-training-tile',
-        title: 'Training log',
+        title: 'Training',
         text: 'Log your work when you want. Optional.'
     },
     {
         id: 'film',
         targetId: 'tour-film-tile',
         title: 'Film',
-        text: 'Your film is private. Tap Share with Coach when you want feedback.'
-    },
-    {
-        id: 'billing',
-        targetId: 'tour-billing-target',
-        title: 'Billing',
-        text: 'Your payment history and card, anytime.'
+        text: 'Your film is private. Share it with your coach when you want feedback.'
     }
 ];
 

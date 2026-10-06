@@ -16,6 +16,7 @@ import { useSeasonTimeline } from "@/hooks/useSeasonTimeline";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { FirstLoginTour } from "@/components/shared/FirstLoginTour";
 import { getGoalieBookingProfile, fetchCoachDashboardCounts, verifyCoachAuthorization } from "@/app/training/book/actions";
+import { checkBillingEligibility } from "@/app/parent/payments/actions";
 import { usePerformanceRealtime } from "@/hooks/usePerformanceRealtime";
 import { twMerge } from "tailwind-merge";
 
@@ -63,6 +64,7 @@ export default function Dashboard() {
         ? realtimeScore 
         : (performanceScore || "Baseline Pending");
     const [isPro, setIsPro] = useState(false);
+    const [hasBillingAccess, setHasBillingAccess] = useState(false);
 
     useEffect(() => {
         const handleOpenTour = () => setShowTour(true);
@@ -582,6 +584,15 @@ export default function Dashboard() {
                     .maybeSingle();
 
                 setTrainingPb(scoreRes ? scoreRes.score : null);
+
+                // 8. Check Billing Access (only show button if Stripe customer or private training match)
+                try {
+                    const billingCheck = await checkBillingEligibility();
+                    setHasBillingAccess(billingCheck.eligible);
+                } catch (e) {
+                    console.warn("Billing access check warning:", e);
+                }
+
                 setLoading(false); // FIXED SPINNER
 
         } catch (err) {
@@ -628,13 +639,15 @@ export default function Dashboard() {
                                 : (seasonName.toUpperCase().startsWith("SEASON") ? seasonName.toUpperCase() : `Season ${seasonName.toUpperCase()}`)}
                         </p>
                     </div>
-                    <div className="flex items-center gap-3" id="tour-billing-target">
-                        <Link 
-                            href="/parent/payments" 
-                            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            Billing
-                        </Link>
+                    <div className="flex items-center gap-3">
+                        {hasBillingAccess && (
+                            <Link 
+                                href="/parent/payments" 
+                                className="text-xs font-semibold px-3 py-1.5 rounded-full bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                Billing
+                            </Link>
+                        )}
                         <BrandLogo textClassName="text-lg md:text-xl font-medium tracking-tight text-foreground/90 select-none pointer-events-none" />
                     </div>
                 </div>

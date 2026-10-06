@@ -46,6 +46,46 @@ export interface ParentBillingData {
     invoices: InvoiceItem[];
 }
 
+export async function checkBillingEligibility(): Promise<{ eligible: boolean }> {
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !user.email) return { eligible: false };
+
+        const userEmail = user.email.trim().toLowerCase();
+
+        // 1. Check private_training_submissions match
+        const { data: submission } = await supabase
+            .from('private_training_submissions')
+            .select('id, stripe_customer_id')
+            .or(`email.ilike.${userEmail},guardian_email.ilike.${userEmail}`)
+            .limit(1)
+            .maybeSingle();
+
+        if (submission) {
+            return { eligible: true };
+        }
+
+        // 2. Check Stripe customer directly
+        try {
+            const customers = await stripe.customers.list({
+                email: userEmail,
+                limit: 1
+            });
+            if (customers.data && customers.data.length > 0) {
+                return { eligible: true };
+            }
+        } catch (err) {
+            console.warn("[checkBillingEligibility] Stripe customer lookup warning:", err);
+        }
+
+        return { eligible: false };
+    } catch (err) {
+        console.error("[checkBillingEligibility] Error:", err);
+        return { eligible: false };
+    }
+}
+
 export async function fetchParentBillingData(): Promise<ParentBillingData> {
     try {
         const supabase = await createClient();

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
-    ArrowLeft, 
+    ChevronLeft, 
     CreditCard, 
     ExternalLink, 
     CheckCircle2, 
@@ -15,7 +15,7 @@ import {
     FileText 
 } from "lucide-react";
 import { fetchParentBillingData, ParentBillingData, TransactionItem, InvoiceItem } from "./actions";
-import { Button } from "@/components/ui/Button";
+import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 
 export default function ParentBillingPage() {
     const [billingData, setBillingData] = useState<ParentBillingData | null>(null);
@@ -77,7 +77,7 @@ export default function ParentBillingPage() {
     if (isLoading) {
         return (
             <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 text-foreground">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 <p className="text-sm font-medium text-muted-foreground">Loading billing history...</p>
             </div>
         );
@@ -89,35 +89,44 @@ export default function ParentBillingPage() {
     const totalRefunded = transactions.reduce((acc, tx) => acc + (tx.amountRefunded || 0), 0);
 
     return (
-        <main className="min-h-screen bg-background text-foreground p-4 md:p-8 selection:bg-primary/20">
-            <div className="max-w-4xl mx-auto space-y-8">
-                
-                {/* Header Navigation */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-                    <div className="flex items-center gap-4">
-                        <Link
+        <div className="min-h-screen bg-background text-foreground flex flex-col pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-12 font-sans">
+            {/* Top Navigation & Header - Follows Unified App Shell */}
+            <header className="sticky top-0 z-[1100] w-full bg-background border-b border-border h-auto md:h-20">
+                <div className="w-full max-w-[1600px] mx-auto px-4 md:px-16 flex flex-col md:flex-row justify-between items-center h-full py-3 md:py-0 gap-3 md:gap-0">
+                    {/* Left Group: Breadcrumbs & Navigation */}
+                    <div className="flex items-center justify-between md:justify-start gap-4 md:gap-12 w-full md:w-auto h-full">
+                        <Link 
                             href="/dashboard"
-                            className="p-2.5 rounded-full bg-card border border-border hover:bg-muted hover:border-border/80 transition-colors shadow-sm"
-                            aria-label="Back to Dashboard"
+                            className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-[0.95rem] font-medium transition-colors font-sans tracking-tight"
                         >
-                            <ArrowLeft size={18} className="text-foreground" />
+                            <ChevronLeft size={20} strokeWidth={2.5} />
+                            Dashboard
                         </Link>
-                        <div>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] block">
-                                Athlete & Parent Billing
+
+                        <div className="flex items-center gap-2 md:gap-4 text-xl md:text-2xl">
+                            <Link 
+                                href="/dashboard"
+                                className="text-foreground tracking-tight font-sans font-bold text-[1.25rem] md:text-[1.4rem] hover:text-foreground/80 transition-colors"
+                            >
+                                Goalie Card
+                            </Link>
+                            
+                            <span className="text-muted-foreground/30 font-light hidden md:inline">
+                                /
                             </span>
-                            <h1 className="text-2xl md:text-3xl font-black italic tracking-tighter text-foreground">
-                                BILLING & <span className="text-primary">PAYMENTS</span>
-                            </h1>
+                            
+                            <span className="text-muted-foreground font-medium tracking-tight font-sans text-[1.3rem] md:text-[1.5rem] hidden md:inline">
+                                Billing
+                            </span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <Button
+                    {/* Right Group: Manage Payment Method */}
+                    <div className="w-full md:w-auto flex items-center justify-end gap-3">
+                        <button
                             onClick={handleOpenPortal}
                             disabled={isPortalLoading}
-                            variant="primary"
-                            className="w-full sm:w-auto font-bold flex items-center gap-2 shadow-sm"
+                            className="px-4 py-2 bg-foreground text-background font-bold rounded-xl text-xs md:text-sm hover:bg-foreground/90 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
                             {isPortalLoading ? (
                                 <Loader2 size={16} className="animate-spin" />
@@ -125,7 +134,27 @@ export default function ParentBillingPage() {
                                 <CreditCard size={16} />
                             )}
                             Manage Payment Method
-                        </Button>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* Main Content Drawer */}
+            <main className="w-full max-w-[1600px] mx-auto px-4 py-6 md:px-16 md:py-8 flex-1 flex flex-col gap-6">
+                
+                {/* Drawer Page Title Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+                    <div>
+                        <h1 className="text-2xl md:text-[2.2rem] font-bold tracking-tight text-foreground font-sans">
+                            Billing & Invoices
+                        </h1>
+                        <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                            Live verified records from your connected Stripe customer account ({billingData?.customerEmail || "Connected"}).
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium self-start sm:self-auto">
+                        <ShieldCheck size={16} className="text-emerald-500" />
+                        <span>Stripe Encrypted & Secure</span>
                     </div>
                 </div>
 
@@ -139,22 +168,22 @@ export default function ParentBillingPage() {
                 {/* Summary Metrics Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-card border border-border rounded-2xl p-5 shadow-sm space-y-1">
-                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                             Net Total Spend
                         </div>
-                        <div className="text-2xl md:text-3xl font-black text-foreground">
+                        <div className="text-2xl md:text-3xl font-bold tracking-tight text-foreground font-sans">
                             {formatCurrency(totalSpend)}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            All time verified training payments
+                            All-time verified training payments
                         </p>
                     </div>
 
                     <div className="bg-card border border-border rounded-2xl p-5 shadow-sm space-y-1">
-                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                             Total Transactions
                         </div>
-                        <div className="text-2xl md:text-3xl font-black text-foreground">
+                        <div className="text-2xl md:text-3xl font-bold tracking-tight text-foreground font-sans">
                             {transactions.length}
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -163,10 +192,10 @@ export default function ParentBillingPage() {
                     </div>
 
                     <div className="bg-card border border-border rounded-2xl p-5 shadow-sm space-y-1">
-                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                             Refunds & Credits
                         </div>
-                        <div className="text-2xl md:text-3xl font-black text-foreground">
+                        <div className="text-2xl md:text-3xl font-bold tracking-tight text-foreground font-sans">
                             {formatCurrency(totalRefunded)}
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -176,19 +205,15 @@ export default function ParentBillingPage() {
                 </div>
 
                 {/* Transactions Card List */}
-                <div className="bg-card border border-border rounded-2xl md:rounded-3xl shadow-sm overflow-hidden">
+                <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                     <div className="p-5 md:p-6 border-b border-border flex items-center justify-between">
                         <div>
-                            <h2 className="text-base md:text-lg font-bold text-foreground">
+                            <h2 className="text-base md:text-lg font-bold text-foreground font-sans">
                                 Payment History
                             </h2>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                Live records from Stripe account ({billingData?.customerEmail || "Connected"})
+                                Verified lesson charges and subscription payments
                             </p>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-                            <ShieldCheck size={14} className="text-emerald-500" />
-                            <span>Stripe Encrypted</span>
                         </div>
                     </div>
 
@@ -198,7 +223,7 @@ export default function ParentBillingPage() {
                                 <Receipt className="mx-auto h-10 w-10 text-muted-foreground/50" />
                                 <div className="text-sm font-semibold text-foreground">No payment history found</div>
                                 <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                                    Charges and private lesson packages booked under this email address will automatically appear here.
+                                    Charges and private lesson packages booked under this account will automatically appear here.
                                 </p>
                             </div>
                         ) : (
@@ -249,7 +274,6 @@ export default function ParentBillingPage() {
                                                 )}
                                             </div>
 
-                                            {/* Detailed refund info if refunded */}
                                             {tx.amountRefunded > 0 && (
                                                 <div className="text-xs text-rose-600 font-medium flex items-center gap-1.5 pt-1">
                                                     <RotateCcw size={12} />
@@ -278,7 +302,7 @@ export default function ParentBillingPage() {
                                                 href={tx.receiptUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+                                                className="inline-flex items-center gap-1 text-xs font-bold text-foreground hover:underline"
                                             >
                                                 <span>Receipt</span>
                                                 <ExternalLink size={12} />
@@ -291,11 +315,11 @@ export default function ParentBillingPage() {
                     </div>
                 </div>
 
-                {/* Invoices List if any */}
+                {/* Invoices List */}
                 {invoices.length > 0 && (
-                    <div className="bg-card border border-border rounded-2xl md:rounded-3xl shadow-sm overflow-hidden">
+                    <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                         <div className="p-5 md:p-6 border-b border-border">
-                            <h2 className="text-base md:text-lg font-bold text-foreground">
+                            <h2 className="text-base md:text-lg font-bold text-foreground font-sans">
                                 Invoices
                             </h2>
                             <p className="text-xs text-muted-foreground mt-0.5">
@@ -307,7 +331,7 @@ export default function ParentBillingPage() {
                             {invoices.map((inv) => (
                                 <div key={inv.id} className="p-4 md:p-5 flex items-center justify-between hover:bg-muted/50 transition-colors">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                        <div className="w-8 h-8 rounded-lg bg-muted text-foreground flex items-center justify-center shrink-0">
                                             <FileText size={16} />
                                         </div>
                                         <div>
@@ -326,7 +350,7 @@ export default function ParentBillingPage() {
                                                 href={inv.invoicePdf}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                                                className="text-xs font-bold text-foreground hover:underline flex items-center gap-1"
                                             >
                                                 <span>PDF</span>
                                                 <ExternalLink size={12} />
@@ -350,7 +374,8 @@ export default function ParentBillingPage() {
                     </div>
                 )}
 
-            </div>
-        </main>
+            </main>
+            <MobileBottomNav />
+        </div>
     );
 }
