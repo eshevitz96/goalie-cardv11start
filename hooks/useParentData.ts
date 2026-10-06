@@ -118,7 +118,7 @@ export function useParentData() {
                 rosterIds.length > 0 ? sessionsService.fetchByRosterIds(rosterIds) : Promise.resolve([]),
                 coachesService.fetchAllProfiles(),
                 rosterIds.length > 0 ? reflectionsService.fetchByRosterIds(rosterIds) : Promise.resolve([]),
-                rosterIds.length > 0 ? supabase.from('coach_requests').select('*').in('roster_id', rosterIds) : Promise.resolve({ data: [] }),
+                Promise.resolve({ data: [] }),
                 rosterIds.length > 0 ? supabase.from('credit_transactions').select('roster_id, amount').in('roster_id', rosterIds) : Promise.resolve({ data: [] }),
                 auth.userId ? supabase.from('shot_events').select('*').eq('goalie_id', auth.userId) : Promise.resolve({ data: [] }),
                 auth.userId ? performanceService.fetchLatestSnapshot(supabase, auth.userId) : Promise.resolve(null)

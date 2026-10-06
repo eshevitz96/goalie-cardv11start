@@ -173,38 +173,6 @@ export const coachRepository = {
     // KNOWLEDGE BASES
     // ----------------------------------------------------
     async fetchKnowledgeBase(domain: string, version: string): Promise<any> {
-        const cloudUserId = await getAuthenticatedUserId();
-
-        if (cloudUserId) {
-            const { data, error } = await supabase
-                .from("knowledge_bases")
-                .select("data")
-                .eq("domain", domain)
-                .eq("version", version)
-                .maybeSingle();
-
-            if (error) {
-                console.error("Failed to fetch Knowledge Base from cloud:", error);
-            }
-
-            if (data?.data) {
-                return data.data;
-            }
-        }
-
-        // Seeding database knowledge base for this domain version if unseeded
-        if (cloudUserId && domain === "hockey_goalie" && version === "v1.1") {
-            try {
-                await supabase.from("knowledge_bases").upsert({
-                    domain,
-                    version,
-                    data: GLADIATORS_KNOWLEDGE_BASE
-                });
-            } catch (e) {
-                // Ignore seed failures
-            }
-        }
-
         return GLADIATORS_KNOWLEDGE_BASE;
     },
 

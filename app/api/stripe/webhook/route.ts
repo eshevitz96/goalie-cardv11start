@@ -118,7 +118,6 @@ export async function POST(req: Request) {
             const requestId = metadata.requestId;
             if (rosterId && coachId) {
                 await supabase.from('roster_uploads').update({ assigned_coach_id: coachId }).eq('id', rosterId);
-                if (requestId) await supabase.from('coach_requests').update({ status: 'completed' }).eq('id', requestId);
             }
         } else if (metadata.productType === 'private training access' || metadata.productType === 'september group training') {
             const submissionId = metadata.submissionId;

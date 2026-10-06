@@ -1104,24 +1104,3 @@ export async function completeGameSession(gameSessionId: string, userId: string)
         return { success: false, error: err.message };
     }
 }
-
-export async function updateSeasonSettings(rosterId: string, settings: any) {
-    if (!rosterId) return { success: false, error: "Missing Roster ID" };
-    
-    try {
-        const supabase = getSupabaseAdmin();
-        const { error } = await supabase
-            .from('card_season_settings')
-            .upsert({
-                roster_id: rosterId,
-                ...settings,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'roster_id' });
-
-        if (error) throw error;
-        return { success: true };
-    } catch (err: any) {
-        console.error("[ACTION] Failed to update season settings:", err);
-        return { success: false, error: err.message };
-    }
-}
