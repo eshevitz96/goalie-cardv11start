@@ -15,6 +15,7 @@ export async function POST(req: Request) {
 
     let event: Stripe.Event;
 
+    // 1. Signature Verification (Only return 400 if signature is invalid)
     try {
         event = stripe.webhooks.constructEvent(
             body,
@@ -22,21 +23,20 @@ export async function POST(req: Request) {
             process.env.STRIPE_WEBHOOK_SECRET || ""
         );
     } catch (error: any) {
-        console.error(`[STRIPE_WEBHOOK_ERROR] ${error.message}`);
+        console.error(`[STRIPE_WEBHOOK_SIGNATURE_ERROR] ${error.message}`);
         return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
     }
 
-    const session = event.data.object as Stripe.Checkout.Session;
-
+    // 2. Process checkout.session.completed with isolated sub-handlers
     if (event.type === "checkout.session.completed") {
+        const session = event.data.object as Stripe.Checkout.Session;
         const metadata = session?.metadata || {};
         const userId = metadata.userId;
         const customerId = session.customer as string;
 
-        // Capture customer ID and update private_training_submissions & profiles tables
+        // Step A: Sync Stripe Customer ID
         if (customerId) {
             try {
-                // 1. Update stripe_customer_id in private_training_submissions where stripe_session_id matches session.id
                 const { data: updatedSubs, error: subErr } = await supabase
                     .from('private_training_submissions')
                     .update({ stripe_customer_id: customerId })
@@ -44,133 +44,182 @@ export async function POST(req: Request) {
                     .select('email');
 
                 if (subErr) {
-                    console.error("Failed to update stripe_customer_id in private_training_submissions:", subErr);
+                    console.error("[STRIPE_WEBHOOK] Failed to update stripe_customer_id in private_training_submissions:", subErr);
                 }
 
-                // 2. Also write it to profiles.stripe_customer_id if matching user/profile exists
                 const email = (updatedSubs && updatedSubs[0]?.email) || session.customer_details?.email || metadata.email;
                 if (userId) {
-                    await supabase
+                    const { error: profErr } = await supabase
                         .from('profiles')
                         .update({ stripe_customer_id: customerId })
                         .eq('id', userId);
+                    if (profErr) console.error("[STRIPE_WEBHOOK] Failed to update profile customer ID by userId:", profErr);
                 } else if (email) {
-                    await supabase
+                    const { error: profErr } = await supabase
                         .from('profiles')
                         .update({ stripe_customer_id: customerId })
                         .ilike('email', email.trim());
+                    if (profErr) console.error("[STRIPE_WEBHOOK] Failed to update profile customer ID by email:", profErr);
                 }
             } catch (err) {
-                console.error("Error processing customer ID sync in webhook:", err);
+                console.error("[STRIPE_WEBHOOK] Error processing customer ID sync:", err);
             }
         }
 
-        // 2. Specific Logic based on Metadata Type
-        if (metadata.type === 'credit_purchase') {
-            if (!userId) {
-                console.error("Missing userId for credit_purchase");
-                return new NextResponse("Missing userId", { status: 400 });
-            }
-            const creditAmount = parseInt(metadata.creditAmount || "0");
-            if (creditAmount > 0) {
-                const { error: creditError } = await supabase.from('credit_transactions').insert({
-                    roster_id: userId,
-                    amount: creditAmount,
-                    transaction_type: 'purchase',
-                    description: `Stripe Purchase: ${creditAmount} credits`,
-                    stripe_payment_id: session.payment_intent as string
-                });
-                if (creditError) console.error("Credit dispensing error:", creditError);
-            }
-        } else if (metadata.type === 'team_credit_purchase') {
-            const teamId = metadata.teamId;
-            const creditAmount = parseInt(metadata.creditAmount || "0");
-            if (teamId && creditAmount > 0) {
-                await supabase.from('team_fund_transactions').insert({
-                    team_id: teamId,
-                    amount: creditAmount,
-                    description: `Stripe Top-up: ${creditAmount} credits`,
-                    metadata: { stripe_payment_id: session.payment_intent as string }
-                });
-                const { data: currentFund } = await supabase.from('team_credit_funds').select('balance').eq('team_id', teamId).maybeSingle();
-                const newBalance = (currentFund?.balance || 0) + creditAmount;
-                await supabase.from('team_credit_funds').upsert({ team_id: teamId, balance: newBalance, last_topup: new Date().toISOString() });
-            }
-        } else if (metadata.type === 'pro_upgrade') {
-            const rosterId = metadata.rosterId;
-            const coachId = metadata.coachId;
-            const requestId = metadata.requestId;
-            if (rosterId && coachId) {
-                await supabase.from('roster_uploads').update({ assigned_coach_id: coachId }).eq('id', rosterId);
-            }
-        } else if (metadata.productType === 'private training access' || metadata.productType === 'september group training') {
-            const submissionId = metadata.submissionId;
-            if (submissionId) {
-                const { data: subData, error: subError } = await supabase.from('private_training_submissions').update({
-                    payment_status: 'paid',
-                    status: 'paid',
-                    stripe_payment_intent_id: session.payment_intent as string,
-                    stripe_customer_id: customerId,
-                    notes: `Stripe Session Completed: ${session.id} | plan:${metadata.planSelected || 'standard'}`
-                }).eq('id', submissionId).select('athlete_name, email, roster_id').single();
-                
-                if (subError) {
-                    console.error("Training submission sync error:", subError);
-                } else if (subData && process.env.RESEND_API_KEY) {
-                    try {
-                        let receiptUrl = '';
-                        if (session.payment_intent) {
-                            try {
-                                const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent as string);
-                                if (paymentIntent.latest_charge) {
-                                    const charge = await stripe.charges.retrieve(paymentIntent.latest_charge as string);
-                                    receiptUrl = charge.receipt_url || '';
-                                }
-                            } catch (e) {
-                                console.error("Failed to fetch receipt url:", e);
-                            }
-                        }
-
-                        const isGroup = metadata.productType === 'september group training';
-                        const productTitle = isGroup ? "September Group Training" : "Private Training";
-                        const fromEmail = process.env.EMAIL_FROM_ADDRESS || `Goalie Card ${productTitle} <onboarding@resend.dev>`;
-                        
-                        await fetch("https://api.resend.com/emails", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-                            },
-                            body: JSON.stringify({
-                                from: fromEmail,
-                                to: ["eshevitz96@gmail.com", "e@cmmncreators.com", subData.email],
-                                subject: `${productTitle} Waiver Confirmation: ${subData.athlete_name}`,
-                                html: `
-                                    <h2>${productTitle} Waiver Confirmed</h2>
-                                    <p><strong>Athlete:</strong> ${subData.athlete_name}</p>
-                                    <p><strong>Email:</strong> ${subData.email}</p>
-                                    <p><strong>Plan:</strong> ${metadata.planSelected || 'Unknown'}</p>
-                                    ${metadata.selectedDates ? `<p><strong>Selected Dates:</strong> ${metadata.selectedDates}</p>` : ''}
-                                    ${receiptUrl ? `<p><strong>Receipt/Invoice:</strong> <a href="${receiptUrl}">View Receipt</a></p>` : ''}
-                                    <hr />
-                                    <p>User accepted all required waivers: Liability Release, Payment Policy, Code of Conduct, and Extended Liability Waiver.</p>
-                                `
-                            }),
+        // Step B: Handler based on metadata type
+        try {
+            if (metadata.type === 'credit_purchase') {
+                if (!userId) {
+                    console.error("[STRIPE_WEBHOOK] Missing userId for credit_purchase. Session:", session.id);
+                } else {
+                    const creditAmount = parseInt(metadata.creditAmount || "0");
+                    if (creditAmount > 0) {
+                        const { error: creditError } = await supabase.from('credit_transactions').insert({
+                            roster_id: userId,
+                            amount: creditAmount,
+                            transaction_type: 'purchase',
+                            description: `Stripe Purchase: ${creditAmount} credits`,
+                            stripe_payment_id: session.payment_intent as string
                         });
-                    } catch (emailError) {
-                        console.error("Failed to send waiver email:", emailError);
+                        if (creditError) {
+                            console.error("[STRIPE_WEBHOOK] Credit dispensing error:", creditError);
+                        }
                     }
                 }
+            } else if (metadata.type === 'team_credit_purchase') {
+                const teamId = metadata.teamId;
+                const creditAmount = parseInt(metadata.creditAmount || "0");
+                if (teamId && creditAmount > 0) {
+                    // Update team credit fund balance
+                    const { data: currentFund, error: fundFetchErr } = await supabase
+                        .from('team_credit_funds')
+                        .select('balance')
+                        .eq('team_id', teamId)
+                        .maybeSingle();
+
+                    if (fundFetchErr) {
+                        console.error("[STRIPE_WEBHOOK] Error fetching team_credit_funds:", fundFetchErr);
+                    }
+
+                    const newBalance = (currentFund?.balance || 0) + creditAmount;
+                    const { error: fundUpdateErr } = await supabase
+                        .from('team_credit_funds')
+                        .upsert({ team_id: teamId, balance: newBalance, last_topup: new Date().toISOString() });
+
+                    if (fundUpdateErr) {
+                        console.error("[STRIPE_WEBHOOK] Error updating team_credit_funds balance:", fundUpdateErr);
+                    }
+
+                    // Attempt audit log write in team_fund_transactions
+                    const { error: txErr } = await supabase
+                        .from('team_fund_transactions')
+                        .insert({
+                            team_id: teamId,
+                            amount: creditAmount,
+                            description: `Stripe Top-up: ${creditAmount} credits`,
+                            metadata: { stripe_payment_id: session.payment_intent as string }
+                        });
+
+                    if (txErr) {
+                        console.error("[STRIPE_WEBHOOK] Error writing team_fund_transactions audit log:", txErr);
+                    }
+                }
+            } else if (metadata.type === 'pro_upgrade') {
+                const rosterId = metadata.rosterId;
+                const coachId = metadata.coachId;
+                if (rosterId && coachId) {
+                    const { error: upgradeErr } = await supabase
+                        .from('roster_uploads')
+                        .update({ assigned_coach_id: coachId })
+                        .eq('id', rosterId);
+                    if (upgradeErr) {
+                        console.error("[STRIPE_WEBHOOK] Error updating pro_upgrade assigned coach:", upgradeErr);
+                    }
+                }
+            } else if (metadata.productType === 'private training access' || metadata.productType === 'september group training') {
+                const submissionId = metadata.submissionId;
+                if (submissionId) {
+                    const { data: subData, error: subError } = await supabase
+                        .from('private_training_submissions')
+                        .update({
+                            payment_status: 'paid',
+                            status: 'paid',
+                            stripe_payment_intent_id: session.payment_intent as string,
+                            stripe_customer_id: customerId,
+                            notes: `Stripe Session Completed: ${session.id} | plan:${metadata.planSelected || 'standard'}`
+                        })
+                        .eq('id', submissionId)
+                        .select('athlete_name, email, roster_id')
+                        .single();
+
+                    if (subError) {
+                        console.error("[STRIPE_WEBHOOK] Training submission sync error:", subError);
+                    } else if (subData && process.env.RESEND_API_KEY) {
+                        try {
+                            let receiptUrl = '';
+                            if (session.payment_intent) {
+                                try {
+                                    const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent as string);
+                                    if (paymentIntent.latest_charge) {
+                                        const charge = await stripe.charges.retrieve(paymentIntent.latest_charge as string);
+                                        receiptUrl = charge.receipt_url || '';
+                                    }
+                                } catch (e) {
+                                    console.error("[STRIPE_WEBHOOK] Failed to fetch receipt url:", e);
+                                }
+                            }
+
+                            const isGroup = metadata.productType === 'september group training';
+                            const productTitle = isGroup ? "September Group Training" : "Private Training";
+                            const fromEmail = process.env.EMAIL_FROM_ADDRESS || `Goalie Card ${productTitle} <onboarding@resend.dev>`;
+
+                            await fetch("https://api.resend.com/emails", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+                                },
+                                body: JSON.stringify({
+                                    from: fromEmail,
+                                    to: ["eshevitz96@gmail.com", "e@cmmncreators.com", subData.email],
+                                    subject: `${productTitle} Waiver Confirmation: ${subData.athlete_name}`,
+                                    html: `
+                                        <h2>${productTitle} Waiver Confirmed</h2>
+                                        <p><strong>Athlete:</strong> ${subData.athlete_name}</p>
+                                        <p><strong>Email:</strong> ${subData.email}</p>
+                                        <p><strong>Plan:</strong> ${metadata.planSelected || 'Unknown'}</p>
+                                        ${metadata.selectedDates ? `<p><strong>Selected Dates:</strong> ${metadata.selectedDates}</p>` : ''}
+                                        ${receiptUrl ? `<p><strong>Receipt/Invoice:</strong> <a href="${receiptUrl}">View Receipt</a></p>` : ''}
+                                        <hr />
+                                        <p>User accepted all required waivers: Liability Release, Payment Policy, Code of Conduct, and Extended Liability Waiver.</p>
+                                    `
+                                }),
+                            });
+                        } catch (emailError) {
+                            console.error("[STRIPE_WEBHOOK] Failed to send waiver confirmation email:", emailError);
+                        }
+                    }
+                }
+            } else if (userId) {
+                // Default Activation Flow
+                const { error: claimErr } = await supabase.from('roster_uploads').update({
+                    is_claimed: true,
+                    payment_status: 'paid',
+                    amount_paid: (session.amount_total || 0) / 100
+                }).eq('id', userId);
+
+                if (claimErr) {
+                    console.error("[STRIPE_WEBHOOK] Error updating roster claim status:", claimErr);
+                }
             }
-        } else if (userId) {
-            // Default Activation Flow
-            await supabase.from('roster_uploads').update({
-                is_claimed: true,
-                payment_status: 'paid',
-                amount_paid: (session.amount_total || 0) / 100
-            }).eq('id', userId);
+        } catch (actionErr) {
+            console.error("[STRIPE_WEBHOOK] Error in checkout.session.completed handler:", actionErr);
         }
     }
 
-    return new NextResponse(null, { status: 200 });
+    // Always acknowledge 200 OK so Stripe does not endlessly retry and double-process
+    return new NextResponse(JSON.stringify({ received: true }), { 
+        status: 200, 
+        headers: { "Content-Type": "application/json" } 
+    });
 }
