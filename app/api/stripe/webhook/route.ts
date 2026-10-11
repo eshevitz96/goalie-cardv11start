@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         const userId = metadata.userId;
         const customerId = session.customer as string;
 
-        // Capture customer ID and update private_training_submissions & users tables
+        // Capture customer ID and update private_training_submissions & profiles tables
         if (customerId) {
             try {
                 // 1. Update stripe_customer_id in private_training_submissions where stripe_session_id matches session.id
