@@ -86,44 +86,6 @@ export async function POST(req: Request) {
                         }
                     }
                 }
-            } else if (metadata.type === 'team_credit_purchase') {
-                const teamId = metadata.teamId;
-                const creditAmount = parseInt(metadata.creditAmount || "0");
-                if (teamId && creditAmount > 0) {
-                    // Update team credit fund balance
-                    const { data: currentFund, error: fundFetchErr } = await supabase
-                        .from('team_credit_funds')
-                        .select('balance')
-                        .eq('team_id', teamId)
-                        .maybeSingle();
-
-                    if (fundFetchErr) {
-                        console.error("[STRIPE_WEBHOOK] Error fetching team_credit_funds:", fundFetchErr);
-                    }
-
-                    const newBalance = (currentFund?.balance || 0) + creditAmount;
-                    const { error: fundUpdateErr } = await supabase
-                        .from('team_credit_funds')
-                        .upsert({ team_id: teamId, balance: newBalance, last_topup: new Date().toISOString() });
-
-                    if (fundUpdateErr) {
-                        console.error("[STRIPE_WEBHOOK] Error updating team_credit_funds balance:", fundUpdateErr);
-                    }
-
-                    // Attempt audit log write in team_fund_transactions
-                    const { error: txErr } = await supabase
-                        .from('team_fund_transactions')
-                        .insert({
-                            team_id: teamId,
-                            amount: creditAmount,
-                            description: `Stripe Top-up: ${creditAmount} credits`,
-                            metadata: { stripe_payment_id: session.payment_intent as string }
-                        });
-
-                    if (txErr) {
-                        console.error("[STRIPE_WEBHOOK] Error writing team_fund_transactions audit log:", txErr);
-                    }
-                }
             } else if (metadata.type === 'pro_upgrade') {
                 const rosterId = metadata.rosterId;
                 const coachId = metadata.coachId;

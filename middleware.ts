@@ -66,7 +66,6 @@ export async function middleware(request: NextRequest) {
             request.nextUrl.pathname.startsWith('/admin') ||
             request.nextUrl.pathname.startsWith('/parent') ||
             request.nextUrl.pathname.startsWith('/dashboard') ||
-            request.nextUrl.pathname.startsWith('/team') ||
             request.nextUrl.pathname.startsWith('/goalie')) {
 
             if (!user && process.env.NEXT_PUBLIC_DEV_BYPASS !== "true") {

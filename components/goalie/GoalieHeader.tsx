@@ -78,17 +78,6 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                     </Link>
                 )}
 
-                <Link href="/team">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        title="Organization Hub"
-                        className="h-9 w-9 md:h-10 md:w-10 rounded-full border border-border hover:border-primary hover:bg-primary/10 p-0 transition-all"
-                    >
-                        <Users size={16} className="text-primary" />
-                    </Button>
-                </Link>
-
                 {/* Search Trigger */}
                 <Button
                     variant="ghost"
@@ -167,9 +156,7 @@ export function GoalieHeader({ activeGoalieName, onLogout, notifications }: Goal
                                         <Plus size={16} /> Activate New Card
                                     </Link>
                                     
-                                    <Link onClick={() => setIsUserMenuOpen(false)} href="/team" className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2">
-                                        <ShieldCheck size={16} /> Team Dashboard
-                                    </Link>
+
 
                                     {userRole !== 'coach' && userRole !== 'admin' && (
                                         <button 
