@@ -282,11 +282,10 @@ export async function generateTrainingPlanAction(planId: string): Promise<{
             process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
         const candidateGeminiModels = [
-            'gemini-3-flash-preview',
-            'gemini-3.6-flash',
-            'gemini-3.5-flash',
-            'gemini-3.8-flash',
-            'gemini-3.7-flash'
+            'gemini-2.5-flash',
+            'gemini-flash-latest',
+            'gemini-2.5-flash-lite',
+            'gemini-3-flash-preview'
         ];
 
         let generatedPhases: GeneratedPlanPhase[] = [];

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerSupabase } from "@/utils/supabase/server";
 import { verifyCoachAuthorization } from "@/app/training/book/actions";
 import { PlanGenerationRuleChecks, GeneratedPlanPhase } from "@/app/actions/planGeneration";
 
@@ -160,18 +161,37 @@ export async function approveTrainingPlanAction(planId: string): Promise<{
     success: boolean;
     error?: string;
 }> {
-    const coachAuth = await verifyCoachAuthorization();
-    if (!coachAuth.isAuthorized) {
-        return { success: false, error: "Unauthorized: Coach or Admin access required." };
+    const serverSupabase = await createServerSupabase();
+    const { data: { user } } = await serverSupabase.auth.getUser();
+    if (!user) {
+        return { success: false, error: "Unauthorized: Sign in required." };
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data: profile, error: profErr } = await supabaseAdmin
+        .from('profiles')
+        .select('id, role, roles, email')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    if (profErr || !profile) {
+        return { success: false, error: "Unauthorized: Profile not found." };
+    }
+
+    const role = profile.role;
+    const roles: string[] = Array.isArray(profile.roles) ? profile.roles : [];
+    const isCoachOrAdmin = role === 'coach' || role === 'admin' || roles.includes('coach') || roles.includes('admin') || profile.email === 'eshevitz96@gmail.com';
+
+    if (!isCoachOrAdmin) {
+        return { success: false, error: "Unauthorized: Only users with coach or admin role can approve training plans." };
     }
 
     try {
-        const supabaseAdmin = getSupabaseAdmin();
         const { error } = await supabaseAdmin
             .from('training_plans')
             .update({
                 status: 'active',
-                approved_by: coachAuth.userId || 'coach-verified',
+                approved_by: user.id,
                 approved_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })

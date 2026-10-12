@@ -42,6 +42,7 @@ import { getCalendarPrivateLessons, fetchCoachOSData, saveCalendarLessonUpdate, 
 import { extractTakeawaysFromNotes } from "@/lib/utils";
 import { useToast } from "@/context/ToastContext";
 import { logPlanSessionAction } from "@/app/actions/planSessions";
+import { CompletePlanSessionModal } from "@/components/training/CompletePlanSessionModal";
 
 type ViewMode = "day" | "week" | "month" | "year";
 
@@ -1513,19 +1514,31 @@ export default function CalendarPage() {
     }
   };
 
-  // Plan Session Quick Logger
-  const handleQuickLogPlanSession = async (sessId: string, e: React.MouseEvent) => {
+  // Plan Session Logger with Effort Prompt
+  const [completingPlanSession, setCompletingPlanSession] = useState<{ id: string; title: string; date?: string } | null>(null);
+  const [isLoggingPlanSession, setIsLoggingPlanSession] = useState<boolean>(false);
+
+  const handleQuickLogPlanSession = (sess: any, e: React.MouseEvent) => {
     e.stopPropagation();
+    setCompletingPlanSession({ id: sess.id, title: sess.title, date: sess.scheduled_date || sess.date });
+  };
+
+  const handleConfirmCompletePlanSession = async (effort: number, readiness: number) => {
+    if (!completingPlanSession) return;
+    setIsLoggingPlanSession(true);
     try {
-      const res = await logPlanSessionAction(sessId);
+      const res = await logPlanSessionAction(completingPlanSession.id, { effort, readiness });
       if (res.success) {
         toast.success("Workout completed and logged to your calendar!");
-        setAthleteHockeySessions(prev => prev.map(s => s.id === sessId ? { ...s, status: 'done', isCompleted: true } : s));
+        setAthleteHockeySessions(prev => prev.map(s => s.id === completingPlanSession.id ? { ...s, status: 'done', isCompleted: true } : s));
+        setCompletingPlanSession(null);
       } else {
         toast.error(res.error || "Failed to log workout");
       }
     } catch (err: any) {
       toast.error("Failed to log workout");
+    } finally {
+      setIsLoggingPlanSession(false);
     }
   };
 
@@ -2788,7 +2801,7 @@ export default function CalendarPage() {
                           <div className="pt-2 flex justify-end">
                             <button
                               type="button"
-                              onClick={(e) => handleQuickLogPlanSession(hSess.id, e)}
+                              onClick={(e) => handleQuickLogPlanSession(hSess, e)}
                               className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
                             >
                               <CheckCircle2 size={13} />
@@ -4174,6 +4187,15 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+
+      <CompletePlanSessionModal
+        isOpen={Boolean(completingPlanSession)}
+        sessionTitle={completingPlanSession?.title || ""}
+        sessionDate={completingPlanSession?.date}
+        onClose={() => setCompletingPlanSession(null)}
+        onConfirm={handleConfirmCompletePlanSession}
+        isLoading={isLoggingPlanSession}
+      />
 
       <MobileBottomNav />
     </div>

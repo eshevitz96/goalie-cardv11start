@@ -37,6 +37,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { checkInterviewStatus } from '@/app/actions/interview';
 import { OnboardingInterviewModal } from '@/components/training/OnboardingInterviewModal';
 import { logPlanSessionAction } from '@/app/actions/planSessions';
+import { CompletePlanSessionModal } from '@/components/training/CompletePlanSessionModal';
 
 interface CompletedSessionInput {
     id: string;
@@ -299,13 +300,17 @@ export default function TrainingPage() {
         }
     };
 
-    const handleLogPlanSession = async (sessionId: string) => {
-        setLoggingSessionId(sessionId);
+    const [completingPlanSession, setCompletingPlanSession] = useState<{ id: string; title: string; date?: string } | null>(null);
+
+    const handleConfirmCompletePlanSession = async (effort: number, readiness: number) => {
+        if (!completingPlanSession) return;
+        setLoggingSessionId(completingPlanSession.id);
         try {
-            const res = await logPlanSessionAction(sessionId);
+            const res = await logPlanSessionAction(completingPlanSession.id, { effort, readiness });
             if (res.success) {
                 toast.success("Workout logged to Calendar and marked complete!");
-                setActivePlanSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'done' } : s));
+                setActivePlanSessions(prev => prev.map(s => s.id === completingPlanSession.id ? { ...s, status: 'done' } : s));
+                setCompletingPlanSession(null);
             } else {
                 toast.error(res.error || "Failed to log workout");
             }
@@ -930,7 +935,7 @@ export default function TrainingPage() {
                                                             ) : (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => handleLogPlanSession(sess.id)}
+                                                                    onClick={() => setCompletingPlanSession({ id: sess.id, title: sess.title, date: sess.scheduled_date })}
                                                                     disabled={loggingSessionId === sess.id}
                                                                     className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                                                                 >
@@ -1965,6 +1970,14 @@ export default function TrainingPage() {
                         setInterviewStatus({ ...interviewStatus, isCompleted: true });
                     }
                 }}
+            />
+            <CompletePlanSessionModal
+                isOpen={Boolean(completingPlanSession)}
+                sessionTitle={completingPlanSession?.title || ""}
+                sessionDate={completingPlanSession?.date}
+                onClose={() => setCompletingPlanSession(null)}
+                onConfirm={handleConfirmCompletePlanSession}
+                isLoading={Boolean(loggingSessionId)}
             />
         </div>
     );
