@@ -24,12 +24,11 @@ async function verifyAdminSession(): Promise<{ isAdmin: boolean; adminUserId: st
         const adminClient = getSupabaseAdmin();
         const { data: prof } = await adminClient
             .from('profiles')
-            .select('role, roles')
+            .select('role')
             .eq('id', user.id)
             .maybeSingle();
 
-        const rolesArr = Array.isArray(prof?.roles) ? prof?.roles : [];
-        const isAdmin = prof?.role === 'admin' || prof?.role === 'coach' || rolesArr.includes('admin') || user.email === 'eshevitz96@gmail.com';
+        const isAdmin = prof?.role === 'admin' || prof?.role === 'coach' || user.email === 'eshevitz96@gmail.com';
 
         return {
             isAdmin: Boolean(isAdmin),

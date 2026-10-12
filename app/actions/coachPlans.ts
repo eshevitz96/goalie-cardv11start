@@ -170,7 +170,7 @@ export async function approveTrainingPlanAction(planId: string): Promise<{
     const supabaseAdmin = getSupabaseAdmin();
     const { data: profile, error: profErr } = await supabaseAdmin
         .from('profiles')
-        .select('id, role, roles, email')
+        .select('id, role')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -178,15 +178,42 @@ export async function approveTrainingPlanAction(planId: string): Promise<{
         return { success: false, error: "Unauthorized: Profile not found." };
     }
 
+    // Security check: ONLY check profiles.role in ('coach', 'admin'); auth user email fallback only
     const role = profile.role;
-    const roles: string[] = Array.isArray(profile.roles) ? profile.roles : [];
-    const isCoachOrAdmin = role === 'coach' || role === 'admin' || roles.includes('coach') || roles.includes('admin') || profile.email === 'eshevitz96@gmail.com';
+    const isCoachOrAdmin = role === 'coach' || role === 'admin' || user.email === 'eshevitz96@gmail.com';
 
     if (!isCoachOrAdmin) {
         return { success: false, error: "Unauthorized: Only users with coach or admin role can approve training plans." };
     }
 
     try {
+        // 1. Fetch target plan to get athlete user_id
+        const { data: targetPlan, error: targetErr } = await supabaseAdmin
+            .from('training_plans')
+            .select('id, user_id')
+            .eq('id', planId)
+            .single();
+
+        if (targetErr || !targetPlan) {
+            return { success: false, error: "Training plan not found." };
+        }
+
+        // 2. Archive any existing active plans for this athlete
+        const { error: archiveErr } = await supabaseAdmin
+            .from('training_plans')
+            .update({
+                status: 'archived',
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', targetPlan.user_id)
+            .eq('status', 'active')
+            .neq('id', planId);
+
+        if (archiveErr) {
+            console.warn("[approveTrainingPlanAction] Warning archiving previous plans:", archiveErr);
+        }
+
+        // 3. Activate the newly approved plan
         const { error } = await supabaseAdmin
             .from('training_plans')
             .update({

@@ -92,7 +92,7 @@ export async function updateProfile(rosterId: string, updates: {
         if (roster.linked_user_id) {
             const profileUpdates: any = {};
             if (updates.goalie_name !== undefined) profileUpdates.goalie_name = updates.goalie_name;
-            if (updates.email !== undefined) profileUpdates.email = updates.email;
+            // Note: email syncs from auth server-side only; never updated directly from client
             if (updates.sport !== undefined) profileUpdates.sport = updates.sport;
             if (updates.grad_year !== undefined) profileUpdates.grad_year = updates.grad_year;
 

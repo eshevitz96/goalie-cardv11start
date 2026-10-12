@@ -28,23 +28,20 @@ export async function GET(request: NextRequest) {
         const supabaseAdmin = getSupabaseAdmin();
         const { data: prof } = await supabaseAdmin
             .from('profiles')
-            .select('role, roles')
+            .select('role')
             .eq('id', user.id)
             .maybeSingle();
 
         const profileRole = prof?.role;
-        const rolesArr = Array.isArray(prof?.roles) ? prof?.roles : [];
 
         const isAdmin = (
             profileRole === 'admin' ||
-            rolesArr.includes('admin') ||
             user.email === 'eshevitz96@gmail.com'
         );
 
         const isCoach = (
             isAdmin ||
-            profileRole === 'coach' ||
-            rolesArr.includes('coach')
+            profileRole === 'coach'
         );
 
         if (!isCoach) {
