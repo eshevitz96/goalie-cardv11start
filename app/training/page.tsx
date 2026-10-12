@@ -111,9 +111,9 @@ export default function TrainingPage() {
     const toast = useToast();
 
     const isDevBypass = process.env.NEXT_PUBLIC_DEV_BYPASS === 'true';
-    const activeUserId = isDevBypass ? "00000000-0000-0000-0000-000000000000" : auth.userId;
-    const activeIsAuthenticated = isDevBypass ? true : auth.isAuthenticated;
-    const activeAuthLoading = isDevBypass ? false : auth.loading;
+    const activeUserId = auth.userId || (isDevBypass ? "00000000-0000-0000-0000-000000000000" : null);
+    const activeIsAuthenticated = auth.isAuthenticated || isDevBypass;
+    const activeAuthLoading = auth.loading && !isDevBypass;
 
     const athleteName = "Elliott Shevitz";
     const todayDateStr = new Date().toISOString().slice(0, 10);
