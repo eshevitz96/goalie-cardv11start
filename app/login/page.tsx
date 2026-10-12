@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { InstitutionalSpinner } from "@/components/ui/Loaders";
-import { Mail, ArrowRight, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendMagicLink } from "@/app/auth/actions";
 import { BrandLogo } from "@/components/ui/BrandLogo";
@@ -15,11 +15,13 @@ function LoginController() {
 
     // UI State
     const [step, setStep] = useState<'email' | 'link-sent'>('email');
+    const [usePasswordMode, setUsePasswordMode] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Data State
     const [email, setEmail] = useState(searchParams.get('email') || "");
+    const [password, setPassword] = useState("");
 
     // If query email parameter changes, update state
     useEffect(() => {
@@ -51,6 +53,24 @@ function LoginController() {
         setError(null);
 
         try {
+            if (usePasswordMode) {
+                if (!password) {
+                    setError("Please enter your password.");
+                    setIsLoading(false);
+                    return;
+                }
+                const { error: signInErr } = await supabase.auth.signInWithPassword({
+                    email: email.trim().toLowerCase(),
+                    password
+                });
+                if (signInErr) {
+                    setError(signInErr.message);
+                } else {
+                    router.replace('/dashboard');
+                }
+                return;
+            }
+
             // Send secure magic link for verification and sign in
             const res = await sendMagicLink(email);
             if (res.success) {
@@ -91,12 +111,14 @@ function LoginController() {
                                 <div className="space-y-2 text-center">
                                     <h2 className="text-3xl font-bold font-sans tracking-tight text-foreground">Secure Sign In</h2>
                                     <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
-                                        Enter your email to receive a secure access link in your inbox.
+                                        {usePasswordMode
+                                            ? "Enter your email and password to sign in."
+                                            : "Enter your email to receive a secure access link in your inbox."}
                                     </p>
                                 </div>
 
-                                <form onSubmit={handleEmailSubmit} className="space-y-6">
-                                    <div className="space-y-2">
+                                <form onSubmit={handleEmailSubmit} className="space-y-4">
+                                    <div className="space-y-3">
                                         <div className="relative">
                                             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/60" size={18} />
                                             <input
@@ -109,6 +131,20 @@ function LoginController() {
                                                 autoFocus
                                             />
                                         </div>
+
+                                        {usePasswordMode && (
+                                            <div className="relative">
+                                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/60" size={18} />
+                                                <input
+                                                    type="password"
+                                                    required
+                                                    value={password}
+                                                    onChange={(e) => setPassword(e.target.value)}
+                                                    className="w-full bg-secondary/40 border border-border/60 rounded-2xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary/50 transition-all placeholder:text-muted-foreground/50 font-bold"
+                                                    placeholder="Password"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
 
                                     {error && (
@@ -126,10 +162,20 @@ function LoginController() {
                                             <Loader2 className="animate-spin text-white" size={20} />
                                         ) : (
                                             <>
-                                                Continue <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                                {usePasswordMode ? "Sign In" : "Continue"} <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                                             </>
                                         )}
                                     </button>
+
+                                    <div className="text-center pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setUsePasswordMode(!usePasswordMode); setError(null); }}
+                                            className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                                        >
+                                            {usePasswordMode ? "Use magic link instead" : "Sign in with password"}
+                                        </button>
+                                    </div>
                                 </form>
                             </motion.div>
                         ) : (
