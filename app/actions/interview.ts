@@ -48,22 +48,23 @@ export async function checkInterviewStatus(): Promise<{
     } | null;
 }> {
     try {
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user || !user.email) {
+            return { isPrivateClient: false, isCompleted: true, profile: null };
+        }
+
+        const userEmail = user.email.toLowerCase().trim();
         const isInterviewEnabled = 
             process.env.NEXT_PUBLIC_TRAINING_INTERVIEW_ENABLED === 'true' || 
-            process.env.TRAINING_INTERVIEW_ENABLED === 'true';
+            process.env.TRAINING_INTERVIEW_ENABLED === 'true' ||
+            userEmail === 'test+goalie@goaliecard.app';
 
         if (!isInterviewEnabled) {
             return { isPrivateClient: false, isCompleted: true, profile: null };
         }
 
-        const supabase = await createClient();
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !user || !user.email) {
-            return { isPrivateClient: false, isCompleted: false, profile: null };
-        }
-
-        const userEmail = user.email.toLowerCase().trim();
         const supabaseAdmin = getSupabaseAdmin();
 
         // 1. Check private_training_submissions match
@@ -155,6 +156,16 @@ export async function saveInterviewAction({
 
         if (!user) {
             return { success: false, error: "Not authenticated" };
+        }
+
+        const userEmail = (user.email || '').toLowerCase().trim();
+        const isInterviewEnabled = 
+            process.env.NEXT_PUBLIC_TRAINING_INTERVIEW_ENABLED === 'true' || 
+            process.env.TRAINING_INTERVIEW_ENABLED === 'true' ||
+            userEmail === 'test+goalie@goaliecard.app';
+
+        if (!isInterviewEnabled) {
+            return { success: false, error: "Interview flow is not currently enabled." };
         }
 
         const supabaseAdmin = getSupabaseAdmin();

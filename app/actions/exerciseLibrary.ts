@@ -3,6 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { verifyCoachAuthorization } from "@/app/training/book/actions";
 import { CANONICAL_EXERCISE_SEEDS, CanonicalExercise, ExerciseRanges } from "@/lib/data/exerciseSeedData";
+import { getMatchingLibrarySports } from "@/lib/training/sportMatching";
 
 function getSupabaseAdmin() {
     return createClient(
@@ -53,7 +54,8 @@ export async function getExerciseLibrary(filters?: {
         }
 
         if (filters?.sport && filters.sport !== 'all') {
-            query = query.or(`sport.eq.${filters.sport},sport.eq.all`);
+            const matchingSports = getMatchingLibrarySports(filters.sport);
+            query = query.in('sport', matchingSports);
         }
 
         if (filters?.status === 'active') {
