@@ -41,6 +41,7 @@ import {
 import { getCalendarPrivateLessons, fetchCoachOSData, saveCalendarLessonUpdate, deleteCalendarLesson, createCalendarPrivateLesson, verifyCoachAuthorization } from "@/app/training/book/actions";
 import { extractTakeawaysFromNotes } from "@/lib/utils";
 import { useToast } from "@/context/ToastContext";
+import { logPlanSessionAction } from "@/app/actions/planSessions";
 
 type ViewMode = "day" | "week" | "month" | "year";
 
@@ -398,6 +399,46 @@ export default function CalendarPage() {
             sport: "Ice Hockey"
           });
         });
+
+        // Load active training plan sessions from plan_sessions
+        const { data: activePlans } = await supabase
+          .from("training_plans")
+          .select("id, status")
+          .eq("user_id", publicUserId || uid)
+          .eq("status", "active");
+
+        if (activePlans && activePlans.length > 0) {
+          const planIds = activePlans.map(p => p.id);
+          const { data: dbPlanSessions } = await supabase
+            .from("plan_sessions")
+            .select("*")
+            .in("plan_id", planIds)
+            .gte("scheduled_date", startStr)
+            .lte("scheduled_date", endStr);
+
+          (dbPlanSessions || []).forEach(item => {
+            const isDone = item.status === 'done';
+            hockeySchedule.push({
+              id: item.id,
+              plan_id: item.plan_id,
+              isPlanSession: true,
+              source: 'plan_session',
+              title: item.title || "Goalie Training Session",
+              scheduled_date: item.scheduled_date,
+              scheduled_time: "09:00:00",
+              date: item.scheduled_date,
+              location: item.training_type === 'reaction' ? "Ice / Crease Work" : (item.training_type === 'recovery' ? "Recovery Mat / Mobility" : "Gym / Training Facility"),
+              focus: item.directive || "",
+              type: item.training_type || "strength",
+              directive: item.directive || "",
+              blocks: item.blocks || [],
+              status: item.status || 'scheduled',
+              isCompleted: isDone,
+              duration_minutes: 45,
+              sport: "Ice Hockey"
+            });
+          });
+        }
       }
 
       // 2. Project ongoing weekly model for future dates starting post-import (COACH ONLY)
@@ -708,6 +749,26 @@ export default function CalendarPage() {
         tagClass: 'bg-[#FEF3C7] border border-[#FCD34D] text-[#B45309] font-bold tracking-wider text-[9px] px-2 py-0.5 rounded-md',
         cardClass: 'bg-[#FEFAF0] border border-[#FDE68A] hover:border-[#FCD34D] hover:bg-[#FDF4DF]',
         accentColor: '#D97706'
+      };
+    }
+
+    // 0. Active Training Plan Sessions -> Distinct Indigo Palette
+    if (item.isPlanSession || item.source === 'plan_session') {
+      const isDone = item.status === 'done' || item.isCompleted;
+      return {
+        category: 'plan_session',
+        tag: isDone ? 'PLAN • DONE' : 'TRAINING PLAN',
+        chipClass: isDone 
+          ? 'bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] font-semibold'
+          : 'bg-[#EEF2FF] border border-[#C7D2FE] text-[#312E81] font-semibold',
+        dotClass: isDone ? 'bg-[#10B981]' : 'bg-[#6366F1]',
+        tagClass: isDone
+          ? 'bg-[#D1FAE5] border border-[#6EE7B7] text-[#047857] font-bold tracking-wider text-[9px] px-2 py-0.5 rounded-md'
+          : 'bg-[#E0E7FF] border border-[#A5B4FC] text-[#4338CA] font-bold tracking-wider text-[9px] px-2 py-0.5 rounded-md',
+        cardClass: isDone
+          ? 'bg-[#F0FDF4] border border-[#BBF7D0] hover:border-[#86EFAC] hover:bg-[#DCFCE7]/70'
+          : 'bg-[#F5F7FF] border border-[#C7D2FE] hover:border-[#818CF8] hover:bg-[#EEF2FF]',
+        accentColor: isDone ? '#10B981' : '#6366F1'
       };
     }
 
@@ -1449,6 +1510,22 @@ export default function CalendarPage() {
       setEditLessonError(err?.message || "Failed to delete coaching lesson.");
     } finally {
       setDbSaving(false);
+    }
+  };
+
+  // Plan Session Quick Logger
+  const handleQuickLogPlanSession = async (sessId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await logPlanSessionAction(sessId);
+      if (res.success) {
+        toast.success("Workout completed and logged to your calendar!");
+        setAthleteHockeySessions(prev => prev.map(s => s.id === sessId ? { ...s, status: 'done', isCompleted: true } : s));
+      } else {
+        toast.error(res.error || "Failed to log workout");
+      }
+    } catch (err: any) {
+      toast.error("Failed to log workout");
     }
   };
 
@@ -2702,6 +2779,29 @@ export default function CalendarPage() {
                         <p className="text-xs text-slate-500 m-0 flex items-center gap-1">
                           <MapPin size={11} /> {hSess.location || "Gym / Facility"}
                         </p>
+                        {hSess.isPlanSession && hSess.directive && (
+                          <p className="text-xs text-indigo-950 font-medium italic pt-0.5 line-clamp-2">
+                            "{hSess.directive}"
+                          </p>
+                        )}
+                        {hSess.isPlanSession && !hSess.isCompleted && (
+                          <div className="pt-2 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={(e) => handleQuickLogPlanSession(hSess.id, e)}
+                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
+                            >
+                              <CheckCircle2 size={13} />
+                              <span>Mark Done</span>
+                            </button>
+                          </div>
+                        )}
+                        {hSess.isPlanSession && hSess.isCompleted && (
+                          <div className="pt-1 flex items-center gap-1 text-emerald-700 text-xs font-bold">
+                            <CheckCircle2 size={13} />
+                            <span>Completed & Logged</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

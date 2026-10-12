@@ -28,12 +28,15 @@ import {
     Edit2,
     Sparkles,
     ChevronDown,
+    ChevronUp,
+    ChevronRight,
     ChevronLeft,
     Compass
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { checkInterviewStatus } from '@/app/actions/interview';
 import { OnboardingInterviewModal } from '@/components/training/OnboardingInterviewModal';
+import { logPlanSessionAction } from '@/app/actions/planSessions';
 
 interface CompletedSessionInput {
     id: string;
@@ -243,12 +246,83 @@ export default function TrainingPage() {
         profile: any;
     } | null>(null);
 
+    // Active Training Plan & Scheduled Sessions
+    const [activePlan, setActivePlan] = useState<any>(null);
+    const [activeGoal, setActiveGoal] = useState<any>(null);
+    const [activePlanSessions, setActivePlanSessions] = useState<any[]>([]);
+    const [loggingSessionId, setLoggingSessionId] = useState<string | null>(null);
+    const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
+
+    const toggleSessionExpand = (sessId: string) => {
+        setExpandedSessionIds(prev => {
+            const next = new Set(prev);
+            if (next.has(sessId)) next.delete(sessId);
+            else next.add(sessId);
+            return next;
+        });
+    };
+
+    const fetchActivePlan = async () => {
+        if (!activeUserId || activeUserId === '00000000-0000-0000-0000-000000000000') return;
+        try {
+            const { data: plans } = await supabase
+                .from('training_plans')
+                .select('*')
+                .eq('user_id', activeUserId)
+                .eq('status', 'active')
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (plans && plans.length > 0) {
+                const p = plans[0];
+                setActivePlan(p);
+
+                if (p.goal_id) {
+                    const { data: g } = await supabase.from('training_goals').select('*').eq('id', p.goal_id).maybeSingle();
+                    if (g) setActiveGoal(g);
+                }
+
+                const { data: sess } = await supabase
+                    .from('plan_sessions')
+                    .select('*')
+                    .eq('plan_id', p.id)
+                    .order('scheduled_date', { ascending: true });
+                if (sess) {
+                    setActivePlanSessions(sess);
+                    // Default expand the first scheduled session
+                    const firstScheduled = sess.find(s => s.status !== 'done');
+                    if (firstScheduled) setExpandedSessionIds(new Set([firstScheduled.id]));
+                }
+            }
+        } catch (err) {
+            console.error("Error fetching active plan:", err);
+        }
+    };
+
+    const handleLogPlanSession = async (sessionId: string) => {
+        setLoggingSessionId(sessionId);
+        try {
+            const res = await logPlanSessionAction(sessionId);
+            if (res.success) {
+                toast.success("Workout logged to Calendar and marked complete!");
+                setActivePlanSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'done' } : s));
+            } else {
+                toast.error(res.error || "Failed to log workout");
+            }
+        } catch (err) {
+            toast.error("Failed to log workout");
+        } finally {
+            setLoggingSessionId(null);
+        }
+    };
+
     useEffect(() => {
         const loadInterview = async () => {
             const status = await checkInterviewStatus();
             setInterviewStatus(status);
         };
         loadInterview();
+        fetchActivePlan();
 
         const handleOpenInterview = () => setIsInterviewModalOpen(true);
         window.addEventListener('open-training-interview', handleOpenInterview);
@@ -759,6 +833,152 @@ export default function TrainingPage() {
                                 >
                                     <Compass size={14} /> {interviewStatus.isCompleted ? 'Review Plan Setup' : 'Complete Setup'}
                                 </button>
+                            </div>
+                        )}
+
+                        {/* ACTIVE TRAINING PLAN & SCHEDULED SESSIONS */}
+                        {activePlan && activePlanSessions.length > 0 && (
+                            <div className="bg-card border border-border rounded-3xl p-5 md:p-7 shadow-xs space-y-5">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-50 border border-indigo-200 text-indigo-700">
+                                                Active Plan
+                                            </span>
+                                            {activeGoal?.target_date && (
+                                                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                                                    <CalendarIcon size={12} /> Target: {activeGoal.target_date}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h2 className="text-lg md:text-xl font-bold tracking-tight text-foreground">
+                                            {activeGoal?.summit || "Tailored Goaltending Development"}
+                                        </h2>
+                                        {activePlan.phases && activePlan.phases.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 pt-1">
+                                                {activePlan.phases.map((ph: any, pIdx: number) => (
+                                                    <span key={pIdx} className="text-[11px] font-medium px-2.5 py-1 bg-muted/60 border border-border rounded-lg text-foreground/80">
+                                                        Phase {ph.phase_number || (pIdx + 1)}: {ph.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                                        <span className="text-xs font-bold text-muted-foreground">
+                                            {activePlanSessions.filter(s => s.status === 'done').length} / {activePlanSessions.length} Completed
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Sessions List */}
+                                <div className="space-y-3">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        Scheduled Sessions ({activePlanSessions.length})
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {activePlanSessions.map((sess, sIdx) => {
+                                            const isDone = sess.status === 'done';
+                                            const isExpanded = expandedSessionIds.has(sess.id);
+                                            const [y, m, d] = (sess.scheduled_date || '').split('-').map(Number);
+                                            const dateObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+                                            const weekdayLabel = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dateObj.getUTCDay()];
+                                            const monthLabel = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dateObj.getUTCMonth()];
+
+                                            return (
+                                                <div 
+                                                    key={sess.id || sIdx}
+                                                    className={`border rounded-2xl transition-all overflow-hidden ${
+                                                        isDone 
+                                                            ? 'bg-emerald-50/30 border-emerald-200' 
+                                                            : 'bg-muted/20 border-border hover:border-indigo-200'
+                                                    }`}
+                                                >
+                                                    <div 
+                                                        onClick={() => toggleSessionExpand(sess.id)}
+                                                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"
+                                                    >
+                                                        <div className="flex items-start sm:items-center gap-3 min-w-0">
+                                                            <div className={`px-2.5 py-1.5 rounded-xl border text-center shrink-0 ${
+                                                                isDone 
+                                                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                                                                    : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                                                            }`}>
+                                                                <span className="block text-[10px] font-extrabold uppercase leading-none">{weekdayLabel}</span>
+                                                                <span className="block text-sm font-bold leading-tight mt-0.5">{monthLabel} {d}</span>
+                                                            </div>
+                                                            <div className="min-w-0 space-y-0.5">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="text-sm font-bold text-foreground">
+                                                                        {sess.title}
+                                                                    </span>
+                                                                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-muted border border-border text-muted-foreground">
+                                                                        {sess.training_type}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground italic truncate">
+                                                                    "{sess.directive}"
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0" onClick={e => e.stopPropagation()}>
+                                                            {isDone ? (
+                                                                <span className="px-3 py-1.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+                                                                    <CheckCircle2 size={14} /> Completed
+                                                                </span>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleLogPlanSession(sess.id)}
+                                                                    disabled={loggingSessionId === sess.id}
+                                                                    className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                                                                >
+                                                                    <CheckCircle2 size={13} />
+                                                                    {loggingSessionId === sess.id ? 'Logging...' : 'Mark Done'}
+                                                                </button>
+                                                            )}
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => toggleSessionExpand(sess.id)}
+                                                                className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+                                                            >
+                                                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Expanded Blocks Breakdown */}
+                                                    {isExpanded && Array.isArray(sess.blocks) && sess.blocks.length > 0 && (
+                                                        <div className="px-4 pb-4 pt-1 border-t border-border/60 bg-background/50 space-y-2">
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                                                Exercise Breakdown
+                                                            </span>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                                                                {sess.blocks.map((blk: any, bIdx: number) => (
+                                                                    <div key={bIdx} className="p-2.5 rounded-xl bg-card border border-border text-xs space-y-1">
+                                                                        <div className="flex items-center justify-between gap-1">
+                                                                            <span className="font-bold text-foreground truncate">{blk.name}</span>
+                                                                            <span className="text-[10px] uppercase font-semibold text-muted-foreground shrink-0">{blk.category}</span>
+                                                                        </div>
+                                                                        <div className="text-[11px] text-muted-foreground">
+                                                                            {blk.sets} sets × {blk.reps} • <span className="text-foreground/90 font-medium">{blk.intensity}</span>
+                                                                        </div>
+                                                                        {blk.notes && (
+                                                                            <p className="text-[10px] text-muted-foreground italic truncate">
+                                                                                {blk.notes}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </div>
                         )}
 

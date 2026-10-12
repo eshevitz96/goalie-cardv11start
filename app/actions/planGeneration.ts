@@ -310,17 +310,22 @@ ${sportWeightingDirective}
 
 ${preGameDirective}
 
-COACHING TITLE & DIRECTIVE REQUIREMENTS (MANDATORY):
-1. TITLES: Each session title must reflect the actual focus of the day (e.g., "Lower Strength + Butterfly Stick-Seal", "Crease Velocity & Reaction Snatches", "Pre-Game Hip Mobility & Spine Decompression"). NEVER title every day "MOBILITY".
+COACHING RULES & PROGRESSION REQUIREMENTS (MANDATORY):
+1. TITLES: Each session title must reflect the actual focus of the day (e.g., "Lower Strength + Unilateral Power", "Crease Velocity & Reaction Snatches", "Pre-Game Hip Mobility & Spine Decompression"). NEVER title every day "MOBILITY".
 2. DIRECTIVES: Each session's "directive" MUST be a real, crisp one-line coaching cue directly addressing the goalie's summit ("${summitGoal}") and obstacles ("${obstaclesText}"). NEVER use generic filler like "Targeted developmental session."
-3. EXERCISE INTENSITIES:
-   - Warm-up / mobility exercises: RPE 3-4
-   - Strength exercises: RPE 7-8 (or RPE 6 during Week ${totalPlanWeeks} taper)
-   - Power exercises: Quality-focused
-   - Recovery exercises: RPE 2-3
+3. BLOCK ORDER: Mobility/activation FIRST in every session, then sport/power/reaction, then strength, then core/conditioning.
+4. LOCATION ISOLATION: Do NOT mix ice drills (butterfly, RVH, crease work on ice) and gym lifts (barbell, dumbbell, bench) in one session. Group each session cleanly by location (e.g., Gym / Dryland vs Ice / Crease vs Recovery).
+5. INTENSITY LABELS:
+   - Warm-up / mobility exercises: RPE 3-4 (Activation & Flow)
+   - Core / stability drills (planks, dead bugs, carries, twists): Controlled Stability (RPE 6-7, Braced Core), NOT "heavy"
+   - Compound strength exercises: RPE 7-8 (Heavy Controlled Effort) (or RPE 6 during Week ${totalPlanWeeks} taper)
+   - Power & reaction exercises: Quality-focused (Explosive Intent / Peak Visual Tracking)
+   - Recovery exercises: RPE 2-3 (Gentle Decompression)
    - Pre-game sessions: RPE 3-4 (mobility) / RPE 2-3 (recovery)
-4. EXERCISE LIBRARY: ONLY use exercises from the provided Active Library below.
-5. SCHEDULE SLOTS: Generate exactly 1 session per slot defined below with the exact date and day_of_week provided.
+6. PROGRESSION: Week 2 MUST progress from Week 1 (add a set, a rep, or load within the age-band range). No identical weeks except the taper.
+7. CONDITIONING: If obstacles mention speed, pushes, or conditioning, include 1 short conditioning piece on a non-pre-game day.
+8. EXERCISE LIBRARY: ONLY use exercises from the provided Active Library below.
+9. SCHEDULE SLOTS: Generate exactly 1 session per slot defined below with the exact date and day_of_week provided.
 
 SCHEDULE SLOTS TO FILL:
 ${JSON.stringify(targetScheduleSlots, null, 2)}
@@ -357,6 +362,7 @@ ${JSON.stringify(libraryContext, null, 2)}`;
                             if (Array.isArray(parsed.phases) && Array.isArray(parsed.sessions) && parsed.sessions.length > 0) {
                                 generatedPhases = parsed.phases;
                                 generatedSessions = parsed.sessions.map((s: any, idx: number) => {
+                                    const slot = targetScheduleSlots[idx] || targetScheduleSlots[0];
                                     const explicitType = (s.training_type || s.type || '').toLowerCase();
                                     let trainingType: GeneratedPlanSession['training_type'];
                                     if (slot.is_pre_game || slot.is_post_game) {
@@ -442,12 +448,18 @@ ${JSON.stringify(libraryContext, null, 2)}`;
             const reactionEx = activeExercises.filter((e: any) => e.category === 'reaction');
             const powerEx = activeExercises.filter((e: any) => e.category === 'power');
             const sportEx = activeExercises.filter((e: any) => e.category === 'sport');
+            const conditioningEx = activeExercises.filter((e: any) => e.category === 'conditioning');
+
+            const obstacleLower = `${summitGoal} ${inputs.obstacles || ''}`.toLowerCase();
+            const needsConditioning = obstacleLower.includes('speed') || obstacleLower.includes('push') || obstacleLower.includes('conditioning') || obstacleLower.includes('endurance') || obstacleLower.includes('stamina');
 
             for (const slot of targetScheduleSlots) {
                 let sessionTitle = "";
                 let sessionDirective = "";
                 let trainingType: GeneratedPlanSession['training_type'] = 'mobility';
-                let chosenExerciseList: any[] = [];
+                let chosenExerciseList: Array<{ exercise: any; setsOverride?: string; repsOverride?: string; notesOverride?: string }> = [];
+
+                const isWeek2 = slot.week === 2;
 
                 if (slot.is_pre_game) {
                     trainingType = 'mobility';
@@ -460,61 +472,108 @@ ${JSON.stringify(libraryContext, null, 2)}`;
                     chosenExerciseList = mobilityEx.filter((e: any) => {
                         const name = (e.name || '').toLowerCase();
                         return !name.includes('finisher') && !name.includes('interval');
-                    }).slice(0, 4);
+                    }).slice(0, 4).map((e: any) => ({ exercise: e }));
                 } else if (slot.day_of_week === 'Mon') {
+                    // Monday: Gym / Dryland Strength & Unilateral Power (Location: Gym/Weights, NO ice pads)
                     trainingType = 'strength';
                     sessionTitle = slot.is_taper
                         ? "Maintenance Strength + Crease Seal Taper"
-                        : "Lower Strength + Butterfly Stick-Seal";
+                        : (isWeek2 ? "Unilateral Strength & Deceleration Progression" : "Lower Body Strength & Unilateral Power");
                     sessionDirective = slot.is_taper
                         ? "Taper volume: crisp, high-intent reps on single-leg strength to preserve power while peaking freshness for the championship."
-                        : "Lock your stick-seal tight to the ice to steer low rebounds away from the slot, building single-leg balance to eliminate push delay.";
+                        : (isWeek2
+                            ? "Week 2 progression: drive maximum force through the lead heel and brace core against rotation to eliminate recovery push delay."
+                            : "Establish stable unilateral grounding and solid trunk stability to prepare explosive push mechanics.");
+                    
                     chosenExerciseList = [
-                        sportEx.find((e: any) => e.name.includes("Butterfly Slide")) || sportEx[0] || strengthEx[0],
-                        strengthEx.find((e: any) => e.name.includes("Bulgarian")) || strengthEx[0],
-                        strengthEx.find((e: any) => e.name.includes("Plank")) || strengthEx[1],
-                        mobilityEx[0]
+                        { exercise: mobilityEx.find((e: any) => e.name.includes("90/90")) || mobilityEx[0] },
+                        { 
+                            exercise: powerEx.find((e: any) => e.name.includes("Snap-Down")) || powerEx[0],
+                            setsOverride: isWeek2 ? "4" : undefined
+                        },
+                        { 
+                            exercise: strengthEx.find((e: any) => e.name.includes("Bulgarian")) || strengthEx[0],
+                            setsOverride: isWeek2 ? "4" : undefined,
+                            notesOverride: isWeek2 ? "Week 2 progression: +1 set, maintain heavy controlled posture." : undefined
+                        },
+                        { 
+                            exercise: strengthEx.find((e: any) => e.name.includes("Plank")) || strengthEx[1],
+                            setsOverride: isWeek2 ? "4" : undefined,
+                            repsOverride: isWeek2 ? "20-24 taps total" : undefined,
+                            notesOverride: isWeek2 ? "Week 2 progression: extended core anti-rotation hold." : undefined
+                        }
                     ];
                 } else if (slot.day_of_week === 'Wed') {
+                    // Wednesday: Crease Mechanics, Reaction & Conditioning (Location: Ice/Crease, NO gym barbells/benches)
                     trainingType = 'reaction';
                     sessionTitle = slot.is_taper
                         ? "Peak Reaction Tracking + High-Speed Taper"
-                        : "Crease Power + Reaction Ball Snatches";
+                        : (isWeek2 ? "Crease Slide Velocity & Rapid Glove Snatch Progression" : "Crease Slide Control & Rapid Glove Snatch");
                     sessionDirective = slot.is_taper
                         ? "High-velocity visual tracking with zero muscular fatigue: sharp eye-to-glove reaction to prepare for championship pace."
-                        : "Snatch reaction balls cleanly on the first bounce and immediately reset into your stance to accelerate lateral recovery pushes.";
+                        : (isWeek2
+                            ? "Week 2 progression: drive explosive edge pushes on butterfly slides and snap reaction balls with zero delay."
+                            : "Lock your stick-seal tight to the ice and snatch reaction balls cleanly on the first bounce.");
+                    
                     chosenExerciseList = [
-                        powerEx.find((e: any) => e.name.includes("Snap-Down")) || powerEx[0],
-                        reactionEx.find((e: any) => e.name.includes("Reaction Ball")) || reactionEx[0],
-                        strengthEx.find((e: any) => e.name.includes("Cossack")) || strengthEx[2],
-                        mobilityEx[1]
+                        { exercise: mobilityEx.find((e: any) => e.name.includes("Adductor")) || mobilityEx[1] || mobilityEx[0] },
+                        { 
+                            exercise: sportEx.find((e: any) => e.name.includes("Butterfly Slide")) || sportEx[0] || powerEx[0],
+                            setsOverride: isWeek2 ? "4-5" : undefined,
+                            repsOverride: isWeek2 ? "8-10 slides each side" : undefined,
+                            notesOverride: isWeek2 ? "Week 2 progression: faster recovery snap back into stance." : undefined
+                        },
+                        { 
+                            exercise: reactionEx.find((e: any) => e.name.includes("Reaction Ball")) || reactionEx[0],
+                            setsOverride: isWeek2 ? "4" : undefined,
+                            notesOverride: isWeek2 ? "Week 2 progression: +1 set, sub-maximal fatigue tracking." : undefined
+                        }
                     ];
+
+                    // If obstacles mention speed/pushes, include 1 short conditioning piece on non-pre-game day
+                    if (needsConditioning && !slot.is_taper) {
+                        const finisherEx = conditioningEx.find((e: any) => e.name.includes("Interval") || e.name.includes("Finisher")) || conditioningEx[0];
+                        if (finisherEx) {
+                            chosenExerciseList.push({
+                                exercise: finisherEx,
+                                setsOverride: "2",
+                                repsOverride: "4 rounds (20s sprint / 40s recovery)",
+                                notesOverride: "Short conditioning piece: explosive lactic tolerance for repeated high-tempo crease pushes."
+                            });
+                        }
+                    } else {
+                        // Bodyweight/mat lateral drill (no gym equipment needed)
+                        chosenExerciseList.push({
+                            exercise: strengthEx.find((e: any) => e.name.includes("Side Plank") || e.name.includes("Dead Bug")) || strengthEx[1]
+                        });
+                    }
                 } else {
                     trainingType = 'sport';
                     sessionTitle = "Crease Angle Mechanics & Agility";
                     sessionDirective = "Drive decisively off your recovery edges and center your chest over the puck.";
                     chosenExerciseList = [
-                        sportEx.find((e: any) => e.name.includes("Arc Shuffles")) || sportEx[0],
-                        reactionEx[0],
-                        mobilityEx[0]
+                        { exercise: mobilityEx[0] },
+                        { exercise: sportEx.find((e: any) => e.name.includes("Arc Shuffles")) || sportEx[0] },
+                        { exercise: reactionEx[0] }
                     ];
                 }
 
-                const blocks: GeneratedSessionBlock[] = chosenExerciseList.map((e: any) => {
+                const blocks: GeneratedSessionBlock[] = chosenExerciseList.map(({ exercise: e, setsOverride, repsOverride, notesOverride }) => {
                     const range = e.ranges?.[derivedAgeBand] || { sets: "2-3", reps: "8-10" };
                     const intensity = getExerciseIntensity(e.category, {
                         isPreGame: slot.is_pre_game,
                         isPostGame: slot.is_post_game,
-                        isTaper: slot.is_taper
+                        isTaper: slot.is_taper,
+                        exerciseName: e.name
                     });
                     return {
                         exercise_id: e.id,
                         name: e.name,
                         category: e.category,
-                        sets: slot.is_taper ? "2" : (range.sets || "3"),
-                        reps: range.reps || "8-10",
+                        sets: slot.is_taper ? "2" : (setsOverride || range.sets || "3"),
+                        reps: repsOverride || range.reps || "8-10",
                         intensity,
-                        notes: range.notes || "Clean joint mechanics.",
+                        notes: notesOverride || range.notes || "Clean joint mechanics.",
                         cues: Array.isArray(e.cues) ? e.cues.slice(0, 2) : []
                     };
                 });
@@ -530,7 +589,7 @@ ${JSON.stringify(libraryContext, null, 2)}`;
             }
         }
 
-        // 6. ENFORCE ALL RULES, SANITIZE PRE-GAME, APPLY PER-ITEM INTENSITY
+        // 6. ENFORCE ALL RULES, SANITIZE PRE-GAME, APPLY PER-ITEM INTENSITY & ORDER
         let preGameHeavyViolations = 0;
         const skippedPreGameItems: string[] = [];
 
@@ -593,18 +652,22 @@ ${JSON.stringify(libraryContext, null, 2)}`;
                 s.directive = "Post-match tissue restoration. Flush lower-body fatigue and restore hip mobility after game day.";
             }
 
-            // Enforce Per-Item Intensity (Bug 3)
+            // Enforce Per-Item Intensity (Rule 3)
             if (Array.isArray(s.blocks)) {
                 for (const b of s.blocks) {
                     b.intensity = getExerciseIntensity(b.category, {
                         isPreGame,
                         isPostGame,
-                        isTaper: isTaperWeek
+                        isTaper: isTaperWeek,
+                        exerciseName: b.name
                     });
                 }
+
+                // Enforce Block Ordering (Rule 2): Mobility -> Sport/Power/Reaction -> Strength -> Core/Conditioning
+                s.blocks.sort((a, b) => getBlockCategorySortOrder(a.category, a.name) - getBlockCategorySortOrder(b.category, b.name));
             }
 
-            // Generic directive cleanup (Bug 5)
+            // Generic directive cleanup
             if (s.directive.toLowerCase().includes('targeted developmental')) {
                 s.directive = isPreGame
                     ? "Restore full adductor and thoracic mobility with zero fatigue so your hips open effortlessly on game day."
@@ -766,4 +829,18 @@ function mapToDatabaseTrainingType(type: string): 'strength' | 'conditioning' | 
         default:
             return 'other';
     }
+}
+
+function getBlockCategorySortOrder(cat: string, name: string): number {
+    const c = (cat || '').toLowerCase();
+    const n = (name || '').toLowerCase();
+    if (c === 'mobility' || c === 'warmup') return 1;
+    if (c === 'sport' || c === 'power' || c === 'reaction') return 2;
+    if (c === 'strength') {
+        const isCore = n.includes('plank') || n.includes('dead bug') || n.includes('twist') || n.includes('carry') || n.includes('hold');
+        return isCore ? 4 : 3;
+    }
+    if (c === 'core' || c === 'conditioning') return 4;
+    if (c === 'recovery') return 5;
+    return 3;
 }

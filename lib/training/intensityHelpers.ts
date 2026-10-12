@@ -12,9 +12,19 @@ export function getExerciseIntensity(
         isPreGame?: boolean;
         isPostGame?: boolean;
         isTaper?: boolean;
+        exerciseName?: string;
     }
 ): string {
     const cat = (category || '').toLowerCase();
+    const name = (options?.exerciseName || '').toLowerCase();
+
+    const isCoreOrStability = 
+        name.includes('plank') || 
+        name.includes('dead bug') || 
+        name.includes('twist') || 
+        name.includes('carry') || 
+        name.includes('hold') || 
+        name.includes('stability');
 
     if (options?.isPreGame) {
         if (cat === 'recovery') return "RPE 2-3 (Gentle Decompression)";
@@ -28,10 +38,15 @@ export function getExerciseIntensity(
     if (options?.isTaper) {
         if (cat === 'mobility' || cat === 'warmup') return "RPE 3-4 (Fluid Activation)";
         if (cat === 'recovery') return "RPE 2-3 (Gentle Decompression)";
+        if (isCoreOrStability) return "Controlled Stability (RPE 5-6, Crisp Core Form)";
         if (cat === 'strength') return "RPE 6 (Taper Maintenance - Crisp Control)";
         if (cat === 'power') return "Quality-focused (Max Velocity, Low Volume)";
         if (cat === 'reaction' || cat === 'sport') return "Quality-focused (Peak Ocular Tracking, Zero Fatigue)";
         return "RPE 5-6 (Taper Maintenance)";
+    }
+
+    if (isCoreOrStability) {
+        return "Controlled Stability (RPE 6-7, Braced Core & Anti-Rotation)";
     }
 
     switch (cat) {
