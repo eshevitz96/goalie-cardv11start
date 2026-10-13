@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { formatCalendarDate } from '@/lib/training/dateHelpers';
 
 interface SessionLogProps {
     sessions: any[];
@@ -35,8 +36,7 @@ export function SessionLog({ sessions, onDelete }: SessionLogProps) {
                         {sessions.map((session, i) => (
                             <tr key={i} className="border-b border-white/5 hover:bg-white/5">
                                 <td className="p-4 font-mono text-zinc-400">
-                                    {new Date(session.date).toLocaleDateString()}
-                                    <div className="text-xs text-zinc-600">{new Date(session.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                    {formatCalendarDate(session.date, { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </td>
                                 <td className="p-4">
                                     <div className="font-bold">{session.roster?.goalie_name || "Unknown"}</div>

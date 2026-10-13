@@ -29,3 +29,6 @@ export function extractTakeawaysFromNotes(notes?: string | null): string {
 
     return "";
 }
+
+export * from "@/lib/training/dateHelpers";
+

@@ -162,9 +162,10 @@ export async function approveTrainingPlanAction(planId: string): Promise<{
     error?: string;
 }> {
     const serverSupabase = await createServerSupabase();
-    const { data: { user } } = await serverSupabase.auth.getUser();
+    const { data: { user }, error: authErr } = await serverSupabase.auth.getUser();
     if (!user) {
-        return { success: false, error: "Unauthorized: Sign in required." };
+        console.error("[approveTrainingPlanAction] Unauthorized: No active auth session.", { planId, authErr });
+        return { success: false, error: "Unauthorized: Sign in required (no active session found). Please refresh and sign in as Coach." };
     }
 
     const supabaseAdmin = getSupabaseAdmin();
@@ -175,7 +176,8 @@ export async function approveTrainingPlanAction(planId: string): Promise<{
         .maybeSingle();
 
     if (profErr || !profile) {
-        return { success: false, error: "Unauthorized: Profile not found." };
+        console.error("[approveTrainingPlanAction] Profile lookup failed:", { planId, userId: user.id, email: user.email, profErr });
+        return { success: false, error: `Unauthorized: Profile not found for ${user.email || user.id}.` };
     }
 
     // Security check: ONLY check profiles.role in ('coach', 'admin'); auth user email fallback only
@@ -183,19 +185,24 @@ export async function approveTrainingPlanAction(planId: string): Promise<{
     const isCoachOrAdmin = role === 'coach' || role === 'admin' || user.email === 'eshevitz96@gmail.com';
 
     if (!isCoachOrAdmin) {
-        return { success: false, error: "Unauthorized: Only users with coach or admin role can approve training plans." };
+        console.error("[approveTrainingPlanAction] Role check rejected:", { planId, userId: user.id, email: user.email, role });
+        return {
+            success: false,
+            error: `Unauthorized (currently signed in as ${user.email || 'unknown'}, role: ${role || 'none'}): Only coach or admin accounts can approve training plans. Please sign in as eshevitz96@gmail.com.`
+        };
     }
 
     try {
         // 1. Fetch target plan to get athlete user_id
         const { data: targetPlan, error: targetErr } = await supabaseAdmin
             .from('training_plans')
-            .select('id, user_id')
+            .select('id, user_id, status')
             .eq('id', planId)
             .single();
 
         if (targetErr || !targetPlan) {
-            return { success: false, error: "Training plan not found." };
+            console.error("[approveTrainingPlanAction] Target plan not found:", { planId, targetErr });
+            return { success: false, error: `Training plan not found (${targetErr?.message || planId}).` };
         }
 
         // 2. Archive any existing active plans for this athlete
@@ -213,26 +220,40 @@ export async function approveTrainingPlanAction(planId: string): Promise<{
             console.warn("[approveTrainingPlanAction] Warning archiving previous plans:", archiveErr);
         }
 
-        // 3. Activate the newly approved plan
-        const { error } = await supabaseAdmin
+        // 3. Activate the newly approved plan and verify the updated row
+        const nowIso = new Date().toISOString();
+        const { data: updatedPlan, error } = await supabaseAdmin
             .from('training_plans')
             .update({
                 status: 'active',
                 approved_by: user.id,
-                approved_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                approved_at: nowIso,
+                updated_at: nowIso
             })
-            .eq('id', planId);
+            .eq('id', planId)
+            .select('id, status, approved_by, approved_at')
+            .maybeSingle();
 
         if (error) {
-            console.error("[approveTrainingPlanAction] Error:", error);
+            console.error("[approveTrainingPlanAction] Database update error:", { planId, error });
             return { success: false, error: error.message };
         }
+
+        if (!updatedPlan || updatedPlan.status !== 'active') {
+            console.error("[approveTrainingPlanAction] Update did not activate plan:", { planId, updatedPlan });
+            return { success: false, error: "Plan approval failed: database row was not updated to active." };
+        }
+
+        console.info("[approveTrainingPlanAction] Plan approved:", {
+            planId: updatedPlan.id,
+            approvedBy: updatedPlan.approved_by,
+            approvedAt: updatedPlan.approved_at
+        });
 
         return { success: true };
     } catch (err: any) {
         console.error("[approveTrainingPlanAction] Unexpected error:", err);
-        return { success: false, error: err.message };
+        return { success: false, error: err.message || "Unexpected server error while approving plan." };
     }
 }
 
@@ -254,6 +275,8 @@ export async function rejectTrainingPlanAction(planId: string): Promise<{
             .from('training_plans')
             .update({
                 status: 'draft',
+                approved_by: null,
+                approved_at: null,
                 updated_at: new Date().toISOString()
             })
             .eq('id', planId);

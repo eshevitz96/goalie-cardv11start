@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PRO_SCHEDULE } from "@/lib/demo-data";
 import { supabase } from "@/utils/supabase/client";
+import { toCalendarDateString, getTodayDateString } from "@/lib/training/dateHelpers";
 
 // Re-fetch logic similar to parent/page
 export default function EventsPage() {
@@ -55,13 +56,13 @@ export default function EventsPage() {
         const proEvents = PRO_SCHEDULE.map(e => ({
             id: e.id,
             name: e.name,
-            date: new Date(e.date).toLocaleDateString(),
+            date: toCalendarDateString(e.date),
             location: e.location,
             status: "upcoming" as const,
             image: e.type === 'Game' ? "from-purple-900 to-black" : (e.type === 'Practice' ? "from-gray-700 to-gray-900" : "from-gray-800 to-black"),
             price: 0,
             sport: 'Hockey',
-            rawDate: new Date(e.date)
+            rawDateStr: toCalendarDateString(e.date)
         }));
 
         // 3. Map DB Events (Filtered to registered or owned)
@@ -74,17 +75,17 @@ export default function EventsPage() {
             .map(e => ({
                 id: e.id,
                 name: e.name,
-                date: new Date(e.date).toLocaleDateString(),
+                date: toCalendarDateString(e.date),
                 location: e.location || 'TBA',
                 status: "upcoming" as const, // Simplify to upcoming if visible
                 image: e.image || "from-gray-500 to-gray-600",
                 price: e.price,
                 sport: e.sport,
-                rawDate: new Date(e.date)
+                rawDateStr: toCalendarDateString(e.date)
             })) || [];
 
         // Merge and Sort
-        const allEvents = [...proEvents, ...mappedDbEvents].sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
+        const allEvents = [...proEvents, ...mappedDbEvents].sort((a, b) => a.rawDateStr.localeCompare(b.rawDateStr));
 
         setEvents(allEvents);
         setLoading(false);
@@ -95,9 +96,9 @@ export default function EventsPage() {
     }, []);
 
     const filteredEvents = events.filter(e => {
-        const now = new Date();
-        if (filter === 'upcoming') return e.rawDate >= now;
-        if (filter === 'past') return e.rawDate < now;
+        const todayStr = getTodayDateString();
+        if (filter === 'upcoming') return e.rawDateStr >= todayStr;
+        if (filter === 'past') return e.rawDateStr < todayStr;
         return true;
     });
 

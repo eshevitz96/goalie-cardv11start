@@ -1,5 +1,6 @@
 import { FileSpreadsheet, Trash2 } from 'lucide-react';
 import { supabase } from '@/utils/supabase/client';
+import { formatCalendarDate } from '@/lib/training/dateHelpers';
 
 interface SessionsTableProps {
     sessions: any[];
@@ -37,8 +38,7 @@ export function SessionsTable({ sessions, setSessions }: SessionsTableProps) {
                             if (rawDate) {
                                 const [datePart, timeWithOffset] = rawDate.split("T");
                                 if (datePart) {
-                                    const [y, m, d] = datePart.split("-").map(Number);
-                                    dateDisplay = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                                    dateDisplay = formatCalendarDate(datePart, { weekday: 'short', month: 'short', day: 'numeric' });
                                 }
                                 const notesTimeMatch = session.notes ? session.notes.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)(?:\s*–\s*\d{1,2}:\d{2}\s*(?:AM|PM))?)/i) : null;
                                 if (notesTimeMatch && notesTimeMatch[1]) {

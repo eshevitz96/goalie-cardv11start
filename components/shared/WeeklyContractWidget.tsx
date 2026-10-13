@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { X, Target } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { usePathname } from "next/navigation";
+import { getTodayDateString, getMondayDateString } from "@/lib/training/dateHelpers";
 
 export function WeeklyContractWidget() {
     const auth = useAuth();
@@ -22,13 +23,7 @@ export function WeeklyContractWidget() {
         if (!auth.userId || auth.userId === "00000000-0000-0000-0000-000000000000" || shouldHide) return;
 
         const fetchIntention = async () => {
-            const today = new Date();
-            const day = today.getDay();
-            const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-            const monday = new Date(today.setDate(diff));
-            monday.setHours(0, 0, 0, 0);
-            
-            const weekStr = monday.toISOString().split("T")[0];
+            const weekStr = getMondayDateString(getTodayDateString());
 
             try {
                 const { data, error } = await supabase

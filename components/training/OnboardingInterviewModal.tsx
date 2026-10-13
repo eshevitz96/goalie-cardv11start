@@ -250,8 +250,8 @@ export function OnboardingInterviewModal({
                             <Compass size={16} />
                         </div>
                         <div>
-                            <h3 className="text-sm font-bold text-foreground">Goalie Training Setup</h3>
-                            <p className="text-[11px] text-muted-foreground">Tailoring your developmental path</p>
+                            <h3 className="text-sm font-bold text-foreground">Your Goal & Training Plan</h3>
+                            <p className="text-[11px] text-muted-foreground">Build your plan around your target and schedule</p>
                         </div>
                     </div>
 
@@ -355,10 +355,10 @@ export function OnboardingInterviewModal({
                                 Your Goal Ladder
                             </span>
                             <h4 className="text-lg font-bold text-foreground tracking-tight">
-                                Confirm Your Milestone Progression
+                                Your Steps to the Goal
                             </h4>
                             <p className="text-xs text-muted-foreground">
-                                Edit any line below. These are the progressive steps to reach your summit.
+                                Edit or reorder the steps between where you are now and your goal.
                             </p>
                         </div>
 
@@ -455,10 +455,10 @@ export function OnboardingInterviewModal({
                     <form onSubmit={handleFormSubmit} className="space-y-5">
                         <div>
                             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">
-                                Part 2 • Logistics & Routine
+                                Part 2 • Your Schedule
                             </span>
                             <h4 className="text-lg font-bold text-foreground tracking-tight">
-                                Training Availability & Environment
+                                Your Week & Training Access
                             </h4>
                         </div>
 
@@ -658,7 +658,7 @@ export function OnboardingInterviewModal({
                                     Share my goal and plan with my coach
                                 </label>
                                 <p className="text-[11px] text-muted-foreground">
-                                    Allow your coach to view your summit goal and routine on their dashboard.
+                                    Let your coach see your goal and training plan.
                                 </p>
                             </div>
                             <input
@@ -691,7 +691,7 @@ export function OnboardingInterviewModal({
                                 disabled={isSubmitting}
                                 className="px-5 py-2.5 bg-foreground hover:bg-foreground/90 disabled:opacity-50 text-background rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
                             >
-                                {isSubmitting ? "Saving..." : "Submit Training Setup"} <Check size={14} />
+                                {isSubmitting ? "Saving..." : "Build My Plan"} <Check size={14} />
                             </button>
                         </div>
                     </form>
@@ -706,10 +706,10 @@ export function OnboardingInterviewModal({
 
                         <div className="space-y-2 max-w-sm mx-auto">
                             <h4 className="text-xl font-bold text-foreground tracking-tight">
-                                Your Plan is Being Built
+                                Your Plan Is On the Way
                             </h4>
                             <p className="text-xs text-muted-foreground leading-relaxed">
-                                You&apos;ll see your tailored development structure on your calendar once it&apos;s ready.
+                                Your sessions will appear on your calendar and training tab as soon as your plan is ready.
                             </p>
                         </div>
 

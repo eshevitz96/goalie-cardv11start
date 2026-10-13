@@ -12,6 +12,7 @@ import { usePerformanceRealtime } from "@/hooks/usePerformanceRealtime";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 import { FeedbackModal } from "@/components/feedback/FeedbackModal";
 import { checkFeedbackEligibility } from "@/app/actions/feedback";
+import { getTodayDateString, formatCalendarDate } from "@/lib/training/dateHelpers";
 
 export default function ProfilePage() {
     const auth = useAuth();
@@ -200,7 +201,7 @@ export default function ProfilePage() {
                 }
 
                 // 4. Fetch real events & commitments for the athlete
-                const todayStr = new Date().toISOString().split('T')[0];
+                const todayStr = getTodayDateString();
                 const { data: userGames } = await supabase
                     .from('games')
                     .select('*')
@@ -471,8 +472,7 @@ export default function ProfilePage() {
                                     {upcomingEvents.map((evt, idx) => {
                                         const isTraining = evt.game_type === 'training';
                                         const isPractice = evt.game_type === 'practice';
-                                        const evtDate = evt.scheduled_date ? new Date(evt.scheduled_date + 'T00:00:00') : null;
-                                        const dateFormatted = evtDate ? evtDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Scheduled";
+                                        const dateFormatted = evt.scheduled_date ? formatCalendarDate(evt.scheduled_date, { month: "short", day: "numeric" }) : "Scheduled";
 
                                         return (
                                             <div key={evt.id || idx} className="flex items-center justify-between gap-3 py-3 border-b border-border/50 last:border-0">

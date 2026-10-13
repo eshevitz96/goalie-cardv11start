@@ -5,6 +5,7 @@ import { supabase } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { X, Calendar as CalendarIcon, MapPin, Search } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
+import { toCalendarDateString } from "@/lib/training/dateHelpers";
 
 interface Event {
     id: string;
@@ -31,14 +32,9 @@ export function EventModal({ isOpen, onClose, onAdded, defaultSport, goalieId, e
     // Helper to format date for datetime-local input
     const formatForInput = (dateString: string) => {
         if (!dateString) return "";
-        const d = new Date(dateString);
-        // Correctly handle local time offset for datetime-local input
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const hours = String(d.getHours()).padStart(2, '0');
-        const minutes = String(d.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
+        const datePart = toCalendarDateString(dateString);
+        const timeMatch = dateString.match(/T(\d{2}:\d{2})/);
+        return timeMatch ? `${datePart}T${timeMatch[1]}` : `${datePart}T12:00`;
     };
 
     const [manualEvent, setManualEvent] = useState({
@@ -80,7 +76,7 @@ export function EventModal({ isOpen, onClose, onAdded, defaultSport, goalieId, e
 
         const { data: { user } } = await supabase.auth.getUser();
         const finalName = `${manualEvent.type}: ${manualEvent.name}`;
-        const finalDate = new Date(manualEvent.date).toISOString();
+        const finalDate = manualEvent.date.includes('T') ? manualEvent.date : `${manualEvent.date}T12:00:00`;
 
         if (editEvent) {
             const { updateEvent } = await import('@/app/events/actions');

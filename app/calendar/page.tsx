@@ -40,6 +40,12 @@ import {
 } from "lucide-react";
 import { getCalendarPrivateLessons, fetchCoachOSData, saveCalendarLessonUpdate, deleteCalendarLesson, createCalendarPrivateLesson, verifyCoachAuthorization } from "@/app/training/book/actions";
 import { extractTakeawaysFromNotes } from "@/lib/utils";
+import {
+  toCalendarDateString,
+  extractCalendarDateParts,
+  formatCalendarDate,
+  MONTHS_LONG
+} from "@/lib/training/dateHelpers";
 import { useToast } from "@/context/ToastContext";
 import { logPlanSessionAction } from "@/app/actions/planSessions";
 import { CompletePlanSessionModal } from "@/components/training/CompletePlanSessionModal";
@@ -71,6 +77,7 @@ export default function CalendarPage() {
   const toast = useToast();
 
   const [loading, setLoading] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [season, setSeason] = useState<any>(null);
   const [games, setGames] = useState<any[]>([]);
   const [practices, setPractices] = useState<any[]>([]);
@@ -194,13 +201,8 @@ export default function CalendarPage() {
     }
   }, [auth.loading, auth.isAuthenticated, router]);
 
-  // Helper date key format YYYY-MM-DD
-  const formatDateKey = (d: Date) => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
+  // Helper date key format YYYY-MM-DD via shared plain-date helper
+  const formatDateKey = (d: Date) => toCalendarDateString(d);
 
   const isToday = (d: Date) => {
     const now = new Date();
@@ -262,36 +264,15 @@ export default function CalendarPage() {
     return cells;
   }, [currentDate]);
 
-  // Compute query range based on active viewMode and currentDate
+  // Compute query range per active year (with 1-month boundary padding) so switching
+  // Day / Week / Month / Year views is 100% client-side with no refetch or reload.
+  const activeYear = currentDate.getFullYear();
   const queryRange = useMemo(() => {
-    if (viewMode === "day") {
-      const start = new Date(currentDate);
-      start.setDate(currentDate.getDate() - 7);
-      const end = new Date(currentDate);
-      end.setDate(currentDate.getDate() + 7);
-      return {
-        startStr: formatDateKey(start),
-        endStr: formatDateKey(end)
-      };
-    } else if (viewMode === "week") {
-      return {
-        startStr: formatDateKey(weekDates[0]),
-        endStr: formatDateKey(weekDates[6])
-      };
-    } else if (viewMode === "month") {
-      return {
-        startStr: formatDateKey(monthGridDates[0].date),
-        endStr: formatDateKey(monthGridDates[monthGridDates.length - 1].date)
-      };
-    } else {
-      // Year view
-      const year = currentDate.getFullYear();
-      return {
-        startStr: `${year}-01-01`,
-        endStr: `${year}-12-31`
-      };
-    }
-  }, [viewMode, currentDate, weekDates, monthGridDates]);
+    return {
+      startStr: `${activeYear - 1}-12-01`,
+      endStr: `${activeYear + 1}-01-31`
+    };
+  }, [activeYear]);
 
   // Load calendar data
   const loadData = async () => {
@@ -645,6 +626,7 @@ export default function CalendarPage() {
       console.error("Error loading calendar data:", err);
     } finally {
       setLoading(false);
+      setInitialLoaded(true);
     }
   };
 
@@ -693,19 +675,19 @@ export default function CalendarPage() {
   // Navigation Header Title Label
   const navigationTitle = useMemo(() => {
     if (viewMode === "day") {
-      return currentDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+      return formatCalendarDate(currentDate, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
     } else if (viewMode === "week") {
       const mon = weekDates[0];
       const sun = weekDates[6];
-      const monMonth = mon.toLocaleDateString("en-US", { month: "short" });
-      const sunMonth = sun.toLocaleDateString("en-US", { month: "short" });
+      const monMonth = formatCalendarDate(mon, { month: "short" });
+      const sunMonth = formatCalendarDate(sun, { month: "short" });
       const year = sun.getFullYear();
       if (monMonth === sunMonth) {
         return `${monMonth} ${mon.getDate()} – ${sun.getDate()}, ${year}`;
       }
       return `${monMonth} ${mon.getDate()} – ${sunMonth} ${sun.getDate()}, ${year}`;
     } else if (viewMode === "month") {
-      return currentDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      return formatCalendarDate(currentDate, { month: "long", year: "numeric" });
     } else {
       return `${currentDate.getFullYear()}`;
     }
@@ -907,19 +889,7 @@ export default function CalendarPage() {
     const dayPrivate = (roleTrackFilter === 'athlete') ? [] : privateSessions.filter(s => {
       const sDate = s.date || s.start_time;
       if (!sDate) return false;
-      if (typeof sDate === 'string') {
-        if (sDate.startsWith(dateStr) || sDate.slice(0, 10) === dateStr) return true;
-      }
-      try {
-        const d = new Date(sDate);
-        if (!isNaN(d.getTime())) {
-          if (formatDateKey(d) === dateStr) return true;
-          if (d.toISOString().slice(0, 10) === dateStr) return true;
-        }
-      } catch {
-        return false;
-      }
-      return false;
+      return toCalendarDateString(sDate) === dateStr;
     });
 
     return {
@@ -1749,7 +1719,7 @@ export default function CalendarPage() {
     setShowAddEventDropdown(false);
   };
 
-  if (loading && !season && privateSessions.length === 0) {
+  if (loading && !initialLoaded) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
         <Loader2 size={32} className="animate-spin text-muted-foreground/60 mb-4" />
@@ -2025,12 +1995,12 @@ export default function CalendarPage() {
                   <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-bold ${
                     isToday(currentDate) ? "bg-foreground text-background" : "bg-muted text-foreground"
                   }`}>
-                    <span className="text-[10px] uppercase font-bold tracking-wider leading-none">{currentDate.toLocaleDateString("en-US", { weekday: "short" })}</span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider leading-none">{formatCalendarDate(currentDate, { weekday: "short" })}</span>
                     <span className="text-lg font-black leading-none mt-1">{currentDate.getDate()}</span>
                   </div>
                   <div>
                     <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground m-0">
-                      {currentDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                      {formatCalendarDate(currentDate, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
                     </h2>
                     <div className="flex items-center gap-2 mt-1">
                       {isToday(currentDate) && (
@@ -2362,7 +2332,7 @@ export default function CalendarPage() {
                     <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-border">
                       <div>
                         <p className={`m-0 text-[10px] font-bold uppercase tracking-wider ${isDayToday ? "text-slate-900" : "text-muted-foreground"}`}>
-                          {date.toLocaleDateString("en-US", { weekday: "short" })}
+                          {formatCalendarDate(date, { weekday: "short" })}
                         </p>
                         <p className={`m-0 text-base sm:text-lg font-black tracking-tight ${isDayToday ? "text-slate-900 font-black" : "text-slate-800"}`}>
                           {date.getDate()}
@@ -2735,7 +2705,7 @@ export default function CalendarPage() {
               <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
                   <h3 className="text-base sm:text-lg font-bold text-foreground m-0 tracking-tight">
-                    {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                    {formatCalendarDate(selectedDate, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
                   </h3>
                   <p className="text-xs text-muted-foreground m-0 mt-0.5 font-medium">
                     {selectedDateEvents.totalCount === 0 ? "No events scheduled" : `${selectedDateEvents.totalCount} Event${selectedDateEvents.totalCount > 1 ? 's' : ''}`}
@@ -2954,11 +2924,14 @@ export default function CalendarPage() {
                 <span className="text-xs font-bold px-3 py-1 bg-muted rounded-xl border border-border text-muted-foreground">
                   {(() => {
                     let count = 0;
+                    const targetYear = currentDate.getFullYear();
                     if (roleTrackFilter === 'all' || roleTrackFilter === 'coach') {
-                      count += games.length + practices.length + privateSessions.length;
+                      count += games.filter(g => extractCalendarDateParts(g.scheduled_date)?.year === targetYear).length;
+                      count += practices.filter(p => extractCalendarDateParts(p.scheduled_date)?.year === targetYear).length;
+                      count += privateSessions.filter(s => extractCalendarDateParts(s.date || s.start_time)?.year === targetYear).length;
                     }
                     if (roleTrackFilter === 'all' || roleTrackFilter === 'athlete') {
-                      count += athleteHockeySessions.filter(h => new Date(h.date).getFullYear() === currentDate.getFullYear()).length;
+                      count += athleteHockeySessions.filter(h => extractCalendarDateParts(h.date)?.year === targetYear).length;
                     }
                     return count;
                   })()} Events in {currentDate.getFullYear()}
@@ -2969,8 +2942,7 @@ export default function CalendarPage() {
             {/* 12 Mini Months Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {Array.from({ length: 12 }).map((_, monthIndex) => {
-                const monthDate = new Date(currentDate.getFullYear(), monthIndex, 1);
-                const monthName = monthDate.toLocaleDateString("en-US", { month: "long" });
+                const monthName = MONTHS_LONG[monthIndex];
 
                 // Generate mini calendar grid for this month
                 const firstDay = new Date(currentDate.getFullYear(), monthIndex, 1);
@@ -2986,24 +2958,26 @@ export default function CalendarPage() {
                   miniCells.push(d);
                 }
 
-                // Count events in this month
+                // Count events in this month using plain calendar date parts
+                const targetYear = currentDate.getFullYear();
+                const targetMonth = monthIndex + 1;
                 const coachCount = (roleTrackFilter === 'all' || roleTrackFilter === 'coach') ? (
                   games.filter(g => {
-                    const d = new Date(g.scheduled_date);
-                    return d.getFullYear() === currentDate.getFullYear() && d.getMonth() === monthIndex;
-                  }).length + practices.filter(p => {
-                    const d = new Date(p.scheduled_date);
-                    return d.getFullYear() === currentDate.getFullYear() && d.getMonth() === monthIndex;
+                    const p = extractCalendarDateParts(g.scheduled_date);
+                    return p?.year === targetYear && p?.month === targetMonth;
+                  }).length + practices.filter(pr => {
+                    const p = extractCalendarDateParts(pr.scheduled_date);
+                    return p?.year === targetYear && p?.month === targetMonth;
                   }).length + privateSessions.filter(s => {
-                    const d = new Date(s.date);
-                    return d.getFullYear() === currentDate.getFullYear() && d.getMonth() === monthIndex;
+                    const p = extractCalendarDateParts(s.date || s.start_time);
+                    return p?.year === targetYear && p?.month === targetMonth;
                   }).length
                 ) : 0;
 
                 const athleteCount = (roleTrackFilter === 'all' || roleTrackFilter === 'athlete') ? (
                   athleteHockeySessions.filter(h => {
-                    const d = new Date(h.date);
-                    return d.getFullYear() === currentDate.getFullYear() && d.getMonth() === monthIndex;
+                    const p = extractCalendarDateParts(h.date);
+                    return p?.year === targetYear && p?.month === targetMonth;
                   }).length
                 ) : 0;
 

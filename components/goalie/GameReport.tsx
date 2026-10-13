@@ -11,6 +11,7 @@ import { SupportedSport, ShotEvent, ShotResult } from '@/types/goalie-v11';
 import { Button } from '@/components/ui/Button';
 import { getSportTerms } from '@/utils/sport-language';
 import { BrandLogo } from '@/components/ui/BrandLogo';
+import { formatCalendarDate } from '@/lib/training/dateHelpers';
 
 interface GameReportProps {
   sport: SupportedSport;
@@ -76,7 +77,7 @@ export function GameReport({ sport, opponent, date, shots, stats, location, sess
             vs {opponent}
           </h2>
           <div className="flex items-center gap-6 text-muted-foreground font-bold text-[10px] uppercase tracking-widest">
-             <span className="flex items-center gap-2 text-foreground/80"><Calendar size={14} className="text-primary/60" /> {new Date(date).toLocaleDateString()}</span>
+             <span className="flex items-center gap-2 text-foreground/80"><Calendar size={14} className="text-primary/60" /> {formatCalendarDate(date, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
              <span className="flex items-center gap-2 text-foreground/80 group">
                 <MapPin size={14} className="text-primary/60" /> 
                 {isEditingLocation ? (

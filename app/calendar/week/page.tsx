@@ -8,6 +8,7 @@ import FlowScreen from "@/components/calendar/FlowScreen";
 import MoodScale, { MoodValue } from "@/components/calendar/MoodScale";
 import TextInput from "@/components/calendar/TextInput";
 import { Loader2, Clock, MapPin, Calendar as CalendarIcon } from "lucide-react";
+import { getMondayDateString, addDaysToDateString } from "@/lib/training/dateHelpers";
 
 type Step = "week_overview" | "mood" | "focus" | "confirmation";
 
@@ -33,15 +34,7 @@ export default function WeeklySetupPage() {
 
   // Compute Monday of the current week
   useEffect(() => {
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon
-    const daysSinceMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - daysSinceMon);
-    monday.setHours(0, 0, 0, 0);
-
-    const monStr = monday.toISOString().split("T")[0];
-    setWeekStartDate(monStr);
+    setWeekStartDate(getMondayDateString());
   }, []);
 
   const loadWeeklySchedule = async () => {
@@ -67,9 +60,7 @@ export default function WeeklySetupPage() {
         return;
       }
 
-      const nextMon = new Date(weekStartDate);
-      nextMon.setDate(nextMon.getDate() + 7);
-      const nextMonStr = nextMon.toISOString().split("T")[0];
+      const nextMonStr = addDaysToDateString(weekStartDate, 7);
 
       // 1. Fetch game sessions for this week
       const { data: gamesData } = await supabase

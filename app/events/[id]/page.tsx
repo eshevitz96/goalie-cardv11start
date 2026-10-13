@@ -13,6 +13,7 @@ import { deleteEvent } from "@/app/events/actions";
 import { useToast } from "@/context/ToastContext";
 import { Button } from "@/components/ui/Button";
 import { EventModal } from "@/components/goalie/EventModal";
+import { formatCalendarDate, toCalendarDateString } from "@/lib/training/dateHelpers";
 
 type EventData = {
     id: string;
@@ -139,12 +140,13 @@ function EventDetailsController() {
                     let analysisMetaUnlocked = false;
 
                     if (isGame && user) {
+                        const eventDateStr = toCalendarDateString(event.date);
                         const { data: ref } = await supabase
                             .from('reflections')
                             .select('*')
                             .eq('goalie_id', user.id)
-                            .gte('created_at', new Date(new Date(event.date).setHours(0,0,0,0)).toISOString())
-                            .lte('created_at', new Date(new Date(event.date).setHours(23,59,59,999)).toISOString())
+                            .gte('created_at', `${eventDateStr}T00:00:00.000Z`)
+                            .lte('created_at', `${eventDateStr}T23:59:59.999Z`)
                             .limit(1)
                             .maybeSingle();
 
@@ -297,7 +299,7 @@ function EventDetailsController() {
                                         <Calendar size={14} /> Date
                                     </div>
                                     <div className="text-lg font-bold text-foreground">
-                                        {new Date(data.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                        {formatCalendarDate(data.date, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                                     </div>
                                 </div>
                                 <div className="space-y-1">

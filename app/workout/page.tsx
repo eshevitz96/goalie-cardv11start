@@ -16,6 +16,7 @@ import { processReflection } from "@/lib/coach/learning";
 import { useAuth } from "@/hooks/useAuth";
 import { coachRepository } from "@/lib/coach/repository";
 import { supabase } from "@/utils/supabase/client";
+import { getTodayDateString } from "@/lib/training/dateHelpers";
 
 function generateUUID(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -81,7 +82,7 @@ export default function MissionCardPage() {
         
         async function initData() {
             setMounted(true);
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = getTodayDateString();
             
             if (auth.userId) {
                 console.log("☁️ Authenticated session detected. Running sync...");
@@ -183,7 +184,7 @@ export default function MissionCardPage() {
 
         let dayNumber = 1;
         if (auth.userId) {
-            const todayIso = new Date().toISOString().split('T')[0];
+            const todayIso = getTodayDateString();
             const { count, error } = await supabase
                 .from("missions")
                 .select("id", { count: "exact", head: true })

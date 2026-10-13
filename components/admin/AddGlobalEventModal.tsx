@@ -30,9 +30,10 @@ export function AddGlobalEventModal({ isOpen, onClose, onSuccess }: AddGlobalEve
         setLoading(true);
 
         try {
+            const finalDate = formData.date.includes('T') ? formData.date : `${formData.date}T12:00:00`;
             const result = await addEvent({
                 name: formData.name,
-                date: new Date(formData.date).toISOString(),
+                date: finalDate,
                 location: formData.location,
                 sport: formData.sport,
                 price: Number(formData.price),

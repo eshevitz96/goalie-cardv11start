@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerSupabase } from "@/utils/supabase/server";
 import { getStripe } from "@/lib/stripe";
 import { INITIAL_TRAINING_SLOTS, TrainingSlot } from "@/constants/trainingAvailability";
-import { extractTakeawaysFromNotes } from "@/lib/utils";
+import { extractTakeawaysFromNotes, getTodayDateString, formatCalendarDate } from "@/lib/utils";
 import { CoachScheduleRepository } from "@/lib/coach/coachScheduleRepository";
 import { formatFirstInitialLastName } from "@/lib/coach/types";
 
@@ -192,7 +192,7 @@ export async function getAvailableTrainingSlots() {
         }
 
         // C. Merge template slots as fallbacks if not explicitly managed
-        const todayIso = new Date().toISOString().split('T')[0];
+        const todayIso = getTodayDateString();
         for (const tSlot of INITIAL_TRAINING_SLOTS) {
             if (tSlot.date < todayIso) continue;
             const key = `${tSlot.date}_${tSlot.startTime}`;
@@ -218,7 +218,7 @@ export async function getAvailableTrainingSlots() {
         return { success: true, slots };
     } catch (err: any) {
         console.error("[getAvailableTrainingSlots] Error:", err);
-        const todayIso = new Date().toISOString().split('T')[0];
+        const todayIso = getTodayDateString();
         return { 
             success: true, 
             slots: INITIAL_TRAINING_SLOTS.filter(s => s.date >= todayIso).map(s => ({ ...s, isBooked: false, spotsLeft: 1 }))
@@ -698,7 +698,7 @@ export async function bookTrainingSlots(payload: {
                     return `
                     <div style="background: #f8fafc; border-left: 4px solid #00E676; padding: 12px 16px; margin-bottom: 12px; border-radius: 6px;">
                         <p style="margin: 0; font-size: 14px; font-weight: bold; color: #0f172a;">${formattedTitle}</p>
-                        <p style="margin: 4px 0 0; font-size: 13px; color: #475569;"><strong>Date:</strong> ${new Date(s.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                        <p style="margin: 4px 0 0; font-size: 13px; color: #475569;"><strong>Date:</strong> ${formatCalendarDate(s.date, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
                         <p style="margin: 4px 0 0; font-size: 13px; color: #475569;"><strong>Time:</strong> ${s.timeDisplay}</p>
                         <p style="margin: 4px 0 0; font-size: 13px; color: #475569;"><strong>Location:</strong> ${s.location}</p>
                         <p style="margin: 8px 0 0;"><a href="${calUrl}" style="display: inline-block; font-size: 11px; font-weight: bold; color: #0284c7; text-decoration: none; background: #e0f2fe; padding: 4px 10px; border-radius: 4px;">+ Add to Google Calendar</a></p>
@@ -816,7 +816,7 @@ export async function rescheduleTrainingSession(payload: {
             return { error: "Selected new time slot is invalid or unavailable." };
         }
 
-        const oldDateDisplay = session.date ? new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Previous Date';
+        const oldDateDisplay = session.date ? formatCalendarDate(session.date, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Previous Date';
         const oldLocation = session.location || 'Training Location';
 
         // 4. Update session
@@ -885,7 +885,7 @@ export async function rescheduleTrainingSession(payload: {
                             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;" />
                             
                             <p style="margin: 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #0284c7;">New Updated Schedule</p>
-                            <p style="margin: 4px 0 0; font-size: 16px; font-weight: bold; color: #0f172a;">${new Date(targetSlot.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                            <p style="margin: 4px 0 0; font-size: 16px; font-weight: bold; color: #0f172a;">${formatCalendarDate(targetSlot.date, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
                             <p style="margin: 4px 0 0; font-size: 14px; color: #334155;"><strong>Time:</strong> ${targetSlot.timeDisplay}</p>
                             <p style="margin: 4px 0 0; font-size: 14px; color: #334155;"><strong>Location:</strong> ${targetSlot.location}</p>
                         </div>
@@ -985,7 +985,7 @@ export async function completeTrainingSessionAndNotify(payload: {
 
         const resolvedName = athleteName || coachRepoResult.block?.client || "Athlete";
         const rawDate = session?.date || coachRepoResult.block?.scheduledStartAt || coachRepoResult.block?.date;
-        const sessionDateStr = rawDate ? new Date(rawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today';
+        const sessionDateStr = rawDate ? formatCalendarDate(rawDate, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today';
         const sessionLocation = session?.location || coachRepoResult.block?.location || 'Field';
 
         // 3. Update session with completion stamp & coach notes if in database
@@ -1144,7 +1144,7 @@ export async function submitSessionTakeaways(payload: {
             ? (authorName && authorName.trim() !== 'Coach' ? authorName : 'Coach')
             : (authorName || 'Athlete/Parent');
 
-        const dateStr = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+        const dateStr = formatCalendarDate(getTodayDateString(), { month: 'numeric', day: 'numeric', year: 'numeric' });
         const takeawayEntry = `[Takeaways by ${displayName} on ${dateStr}]:\n${takeaways}`;
         
         let baseNotes = existingNotes;

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Snowflake, ArrowRight, Activity } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { formatCalendarDate, getTodayDateString, getMondayDateString, toCalendarDateString } from "@/lib/training/dateHelpers";
 
 export interface GoalieCardProps {
     name?: string;
@@ -127,40 +128,14 @@ function formatCatchHand(rawHandedness: string | null | undefined): string | nul
 
 function formatDateDisplay(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
-    try {
-        const parts = dateStr.slice(0, 10).split('-');
-        if (parts.length === 3) {
-            const year = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1;
-            const day = parseInt(parts[2], 10);
-            const d = new Date(year, month, day);
-            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        }
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch (e) {
-        return dateStr;
-    }
+    return formatCalendarDate(dateStr, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatShortDate(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
-    try {
-        const today = new Date().toISOString().slice(0, 10);
-        if (dateStr.slice(0, 10) === today) return 'Today';
-        
-        const parts = dateStr.slice(0, 10).split('-');
-        if (parts.length === 3) {
-            const year = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1;
-            const day = parseInt(parts[2], 10);
-            const d = new Date(year, month, day);
-            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        }
-        return dateStr;
-    } catch (e) {
-        return dateStr;
-    }
+    const today = getTodayDateString();
+    if (toCalendarDateString(dateStr) === today) return 'Today';
+    return formatCalendarDate(dateStr, { month: 'short', day: 'numeric' });
 }
 
 export function GoalieCard({
@@ -197,7 +172,7 @@ export function GoalieCard({
     const [focusMission, setFocusMission] = useState<FocusMissionData | null>(null);
     const [nextIce, setNextIce] = useState<NextIceData | null>(null);
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getTodayDateString();
 
     useEffect(() => {
         let isMounted = true;
@@ -343,12 +318,7 @@ export function GoalieCard({
                 }
 
                 // 5. Weekly Focus: from `weekly_intentions` for current week (if set)
-                const now = new Date();
-                const dayOfWeek = now.getDay();
-                const daysSinceMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                const mon = new Date(now);
-                mon.setDate(now.getDate() - daysSinceMon);
-                const monStr = mon.toISOString().slice(0, 10);
+                const monStr = getMondayDateString(todayStr);
 
                 const { data: weeklyIntentionRow } = await supabase
                     .from('weekly_intentions')

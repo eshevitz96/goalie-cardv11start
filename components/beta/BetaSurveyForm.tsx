@@ -116,7 +116,7 @@ export function BetaSurveyForm() {
                 </div>
                 <h2 className="text-2xl font-bold">Feedback Received!</h2>
                 <p className="text-muted-foreground">Thank you for helping us build the best version of GoalieCard.</p>
-                <button onClick={() => window.location.href = "/"} className="text-primary hover:underline">Return to Dashboard</button>
+                <button onClick={() => window.location.href = "/dashboard"} className="text-primary hover:underline">Return to Dashboard</button>
             </div>
         );
     }

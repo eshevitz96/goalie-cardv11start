@@ -21,6 +21,13 @@ import { usePerformanceRealtime } from "@/hooks/usePerformanceRealtime";
 import { checkInterviewStatus } from "@/app/actions/interview";
 import { OnboardingInterviewModal } from "@/components/training/OnboardingInterviewModal";
 import { twMerge } from "tailwind-merge";
+import {
+    getTodayDateString,
+    getMondayDateString,
+    addDaysToDateString,
+    getMondayBasedWeekdayIndex,
+    formatCalendarDate
+} from "@/lib/training/dateHelpers";
 
 function normalizeSportDisplay(rawSport: string | null | undefined): string | null {
     if (!rawSport) return null;
@@ -350,19 +357,9 @@ export default function Dashboard() {
                 // 5. Weekly Intention, Pre-warmups, Post-events, and Pulse logic
                 if (publicUserId || rosterRes?.id) {
                     const now = new Date();
-                    const dayOfWeek = now.getDay();
-                    const daysSinceMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                    
-                    const mon = new Date(now);
-                    mon.setDate(now.getDate() - daysSinceMon);
-                    mon.setHours(0,0,0,0);
-                    const monStr = mon.toISOString().split("T")[0];
-                    
-                    const nextMon = new Date(mon);
-                    nextMon.setDate(mon.getDate() + 7);
-                    const nextMonStr = nextMon.toISOString().split("T")[0];
-
-                    const todayStr = now.toISOString().split("T")[0];
+                    const todayStr = getTodayDateString();
+                    const monStr = getMondayDateString(todayStr);
+                    const nextMonStr = addDaysToDateString(monStr, 7);
 
                     const targetUserId = publicUserId || rosterRes?.id;
 
@@ -392,7 +389,7 @@ export default function Dashboard() {
                         }
                     }
 
-                    // Open-app overlay actions check (non-blocking with timeout fallback)
+                    // Non-blocking pending lesson card check (never blocks app)
                     if (goalieProfileId) {
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -402,15 +399,13 @@ export default function Dashboard() {
                             .then(pendData => {
                                 clearTimeout(timeoutId);
                                 const hasPendingLesson = pendData.success && pendData.pending && pendData.pending.length > 0;
-                                const needsIntention = !weeklyIntentionText && (auth.userRole === 'goalie' || auth.userRole === 'parent');
-                                const isTourDone = profData?.tour_completed_at || localStorage.getItem('tour_completed') === 'true';
-                                if ((hasPendingLesson || needsIntention) && isTourDone) {
+                                if (hasPendingLesson) {
                                     setShowActionsOverlay(true);
                                 }
                             })
                             .catch(e => {
                                 clearTimeout(timeoutId);
-                                console.warn("Failed to check pending overlay actions:", e);
+                                console.warn("Failed to check pending lesson confirmation:", e);
                             });
                     }
 
@@ -447,10 +442,7 @@ export default function Dashboard() {
                         (prewarmups || []).forEach(pw => {
                             const dateStr = sessionMap.get(pw.session_id);
                             if (dateStr) {
-                                const d = new Date(dateStr + "T00:00:00");
-                                let dayIdx = d.getDay() - 1;
-                                if (dayIdx === -1) dayIdx = 6;
-                                active.add(dayIdx);
+                                active.add(getMondayBasedWeekdayIndex(dateStr));
                                 if (dateStr === todayStr) todayHasPrep = true;
                             }
                         });
@@ -458,10 +450,7 @@ export default function Dashboard() {
                         (postevents || []).forEach(pe => {
                             const dateStr = sessionMap.get(pe.session_id);
                             if (dateStr) {
-                                const d = new Date(dateStr + "T00:00:00");
-                                let dayIdx = d.getDay() - 1;
-                                if (dayIdx === -1) dayIdx = 6;
-                                active.add(dayIdx);
+                                active.add(getMondayBasedWeekdayIndex(dateStr));
                                 if (dateStr === todayStr) todayHasDebrief = true;
                             }
                         });
@@ -478,10 +467,7 @@ export default function Dashboard() {
 
                         (privSessions || []).forEach(ps => {
                             if (ps.date) {
-                                const d = new Date(ps.date);
-                                let dayIdx = d.getDay() - 1;
-                                if (dayIdx === -1) dayIdx = 6;
-                                active.add(dayIdx);
+                                active.add(getMondayBasedWeekdayIndex(ps.date));
                             }
                         });
                     } catch (e) {
@@ -625,9 +611,10 @@ export default function Dashboard() {
         );
     }
 
-    const dayOfWeekStr = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const dateStrShort = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-    const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+    const todayDateStr = getTodayDateString();
+    const dayOfWeekStr = formatCalendarDate(todayDateStr, { weekday: 'long' });
+    const dateStrShort = formatCalendarDate(todayDateStr, { month: 'long', day: 'numeric' });
+    const todayIndex = getMondayBasedWeekdayIndex(todayDateStr);
     const dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
  
     return (
@@ -755,6 +742,19 @@ export default function Dashboard() {
                             })}
                         </div>
                     </div>
+
+                    {/* Non-blocking Dismissible Pending Lesson Confirmation Card (at most 1 at a time) */}
+                    {showActionsOverlay && resolvedGoalieId && (
+                        <PendingActionsOverlay
+                            goalieProfileId={resolvedGoalieId}
+                            publicUserId={userData?.publicUserId || undefined}
+                            rosterId={rosterData?.id}
+                            userRole={auth.userRole || 'goalie'}
+                            hasWeeklyIntention={hasWeeklyIntention}
+                            onClose={() => setShowActionsOverlay(false)}
+                            onRefreshDashboard={() => setRefreshTrigger(prev => prev + 1)}
+                        />
+                    )}
 
                     {/* Today's Action Card & Coach Mode / Lessons Transparency */}
                     <div 
@@ -894,27 +894,12 @@ export default function Dashboard() {
                         </Link>
                     </div>
 
-
-
                 </div>
 
             </div>
 
             {/* Mobile Bottom Navigation */}
             <MobileBottomNav />
-
-            {/* Pending Actions Overlay (Confirmation & Weekly Intention Flow) */}
-            {showActionsOverlay && !showTour && resolvedGoalieId && (
-                <PendingActionsOverlay
-                    goalieProfileId={resolvedGoalieId}
-                    publicUserId={userData?.publicUserId || undefined}
-                    rosterId={rosterData?.id}
-                    userRole={auth.userRole || 'goalie'}
-                    hasWeeklyIntention={hasWeeklyIntention}
-                    onClose={() => setShowActionsOverlay(false)}
-                    onRefreshDashboard={() => setRefreshTrigger(prev => prev + 1)}
-                />
-            )}
         </div>
         </>
     );

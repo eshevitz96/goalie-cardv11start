@@ -23,6 +23,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { getAvailableTrainingSlots, getGoalieBookingProfile, bookTrainingSlots, lookupAthleteByEmail } from "./actions";
 import { TrainingSlot } from "@/constants/trainingAvailability";
+import { getTodayDateString, formatCalendarDate, extractCalendarDateParts } from "@/lib/training/dateHelpers";
 
 export default function BookTrainingPage() {
     return (
@@ -62,11 +63,7 @@ function BookTrainingContent() {
 
     // Month Navigation
     const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
-    const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
-        const d = new Date();
-        const pad = (n: number) => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    });
+    const [selectedDateStr, setSelectedDateStr] = useState<string>(() => getTodayDateString());
     const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
     const [bookedResult, setBookedResult] = useState<{
         bookedSlots: TrainingSlot[];
@@ -89,12 +86,14 @@ function BookTrainingContent() {
             if (slotsRes.slots && slotsRes.slots.length > 0) {
                 setSlots(slotsRes.slots);
                 // Find first upcoming available slot
-                const todayIso = new Date().toISOString().split('T')[0];
+                const todayIso = getTodayDateString();
                 const nextAvailable = slotsRes.slots.find(s => !s.isBooked && s.date >= todayIso) || slotsRes.slots[0];
                 if (nextAvailable) {
                     setSelectedDateStr(nextAvailable.date);
-                    const [y, m, d] = nextAvailable.date.split('-').map(Number);
-                    setCurrentMonthDate(new Date(y, m - 1, 1));
+                    const parts = extractCalendarDateParts(nextAvailable.date);
+                    if (parts) {
+                        setCurrentMonthDate(new Date(parts.year, parts.month - 1, 1));
+                    }
                 }
             }
             if (profileRes.success) {
@@ -202,7 +201,7 @@ function BookTrainingContent() {
             days.push(null);
         }
 
-        const todayIso = new Date().toISOString().split('T')[0];
+        const todayIso = getTodayDateString();
 
         // Days in month
         for (let d = 1; d <= daysInMonth; d++) {
@@ -229,7 +228,7 @@ function BookTrainingContent() {
 
     // Slots for the currently selected date (only today and future)
     const slotsForSelectedDay = useMemo(() => {
-        const todayIso = new Date().toISOString().split('T')[0];
+        const todayIso = getTodayDateString();
         if (selectedDateStr < todayIso) return [];
         return slots.filter(s => s.date === selectedDateStr && s.date >= todayIso);
     }, [slots, selectedDateStr]);
@@ -331,7 +330,7 @@ function BookTrainingContent() {
                             </p>
                             {bookedResult.bookedSlots.map((slot, idx) => {
                                 const calLink = bookedResult.googleCalLinks.find(c => c.slotId === slot.id)?.url;
-                                const dateFormatted = new Date(slot.date + 'T12:00:00Z').toLocaleDateString('en-US', {
+                                const dateFormatted = formatCalendarDate(slot.date, {
                                     weekday: 'short', month: 'short', day: 'numeric'
                                 });
 
@@ -375,7 +374,7 @@ function BookTrainingContent() {
     }
 
     // ── MAIN SCHEDULING CALENDAR VIEW ─────────────────────────────────────────
-    const selectedDateDisplay = new Date(selectedDateStr + 'T12:00:00Z').toLocaleDateString('en-US', {
+    const selectedDateDisplay = formatCalendarDate(selectedDateStr, {
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
     });
 

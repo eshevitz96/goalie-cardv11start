@@ -37,6 +37,7 @@ import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 import { CoachFeedbackList } from "@/components/coach/CoachFeedbackList";
 import { CoachExerciseLibrary } from "@/components/coach/CoachExerciseLibrary";
 import { CoachPlanApprovalQueue } from "@/components/coach/CoachPlanApprovalQueue";
+import { formatCalendarDate, toCalendarDateString, getTodayDateString, extractCalendarDateParts } from "@/lib/training/dateHelpers";
 
 interface SessionWithAthlete {
     id: string;
@@ -269,16 +270,12 @@ export default function CoachDashboard() {
     // Safe date parsing helper
     const parseSafeDate = (dateStr?: string | null): Date | null => {
         if (!dateStr) return null;
+        const parts = extractCalendarDateParts(dateStr);
+        if (parts) {
+            return new Date(parts.year, parts.month - 1, parts.day);
+        }
         const d = new Date(dateStr);
         if (!isNaN(d.getTime())) return d;
-        const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (isoMatch) {
-            return new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]));
-        }
-        const slashMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-        if (slashMatch) {
-            return new Date(parseInt(slashMatch[3]), parseInt(slashMatch[1]) - 1, parseInt(slashMatch[2]));
-        }
         return null;
     };
 
@@ -911,10 +908,8 @@ export default function CoachDashboard() {
                                             if (rawDate) {
                                                 const [datePart, timeWithOffset] = rawDate.split("T");
                                                 if (datePart) {
-                                                    const [y, m, d] = datePart.split("-").map(Number);
-                                                    const localD = new Date(y, m - 1, d);
-                                                    dateDisplay = localD.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                                                    isToday = new Date().toDateString() === localD.toDateString();
+                                                    dateDisplay = formatCalendarDate(datePart, { weekday: 'short', month: 'short', day: 'numeric' });
+                                                    isToday = toCalendarDateString(datePart) === getTodayDateString();
                                                 }
 
                                                 // Time parsing: check notes first, then ISO time
@@ -1355,7 +1350,7 @@ export default function CoachDashboard() {
                                         Session Takeaways & Coach Notes
                                     </h3>
                                     <p className="text-xs text-muted-foreground mt-1 m-0">
-                                        Athlete: <strong className="text-foreground">{activeTakeawaySession.athlete_name}</strong> • {new Date(activeTakeawaySession.date).toLocaleDateString()}
+                                        Athlete: <strong className="text-foreground">{activeTakeawaySession.athlete_name}</strong> • {formatCalendarDate(activeTakeawaySession.date, { month: 'short', day: 'numeric', year: 'numeric' })}
                                     </p>
                                 </div>
                                 <button 

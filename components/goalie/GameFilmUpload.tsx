@@ -6,6 +6,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { supabase } from "@/utils/supabase/client";
+import { getTodayDateString, toCalendarDateString } from "@/lib/training/dateHelpers";
 
 interface GameFilmUploadProps {
     rosterId: string;
@@ -23,7 +24,7 @@ export function GameFilmUpload({ rosterId, sport, title = "Game Film Analysis", 
     const [analysisType, setAnalysisType] = useState<'shot' | 'play' | null>(null);
     const [associatedEventId, setAssociatedEventId] = useState(events.length > 0 ? events[0].id : '');
     const [isCreatingNewEvent, setIsCreatingNewEvent] = useState(events.length === 0);
-    const [newEventData, setNewEventData] = useState({ name: '', type: 'game' as const, date: new Date().toISOString().split('T')[0], location: '' });
+    const [newEventData, setNewEventData] = useState({ name: '', type: 'game' as const, date: getTodayDateString(), location: '' });
     const [showSuccess, setShowSuccess] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,7 +51,7 @@ export function GameFilmUpload({ rosterId, sport, title = "Game Film Analysis", 
                 const res = await createEvent(rosterId, { 
                     name: newEventData.name, 
                     type: newEventData.type, 
-                    date: new Date(newEventData.date).toISOString(), 
+                    date: toCalendarDateString(newEventData.date) || getTodayDateString(), 
                     location: newEventData.location,
                     sport: sport
                 });

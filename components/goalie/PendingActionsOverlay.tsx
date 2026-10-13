@@ -1,74 +1,87 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/utils/supabase/client';
-import TextInput from '@/components/calendar/TextInput';
 import { Loader2, X, ChevronRight, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { formatCalendarDate } from '@/lib/training/dateHelpers';
 
 interface PendingActionsOverlayProps {
     goalieProfileId: string;
     publicUserId?: string;
     rosterId?: string;
     userRole: string;
-    hasWeeklyIntention: boolean;
+    hasWeeklyIntention?: boolean;
     onClose: () => void;
     onRefreshDashboard: () => void;
 }
 
-type Step = 'loading' | 'lesson_confirm' | 'weekly_intention' | 'success';
-
+/**
+ * Non-blocking, dismissible inline dashboard card for confirming a single pending lesson.
+ * Never blocks or takes over the screen, and shows at most one pending confirmation at a time.
+ */
 export function PendingActionsOverlay({
-    goalieProfileId,
-    publicUserId,
-    rosterId,
-    userRole,
-    hasWeeklyIntention,
     onClose,
     onRefreshDashboard
 }: PendingActionsOverlayProps) {
-    const [step, setStep] = useState<Step>('loading');
-    const [pendingLessons, setPendingLessons] = useState<any[]>([]);
-    const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
-
-    // Form inputs
+    const [pendingLesson, setPendingLesson] = useState<any | null>(null);
+    const [loading, setLoading] = useState(true);
     const [lessonTakeaway, setLessonTakeaway] = useState('');
-    const [focusText, setFocusText] = useState('');
-
-    // Load/Saving state
     const [saving, setSaving] = useState(false);
+    const [confirmed, setConfirmed] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        let cancelled = false;
         const fetchPending = async () => {
             try {
                 const res = await fetch('/api/lessons/pending');
                 const data = await res.json();
-                if (data.success && data.pending && data.pending.length > 0) {
-                    setPendingLessons(data.pending);
-                    setStep('lesson_confirm');
-                } else if (!hasWeeklyIntention && (userRole === 'goalie' || userRole === 'parent')) {
-                    setStep('weekly_intention');
-                } else {
-                    onClose(); // Nothing pending, close overlay
-                }
-            } catch (err) {
-                console.error('Error fetching pending overlay actions:', err);
-                if (!hasWeeklyIntention && (userRole === 'goalie' || userRole === 'parent')) {
-                    setStep('weekly_intention');
+                if (cancelled) return;
+
+                if (data.success && Array.isArray(data.pending) && data.pending.length > 0) {
+                    // Show at most one pending confirmation at a time (skip any dismissed in this session)
+                    const firstUndismissed = data.pending.find((item: any) => {
+                        try {
+                            return sessionStorage.getItem(`dismissed_lesson_confirm_${item.id}`) !== 'true';
+                        } catch {
+                            return true;
+                        }
+                    });
+                    if (firstUndismissed) {
+                        setPendingLesson(firstUndismissed);
+                    } else {
+                        onClose();
+                    }
                 } else {
                     onClose();
                 }
+            } catch (err) {
+                console.error('Error fetching pending lesson confirmation:', err);
+                if (!cancelled) onClose();
+            } finally {
+                if (!cancelled) setLoading(false);
             }
         };
 
         fetchPending();
-    }, [hasWeeklyIntention, userRole, onClose]);
+        return () => {
+            cancelled = true;
+        };
+    }, [onClose]);
 
-    // Handle confirming a lesson log
+    const handleDismiss = () => {
+        if (pendingLesson?.id) {
+            try {
+                sessionStorage.setItem(`dismissed_lesson_confirm_${pendingLesson.id}`, 'true');
+            } catch {
+                // ignore storage errors
+            }
+        }
+        setPendingLesson(null);
+        onClose();
+    };
+
     const handleConfirmLesson = async () => {
-        const activeLesson = pendingLessons[currentLessonIndex];
-        if (!activeLesson) return;
+        if (!pendingLesson) return;
 
         setSaving(true);
         setError(null);
@@ -78,8 +91,8 @@ export function PendingActionsOverlay({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    lessonId: activeLesson.id,
-                    takeaway: lessonTakeaway
+                    lessonId: pendingLesson.id,
+                    takeaway: lessonTakeaway.trim()
                 })
             });
 
@@ -89,18 +102,11 @@ export function PendingActionsOverlay({
                 throw new Error(data.error || 'Failed to confirm lesson');
             }
 
-            setLessonTakeaway('');
-            onRefreshDashboard(); // Update balance on dashboard instantly
-
-            // Go to next lesson if multiple are pending
-            if (currentLessonIndex < pendingLessons.length - 1) {
-                setCurrentLessonIndex(currentLessonIndex + 1);
-                setStep('lesson_confirm');
-            } else if (!hasWeeklyIntention) {
-                setStep('weekly_intention');
-            } else {
-                setStep('success');
-            }
+            setConfirmed(true);
+            onRefreshDashboard();
+            setTimeout(() => {
+                onClose();
+            }, 1200);
         } catch (err: any) {
             setError(err.message || 'Something went wrong. Please try again.');
         } finally {
@@ -108,258 +114,113 @@ export function PendingActionsOverlay({
         }
     };
 
-    // Save weekly intention
-    const handleSaveIntention = async () => {
-        const targetUserId = publicUserId;
-        if (!focusText.trim() || !targetUserId) {
-            setError("No goalie profile ID linked. Please contact support.");
-            return;
-        }
+    if (loading || !pendingLesson) {
+        return null;
+    }
 
-        setSaving(true);
-        setError(null);
+    const lessonDateStr = formatCalendarDate(pendingLesson.lesson_date, {
+        month: 'short',
+        day: 'numeric'
+    });
 
-        try {
-            // Get Monday of current week
-            const today = new Date();
-            const dayOfWeek = today.getDay();
-            const daysSinceMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - daysSinceMon);
-            monday.setHours(0, 0, 0, 0);
-            const monStr = monday.toISOString().split('T')[0];
-
-            // Check if intention exists for this week
-            const { data: existing } = await supabase
-                .from('weekly_intentions')
-                .select('id')
-                .eq('user_id', targetUserId)
-                .eq('week_start_date', monStr)
-                .maybeSingle();
-
-            let upsertErr;
-            if (existing) {
-                // Update
-                const { error } = await supabase
-                    .from('weekly_intentions')
-                    .update({
-                        intention_text: focusText.trim()
-                    })
-                    .eq('id', existing.id);
-                upsertErr = error;
-            } else {
-                // Insert
-                const { error } = await supabase
-                    .from('weekly_intentions')
-                    .insert({
-                        user_id: targetUserId,
-                        week_start_date: monStr,
-                        intention_text: focusText.trim()
-                    });
-                upsertErr = error;
-            }
-
-            if (upsertErr) throw upsertErr;
-
-            setStep('success');
-            onRefreshDashboard();
-        } catch (err: any) {
-            console.error('Error saving intention:', err);
-            setError(err.message || 'Failed to save weekly intention.');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    if (step === 'loading') {
+    if (confirmed) {
         return (
-            <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center text-foreground">
-                <Loader2 className="animate-spin text-primary" size={32} />
-                <span className="text-xs text-muted-foreground mt-3 font-bold uppercase tracking-wider">Loading pending actions...</span>
+            <div className="bg-card border border-emerald-500/30 rounded-3xl p-5 shadow-sm flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                        <CheckCircle2 size={18} />
+                    </div>
+                    <div>
+                        <p className="m-0 text-sm font-bold text-foreground">Lesson confirmed</p>
+                        <p className="m-0 text-xs text-muted-foreground">Your takeaway has been saved to your log.</p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                    aria-label="Close"
+                >
+                    <X size={16} />
+                </button>
             </div>
         );
     }
 
-    const currentLesson = pendingLessons[currentLessonIndex];
-    const lessonDateStr = currentLesson ? new Date(currentLesson.lesson_date).toLocaleDateString(undefined, {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-    }) : '';
-
     return (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col px-6 pt-4 pb-8 overflow-y-auto w-full text-foreground">
-            
-            {/* Header: Skip button */}
-            <div className="absolute top-6 right-6 md:top-8 md:right-8 z-50">
+        <div className="bg-card border border-border rounded-3xl p-5 md:p-6 shadow-sm relative">
+            <div className="flex items-start justify-between gap-4 mb-3">
+                <div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground block mb-1">
+                        Lesson {pendingLesson.lesson_number} • Session {pendingLesson.session_number}
+                    </span>
+                    <h3 className="m-0 text-lg md:text-xl font-bold tracking-tight text-foreground">
+                        Confirm your lesson from {lessonDateStr}
+                    </h3>
+                </div>
                 <button
-                    onClick={onClose}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary border border-border hover:bg-secondary/80 text-[10px] font-black uppercase tracking-wider text-foreground transition-all cursor-pointer rounded-full"
+                    type="button"
+                    onClick={handleDismiss}
+                    className="p-1.5 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+                    title="Dismiss for now"
+                    aria-label="Dismiss lesson confirmation"
                 >
-                    Skip to Dashboard
-                    <X size={12} />
+                    <X size={16} />
                 </button>
             </div>
 
-            {/* Content Body */}
-            <div className="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full py-8 mt-12 md:mt-0">
-                <AnimatePresence mode="wait">
-                    
-                    {step === 'lesson_confirm' && currentLesson && (
-                        <motion.div
-                            key="lesson_confirm"
-                            initial={{ opacity: 0, y: 15 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -15 }}
-                            transition={{ duration: 0.25 }}
-                            className="w-full flex flex-col justify-center"
+            {pendingLesson.coach_takeaway && (
+                <div className="p-3.5 rounded-2xl border border-border mb-4 bg-muted/30">
+                    <p className="m-0 text-[9px] font-black uppercase tracking-widest text-foreground/80 mb-1">
+                        Coach focus: {pendingLesson.coach_focus_area || 'General Training'}
+                    </p>
+                    <p className="m-0 text-xs font-medium text-foreground/80 italic leading-relaxed">
+                        &ldquo;{pendingLesson.coach_takeaway}&rdquo;
+                    </p>
+                </div>
+            )}
+
+            <div className="space-y-3">
+                <textarea
+                    value={lessonTakeaway}
+                    onChange={(e) => {
+                        if (e.target.value.length <= 250) setLessonTakeaway(e.target.value);
+                    }}
+                    placeholder="What clicked? Write a brief takeaway to confirm..."
+                    rows={2}
+                    className="w-full bg-input border border-border focus:border-foreground rounded-xl px-3.5 py-2.5 text-foreground text-sm font-medium focus:outline-none transition-colors placeholder:text-muted-foreground resize-none"
+                />
+
+                {error && (
+                    <p className="m-0 text-red-500 bg-red-500/5 border border-red-500/10 text-xs p-2.5 rounded-xl font-semibold">
+                        {error}
+                    </p>
+                )}
+
+                <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        {lessonTakeaway.length}/250
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleDismiss}
+                            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                         >
-                            <div className="mb-2">
-                                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground">
-                                    Lesson {currentLesson.lesson_number} • Session {currentLesson.session_number}
-                                </span>
-                            </div>
-                            
-                            <h1 className="text-3xl md:text-5xl font-sans font-bold tracking-tight leading-tight mb-4 text-foreground">
-                                Confirm your lesson from {lessonDateStr}
-                            </h1>
-
-                            {/* Coach's Takeaway context if present */}
-                            {currentLesson.coach_takeaway && (
-                                <div className="glass p-5 rounded-2xl border border-border mb-8 relative overflow-hidden bg-card shadow-sm">
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-foreground" />
-                                    <p className="m-0 text-[9px] font-black uppercase tracking-widest text-foreground mb-1">
-                                        Coach focus: {currentLesson.coach_focus_area || 'General Training'}
-                                    </p>
-                                    <p className="m-0 text-xs text-muted-foreground/60 font-bold uppercase tracking-wider mb-2">Coach's takeaway:</p>
-                                    <p className="m-0 text-sm font-semibold text-foreground/80 italic leading-relaxed">
-                                        "{currentLesson.coach_takeaway}"
-                                    </p>
-                                </div>
-                            )}
-
-                            <p className="text-sm text-muted-foreground mb-6 font-medium">
-                                What clicked? What was hard? Write a brief takeaway to complete confirmation.
-                            </p>
-
-                            <textarea
-                                value={lessonTakeaway}
-                                onChange={(e) => {
-                                    if (e.target.value.length <= 250) setLessonTakeaway(e.target.value);
-                                }}
-                                placeholder="Your lesson takeaway..."
-                                autoFocus
-                                rows={4}
-                                className="w-full bg-input border border-border focus:border-foreground rounded-xl px-4 py-4 text-foreground text-lg font-medium focus:outline-none transition-colors duration-200 placeholder:text-muted-foreground resize-none !outline-none"
-                            />
-                            <div className="text-right mt-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                {lessonTakeaway.length}/250
-                            </div>
-
-                            {error && (
-                                <p className="text-red-600 bg-red-500/5 border border-red-500/10 text-xs flex items-center gap-2 p-3 rounded-xl font-bold mt-4">
-                                    {error}
-                                </p>
-                            )}
-
-                            <div className="flex justify-end mt-10">
-                                <button
-                                    onClick={handleConfirmLesson}
-                                    disabled={saving || !lessonTakeaway.trim()}
-                                    className="px-6 py-3.5 bg-foreground text-background font-extrabold rounded-2xl text-sm flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-[1.02] transition-all shadow-md animate-in fade-in duration-200"
-                                >
-                                    {saving && <Loader2 size={16} className="animate-spin text-background" />}
-                                    {saving ? 'Confirming...' : 'Confirm Lesson'}
-                                    {!saving && <ChevronRight size={16} />}
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {step === 'weekly_intention' && (
-                        <motion.div
-                            key="weekly_intention"
-                            initial={{ opacity: 0, y: 15 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -15 }}
-                            transition={{ duration: 0.25 }}
-                            className="w-full flex flex-col justify-center"
+                            Later
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleConfirmLesson}
+                            disabled={saving || !lessonTakeaway.trim()}
+                            className="px-4 py-2 bg-foreground text-background font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
                         >
-                            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground mb-2 block">
-                                Weekly Setup
-                            </span>
-                            
-                            <h1 className="text-3xl md:text-5xl font-sans font-bold tracking-tight leading-tight mb-2 text-foreground">
-                                What's your primary focus this week?
-                            </h1>
-                            <p className="text-sm text-muted-foreground mb-8 font-medium">
-                                Set one specific, mechanical focus for your training and games.
-                            </p>
-
-                            <input
-                                type="text"
-                                value={focusText}
-                                onChange={(e) => {
-                                    if (e.target.value.length <= 100) setFocusText(e.target.value);
-                                }}
-                                placeholder="One specific thing..."
-                                autoFocus
-                                className="w-full bg-input border border-border focus:border-foreground rounded-xl px-4 py-4 text-foreground text-lg font-medium focus:outline-none transition-colors duration-200 placeholder:text-muted-foreground !outline-none"
-                            />
-                            <div className="text-right mt-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                {focusText.length}/100
-                            </div>
-
-                            {error && (
-                                <p className="text-red-600 bg-red-500/5 border border-red-500/10 text-xs flex items-center gap-2 p-3 rounded-xl font-bold mt-4">
-                                    {error}
-                                </p>
-                            )}
-
-                            <div className="flex justify-end mt-10">
-                                <button
-                                    onClick={handleSaveIntention}
-                                    disabled={saving || !focusText.trim()}
-                                    className="px-6 py-3.5 bg-foreground text-background font-extrabold rounded-2xl text-sm flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-[1.02] transition-all shadow-md animate-in fade-in duration-200"
-                                >
-                                    {saving && <Loader2 size={16} className="animate-spin text-background" />}
-                                    {saving ? 'Saving...' : 'Set Focus'}
-                                    {!saving && <ChevronRight size={16} />}
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {step === 'success' && (
-                        <motion.div
-                            key="success"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="w-full flex flex-col items-center justify-center text-center"
-                        >
-                            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6 border border-primary/20">
-                                <CheckCircle2 size={36} />
-                            </div>
-                            
-                            <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight mb-2">
-                                You're all set!
-                            </h1>
-                            <p className="text-sm text-muted-foreground max-w-xs mb-8 leading-relaxed font-medium">
-                                Action item complete. Let's get back to the work.
-                            </p>
-
-                            <button
-                                onClick={onClose}
-                                className="w-full py-4 bg-primary text-white font-extrabold uppercase tracking-widest text-xs rounded-2xl active:scale-95 hover:scale-[1.02] transition-all cursor-pointer shadow-md"
-                            >
-                                Enter Dashboard
-                            </button>
-                        </motion.div>
-                    )}
-
-                </AnimatePresence>
+                            {saving && <Loader2 size={14} className="animate-spin text-background" />}
+                            <span>{saving ? 'Confirming...' : 'Confirm Lesson'}</span>
+                            {!saving && <ChevronRight size={14} />}
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

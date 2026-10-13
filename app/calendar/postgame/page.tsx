@@ -8,6 +8,7 @@ import FlowScreen from "@/components/calendar/FlowScreen";
 import MoodScale, { MoodValue } from "@/components/calendar/MoodScale";
 import TextInput from "@/components/calendar/TextInput";
 import { Loader2 } from "lucide-react";
+import { getTodayDateString, toCalendarDateString, getMondayDateString } from "@/lib/training/dateHelpers";
 
 type Step = "mood" | "focus" | "unexpected" | "next_time" | "saving_state";
 type BroughtIt = "yes" | "kind_of" | "no";
@@ -43,7 +44,7 @@ function PostgameContent() {
     const resolveIntentionAndDate = async () => {
       setLoading(true);
       try {
-        const gameDateStr = dateParam || new Date().toISOString().split("T")[0];
+        const gameDateStr = dateParam ? toCalendarDateString(dateParam) : getTodayDateString();
         setTargetDate(gameDateStr);
 
         const uid = auth.userId;
@@ -54,12 +55,7 @@ function PostgameContent() {
         }
 
         // Calculate Monday of the week containing gameDateStr
-        const gameDateObj = new Date(gameDateStr + "T00:00:00");
-        const dayOfWeek = gameDateObj.getDay(); // 0 = Sun, 1 = Mon
-        const daysSinceMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        const monday = new Date(gameDateObj);
-        monday.setDate(gameDateObj.getDate() - daysSinceMon);
-        const monStr = monday.toISOString().split("T")[0];
+        const monStr = getMondayDateString(gameDateStr);
 
         if (uid) {
           const { data: intentionData } = await supabase

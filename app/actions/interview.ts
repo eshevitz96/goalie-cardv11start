@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { getSupabaseAdmin } from "@/utils/supabase/admin";
+import { extractCalendarDateParts, getTodayDateString, toCalendarDateString } from "@/lib/training/dateHelpers";
 
 export interface GoalRungItem {
     id?: string;
@@ -108,9 +109,9 @@ export async function deriveAgeBand(dob: string | null, gradYear: string | numbe
     const currentYear = new Date().getFullYear();
 
     if (dob) {
-        const birthDate = new Date(dob);
-        if (!isNaN(birthDate.getTime())) {
-            const age = currentYear - birthDate.getFullYear();
+        const parts = extractCalendarDateParts(dob);
+        if (parts) {
+            const age = currentYear - parts.year;
             if (age < 14) return 'under-14';
             if (age <= 17) return '14-17';
             return '18+';
@@ -198,6 +199,9 @@ export async function saveInterviewAction({
             .maybeSingle();
 
         let targetGoalId: string;
+        const resolvedTargetDate = goalData.target_date && extractCalendarDateParts(goalData.target_date)
+            ? toCalendarDateString(goalData.target_date)
+            : null;
 
         if (existingGoal) {
             const { data: updatedGoal, error: updateGoalErr } = await supabaseAdmin
@@ -205,7 +209,7 @@ export async function saveInterviewAction({
                 .update({
                     summit: goalData.summit.trim(),
                     sport: planInputs.sport || 'hockey',
-                    target_date: goalData.target_date ? new Date(goalData.target_date).toISOString().split('T')[0] : null,
+                    target_date: resolvedTargetDate,
                     rungs: formattedRungs,
                     shared_with_coach: shareWithCoach,
                     updated_at: new Date().toISOString()
@@ -226,7 +230,7 @@ export async function saveInterviewAction({
                     user_id: user.id,
                     summit: goalData.summit.trim(),
                     sport: planInputs.sport || 'hockey',
-                    target_date: goalData.target_date ? new Date(goalData.target_date).toISOString().split('T')[0] : null,
+                    target_date: resolvedTargetDate,
                     rungs: formattedRungs,
                     status: 'active',
                     shared_with_coach: shareWithCoach
@@ -276,6 +280,8 @@ export async function saveInterviewAction({
                     goal_id: targetGoalId,
                     source: 'generated',
                     status: 'draft',
+                    approved_by: null,
+                    approved_at: null,
                     inputs: planInputsPayload,
                     shared_with_coach: shareWithCoach,
                     updated_at: new Date().toISOString()
@@ -297,7 +303,7 @@ export async function saveInterviewAction({
                     goal_id: targetGoalId,
                     source: 'generated',
                     status: 'draft',
-                    start_date: new Date().toISOString().split('T')[0],
+                    start_date: getTodayDateString(),
                     phases: [],
                     inputs: planInputsPayload,
                     shared_with_coach: shareWithCoach

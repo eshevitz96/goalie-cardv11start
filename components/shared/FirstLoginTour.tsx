@@ -14,28 +14,28 @@ interface TourStep {
 
 const TOUR_STEPS: TourStep[] = [
     {
-        id: 'calendar',
-        targetId: 'tour-calendar-tile',
-        title: 'Calendar',
-        text: 'Your lessons show up here. Build your training around them.'
-    },
-    {
-        id: 'lessons',
+        id: 'focus',
         targetId: 'tour-lessons-widget',
-        title: 'Lessons',
-        text: 'See how many lessons you have left.'
+        title: 'Your Week',
+        text: 'Set your focus and see what\'s next this week.'
     },
     {
         id: 'training',
         targetId: 'tour-training-tile',
-        title: 'Training',
-        text: 'Log your work when you want. Optional.'
+        title: 'Your Training',
+        text: 'Follow your training plan, run your daily sessions, and log the work you put in.'
+    },
+    {
+        id: 'calendar',
+        targetId: 'tour-calendar-tile',
+        title: 'Your Schedule',
+        text: 'Your games, training sessions, and lessons on one calendar.'
     },
     {
         id: 'film',
         targetId: 'tour-film-tile',
-        title: 'Film',
-        text: 'Your film is private. Share it with your coach when you want feedback.'
+        title: 'Your Film',
+        text: 'Break down your game film, track your reads and saves, and share clips when you choose.'
     }
 ];
 

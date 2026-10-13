@@ -38,6 +38,12 @@ import { checkInterviewStatus } from '@/app/actions/interview';
 import { OnboardingInterviewModal } from '@/components/training/OnboardingInterviewModal';
 import { logPlanSessionAction } from '@/app/actions/planSessions';
 import { CompletePlanSessionModal } from '@/components/training/CompletePlanSessionModal';
+import {
+    getTodayDateString,
+    daysBetweenCalendarDates,
+    formatCalendarDate,
+    extractCalendarDateParts
+} from '@/lib/training/dateHelpers';
 
 interface CompletedSessionInput {
     id: string;
@@ -117,18 +123,14 @@ export default function TrainingPage() {
     const activeAuthLoading = auth.loading && !isDevBypass;
 
     const athleteName = "Elliott Shevitz";
-    const todayDateStr = new Date().toISOString().slice(0, 10);
+    const todayDateStr = getTodayDateString();
 
     // Calculate dynamic contract week and day (June 22, 2026 contract start)
     const getContractWeekAndDay = (dateStr: string = todayDateStr) => {
         try {
-            const start = new Date('2026-06-22T00:00:00');
-            const current = new Date(`${dateStr}T00:00:00`);
-            const diffTime = current.getTime() - start.getTime();
-            const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+            const diffDays = Math.max(0, daysBetweenCalendarDates('2026-06-22', dateStr));
             const weekNum = Math.floor(diffDays / 7) + 1;
-            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const dayName = dayNames[current.getDay()];
+            const dayName = formatCalendarDate(dateStr, { weekday: 'long' }) || 'Monday';
             return `Week ${weekNum}, ${dayName} — Training`;
         } catch (e) {
             return `Week 14 — Training Session`;
@@ -418,9 +420,7 @@ export default function TrainingPage() {
                     const nextEvt = data[0];
                     setUpcomingEventTitle(nextEvt.name || nextEvt.title || 'Competition');
                     if (nextEvt.date) {
-                        const evtDate = new Date(nextEvt.date);
-                        const today = new Date(todayDateStr);
-                        const diffDays = Math.ceil((evtDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                        const diffDays = daysBetweenCalendarDates(todayDateStr, nextEvt.date);
                         if (diffDays >= 0) {
                             setDaysUntilGame(diffDays);
                         }
@@ -885,10 +885,9 @@ export default function TrainingPage() {
                                         {activePlanSessions.map((sess, sIdx) => {
                                             const isDone = sess.status === 'done';
                                             const isExpanded = expandedSessionIds.has(sess.id);
-                                            const [y, m, d] = (sess.scheduled_date || '').split('-').map(Number);
-                                            const dateObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-                                            const weekdayLabel = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dateObj.getUTCDay()];
-                                            const monthLabel = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dateObj.getUTCMonth()];
+                                            const d = extractCalendarDateParts(sess.scheduled_date)?.day || '';
+                                            const weekdayLabel = formatCalendarDate(sess.scheduled_date, { weekday: 'short' });
+                                            const monthLabel = formatCalendarDate(sess.scheduled_date, { month: 'short' });
 
                                             return (
                                                 <div 

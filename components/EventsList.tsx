@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { supabase } from "@/utils/supabase/client";
 import { EventModal } from "./goalie/EventModal";
+import { formatCalendarDate, toCalendarDateString, getTodayDateString } from "@/lib/training/dateHelpers";
 
 export interface Event {
     id: string;
@@ -85,7 +86,7 @@ export function EventsList({ events, onRegister, onUploadFilm, onEventAdded, spo
                 {events.length > 0 ? (
                     events.slice(0, maxItems || events.length).map((event, idx) => {
                         const isOwner = event.created_by === goalieId;
-                        const isPast = event.status === 'past' || new Date(event.date) < new Date();
+                        const isPast = event.status === 'past' || toCalendarDateString(event.date) < getTodayDateString();
 
                         return (
                             <motion.div
@@ -107,7 +108,7 @@ export function EventsList({ events, onRegister, onUploadFilm, onEventAdded, spo
                                         <div className="flex items-center gap-x-3 gap-y-1 mt-1 text-[10px] text-muted-foreground font-medium">
                                             <span className="flex items-center gap-1 whitespace-nowrap">
                                                 <Calendar size={12} />
-                                                {new Date(event.date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                {formatCalendarDate(event.date, { month: 'short', day: 'numeric' })}
                                             </span>
                                             {isPast && event.video_id && (
                                                 <span className="flex items-center gap-1 text-primary font-bold">

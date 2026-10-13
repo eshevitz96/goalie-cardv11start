@@ -16,6 +16,7 @@ import { getSportTerms } from '@/utils/sport-language';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { GameFilmUpload } from './GameFilmUpload';
 import { supabase } from '@/utils/supabase/client';
+import { getTodayDateString, toCalendarDateString } from '@/lib/training/dateHelpers';
 
 interface Clip {
   id: string;
@@ -57,7 +58,7 @@ export function FilmAnalysisWorkspace({
   const [clipComments, setClipComments] = useState<Record<string, string>>({});
   const [sessionType, setSessionType] = useState<'full_game' | 'clips' | null>('clips');
   const [opponentName, setOpponentName] = useState('Unknown Opponent');
-  const [gameDate, setGameDate] = useState(new Date().toISOString().split('T')[0]);
+  const [gameDate, setGameDate] = useState(() => getTodayDateString());
   const [isAddingClip, setIsAddingClip] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -121,7 +122,7 @@ export function FilmAnalysisWorkspace({
             const cleanName = event.name.replace(/Game:\s*vs\s*/i, '').replace(/Practice:\s*/i, '');
             setOpponentName(cleanName);
             if (event.date) {
-                setGameDate(new Date(event.date).toISOString().split('T')[0]);
+                setGameDate(toCalendarDateString(event.date));
             }
         }
     }

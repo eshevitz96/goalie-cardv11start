@@ -32,8 +32,9 @@ export function CoachPlanApprovalQueue() {
     const [plans, setPlans] = useState<CoachPendingPlanItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isPending, startTransition] = useTransition();
+    const [activeActionPlanId, setActiveActionPlanId] = useState<string | null>(null);
     const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
-    const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string; planId?: string } | null>(null);
 
     const loadPlans = async () => {
         setIsLoading(true);
@@ -56,43 +57,73 @@ export function CoachPlanApprovalQueue() {
     }, []);
 
     const handleApprove = (planId: string) => {
+        setActionMessage(null);
+        setActiveActionPlanId(planId);
         startTransition(async () => {
-            const res = await approveTrainingPlanAction(planId);
-            if (res.success) {
-                setActionMessage({ type: 'success', text: "Training plan approved and activated on athlete calendar!" });
-                setPlans(prev => prev.filter(p => p.id !== planId));
-            } else {
-                setActionMessage({ type: 'error', text: res.error || "Failed to approve plan." });
+            try {
+                const res = await approveTrainingPlanAction(planId);
+                if (res && res.success) {
+                    setActionMessage({ type: 'success', text: "Training plan approved and activated on athlete calendar!" });
+                    setPlans(prev => prev.filter(p => p.id !== planId));
+                } else {
+                    const errText = res?.error || "Failed to approve plan. Please refresh the page and try again.";
+                    setActionMessage({ type: 'error', text: errText, planId });
+                }
+            } catch (err: any) {
+                console.error("[CoachPlanApprovalQueue] Approve error:", err);
+                const errText = err?.message || "Unexpected error approving plan. Please refresh the page and try again.";
+                setActionMessage({ type: 'error', text: errText, planId });
+            } finally {
+                setActiveActionPlanId(null);
             }
         });
     };
 
     const handleReject = (planId: string) => {
+        setActionMessage(null);
+        setActiveActionPlanId(planId);
         startTransition(async () => {
-            const res = await rejectTrainingPlanAction(planId);
-            if (res.success) {
-                setActionMessage({ type: 'success', text: "Plan returned to draft status." });
-                loadPlans();
-            } else {
-                setActionMessage({ type: 'error', text: res.error || "Failed to update plan." });
+            try {
+                const res = await rejectTrainingPlanAction(planId);
+                if (res && res.success) {
+                    setActionMessage({ type: 'success', text: "Plan returned to draft status.", planId });
+                    loadPlans();
+                } else {
+                    setActionMessage({ type: 'error', text: res?.error || "Failed to update plan.", planId });
+                }
+            } catch (err: any) {
+                console.error("[CoachPlanApprovalQueue] Reject error:", err);
+                setActionMessage({ type: 'error', text: err?.message || "Unexpected error updating plan.", planId });
+            } finally {
+                setActiveActionPlanId(null);
             }
         });
     };
 
     const handleRegenerate = (planId: string) => {
+        setActionMessage(null);
+        setActiveActionPlanId(planId);
         startTransition(async () => {
-            const res = await generateTrainingPlanAction(planId);
-            if (res.success) {
-                setActionMessage({ type: 'success', text: `Plan regenerated successfully (${res.sessionCount} sessions drafted).` });
-                loadPlans();
-            } else if (res.status === 'NO_APPROVED_EXERCISES') {
-                setActionMessage({ 
-                    type: 'error', 
-                    text: "Cannot generate plan: 0 approved exercises in library. Approve exercises in Exercise Library tab first." 
-                });
-                loadPlans();
-            } else {
-                setActionMessage({ type: 'error', text: res.error || "Generation failed." });
+            try {
+                const res = await generateTrainingPlanAction(planId);
+                if (res && res.success) {
+                    setActionMessage({ type: 'success', text: `Plan regenerated successfully (${res.sessionCount} sessions drafted).`, planId });
+                    loadPlans();
+                } else if (res?.status === 'NO_APPROVED_EXERCISES') {
+                    setActionMessage({ 
+                        type: 'error', 
+                        text: "Cannot generate plan: 0 approved exercises in library. Approve exercises in Exercise Library tab first.",
+                        planId
+                    });
+                    loadPlans();
+                } else {
+                    setActionMessage({ type: 'error', text: res?.error || "Generation failed.", planId });
+                }
+            } catch (err: any) {
+                console.error("[CoachPlanApprovalQueue] Regenerate error:", err);
+                setActionMessage({ type: 'error', text: err?.message || "Unexpected error regenerating plan.", planId });
+            } finally {
+                setActiveActionPlanId(null);
             }
         });
     };
@@ -135,7 +166,10 @@ export function CoachPlanApprovalQueue() {
                     "p-4 rounded-xl border flex items-center justify-between text-xs font-semibold animate-in fade-in duration-200",
                     actionMessage.type === 'success' ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-red-500/10 border-red-500/30 text-red-400"
                 )}>
-                    <span>{actionMessage.text}</span>
+                    <div className="flex items-center gap-2">
+                        {actionMessage.type === 'error' ? <AlertCircle size={15} className="shrink-0" /> : <CheckCircle2 size={15} className="shrink-0" />}
+                        <span>{actionMessage.text}</span>
+                    </div>
                     <button onClick={() => setActionMessage(null)} className="text-muted-foreground hover:text-foreground">
                         <X size={14} />
                     </button>
@@ -168,6 +202,8 @@ export function CoachPlanApprovalQueue() {
                         const gen = item.generation;
                         const ruleChecks = gen?.rule_checks;
                         const isNoActiveExercises = gen?.status === 'NO_APPROVED_EXERCISES';
+                        const isCardPending = isPending && activeActionPlanId === item.id;
+                        const cardMessage = actionMessage?.planId === item.id ? actionMessage : null;
 
                         return (
                             <div 
@@ -230,6 +266,23 @@ export function CoachPlanApprovalQueue() {
                                                 </div>
                                             </div>
                                         )}
+
+                                        {cardMessage && (
+                                            <div className={clsx(
+                                                "p-3 rounded-xl border text-xs font-semibold flex items-start justify-between gap-2 animate-in fade-in duration-200",
+                                                cardMessage.type === 'error'
+                                                    ? "bg-red-500/10 border-red-500/30 text-red-400"
+                                                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                                            )}>
+                                                <div className="flex items-start gap-2">
+                                                    {cardMessage.type === 'error' ? <AlertCircle size={15} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={15} className="mt-0.5 shrink-0" />}
+                                                    <span>{cardMessage.text}</span>
+                                                </div>
+                                                <button onClick={() => setActionMessage(null)} className="text-muted-foreground hover:text-foreground shrink-0">
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Action Buttons */}
@@ -247,7 +300,7 @@ export function CoachPlanApprovalQueue() {
                                             className="px-3.5 py-2.5 bg-muted border border-border hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5"
                                             title="Regenerate plan sessions"
                                         >
-                                            <RefreshCw size={13} className={clsx(isPending && "animate-spin")} /> Regenerate
+                                            <RefreshCw size={13} className={clsx(isCardPending && "animate-spin")} /> Regenerate
                                         </button>
 
                                         <button
@@ -255,7 +308,7 @@ export function CoachPlanApprovalQueue() {
                                             disabled={isPending || isNoActiveExercises}
                                             className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-black text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 active:scale-95"
                                         >
-                                            <ShieldCheck size={14} /> Approve & Activate
+                                            <ShieldCheck size={14} /> {isCardPending ? "Processing..." : "Approve & Activate"}
                                         </button>
                                     </div>
                                 </div>

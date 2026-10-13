@@ -152,6 +152,8 @@ export async function generateTrainingPlanAction(planId: string): Promise<{
                         generated_at: new Date().toISOString()
                     },
                     status: 'draft',
+                    approved_by: null,
+                    approved_at: null,
                     phases: [],
                     updated_at: new Date().toISOString()
                 })
@@ -764,6 +766,8 @@ ${JSON.stringify(libraryContext, null, 2)}`;
                 phases: generatedPhases,
                 generation: generationPayload,
                 status: 'pending_approval',
+                approved_by: null,
+                approved_at: null,
                 updated_at: new Date().toISOString()
             })
             .eq('id', planId);

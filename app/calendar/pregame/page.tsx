@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import FlowScreen from "@/components/calendar/FlowScreen";
 import MoodScale, { MoodValue } from "@/components/calendar/MoodScale";
 import { Loader2 } from "lucide-react";
+import { getTodayDateString, toCalendarDateString } from "@/lib/training/dateHelpers";
 
 function PregameContent() {
   const auth = useAuth();
@@ -28,7 +29,7 @@ function PregameContent() {
     setSaving(true);
     try {
       const uid = auth.userId;
-      const today = dateParam || new Date().toISOString().split("T")[0];
+      const today = dateParam ? toCalendarDateString(dateParam) : getTodayDateString();
 
       if (uid === "00000000-0000-0000-0000-000000000000") {
         setSaving(false);

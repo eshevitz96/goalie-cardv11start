@@ -12,6 +12,7 @@ import { GameAnalysisSurface } from "./GameAnalysisSurface";
 import { GameReport } from "./GameReport";
 import { SupportedSport, ShotEvent, ShotType } from "@/types/goalie-v11";
 import { getSportTerms } from "@/utils/sport-language";
+import { formatCalendarDate } from "@/lib/training/dateHelpers";
 
 interface EventDetailViewProps {
     isOpen: boolean;
@@ -87,7 +88,7 @@ export function EventDetailView({ isOpen, onClose, eventId, sport, onAddClips }:
                                 </div>
                                 {eventData?.date && (
                                     <span className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
-                                        <Calendar size={12} /> {new Date(eventData.date).toLocaleDateString()}
+                                        <Calendar size={12} /> {formatCalendarDate(eventData.date, { month: 'short', day: 'numeric', year: 'numeric' })}
                                     </span>
                                 )}
                             </div>

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { getSupabaseAdmin } from "@/utils/supabase/admin";
+import { getTodayDateString, addDaysToDateString } from "@/lib/training/dateHelpers";
 
 export interface LogWorkoutParams {
     sessionType: 'private' | 'team' | 'wall_ball' | 'footwork' | 'reaction' | 'film' | 'other' | 'coach_mission';
@@ -103,7 +104,8 @@ export async function saveTrainingSession(payload: LogWorkoutParams) {
             .or(`goalie_id.eq.${authUserId},goalie_id.eq.${publicUserId}`);
 
         // 4. Insert into training_sessions table
-        const sessionDate = payload.sessionDate || new Date().toISOString().slice(0, 10);
+        const todayStr = getTodayDateString();
+        const sessionDate = payload.sessionDate || todayStr;
         const notesSummary = [
             payload.notes,
             payload.reflection?.win ? `Win: ${payload.reflection.win}` : '',
@@ -137,7 +139,7 @@ export async function saveTrainingSession(payload: LogWorkoutParams) {
         const stabilityRaw = Math.min(100, (svPct / 0.95) * 100);
 
         // Execution (30%) - Anti-spam: Active training days in last 30d
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const thirtyDaysAgo = addDaysToDateString(todayStr, -30);
         const { data: recentSessions } = await supabaseAdmin
             .from('training_sessions')
             .select('session_date')
@@ -150,7 +152,7 @@ export async function saveTrainingSession(payload: LogWorkoutParams) {
         const executionRaw = Math.min(100, Math.max(50, activeDaysCount * 5 + 50));
 
         // Readiness (20%) - Physical soreness, sleep, consistency
-        const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const fourteenDaysAgo = addDaysToDateString(todayStr, -14);
         const { data: fortnightSessions } = await supabaseAdmin
             .from('training_sessions')
             .select('session_date')

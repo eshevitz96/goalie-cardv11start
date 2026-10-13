@@ -29,7 +29,7 @@ import {
     getGoalieBookingProfile,
     getAvailableTrainingSlots
 } from "@/app/training/book/actions";
-import { extractTakeawaysFromNotes } from "@/lib/utils";
+import { extractTakeawaysFromNotes, formatCalendarDate, toCalendarDateString, getTodayDateString } from "@/lib/utils";
 
 interface LessonsTransparencyProps {
     goalieProfileId: string | null;
@@ -152,7 +152,12 @@ export function LessonsTransparency({
     };
 
     const isPastSession = (sessionDateStr: string) => {
-        return new Date(sessionDateStr).getTime() < Date.now();
+        const calDate = toCalendarDateString(sessionDateStr);
+        if (calDate && calDate < getTodayDateString()) return true;
+        if (sessionDateStr && sessionDateStr.includes('T') && !sessionDateStr.endsWith('T00:00:00.000Z') && !sessionDateStr.endsWith('T00:00:00Z')) {
+            return new Date(sessionDateStr).getTime() < Date.now();
+        }
+        return false;
     };
 
     // Handle Reschedule Action
@@ -391,7 +396,7 @@ export function LessonsTransparency({
                                         <div className="flex-1 space-y-1.5 min-w-0">
                                             <div className="flex items-center justify-between flex-wrap gap-1">
                                                 <span className="text-xs font-bold text-white font-mono">
-                                                    {new Date(session.date).toLocaleDateString(undefined, { 
+                                                    {formatCalendarDate(session.date, { 
                                                         weekday: 'short',
                                                         month: 'short', 
                                                         day: 'numeric' 
@@ -502,7 +507,7 @@ export function LessonsTransparency({
                         </div>
 
                         <p className="text-xs text-zinc-400 mb-4">
-                            Current session: <span className="text-white font-semibold">{new Date(reschedulingSession.date).toLocaleDateString()}</span> at <span className="text-white font-semibold">{reschedulingSession.location}</span>
+                            Current session: <span className="text-white font-semibold">{formatCalendarDate(reschedulingSession.date, { month: 'short', day: 'numeric', year: 'numeric' })}</span> at <span className="text-white font-semibold">{reschedulingSession.location}</span>
                         </p>
 
                         {/* 24-Hour Policy Warning if client is within 24h */}
@@ -549,7 +554,7 @@ export function LessonsTransparency({
                                             >
                                                 <div>
                                                     <p className="text-xs font-bold text-white">
-                                                        {new Date(slot.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {slot.timeDisplay}
+                                                        {formatCalendarDate(slot.date, { weekday: 'short', month: 'short', day: 'numeric' })} • {slot.timeDisplay}
                                                     </p>
                                                     <p className="text-[11px] text-zinc-400 mt-0.5 flex items-center gap-1">
                                                         <MapPin size={10} /> {slot.location}
@@ -617,7 +622,7 @@ export function LessonsTransparency({
                         </div>
 
                         <p className="text-xs text-zinc-400 mb-4">
-                            Session on <span className="text-white font-semibold">{new Date(takeawaySession.date).toLocaleDateString()}</span> at <span className="text-white font-semibold">{takeawaySession.location}</span>
+                            Session on <span className="text-white font-semibold">{formatCalendarDate(takeawaySession.date, { month: 'short', day: 'numeric', year: 'numeric' })}</span> at <span className="text-white font-semibold">{takeawaySession.location}</span>
                         </p>
 
                         <textarea

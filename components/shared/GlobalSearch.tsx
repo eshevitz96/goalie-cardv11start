@@ -5,6 +5,7 @@ import { Search, X, Calendar, BookOpen, MessageSquare, ArrowRight } from 'lucide
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
+import { formatCalendarDate, getTodayDateString } from '@/lib/training/dateHelpers';
 
 interface SearchResult {
     id: string;
@@ -90,7 +91,7 @@ export function GlobalSearch({ isOpen, onClose, userId }: GlobalSearchProps) {
                     type: 'event' as const,
                     title: e.name,
                     description: e.location || 'No Location',
-                    date: new Date(e.date).toLocaleDateString(),
+                    date: formatCalendarDate(e.date, { month: 'short', day: 'numeric', year: 'numeric' }),
                     url: `/events/${e.id}`
                 }));
                 combinedResults = [...combinedResults, ...eventResults];
@@ -112,7 +113,7 @@ export function GlobalSearch({ isOpen, onClose, userId }: GlobalSearchProps) {
                         type: 'reflection' as const,
                         title: `Journal Entry (${r.mood})`,
                         description: r.content || '',
-                        date: new Date(r.created_at).toLocaleDateString(),
+                        date: formatCalendarDate(r.created_at, { month: 'short', day: 'numeric', year: 'numeric' }),
                         url: `/dashboard`
                     }));
                     combinedResults = [...combinedResults, ...reflexResults];
@@ -135,7 +136,7 @@ export function GlobalSearch({ isOpen, onClose, userId }: GlobalSearchProps) {
                         type: 'session' as const,
                         title: `Session ${s.session_number} • Lesson ${s.lesson_number}`,
                         description: s.notes || '',
-                        date: new Date(s.date).toLocaleDateString(),
+                        date: formatCalendarDate(s.date, { month: 'short', day: 'numeric', year: 'numeric' }),
                         url: `/events/${s.id}?type=session`
                     }));
                     combinedResults = [...combinedResults, ...sessionResults];
@@ -156,7 +157,7 @@ export function GlobalSearch({ isOpen, onClose, userId }: GlobalSearchProps) {
                         type: 'reflection' as const, // Reusing icon for generic item or create a new type
                         title: `Alert: ${n.title}`,
                         description: n.message || '',
-                        date: new Date(n.created_at).toLocaleDateString(),
+                        date: formatCalendarDate(n.created_at, { month: 'short', day: 'numeric', year: 'numeric' }),
                         url: n.type === 'event' ? `/events` : `/profile` // Basic routing
                     }));
                     combinedResults = [...combinedResults, ...notifResults];
@@ -177,7 +178,7 @@ export function GlobalSearch({ isOpen, onClose, userId }: GlobalSearchProps) {
         const { data: events } = await supabase
             .from('events')
             .select('id, name, location, date')
-            .gte('date', new Date().toISOString())
+            .gte('date', getTodayDateString())
             .order('date', { ascending: true })
             .limit(4);
 
@@ -187,7 +188,7 @@ export function GlobalSearch({ isOpen, onClose, userId }: GlobalSearchProps) {
                 type: 'event' as const,
                 title: e.name,
                 description: e.location || 'No Location',
-                date: new Date(e.date).toLocaleDateString(),
+                date: formatCalendarDate(e.date, { month: 'short', day: 'numeric', year: 'numeric' }),
                 url: `/events/${e.id}`
             })));
         }

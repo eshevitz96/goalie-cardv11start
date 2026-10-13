@@ -644,8 +644,8 @@ function OnboardingContent() {
           {step === 1 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Who are you?</h1>
-                <p className="text-sm text-zinc-400">Let&apos;s set up your basic goalie identity card.</p>
+                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Your Goalie Card</h1>
+                <p className="text-sm text-zinc-400">Your name, handle, and age group.</p>
               </div>
 
               {/* Birthday at top */}
@@ -660,7 +660,7 @@ function OnboardingContent() {
                     className="w-full bg-black/60 border border-zinc-800 rounded-xl pl-12 pr-5 py-3.5 text-foreground focus:outline-none focus:border-[#00E676] transition-all text-sm font-semibold"
                   />
                 </div>
-                <span className="text-[9px] text-zinc-500 italic">Used for age verification & scoring metrics.</span>
+                <span className="text-[9px] text-zinc-500 italic">Sets your age band for training loads and progressions.</span>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -705,8 +705,8 @@ function OnboardingContent() {
           {step === 2 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Sport & Roster</h1>
-                <p className="text-sm text-zinc-400">Select what you play and which teams you represent.</p>
+                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Your Game</h1>
+                <p className="text-sm text-zinc-400">Your sport and the teams you play for.</p>
               </div>
 
               <div className="space-y-2">
@@ -748,8 +748,8 @@ function OnboardingContent() {
           {step === 3 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Custom Attributes</h1>
-                <p className="text-sm text-zinc-400">Add characteristics to help coaches filter and find your card.</p>
+                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Your Style & Build</h1>
+                <p className="text-sm text-zinc-400">How you play the position, your catch hand, and your measurables.</p>
               </div>
 
               <div className="flex flex-wrap gap-1.5">
@@ -848,14 +848,14 @@ function OnboardingContent() {
           {step === 4 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Performance Baseline</h1>
-                <p className="text-sm text-zinc-400">Answer 3 simple questions to set your initial performance rating.</p>
+                <h1 className="text-3xl font-black tracking-tight text-foreground mb-2 uppercase">Where You Stand Today</h1>
+                <p className="text-sm text-zinc-400">Set your starting point for this season.</p>
               </div>
 
               {/* Trajectory */}
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-[#00E676]" /> 1. How has your performance state been lately?
+                  <Sparkles size={14} className="text-[#00E676]" /> 1. How has your game felt lately?
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {['good', 'neutral', 'bad'].map((m) => (
@@ -878,7 +878,7 @@ function OnboardingContent() {
               {/* Physical */}
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                  <HeartPulse size={14} className="text-[#00E676]" /> 2. Rate your current physical readiness
+                  <HeartPulse size={14} className="text-[#00E676]" /> 2. How does your body feel today?
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {['good', 'neutral', 'bad'].map((m) => (
@@ -901,7 +901,7 @@ function OnboardingContent() {
               {/* Focus (Phase) */}
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                  <Shield size={14} className="text-[#00E676]" /> 3. Current Season Stage
+                  <Shield size={14} className="text-[#00E676]" /> 3. Where are you in your season?
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
