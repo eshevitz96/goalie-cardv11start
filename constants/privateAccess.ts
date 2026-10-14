@@ -2,10 +2,27 @@ export const PRIVATE_ACCESS_CONFIG = {
     // Access codes that are valid for the flow
     validCodes: ['GOALIE2026', 'ELITE-ACCESS-2026', 'TGB-PRIVATE-101'],
     
-    // Stripe Product IDs (Can be moved to .env later)
+    // Lesson Packages (One-Time)
+    plans: {
+        block4: {
+            id: 'block4',
+            name: '4 Lessons',
+            amount: 500,
+            amountCents: 50000,
+            subtext: '$125 per lesson.',
+            priceId: process.env.STRIPE_PRICE_BLOCK4 || 'price_1UQTKuGj0SdRYIlh6q4JZSPk',
+        },
+        block8: {
+            id: 'block8',
+            name: '8 Lessons',
+            amount: 960,
+            amountCents: 96000,
+            subtext: '$120 per lesson.',
+            priceId: process.env.STRIPE_PRICE_BLOCK8 || 'price_1UQTKuGj0SdRYIlhDU9uRDLx',
+        },
+    },
+
     stripe: {
-        livePriceId: process.env.STRIPE_LIVE_PRICE_ID || 'price_1RikwWGj0SdRYIlhBFkwodnf', // Placeholder from .env if exists
-        testPriceId: process.env.STRIPE_TEST_PRICE_ID || 'price_1RikwWGj0SdRYIlhBFkwodnf', // Placeholder for $1 test
         isTestMode: process.env.NEXT_PUBLIC_STRIPE_TEST_MODE === 'true',
     },
     

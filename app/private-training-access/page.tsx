@@ -22,14 +22,11 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrandLogo } from "@/components/ui/BrandLogo";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { 
     validateAccessCode, 
     createPrivateSubmission, 
     updateWaiverStatus, 
-    createEmbeddedCheckoutSession,
-    createConnectedCard 
+    createEmbeddedCheckoutSession 
 } from "./actions";
 import { PRIVATE_ACCESS_CONFIG } from "@/constants/privateAccess";
 import { loadStripe } from "@stripe/stripe-js";
@@ -40,13 +37,14 @@ import {
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-type FlowStep = 'access-code' | 'info' | 'card-prompt' | 'waiver' | 'plan-selection' | 'payment-confirm';
+type FlowStep = 'access-code' | 'info' | 'waiver' | 'plan-selection' | 'payment-confirm';
+type PlanOption = 'block4' | 'block8';
 
 export default function PrivateTrainingAccessPage() {
     return (
         <Suspense fallback={
-            <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
-                <Loader2 className="animate-spin text-primary opacity-50" size={40} />
+            <main className="min-h-screen bg-[#09090b] text-[#f4f4f5] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+                <Loader2 className="animate-spin text-zinc-400 opacity-60" size={40} />
             </main>
         }>
             <PrivateTrainingAccessContent />
@@ -70,8 +68,7 @@ function PrivateTrainingAccessContent() {
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [submissionId, setSubmissionId] = useState<string | null>(null);
-    const [hasExistingCard, setHasExistingCard] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'standard' | 'season'>('monthly');
+    const [selectedPlan, setSelectedPlan] = useState<PlanOption>('block4');
     
     // Waiver State
     const [waiverChecks, setWaiverChecks] = useState({
@@ -90,12 +87,11 @@ function PrivateTrainingAccessContent() {
     // Mode State
     const [isTestMode, setIsTestMode] = useState(PRIVATE_ACCESS_CONFIG.stripe.isTestMode);
 
-    // Initial check for submission ID from URL (e.g. if they cancel or refresh halfway)
+    // Initial check for submission ID from URL (e.g. if returning or refreshing)
     useEffect(() => {
         const id = searchParams.get('submission_id');
         if (id) {
             setSubmissionId(id);
-            // We could fetch details and set step here, but for now just let them restart or go to waiver if the ID is valid.
         }
     }, [searchParams]);
 
@@ -138,37 +134,12 @@ function PrivateTrainingAccessContent() {
                 return;
             }
             
-            const { submissionId: id, hasExistingCard: exists } = res as any;
+            const { submissionId: id } = res as any;
             setSubmissionId(id);
-            setHasExistingCard(exists);
-            
-            if (!exists) {
-                setStep('card-prompt');
-            } else {
-                setStep('waiver');
-            }
-        } catch (err: any) {
-            setError(err.message || "Failed to save information.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleCardPromptSubmit = async (confirmed: boolean) => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            if (!submissionId) throw new Error("Missing submissionId");
-            if (confirmed) {
-                const res = await createConnectedCard(submissionId);
-                if ('error' in res && res.error) {
-                    setError(res.error);
-                    return;
-                }
-            }
+            // Go straight to waivers — connect step is removed
             setStep('waiver');
         } catch (err: any) {
-            setError(err.message || "Failed to handle card registry.");
+            setError(err.message || "Failed to save information.");
         } finally {
             setIsLoading(false);
         }
@@ -186,7 +157,6 @@ function PrivateTrainingAccessContent() {
         setIsLoading(true);
         
         try {
-            // Update submission status in DB
             const res = await updateWaiverStatus(submissionId!, true, signature);
             if (res.error) {
                 setError(res.error);
@@ -218,9 +188,7 @@ function PrivateTrainingAccessContent() {
         };
         const waiverText = (PRIVATE_ACCESS_CONFIG.trainingTerms as any)[keyMap[waiverId]] || '';
         
-        // Use hidden iframe to print seamlessly without triggering popup blockers
         const iframe = document.createElement('iframe');
-        // Absolute off-screen positioning ensures it is fully rendered but completely invisible
         iframe.style.position = 'absolute';
         iframe.style.left = '-9999px';
         iframe.style.top = '-9999px';
@@ -277,7 +245,7 @@ function PrivateTrainingAccessContent() {
                             padding-top: 30px;
                             margin-top: 50px;
                             display: grid;
-                            grid-template-cols: 1fr 1fr;
+                            grid-template-columns: 1fr 1fr;
                             gap: 40px;
                         }
                         .sig-box {
@@ -328,8 +296,6 @@ function PrivateTrainingAccessContent() {
         setTimeout(() => {
             if (iframe.contentWindow) {
                 iframe.contentWindow.focus();
-                
-                // Clean up iframe after printing is completed or cancelled
                 const cleanUp = () => {
                     iframe.contentWindow?.removeEventListener('afterprint', cleanUp);
                     setTimeout(() => {
@@ -338,11 +304,8 @@ function PrivateTrainingAccessContent() {
                         }
                     }, 1000);
                 };
-                
                 iframe.contentWindow.addEventListener('afterprint', cleanUp);
                 iframe.contentWindow.print();
-                
-                // Fallback cleanup in case afterprint doesn't fire
                 setTimeout(() => {
                     if (iframe.parentNode) {
                         document.body.removeChild(iframe);
@@ -437,7 +400,7 @@ function PrivateTrainingAccessContent() {
                             padding-top: 30px;
                             margin-top: 50px;
                             display: grid;
-                            grid-template-cols: 1fr 1fr;
+                            grid-template-columns: 1fr 1fr;
                             gap: 40px;
                         }
                         .sig-box {
@@ -485,8 +448,6 @@ function PrivateTrainingAccessContent() {
         setTimeout(() => {
             if (iframe.contentWindow) {
                 iframe.contentWindow.focus();
-                
-                // Clean up iframe after printing is completed or cancelled
                 const cleanUp = () => {
                     iframe.contentWindow?.removeEventListener('afterprint', cleanUp);
                     setTimeout(() => {
@@ -495,11 +456,8 @@ function PrivateTrainingAccessContent() {
                         }
                     }, 1000);
                 };
-                
                 iframe.contentWindow.addEventListener('afterprint', cleanUp);
                 iframe.contentWindow.print();
-                
-                // Fallback cleanup in case afterprint doesn't fire
                 setTimeout(() => {
                     if (iframe.parentNode) {
                         document.body.removeChild(iframe);
@@ -509,40 +467,43 @@ function PrivateTrainingAccessContent() {
         }, 500);
     };
 
+    const currentPlan = PRIVATE_ACCESS_CONFIG.plans[selectedPlan];
+
     return (
-        <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
-            {/* Minimalist Background */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/30 via-slate-500/30 to-primary/30" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/3 rounded-full blur-[120px] pointer-events-none" />
+        <main className="min-h-screen bg-[#09090b] text-[#f4f4f5] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-white/20 selection:text-white">
+            {/* Subtle Top Accent */}
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-zinc-700/60 to-transparent" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/[0.015] rounded-full blur-[140px] pointer-events-none" />
 
             <div className="w-full max-w-lg relative z-10 transition-all duration-500">
                 <div className="text-center mb-8 flex flex-col items-center">
                     <BrandLogo
                         size={40}
-                        textClassName="text-3xl md:text-4xl font-medium tracking-tight mb-2"
+                        textClassName="text-3xl md:text-4xl font-medium tracking-tight mb-2 text-white"
                     />
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm uppercase tracking-[0.2em] font-bold">
-                        <Lock size={12} className="opacity-50" />
+                    <div className="flex items-center gap-2 text-zinc-400 text-xs uppercase tracking-[0.2em] font-semibold">
+                        <Lock size={12} className="opacity-60 text-zinc-400" />
                         Private Training Access
                     </div>
                 </div>
 
-                <div className="bg-card/20 backdrop-blur-2xl border border-border/40 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.15)] relative overflow-hidden">
+                <div className="bg-[#121215]/90 backdrop-blur-2xl border border-zinc-800/80 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.6)] relative overflow-hidden">
                     {/* Universal Back Button */}
                     {step !== 'access-code' && !isLoading && !clientSecret && (
                         <button
                             onClick={() => {
                                 if (step === 'info') setStep('access-code');
-                                else if (step === 'card-prompt') setStep('info');
-                                else if (step === 'waiver') setStep('card-prompt');
+                                else if (step === 'waiver') setStep('info');
                                 else if (step === 'plan-selection') setStep('waiver');
                                 else if (step === 'payment-confirm') setStep('plan-selection');
                             }}
-                            className="absolute top-6 left-6 p-2 rounded-full bg-secondary/20 border border-border/30 hover:bg-secondary/40 text-muted-foreground transition-all z-20 group"
+                            className="absolute top-6 left-6 p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all z-20 group"
+                            aria-label="Go back"
                         >
                             <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
                         </button>
                     )}
+
                     <AnimatePresence mode="wait">
                         
                         {/* STEP 1: ACCESS CODE */}
@@ -555,8 +516,8 @@ function PrivateTrainingAccessContent() {
                                 className="space-y-8"
                             >
                                 <div className="space-y-2 text-center">
-                                    <h2 className="text-2xl font-semibold tracking-tight">Invite-Only Access</h2>
-                                    <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
+                                    <h2 className="text-2xl font-semibold tracking-tight text-white">Invite-Only Access</h2>
+                                    <p className="text-zinc-400 text-sm leading-relaxed max-w-xs mx-auto">
                                         This portal is reserved for specific athletes. Please enter your invitation code to proceed.
                                     </p>
                                 </div>
@@ -564,13 +525,13 @@ function PrivateTrainingAccessContent() {
                                 <form onSubmit={handleAccessCodeSubmit} className="space-y-6">
                                     <div className="space-y-2">
                                         <div className="relative">
-                                            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/60" size={18} />
+                                            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
                                             <input
                                                 type="text"
                                                 required
                                                 value={accessCode}
                                                 onChange={(e) => setAccessCode(e.target.value)}
-                                                className="w-full bg-secondary/40 border border-border/60 rounded-2xl pl-12 pr-5 py-4 text-foreground focus:outline-none focus:border-primary/50 transition-all placeholder:text-muted-foreground/30 text-center tracking-[0.3em] font-mono text-xl uppercase"
+                                                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-2xl pl-12 pr-5 py-4 text-white focus:outline-none focus:border-zinc-500 transition-all placeholder:text-zinc-600 text-center tracking-[0.3em] font-mono text-xl uppercase"
                                                 placeholder="••••••••"
                                                 autoFocus
                                             />
@@ -578,23 +539,29 @@ function PrivateTrainingAccessContent() {
                                     </div>
 
                                     {error && (
-                                        <div className="text-red-500 bg-red-500/5 border border-red-500/10 text-xs flex items-center justify-center gap-2 p-3 rounded-xl animate-pulse">
+                                        <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 text-xs flex items-center justify-center gap-2 p-3 rounded-xl font-medium">
                                             <AlertCircle size={14} /> {error}
                                         </div>
                                     )}
 
-                                    <Button
+                                    <button
                                         type="submit"
-                                        className="w-full py-7 text-lg rounded-2xl shadow-xl shadow-primary/10 group"
-                                        loading={isLoading}
+                                        disabled={isLoading}
+                                        className="w-full py-4 text-sm font-bold uppercase tracking-wider rounded-xl bg-white text-black hover:bg-zinc-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-40 shadow-md group"
                                     >
-                                        Validate Access <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                                    </Button>
+                                        {isLoading ? (
+                                            <Loader2 size={16} className="animate-spin text-black" />
+                                        ) : (
+                                            <>
+                                                Validate Access <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                                            </>
+                                        )}
+                                    </button>
                                 </form>
                             </motion.div>
                         )}
 
-                        {/* STEP 2: ATHLETE INFO */}
+                        {/* STEP 2: ATHLETE REGISTRY (Sign Up) */}
                         {step === 'info' && (
                             <motion.div
                                 key="info"
@@ -604,135 +571,96 @@ function PrivateTrainingAccessContent() {
                                 className="space-y-8"
                             >
                                 <div className="space-y-2 text-center">
-                                    <h2 className="text-2xl font-semibold tracking-tight">Athlete Registry</h2>
-                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                    <h2 className="text-2xl font-semibold tracking-tight text-white">Athlete Registry</h2>
+                                    <p className="text-zinc-400 text-sm leading-relaxed">
                                         Please provide the contact details for the athlete or parent.
                                     </p>
                                 </div>
 
                                 <form onSubmit={handleInfoSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1.5 md:col-span-2">
-                                        <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 ml-1">Athlete Full Name</label>
+                                        <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 ml-1">Athlete Full Name</label>
                                         <div className="relative">
-                                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+                                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
                                             <input
                                                 type="text"
                                                 required
                                                 value={athleteName}
                                                 onChange={(e) => setAthleteName(e.target.value)}
-                                                className="w-full bg-secondary/30 border border-border/50 rounded-xl pl-11 pr-4 py-3.5 text-foreground focus:outline-none focus:border-primary/50 transition-all"
+                                                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all text-sm font-medium"
                                                 placeholder="Jake Dewey"
                                             />
                                         </div>
                                     </div>
                                     
                                     <div className="space-y-1.5 md:col-span-2">
-                                        <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 ml-1">Parent Name (Optional)</label>
+                                        <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 ml-1">Parent Name (Optional)</label>
                                         <div className="relative">
-                                            <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+                                            <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
                                             <input
                                                 type="text"
                                                 value={parentName}
                                                 onChange={(e) => setParentName(e.target.value)}
-                                                className="w-full bg-secondary/30 border border-border/50 rounded-xl pl-11 pr-4 py-3.5 text-foreground focus:outline-none focus:border-primary/50 transition-all"
+                                                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all text-sm font-medium"
                                                 placeholder="Parker Dewey"
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 ml-1">Contact Email</label>
+                                        <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 ml-1">Contact Email</label>
                                         <div className="relative">
-                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
                                             <input
                                                 type="email"
                                                 required
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
-                                                className="w-full bg-secondary/30 border border-border/50 rounded-xl pl-11 pr-4 py-3.5 text-foreground focus:outline-none focus:border-primary/50 transition-all"
+                                                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all text-sm font-medium"
                                                 placeholder="name@email.com"
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 ml-1">Phone Number</label>
+                                        <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 ml-1">Phone Number</label>
                                         <div className="relative">
-                                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+                                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
                                             <input
                                                 type="tel"
                                                 required
                                                 value={phone}
                                                 onChange={(e) => setPhone(e.target.value)}
-                                                className="w-full bg-secondary/30 border border-border/50 rounded-xl pl-11 pr-4 py-3.5 text-foreground focus:outline-none focus:border-primary/50 transition-all"
+                                                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-all text-sm font-medium"
                                                 placeholder="(555) 000-0000"
                                             />
                                         </div>
                                     </div>
 
                                     {error && (
-                                        <div className="md:col-span-2 text-red-500 bg-red-500/5 border border-red-500/10 text-xs flex items-center justify-center gap-2 p-3 rounded-xl">
+                                        <div className="md:col-span-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 text-xs flex items-center justify-center gap-2 p-3 rounded-xl font-medium">
                                             <AlertCircle size={14} /> {error}
                                         </div>
                                     )}
 
-                                    <Button
+                                    <button
                                         type="submit"
-                                        className="md:col-span-2 py-6 rounded-xl mt-4"
-                                        loading={isLoading}
+                                        disabled={isLoading}
+                                        className="md:col-span-2 py-4 mt-4 text-sm font-bold uppercase tracking-wider rounded-xl bg-white text-black hover:bg-zinc-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-40 shadow-md group"
                                     >
-                                        Continue to Waiver <ArrowRight size={18} />
-                                    </Button>
+                                        {isLoading ? (
+                                            <Loader2 size={16} className="animate-spin text-black" />
+                                        ) : (
+                                            <>
+                                                Continue to Waivers <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                                            </>
+                                        )}
+                                    </button>
                                 </form>
                             </motion.div>
                         )}
 
-                        {/* STEP 3: CARD PROMPT */}
-                        {step === 'card-prompt' && (
-                            <motion.div
-                                key="card-prompt"
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className="space-y-8 text-center"
-                            >
-                                <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-2 border border-primary/10">
-                                    <ShieldCheck size={40} className="text-primary opacity-60" />
-                                </div>
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-semibold tracking-tight">Connect Goalie Card</h2>
-                                    <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">
-                                        We couldn't find an existing Goalie Card for {email}. Connect your profile now to sync your training data and stats.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4">
-                                    <Button
-                                        onClick={() => handleCardPromptSubmit(true)}
-                                        className="w-full py-6 rounded-2xl shadow-xl shadow-primary/10"
-                                        loading={isLoading}
-                                    >
-                                        Connect Card <ArrowRight size={18} />
-                                    </Button>
-                                    <button 
-                                        onClick={() => handleCardPromptSubmit(false)}
-                                        disabled={isLoading}
-                                        className="text-[10px] uppercase tracking-[0.25em] font-black text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors py-2"
-                                    >
-                                        Skip for now
-                                    </button>
-                                </div>
-
-                                {error && (
-                                    <div className="mt-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium text-left flex items-start gap-3">
-                                        <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                                        <p>{error}</p>
-                                    </div>
-                                )}
-                            </motion.div>
-                        )}
-
-                        {/* STEP 3: WAIVER */}
+                        {/* STEP 3: WAIVERS */}
                         {step === 'waiver' && (
                             <motion.div
                                 key="waiver"
@@ -742,9 +670,9 @@ function PrivateTrainingAccessContent() {
                                 className="space-y-8"
                             >
                                 <div className="space-y-2 mb-8 text-center">
-                                    <h2 className="text-2xl font-semibold tracking-tight">Waiver & Terms</h2>
-                                    <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
-                                        Please review and acknowledge each of the four training segments.
+                                    <h2 className="text-2xl font-semibold tracking-tight text-white">Waiver & Terms</h2>
+                                    <p className="text-zinc-400 text-sm leading-relaxed max-w-xs mx-auto">
+                                        Please review and acknowledge each of the four training agreements.
                                     </p>
                                 </div>
 
@@ -755,20 +683,20 @@ function PrivateTrainingAccessContent() {
                                         { id: 'code', label: 'Athlete Code of Conduct' },
                                         { id: 'liability', label: 'Extended Waiver of Liability' }
                                     ] as const).map((w) => (
-                                        <div key={w.id} className="flex items-center justify-between p-4 bg-secondary/10 hover:bg-secondary/20 border border-border/20 rounded-2xl transition-colors">
-                                            <div className="flex items-center gap-3">
+                                        <div key={w.id} className="flex items-center justify-between p-4 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800/80 rounded-2xl transition-colors">
+                                            <label className="flex items-center gap-3 cursor-pointer select-none flex-1">
                                                 <input 
                                                     type="checkbox" 
                                                     checked={waiverChecks[w.id]}
                                                     onChange={(e) => setWaiverChecks({ ...waiverChecks, [w.id]: e.target.checked })}
-                                                    className="w-5 h-5 rounded border-border bg-transparent text-primary focus:ring-primary"
+                                                    className="w-4 h-4 rounded border-zinc-700 bg-zinc-950 text-white focus:ring-0 focus:ring-offset-0 cursor-pointer accent-white"
                                                 />
-                                                <span className="text-xs font-bold text-muted-foreground">{w.label}</span>
-                                            </div>
+                                                <span className="text-xs font-semibold text-zinc-300">{w.label}</span>
+                                            </label>
                                             <button 
                                                 type="button"
                                                 onClick={() => setViewingWaiver(w.id)}
-                                                className="text-[9px] uppercase tracking-widest font-black text-primary/60 hover:text-primary transition-colors flex items-center gap-1 bg-primary/5 px-3 py-1.5 rounded-full"
+                                                className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 hover:text-white transition-colors flex items-center gap-1 bg-zinc-800 px-3 py-1.5 rounded-full"
                                             >
                                                 View <ChevronRight size={10} />
                                             </button>
@@ -783,18 +711,18 @@ function PrivateTrainingAccessContent() {
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             exit={{ opacity: 0 }}
-                                            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/90 backdrop-blur-xl"
+                                            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl"
                                             onClick={() => setViewingWaiver(null)}
                                         >
                                             <motion.div 
                                                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
                                                 animate={{ scale: 1, opacity: 1, y: 0 }}
                                                 exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                                                className="w-full max-w-lg bg-card border border-border/50 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_70px_rgba(0,0,0,0.4)] relative max-h-[85vh] flex flex-col"
+                                                className="w-full max-w-lg bg-[#121215] border border-zinc-800 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_70px_rgba(0,0,0,0.7)] relative max-h-[85vh] flex flex-col"
                                                 onClick={e => e.stopPropagation()}
                                             >
                                                 <div className="flex justify-between items-center mb-6">
-                                                    <h3 className="text-xs uppercase tracking-[0.3em] font-black text-primary">
+                                                    <h3 className="text-xs uppercase tracking-[0.2em] font-bold text-zinc-300">
                                                         {viewingWaiver === 'main' ? 'MAIN LIABILITY RELEASE' :
                                                          viewingWaiver === 'payment' ? 'PAYMENT & REFUND POLICY' :
                                                          viewingWaiver === 'code' ? 'ATHLETE CODE OF CONDUCT' :
@@ -804,21 +732,21 @@ function PrivateTrainingAccessContent() {
                                                         <button
                                                             type="button"
                                                             onClick={() => handleDownloadWaiver(viewingWaiver)}
-                                                            className="w-8 h-8 rounded-full bg-secondary/30 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                                            className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
                                                             title="Print / Save PDF"
                                                         >
                                                             <Printer size={13} />
                                                         </button>
                                                         <button 
                                                             onClick={() => setViewingWaiver(null)} 
-                                                            className="w-8 h-8 rounded-full bg-secondary/30 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                                            className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
                                                         >
                                                             <X size={16} />
                                                         </button>
                                                     </div>
                                                 </div>
                                                 <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar text-left">
-                                                    <p className="text-base text-foreground leading-relaxed whitespace-pre-wrap font-sans opacity-95">
+                                                    <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
                                                         {(() => {
                                                             const keyMap: Record<string, string> = {
                                                                 main: 'mainWaiver',
@@ -831,46 +759,46 @@ function PrivateTrainingAccessContent() {
                                                         })()}
                                                     </p>
                                                 </div>
-                                                <Button 
+                                                <button 
                                                     onClick={() => {
                                                         setWaiverChecks({ ...waiverChecks, [viewingWaiver as keyof typeof waiverChecks]: true });
                                                         setViewingWaiver(null);
                                                     }}
-                                                    className="mt-8 w-full py-6 rounded-2xl shadow-lg shadow-primary/10"
+                                                    className="mt-8 w-full py-4 text-xs font-bold uppercase tracking-wider rounded-xl bg-white text-black hover:bg-zinc-200 active:scale-[0.98] transition-all shadow-md"
                                                 >
                                                     Acknowledge & Accept
-                                                </Button>
+                                                </button>
                                             </motion.div>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
 
-                                <form onSubmit={handleWaiverSubmit} className="space-y-4 pt-6 border-t border-border/20">
+                                <form onSubmit={handleWaiverSubmit} className="space-y-4 pt-6 border-t border-zinc-800/80">
                                     <div className="space-y-4">
                                         <div className="space-y-1.5">
                                             <div className="flex justify-between items-center ml-1">
-                                                <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Digital Signature (Full Name)</label>
-                                                <span className="text-[10px] text-primary/50 font-bold uppercase tracking-widest">Required</span>
+                                                <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-400">Digital Signature (Full Name)</label>
+                                                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Required</span>
                                             </div>
                                             <input
                                                 type="text"
                                                 required
                                                 value={signature}
                                                 onChange={(e) => setSignature(e.target.value)}
-                                                className="w-full bg-secondary/30 border border-border/50 rounded-xl px-5 py-4 text-sm text-foreground focus:outline-none focus:border-primary/50 transition-all font-serif italic text-lg tracking-tight"
-                                                placeholder="Type full name..."
+                                                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-zinc-500 transition-all font-serif italic text-lg tracking-tight placeholder:text-zinc-600"
+                                                placeholder="Type full legal name..."
                                             />
                                         </div>
-                                        <div className="space-y-1.5 opacity-50">
-                                            <label className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60 ml-1">Signing Date</label>
-                                            <div className="px-5 py-4 bg-secondary/20 border border-border/40 rounded-xl text-xs font-mono font-bold">
+                                        <div className="space-y-1.5 opacity-60">
+                                            <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 ml-1">Signing Date</label>
+                                            <div className="px-5 py-3.5 bg-zinc-900/50 border border-zinc-800/60 rounded-xl text-xs font-mono font-bold text-zinc-300">
                                                 {signatureDate}
                                             </div>
                                         </div>
                                     </div>
 
                                     {error && (
-                                        <div className="text-red-500 bg-red-500/5 border border-red-500/10 text-xs flex items-center justify-center gap-2 p-4 rounded-xl animate-pulse font-bold uppercase tracking-widest">
+                                        <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 text-xs flex items-center justify-center gap-2 p-3 rounded-xl font-medium">
                                             <AlertCircle size={14} /> {error}
                                         </div>
                                     )}
@@ -879,25 +807,30 @@ function PrivateTrainingAccessContent() {
                                         <button
                                             type="button"
                                             onClick={handleDownloadAllWaivers}
-                                            className="w-full py-4 border border-border/40 hover:border-primary/50 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary bg-secondary/10 hover:bg-primary/5 rounded-2xl transition-all flex items-center justify-center gap-2 mt-4"
+                                            className="w-full py-3.5 border border-zinc-800 hover:border-zinc-700 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-white bg-zinc-900/40 rounded-xl transition-all flex items-center justify-center gap-2 mt-2"
                                         >
-                                            <Printer size={14} /> Print / Save All Signed Waivers
+                                            <Printer size={13} /> Print / Save All Signed Waivers
                                         </button>
                                     )}
 
-                                    <Button
+                                    <button
                                         type="submit"
-                                        className="w-full py-7 rounded-2xl mt-4 text-md shadow-xl shadow-primary/10 group"
-                                        loading={isLoading}
-                                        disabled={!Object.values(waiverChecks).every(v => v) || !signature}
+                                        disabled={isLoading || !Object.values(waiverChecks).every(v => v) || !signature}
+                                        className="w-full py-4 rounded-xl mt-4 text-sm font-bold uppercase tracking-wider bg-white text-black hover:bg-zinc-200 active:scale-[0.98] transition-all disabled:opacity-40 shadow-md flex items-center justify-center gap-2 group"
                                     >
-                                        Choose Plan <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-                                    </Button>
+                                        {isLoading ? (
+                                            <Loader2 size={16} className="animate-spin text-black" />
+                                        ) : (
+                                            <>
+                                                Select Lessons <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                                            </>
+                                        )}
+                                    </button>
                                 </form>
                             </motion.div>
                         )}
 
-                        {/* STEP 4: PLAN SELECTION */}
+                        {/* STEP 4: SELECT LESSONS (Pricing Options) */}
                         {step === 'plan-selection' && (
                             <motion.div
                                 key="plan-selection"
@@ -907,143 +840,149 @@ function PrivateTrainingAccessContent() {
                                 className="space-y-8"
                             >
                                 <div className="space-y-2 mb-8 text-center">
-                                    <h2 className="text-2xl font-semibold tracking-tight">Select your Commitment</h2>
-                                    <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
-                                        Choose the training block that fits your schedule.
+                                    <h2 className="text-2xl font-semibold tracking-tight text-white">Select Lessons</h2>
+                                    <p className="text-zinc-400 text-sm leading-relaxed max-w-xs mx-auto">
+                                        Choose your private training commitment.
                                     </p>
                                 </div>
 
-                                <div className="space-y-3">
+                                <div className="space-y-3.5">
+                                    {/* Option 1: 4 Lessons */}
                                     <button 
-                                        onClick={() => setSelectedPlan('monthly')}
-                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'monthly' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
+                                        type="button"
+                                        onClick={() => setSelectedPlan('block4')}
+                                        className={`w-full text-left p-6 rounded-2xl border transition-all relative overflow-hidden group ${
+                                            selectedPlan === 'block4' 
+                                                ? 'bg-white/[0.04] border-white/60 shadow-md ring-1 ring-white/10' 
+                                                : 'bg-zinc-900/40 border-zinc-800/80 hover:bg-zinc-900/70 hover:border-zinc-700'
+                                        }`}
                                     >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h4 className="font-bold text-lg">Legacy Member</h4>
-                                                <p className="text-xs text-muted-foreground">Monthly automated access. Set it and forget it.</p>
+                                        <div className="flex justify-between items-center">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-bold text-lg text-white">4 Lessons</h4>
+                                                    <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700/60">
+                                                        One-Time
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-zinc-400 font-medium">$125 per lesson.</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-xl font-black text-primary">$400.00</p>
-                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Per Month</p>
+                                                <p className="text-2xl font-black text-white tracking-tight">$500</p>
+                                                <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Total</p>
                                             </div>
                                         </div>
                                     </button>
 
+                                    {/* Option 2: 8 Lessons */}
                                     <button 
-                                        onClick={() => setSelectedPlan('standard')}
-                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'standard' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
+                                        type="button"
+                                        onClick={() => setSelectedPlan('block8')}
+                                        className={`w-full text-left p-6 rounded-2xl border transition-all relative overflow-hidden group ${
+                                            selectedPlan === 'block8' 
+                                                ? 'bg-white/[0.04] border-white/60 shadow-md ring-1 ring-white/10' 
+                                                : 'bg-zinc-900/40 border-zinc-800/80 hover:bg-zinc-900/70 hover:border-zinc-700'
+                                        }`}
                                     >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h4 className="font-bold text-lg">Standard Block</h4>
-                                                <p className="text-xs text-muted-foreground">16 Lessons upfront. Traditional commitment.</p>
+                                        <div className="flex justify-between items-center">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-bold text-lg text-white">8 Lessons</h4>
+                                                    <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700/60">
+                                                        One-Time
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-zinc-400 font-medium">$120 per lesson.</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-xl font-black text-primary">$1,600.00</p>
-                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Every 4 Months</p>
-                                            </div>
-                                        </div>
-                                    </button>
-
-                                    <button 
-                                        onClick={() => setSelectedPlan('season')}
-                                        className={`w-full text-left p-5 rounded-3xl border transition-all relative overflow-hidden group ${selectedPlan === 'season' ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' : 'bg-secondary/10 border-border/40 hover:bg-secondary/20'}`}
-                                    >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h4 className="font-bold text-lg">Season Commitment</h4>
-                                                <p className="text-xs text-muted-foreground">24 Lessons / 6 Months. Lock in your spots.</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xl font-black text-primary">$2,400.00</p>
-                                                <p className="text-[8px] text-muted-foreground uppercase font-black">Every 6 Months</p>
+                                                <p className="text-2xl font-black text-white tracking-tight">$960</p>
+                                                <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Total</p>
                                             </div>
                                         </div>
                                     </button>
                                 </div>
 
-                                <Button
-                                    onClick={async () => {
-                                        setIsLoading(true);
-                                        const res = await createEmbeddedCheckoutSession(submissionId!, selectedPlan, isTestMode);
-                                        if (res.error) {
-                                            setError(res.error);
-                                            setIsLoading(false);
-                                        } else {
-                                            setClientSecret(res.clientSecret!);
-                                            setStep('payment-confirm');
-                                            setIsLoading(false);
-                                        }
-                                    }}
-                                    className="w-full py-7 rounded-2xl mt-4 text-md shadow-xl shadow-primary/10 group"
-                                    loading={isLoading}
-                                >
-                                    Review & Secure <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-                                </Button>
-                                <button 
-                                    onClick={() => setStep('waiver')}
-                                    className="w-full text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors py-2"
-                                >
-                                    Back to Waiver
-                                </button>
+                                <div className="space-y-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            setIsLoading(true);
+                                            setError(null);
+                                            const res = await createEmbeddedCheckoutSession(submissionId!, selectedPlan, isTestMode);
+                                            if (res.error) {
+                                                setError(res.error);
+                                                setIsLoading(false);
+                                            } else {
+                                                setClientSecret(res.clientSecret!);
+                                                setStep('payment-confirm');
+                                                setIsLoading(false);
+                                            }
+                                        }}
+                                        disabled={isLoading}
+                                        className="w-full py-4 rounded-xl text-sm font-bold uppercase tracking-wider bg-white text-black hover:bg-zinc-200 active:scale-[0.98] transition-all disabled:opacity-40 shadow-md flex items-center justify-center gap-2 group"
+                                    >
+                                        {isLoading ? (
+                                            <Loader2 size={16} className="animate-spin text-black" />
+                                        ) : (
+                                            <>
+                                                Continue to Payment <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                                            </>
+                                        )}
+                                    </button>
+
+                                    <button 
+                                        type="button"
+                                        onClick={() => setStep('waiver')}
+                                        className="w-full text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500 hover:text-zinc-300 transition-colors py-2 text-center"
+                                    >
+                                        Back to Waivers
+                                    </button>
+                                </div>
+
+                                {error && (
+                                    <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 text-xs flex items-center justify-center gap-2 p-3 rounded-xl font-medium">
+                                        <AlertCircle size={14} /> {error}
+                                    </div>
+                                )}
                             </motion.div>
                         )}
 
-                        {/* STEP 4: PAYMENT CONFIRM */}
+                        {/* STEP 5: PAYMENT */}
                         {step === 'payment-confirm' && (
                             <motion.div
                                 key="payment-confirm"
-                                initial={{ opacity: 0, scale: 0.95 }}
+                                initial={{ opacity: 0, scale: 0.98 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className="space-y-8 text-center"
+                                exit={{ opacity: 0, scale: 0.98 }}
+                                className="space-y-6 text-center"
                             >
-                                <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-2 border border-primary/10">
-                                    <CheckCircle2 size={40} className="text-primary opacity-80" />
-                                </div>
-                                
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-semibold tracking-tight">Secure Final Access</h2>
-                                    <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
-                                        You are about to secure private training access for <strong>{athleteName}</strong>.
+                                    <h2 className="text-2xl font-semibold tracking-tight text-white">Payment</h2>
+                                    <p className="text-zinc-400 text-sm leading-relaxed max-w-xs mx-auto">
+                                        Review your selection and enter your card details to secure your private lessons.
                                     </p>
                                 </div>
 
-                                <div className="bg-secondary/30 border border-border/40 rounded-3xl p-6 space-y-4 mb-2">
-                                    <div className="flex justify-between items-center px-2">
-                                        <div className="text-left">
-                                            <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Training Fee</span>
-                                            <p className="text-[8px] text-primary/60 font-black uppercase tracking-[0.2em]">
-                                                {selectedPlan === 'monthly' ? 'Every Month' : 
-                                                 selectedPlan === 'season' ? 'Every 6 Months' : 'Every 4 Months'}
-                                            </p>
+                                {/* Order Summary Box */}
+                                <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 text-left space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <h4 className="text-white font-bold text-base">{currentPlan.name}</h4>
+                                            <p className="text-xs text-zinc-400 font-medium">{currentPlan.subtext}</p>
                                         </div>
-                                        <span className="text-sm font-bold">
-                                            {selectedPlan === 'monthly' ? '$400.00' : 
-                                             selectedPlan === 'season' ? '$2,400.00' : '$1,600.00'}
-                                        </span>
+                                        <div className="text-right">
+                                            <span className="text-xl font-black text-white tracking-tight">${currentPlan.amount}</span>
+                                            <p className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">One-Time</p>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between items-center px-2 pt-1">
-                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Processing Fee</span>
-                                        <span className="text-sm font-bold text-muted-foreground/80">
-                                            {selectedPlan === 'monthly' ? '$12.25' : 
-                                             selectedPlan === 'season' ? '$72.10' : '$48.10'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center px-2 border-t border-border/30 pt-4 mt-2">
-                                        <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/60">Final Total</span>
-                                        <span className="text-2xl font-black text-primary">
-                                            {selectedPlan === 'monthly' ? '$412.25' : 
-                                             selectedPlan === 'season' ? '$2,472.10' : '$1,648.10'}
-                                        </span>
+                                    <div className="border-t border-zinc-800/80 pt-3 flex justify-between items-center text-xs">
+                                        <span className="text-zinc-400 uppercase tracking-wider font-bold text-[10px]">Total Due Today</span>
+                                        <span className="text-white font-black text-base">${currentPlan.amount}.00</span>
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-4">RECURRING {selectedPlan === 'monthly' ? 'MONTHLY' : selectedPlan === 'season' ? '6-MONTH' : '4-MONTH'} PAYMENT</p>
-                                <p className="text-[9px] text-muted-foreground italic mb-6">Fee covers Stripe processing and secure platform handling.</p>
-                                
+
                                 {clientSecret && (
-                                    <div className="mt-8 bg-white/5 rounded-3xl p-4 min-h-[400px]">
+                                    <div className="mt-4 bg-[#18181b] border border-zinc-800 rounded-2xl p-4 min-h-[360px]">
                                         <EmbeddedCheckoutProvider
                                             stripe={stripePromise}
                                             options={{ clientSecret }}
@@ -1054,23 +993,29 @@ function PrivateTrainingAccessContent() {
                                 )}
 
                                 {!clientSecret && !isLoading && (
-                                    <Button 
-                                        onClick={(e) => handleWaiverSubmit(e as any)}
-                                        className="w-full py-6 rounded-2xl"
+                                    <button 
+                                        onClick={async () => {
+                                            setIsLoading(true);
+                                            const res = await createEmbeddedCheckoutSession(submissionId!, selectedPlan, isTestMode);
+                                            if (res.error) setError(res.error);
+                                            else setClientSecret(res.clientSecret!);
+                                            setIsLoading(false);
+                                        }}
+                                        className="w-full py-4 rounded-xl text-sm font-bold uppercase tracking-wider bg-white text-black hover:bg-zinc-200 transition-all shadow-md"
                                     >
                                         Re-initialize Checkout
-                                    </Button>
+                                    </button>
                                 )}
                                 
-                                <div className="flex flex-col gap-2">
+                                <div className="flex flex-col gap-2 pt-2">
                                     <button 
                                         onClick={() => {
                                             setStep('plan-selection');
                                             setClientSecret(null);
                                         }}
-                                        className="text-[10px] uppercase tracking-[0.2em] font-black text-primary/60 hover:text-primary transition-colors py-4 flex items-center justify-center gap-2 group"
+                                        className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-400 hover:text-white transition-colors py-2 flex items-center justify-center gap-1.5 group"
                                     >
-                                        <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" /> Change Plan
+                                        <ArrowLeft size={12} className="group-hover:-translate-x-0.5 transition-transform" /> Change Package
                                     </button>
                                     
                                     <button 
@@ -1078,14 +1023,14 @@ function PrivateTrainingAccessContent() {
                                             setIsTestMode(!isTestMode);
                                             setClientSecret(null); 
                                         }}
-                                        className="text-[8px] uppercase tracking-[0.3em] font-black text-muted-foreground/20 hover:text-primary/40 transition-colors py-2"
+                                        className="text-[8px] uppercase tracking-[0.3em] font-bold text-zinc-600 hover:text-zinc-400 transition-colors py-1"
                                     >
                                         Mode: {isTestMode ? 'TEST' : 'LIVE'}
                                     </button>
                                 </div>
 
                                 {error && (
-                                    <div className="text-red-500 bg-red-500/5 border border-red-500/10 text-xs flex items-center justify-center gap-2 p-3 rounded-xl animate-pulse">
+                                    <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 text-xs flex items-center justify-center gap-2 p-3 rounded-xl font-medium">
                                         <AlertCircle size={14} /> {error}
                                     </div>
                                 )}
@@ -1094,7 +1039,7 @@ function PrivateTrainingAccessContent() {
                     </AnimatePresence>
                 </div>
                 
-                <p className="mt-8 text-center text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground/30">
+                <p className="mt-8 text-center text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-600">
                     The Goalie Brand © 2026 • Private Enrollment
                 </p>
             </div>

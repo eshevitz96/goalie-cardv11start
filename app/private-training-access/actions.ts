@@ -26,6 +26,13 @@ export async function validateAccessCode(code: string) {
 /**
  * Creates a new submission record (initial 'invited' state)
  * and returns the record ID.
+ * 
+ * SECURITY & PROFILE LINKING RULES:
+ * - May ONLY use the signed-in user's authenticated auth id and verified email.
+ * - NEVER matches by name, a typed email, or roster lookup.
+ * - NEVER attaches an existing goalie record that belongs to another account.
+ * - If signed in and the user already has a Goalie Card explicitly linked to their auth ID, links that card.
+ * - New signups / unlinked users get a fresh, empty profile.
  */
 export async function createPrivateSubmission(data: {
     athleteName: string;
@@ -36,17 +43,51 @@ export async function createPrivateSubmission(data: {
 }) {
     try {
         const supabaseAdmin = getSupabaseAdmin();
+        const serverSupabase = await createServerSupabase();
         
-        // 1. Check if a card already exists (check primary email, athlete email, and guardian email)
-        const { data: existingRoster, error: rosterCheckError } = await supabaseAdmin
-            .from('roster_uploads')
-            .select('id')
-            .or(`email.ilike.${data.email.trim()},athlete_email.ilike.${data.email.trim()},guardian_email.ilike.${data.email.trim()}`)
-            .maybeSingle();
-        
-        if (rosterCheckError) {
-            console.error("[ROSTER_CHECK_ERROR]", rosterCheckError);
-            return { error: "Roster scan failed. Please check your DB connection." };
+        // 1. Check for authenticated session (strictly signed-in user)
+        const { data: { user } } = await serverSupabase.auth.getUser();
+
+        let rosterId: string | null = null;
+
+        // If signed in, only attach a card explicitly linked to THIS user's auth ID.
+        // Never match by typed email, name, or arbitrary roster lookup.
+        if (user?.id) {
+            const { data: existingOwnCard, error: cardError } = await supabaseAdmin
+                .from('roster_uploads')
+                .select('id')
+                .eq('linked_user_id', user.id)
+                .maybeSingle();
+
+            if (!cardError && existingOwnCard) {
+                rosterId = existingOwnCard.id;
+            }
+        }
+
+        // New signup or user without an existing card: gets a fresh, empty profile.
+        // Never attaches to another user's existing record.
+        if (!rosterId) {
+            const uniqueId = 'TGB-' + Math.floor(1000 + Math.random() * 9000);
+            const { data: newRoster, error: rosterCreateError } = await supabaseAdmin
+                .from('roster_uploads')
+                .insert({
+                    goalie_name: data.athleteName,
+                    parent_name: data.parentName || null,
+                    email: user?.email || data.email.trim(), // Verified email if signed in, otherwise typed email for the new record
+                    athlete_phone: data.phone,
+                    assigned_unique_id: uniqueId,
+                    sport: 'Lacrosse',
+                    is_claimed: !!user?.id,
+                    linked_user_id: user?.id || null
+                })
+                .select('id')
+                .maybeSingle();
+
+            if (rosterCreateError) {
+                console.error("[ROSTER_CREATE_ERROR]", rosterCreateError);
+            } else if (newRoster) {
+                rosterId = newRoster.id;
+            }
         }
 
         const { data: submission, error: insertError } = await supabaseAdmin
@@ -54,11 +95,11 @@ export async function createPrivateSubmission(data: {
             .insert({
                 athlete_name: data.athleteName,
                 parent_name: data.parentName,
-                email: data.email,
+                email: user?.email || data.email,
                 phone: data.phone,
                 access_code: data.accessCode,
                 status: 'invited',
-                roster_id: existingRoster?.id // Link if exists
+                roster_id: rosterId
             })
             .select()
             .single();
@@ -70,7 +111,7 @@ export async function createPrivateSubmission(data: {
         
         return { 
             submissionId: submission.id, 
-            hasExistingCard: !!existingRoster 
+            hasExistingCard: !!rosterId 
         };
     } catch (err: any) {
         console.error("[ACTION_EXCEPTION]", err);
@@ -78,60 +119,6 @@ export async function createPrivateSubmission(data: {
     }
 }
 
-/**
- * Creates a linked Goalie Card for the submission.
- */
-export async function createConnectedCard(submissionId: string) {
-    try {
-        const supabaseAdmin = getSupabaseAdmin();
-        
-        // 1. Get submission details
-        const { data: sub, error: subError } = await supabaseAdmin
-            .from('private_training_submissions')
-            .select('*')
-            .eq('id', submissionId)
-            .single();
-        
-        if (subError || !sub) return { error: "Submission not found for card connection." };
-        
-        // 2. Create roster entry
-        const uniqueId = 'TGB-' + Math.floor(1000 + Math.random() * 9000);
-        const { data: roster, error: rosterError } = await supabaseAdmin
-            .from('roster_uploads')
-            .insert({
-                goalie_name: sub.athlete_name,
-                parent_name: sub.parent_name,
-                email: sub.email.trim(),
-                athlete_phone: sub.phone,
-                assigned_unique_id: uniqueId,
-                sport: 'Lacrosse',
-                is_claimed: true
-            })
-            .select()
-            .single();
-        
-        if (rosterError) {
-            console.error("[ROSTER_CREATE_ERROR]", rosterError);
-            return { error: `Registry Error: ${rosterError.message}` };
-        }
-        
-        // 3. Link submission to the new roster entry
-        const { error: linkError } = await supabaseAdmin
-            .from('private_training_submissions')
-            .update({ roster_id: roster.id })
-            .eq('id', submissionId);
-
-        if (linkError) {
-            console.error("[LINK_ERROR]", linkError);
-            // Non-blocking for the flow, but good to know
-        }
-        
-        return { success: true, rosterId: roster.id };
-    } catch (err: any) {
-        console.error("[CARD_CONNECT_EXCEPTION]", err);
-        return { error: `Internal Server Error: ${err.message}` };
-    }
-}
 
 /**
  * Updates the waiver status of a submission.
@@ -144,6 +131,10 @@ export async function updateWaiverStatus(submissionId: string, confirmed: boolea
             waiver_completed: confirmed,
             status: 'waiver pending'
         };
+
+        if (signature) {
+            updatePayload.digital_signature = signature;
+        }
 
         const { error } = await supabaseAdmin
             .from('private_training_submissions')
@@ -163,7 +154,7 @@ export async function updateWaiverStatus(submissionId: string, confirmed: boolea
 }
 
 /**
- * Creates a Stripe Checkout Session for the private training.
+ * Creates a Stripe Checkout Session for the private training one-time package.
  */
 export async function createEmbeddedCheckoutSession(submissionId: string, planId: string, isTestMode: boolean) {
     try {
@@ -184,87 +175,55 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
             return { error: "Waiver must be completed before payment." };
         }
 
-        const isMonthly = planId === 'monthly';
-        const isSeason = planId === 'season';
-        const isStandard = planId === 'standard';
-        
-        const origin = "https://goaliecard.app";
-        
-        // Price logic based on plan
-        let baseAmount = 160000;
-        let planName = 'Standard Block (16 Lessons)';
-        let intervalCount = 4;
-        
-        if (planId === 'season') {
-            baseAmount = 240000;
-            planName = 'Season Commitment (24 Lessons)';
-            intervalCount = 6;
-        } else if (planId === 'monthly') {
-            baseAmount = 40000;
-            planName = 'Legacy Member (Monthly Sub)';
-            intervalCount = 1;
-        } else if (planId === 'standard') {
-            baseAmount = 160000;
-            planName = 'Standard Block (16 Lessons)';
-            intervalCount = 4;
-        } else {
-            return { error: `Invalid plan selected: ${planId}` };
-        }
+        const planKey = (planId === 'block8' || planId === '8-lessons') ? 'block8' : 'block4';
+        const plan = PRIVATE_ACCESS_CONFIG.plans[planKey];
 
-        // Calculate feeAmount to ensure the payout matches baseAmount exactly.
-        // Formula: Total = (Base + 30) / (1 - 0.053)
-        const totalTargetCents = Math.ceil((baseAmount + 30) / 0.947);
-        let feeAmount = totalTargetCents - baseAmount;
+        const headersList = await headers();
+        const host = headersList.get('host') || 'goaliecard.app';
+        const proto = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+        const origin = `${proto}://${host}`;
 
-        if (isTestMode) {
-            baseAmount = 100;
-            feeAmount = 34;
-        }
-
-        // 2. Create Embedded Session
+        // 2. Line Items based on mode
         const stripe = getStripe();
-        const session = await stripe.checkout.sessions.create({
-            ui_mode: 'embedded',
-            mode: 'subscription', // Recurring subscriptions
-            line_items: [
+        const lineItems = isTestMode
+            ? [
                 {
                     price_data: {
                         currency: 'usd',
                         product_data: {
-                            name: planName,
-                            description: isMonthly ? 'Recurring monthly training access.' : 
-                                         isSeason ? '24 lesson blocks every 6 months.' : '16 lesson blocks every 4 months.',
+                            name: plan.name,
+                            description: `${plan.name} (${plan.subtext}) - One-time payment (Test Mode)`,
                         },
-                        unit_amount: baseAmount,
-                        recurring: { interval: 'month', interval_count: intervalCount },
-                    },
-                    quantity: 1,
-                },
-                {
-                    price_data: {
-                        currency: 'usd',
-                        product_data: {
-                            name: 'Processing & Admin Fee',
-                            description: 'Standard 2.9% + $0.30 transaction fee',
-                        },
-                        unit_amount: feeAmount,
-                        recurring: { interval: 'month', interval_count: intervalCount },
+                        unit_amount: 100, // $1.00 test amount
                     },
                     quantity: 1,
                 }
-            ],
+            ]
+            : [
+                {
+                    price: plan.priceId,
+                    quantity: 1,
+                }
+            ];
+
+        // 3. Create Embedded Session (one-time payment mode)
+        const session = await stripe.checkout.sessions.create({
+            ui_mode: 'embedded',
+            mode: 'payment', // One-time payment
+            line_items: lineItems,
             return_url: `${origin}/private-training-access/success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submissionId}`,
             metadata: {
                 submissionId: submission.id,
                 athleteName: submission.athlete_name,
                 email: submission.email,
                 productType: 'private training access',
-                planSelected: planId,
+                planSelected: plan.id,
+                packageName: plan.name,
                 isTestMode: String(isTestMode)
             }
         } as any);
         
-        // 3. Update submission with session ID
+        // 4. Update submission with session ID
         await supabaseAdmin
             .from('private_training_submissions')
             .update({
