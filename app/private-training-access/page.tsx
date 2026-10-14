@@ -919,26 +919,21 @@ function PrivateTrainingAccessContent() {
                                             onClick={() => setSelectedPlan(plan.id)}
                                             className={`w-full text-left p-6 rounded-2xl border transition-all relative overflow-hidden group ${
                                                 selectedPlan === plan.id 
-                                                    ? 'bg-white/[0.04] border-white/60 shadow-md ring-1 ring-white/10' 
+                                                    ? 'bg-white/[0.06] border-white/80 shadow-lg ring-1 ring-white/20' 
                                                     : 'bg-zinc-900/40 border-zinc-800/80 hover:bg-zinc-900/70 hover:border-zinc-700'
                                             }`}
                                         >
-                                            <div className="flex justify-between items-center">
-                                                <div className="space-y-1">
+                                            <div className="flex justify-between items-center gap-4">
+                                                <div className="space-y-1 min-w-0">
                                                     <div className="flex items-center gap-2">
-                                                        <h4 className="font-bold text-lg text-white">{plan.name}</h4>
-                                                        {plan.badge && (
-                                                            <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/20">
-                                                                {plan.badge}
-                                                            </span>
-                                                        )}
-                                                        <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                                                        <h4 className="font-bold text-lg text-white whitespace-nowrap">{plan.name}</h4>
+                                                        <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/60 shrink-0">
                                                             {plan.isRecurring ? 'Membership' : 'One-Time'}
                                                         </span>
                                                     </div>
                                                     <p className="text-xs text-zinc-400 font-medium">{plan.subtext}</p>
                                                 </div>
-                                                <div className="text-right">
+                                                <div className="text-right shrink-0">
                                                     <p className="text-2xl font-black text-white tracking-tight">{plan.amountFormatted}</p>
                                                     <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">{plan.billingText}</p>
                                                 </div>

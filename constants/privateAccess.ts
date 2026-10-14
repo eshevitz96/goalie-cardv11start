@@ -69,17 +69,16 @@ export const PRIVATE_ACCESS_CONFIG = {
     newClientPlans: {
         'monthly-access': {
             id: 'monthly-access',
-            name: 'Private Training Access',
+            name: 'Private Training',
             amount: 500,
             amountFormatted: '$500',
             billingText: '/month',
-            subtext: '4 lessons a month. Unused lessons roll over one month. Cancel anytime before your next renewal.',
+            subtext: '4 lessons a month. Unused roll over.',
             priceId: process.env.STRIPE_PRICE_MONTHLY_ACCESS || 'price_1UQU8EGj0SdRYIlhrEywE2B5',
             interval: 'month' as const,
             intervalCount: 1,
             isRecurring: true,
             isDefault: true,
-            badge: 'Recommended',
         },
         'block8': {
             id: 'block8',
