@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
     Loader2, 
@@ -521,6 +521,28 @@ function PrivateTrainingAccessContent() {
         isRecurring: false
     };
 
+    const billingDetails = useMemo(() => {
+        if (!currentPlan) return null;
+        if (accessPath === 'new-clients') {
+            const base = currentPlan.amount; // 500 or 960
+            // Formula: Total = (base + 0.30) / 0.971
+            const total = currentPlan.id === 'monthly-access' ? 515.25 : 988.99;
+            const fee = Number((total - base).toFixed(2));
+            return {
+                hasFeeBreakdown: true,
+                baseFormatted: `$${base.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                feeFormatted: `$${fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                totalFormatted: `$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            };
+        }
+        return {
+            hasFeeBreakdown: false,
+            baseFormatted: currentPlan.amountFormatted || `$${currentPlan.amount}.00`,
+            feeFormatted: null,
+            totalFormatted: currentPlan.amountFormatted || `$${currentPlan.amount}.00`,
+        };
+    }, [currentPlan, accessPath]);
+
     return (
         <main className="min-h-screen bg-[#09090b] text-[#f4f4f5] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-white/20 selection:text-white">
             {/* Subtle Top Accent */}
@@ -1005,25 +1027,58 @@ function PrivateTrainingAccessContent() {
 
                                 {/* Order Summary Box */}
                                 <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 text-left space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <h4 className="text-white font-bold text-base">{currentPlan.name}</h4>
-                                            <p className="text-xs text-zinc-400 font-medium">{currentPlan.subtext}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xl font-black text-white tracking-tight">{currentPlan.amountFormatted || `$${currentPlan.amount}`}</span>
-                                            <p className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">{currentPlan.isRecurring ? 'Membership' : 'One-Time'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="border-t border-zinc-800/80 pt-3 flex justify-between items-center text-xs">
-                                        <span className="text-zinc-400 uppercase tracking-wider font-bold text-[10px]">Total Due Today</span>
-                                        <span className="text-white font-black text-base">{currentPlan.amountFormatted || `$${currentPlan.amount}`}</span>
-                                    </div>
-                                    <div className="pt-2 border-t border-zinc-800/40 flex justify-between items-center text-[10px] text-zinc-400 font-medium">
-                                        <span>Card processing & transaction fees</span>
-                                        <span className="text-zinc-300 font-semibold uppercase tracking-wider">Included</span>
-                                    </div>
+                                    {billingDetails?.hasFeeBreakdown ? (
+                                        <>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <div className="text-left">
+                                                    <span className="text-[10px] uppercase tracking-widest font-black text-zinc-400">Training Fee</span>
+                                                    <p className="text-xs font-semibold text-white">{currentPlan.name}</p>
+                                                </div>
+                                                <span className="text-sm font-bold text-white">{billingDetails.baseFormatted}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs pt-2 border-t border-zinc-800/40">
+                                                <div className="text-left">
+                                                    <span className="text-[10px] uppercase tracking-widest font-black text-zinc-400">Processing Fee</span>
+                                                    <p className="text-[10px] text-zinc-500 font-medium">Standard 2.9% + $0.30</p>
+                                                </div>
+                                                <span className="text-sm font-bold text-zinc-400">{billingDetails.feeFormatted}</span>
+                                            </div>
+                                            <div className="border-t border-zinc-800/80 pt-3 flex justify-between items-center">
+                                                <div>
+                                                    <span className="text-zinc-400 uppercase tracking-widest font-black text-[10px]">Total Due Today</span>
+                                                    <p className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">
+                                                        {currentPlan.isRecurring ? `Recurring ${currentPlan.billingText}` : 'One-time payment'}
+                                                    </p>
+                                                </div>
+                                                <span className="text-white font-black text-xl">{billingDetails.totalFormatted}</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <h4 className="text-white font-bold text-base">{currentPlan.name}</h4>
+                                                    <p className="text-xs text-zinc-400 font-medium">{currentPlan.subtext}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-xl font-black text-white tracking-tight">{currentPlan.amountFormatted || `$${currentPlan.amount}`}</span>
+                                                    <p className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">{currentPlan.isRecurring ? 'Membership' : 'One-Time'}</p>
+                                                </div>
+                                            </div>
+                                            <div className="border-t border-zinc-800/80 pt-3 flex justify-between items-center text-xs">
+                                                <span className="text-zinc-400 uppercase tracking-wider font-bold text-[10px]">Total Due Today</span>
+                                                <span className="text-white font-black text-base">{currentPlan.amountFormatted || `$${currentPlan.amount}`}.00</span>
+                                            </div>
+                                            <div className="pt-2 border-t border-zinc-800/40 flex justify-between items-center text-[10px] text-zinc-400 font-medium">
+                                                <span>Card processing & transaction fees</span>
+                                                <span className="text-zinc-300 font-semibold uppercase tracking-wider">Included</span>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
+                                {billingDetails?.hasFeeBreakdown && (
+                                    <p className="text-[10px] text-zinc-500 italic text-center">Fee covers Stripe processing and secure platform handling.</p>
+                                )}
 
                                 {clientSecret && (
                                     <div className="mt-4 bg-[#18181b] border border-zinc-800 rounded-2xl p-4 min-h-[360px]">
