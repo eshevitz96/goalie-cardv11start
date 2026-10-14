@@ -26,9 +26,14 @@ import {
     validateAccessCode, 
     createPrivateSubmission, 
     updateWaiverStatus, 
-    createEmbeddedCheckoutSession 
+    createEmbeddedCheckoutSession,
+    resumeSubmission
 } from "./actions";
-import { PRIVATE_ACCESS_CONFIG } from "@/constants/privateAccess";
+import { 
+    PRIVATE_ACCESS_CONFIG, 
+    AccessPath, 
+    PlanDisplay 
+} from "@/constants/privateAccess";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   EmbeddedCheckoutProvider,
@@ -38,7 +43,6 @@ import {
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 type FlowStep = 'access-code' | 'info' | 'waiver' | 'plan-selection' | 'payment-confirm';
-type PlanOption = 'block4' | 'block8';
 
 export default function PrivateTrainingAccessPage() {
     return (
@@ -63,12 +67,15 @@ function PrivateTrainingAccessContent() {
     
     // Data State
     const [accessCode, setAccessCode] = useState("");
+    const [accessPath, setAccessPath] = useState<AccessPath | null>(null);
+    const [availablePlans, setAvailablePlans] = useState<PlanDisplay[]>([]);
+    const [selectedPlan, setSelectedPlan] = useState<string>('');
     const [athleteName, setAthleteName] = useState("");
     const [parentName, setParentName] = useState("");
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
+    const [sport, setSport] = useState<string>("Lacrosse");
     const [submissionId, setSubmissionId] = useState<string | null>(null);
-    const [selectedPlan, setSelectedPlan] = useState<PlanOption>('block4');
     
     // Waiver State
     const [waiverChecks, setWaiverChecks] = useState({
@@ -87,11 +94,31 @@ function PrivateTrainingAccessContent() {
     // Mode State
     const [isTestMode, setIsTestMode] = useState(PRIVATE_ACCESS_CONFIG.stripe.isTestMode);
 
-    // Initial check for submission ID from URL (e.g. if returning or refreshing)
+    // Initial check for submission ID from URL or sessionStorage (resuming pending submission)
     useEffect(() => {
-        const id = searchParams.get('submission_id');
+        const id = searchParams.get('submission_id') || (typeof window !== 'undefined' ? sessionStorage.getItem('tgb_private_submission_id') : null);
         if (id) {
             setSubmissionId(id);
+            resumeSubmission(id).then(res => {
+                if (res.success && res.submission) {
+                    setAccessCode(res.submission.accessCode);
+                    setAthleteName(res.submission.athleteName);
+                    setParentName(res.submission.parentName);
+                    setEmail(res.submission.email);
+                    setPhone(res.submission.phone);
+                    if (res.submission.digitalSignature) {
+                        setSignature(res.submission.digitalSignature);
+                        setWaiverChecks({ main: true, payment: true, code: true, liability: true });
+                    }
+                    if (res.path && res.plans && res.plans.length > 0) {
+                        setAccessPath(res.path);
+                        setAvailablePlans(res.plans);
+                        const defaultPlan = res.plans.find((p: any) => p.isDefault) || res.plans[0];
+                        setSelectedPlan(defaultPlan.id);
+                    }
+                    setStep(res.step);
+                }
+            });
         }
     }, [searchParams]);
 
@@ -102,8 +129,12 @@ function PrivateTrainingAccessContent() {
         setError(null);
         
         try {
-            const { isValid } = await validateAccessCode(accessCode);
-            if (isValid) {
+            const res = await validateAccessCode(accessCode);
+            if (res.isValid && res.path && res.plans.length > 0) {
+                setAccessPath(res.path);
+                setAvailablePlans(res.plans);
+                const defaultPlan = res.plans.find((p: any) => p.isDefault) || res.plans[0];
+                setSelectedPlan(defaultPlan.id);
                 setStep('info');
             } else {
                 setError("Invalid access code. Please check your invitation.");
@@ -126,7 +157,9 @@ function PrivateTrainingAccessContent() {
                 parentName,
                 email,
                 phone,
-                accessCode
+                accessCode,
+                sport,
+                submissionId: submissionId || undefined
             });
             
             if ('error' in res && res.error) {
@@ -134,9 +167,20 @@ function PrivateTrainingAccessContent() {
                 return;
             }
             
-            const { submissionId: id } = res as any;
+            const { submissionId: id, path, plans } = res as any;
             setSubmissionId(id);
-            // Go straight to waivers — connect step is removed
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem('tgb_private_submission_id', id);
+            }
+            if (path && plans && plans.length > 0) {
+                setAccessPath(path);
+                setAvailablePlans(plans);
+                if (!selectedPlan || !plans.some((p: any) => p.id === selectedPlan)) {
+                    const defaultPlan = plans.find((p: any) => p.isDefault) || plans[0];
+                    setSelectedPlan(defaultPlan.id);
+                }
+            }
+            // Go straight to waivers
             setStep('waiver');
         } catch (err: any) {
             setError(err.message || "Failed to save information.");
@@ -467,7 +511,15 @@ function PrivateTrainingAccessContent() {
         }, 500);
     };
 
-    const currentPlan = PRIVATE_ACCESS_CONFIG.plans[selectedPlan];
+    const currentPlan = availablePlans.find(p => p.id === selectedPlan) || availablePlans[0] || {
+        id: selectedPlan,
+        name: 'Selected Package',
+        amount: 0,
+        amountFormatted: '$0',
+        billingText: '',
+        subtext: '',
+        isRecurring: false
+    };
 
     return (
         <main className="min-h-screen bg-[#09090b] text-[#f4f4f5] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-white/20 selection:text-white">
@@ -479,6 +531,7 @@ function PrivateTrainingAccessContent() {
                 <div className="text-center mb-8 flex flex-col items-center">
                     <BrandLogo
                         size={40}
+                        variant="light"
                         textClassName="text-3xl md:text-4xl font-medium tracking-tight mb-2 text-white"
                     />
                     <div className="flex items-center gap-2 text-zinc-400 text-xs uppercase tracking-[0.2em] font-semibold">
@@ -635,6 +688,18 @@ function PrivateTrainingAccessContent() {
                                                 placeholder="(555) 000-0000"
                                             />
                                         </div>
+                                    </div>
+
+                                    <div className="space-y-1.5 md:col-span-2">
+                                        <label className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 ml-1">Sport</label>
+                                        <select
+                                            value={sport}
+                                            onChange={(e) => setSport(e.target.value)}
+                                            className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-zinc-500 transition-all text-sm font-medium"
+                                        >
+                                            <option value="Lacrosse">Lacrosse</option>
+                                            <option value="Hockey">Hockey</option>
+                                        </select>
                                     </div>
 
                                     {error && (
@@ -847,59 +912,39 @@ function PrivateTrainingAccessContent() {
                                 </div>
 
                                 <div className="space-y-3.5">
-                                    {/* Option 1: 4 Lessons */}
-                                    <button 
-                                        type="button"
-                                        onClick={() => setSelectedPlan('block4')}
-                                        className={`w-full text-left p-6 rounded-2xl border transition-all relative overflow-hidden group ${
-                                            selectedPlan === 'block4' 
-                                                ? 'bg-white/[0.04] border-white/60 shadow-md ring-1 ring-white/10' 
-                                                : 'bg-zinc-900/40 border-zinc-800/80 hover:bg-zinc-900/70 hover:border-zinc-700'
-                                        }`}
-                                    >
-                                        <div className="flex justify-between items-center">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className="font-bold text-lg text-white">4 Lessons</h4>
-                                                    <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700/60">
-                                                        One-Time
-                                                    </span>
+                                    {availablePlans.map((plan) => (
+                                        <button 
+                                            key={plan.id}
+                                            type="button"
+                                            onClick={() => setSelectedPlan(plan.id)}
+                                            className={`w-full text-left p-6 rounded-2xl border transition-all relative overflow-hidden group ${
+                                                selectedPlan === plan.id 
+                                                    ? 'bg-white/[0.04] border-white/60 shadow-md ring-1 ring-white/10' 
+                                                    : 'bg-zinc-900/40 border-zinc-800/80 hover:bg-zinc-900/70 hover:border-zinc-700'
+                                            }`}
+                                        >
+                                            <div className="flex justify-between items-center">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-bold text-lg text-white">{plan.name}</h4>
+                                                        {plan.badge && (
+                                                            <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/20">
+                                                                {plan.badge}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                                                            {plan.isRecurring ? 'Membership' : 'One-Time'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-zinc-400 font-medium">{plan.subtext}</p>
                                                 </div>
-                                                <p className="text-xs text-zinc-400 font-medium">$125 per lesson.</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-2xl font-black text-white tracking-tight">$500</p>
-                                                <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Total</p>
-                                            </div>
-                                        </div>
-                                    </button>
-
-                                    {/* Option 2: 8 Lessons */}
-                                    <button 
-                                        type="button"
-                                        onClick={() => setSelectedPlan('block8')}
-                                        className={`w-full text-left p-6 rounded-2xl border transition-all relative overflow-hidden group ${
-                                            selectedPlan === 'block8' 
-                                                ? 'bg-white/[0.04] border-white/60 shadow-md ring-1 ring-white/10' 
-                                                : 'bg-zinc-900/40 border-zinc-800/80 hover:bg-zinc-900/70 hover:border-zinc-700'
-                                        }`}
-                                    >
-                                        <div className="flex justify-between items-center">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className="font-bold text-lg text-white">8 Lessons</h4>
-                                                    <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700/60">
-                                                        One-Time
-                                                    </span>
+                                                <div className="text-right">
+                                                    <p className="text-2xl font-black text-white tracking-tight">{plan.amountFormatted}</p>
+                                                    <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">{plan.billingText}</p>
                                                 </div>
-                                                <p className="text-xs text-zinc-400 font-medium">$120 per lesson.</p>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-2xl font-black text-white tracking-tight">$960</p>
-                                                <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Total</p>
-                                            </div>
-                                        </div>
-                                    </button>
+                                        </button>
+                                    ))}
                                 </div>
 
                                 <div className="space-y-3 pt-2">
@@ -971,13 +1016,13 @@ function PrivateTrainingAccessContent() {
                                             <p className="text-xs text-zinc-400 font-medium">{currentPlan.subtext}</p>
                                         </div>
                                         <div className="text-right">
-                                            <span className="text-xl font-black text-white tracking-tight">${currentPlan.amount}</span>
-                                            <p className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">One-Time</p>
+                                            <span className="text-xl font-black text-white tracking-tight">{currentPlan.amountFormatted || `$${currentPlan.amount}`}</span>
+                                            <p className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">{currentPlan.isRecurring ? 'Membership' : 'One-Time'}</p>
                                         </div>
                                     </div>
                                     <div className="border-t border-zinc-800/80 pt-3 flex justify-between items-center text-xs">
                                         <span className="text-zinc-400 uppercase tracking-wider font-bold text-[10px]">Total Due Today</span>
-                                        <span className="text-white font-black text-base">${currentPlan.amount}.00</span>
+                                        <span className="text-white font-black text-base">{currentPlan.amountFormatted || `$${currentPlan.amount}`}.00</span>
                                     </div>
                                 </div>
 

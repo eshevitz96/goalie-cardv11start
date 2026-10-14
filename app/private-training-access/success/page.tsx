@@ -151,6 +151,7 @@ function PrivateTrainingSuccessContent() {
                 <div className="text-center mb-8 flex flex-col items-center">
                     <BrandLogo
                         size={40}
+                        variant="light"
                         textClassName="text-3xl md:text-4xl font-medium tracking-tight mb-2 text-white"
                     />
                     <div className="flex items-center gap-2 text-zinc-400 text-xs uppercase tracking-[0.2em] font-semibold">

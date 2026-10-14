@@ -3,7 +3,12 @@
 import { createClient as createServerSupabase } from "@/utils/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe";
-import { PRIVATE_ACCESS_CONFIG } from "@/constants/privateAccess";
+import { 
+    PRIVATE_ACCESS_CONFIG, 
+    resolveAccessPath, 
+    AccessPath, 
+    PlanDisplay 
+} from "@/constants/privateAccess";
 import { headers } from "next/headers";
 
 function getSupabaseAdmin() {
@@ -16,16 +21,106 @@ function getSupabaseAdmin() {
 }
 
 /**
- * Validates the access code.
+ * Validates the access code and returns the server-determined path and plans.
+ * Never exposes price IDs to the client.
  */
-export async function validateAccessCode(code: string) {
-    const isValid = PRIVATE_ACCESS_CONFIG.validCodes.includes(code.toUpperCase().trim());
-    return { isValid };
+export async function validateAccessCode(code: string): Promise<{
+    isValid: boolean;
+    path: AccessPath | null;
+    plans: PlanDisplay[];
+}> {
+    const path = resolveAccessPath(code);
+    if (!path) {
+        return { isValid: false, path: null, plans: [] };
+    }
+
+    if (path === 'founding') {
+        const plans: PlanDisplay[] = Object.values(PRIVATE_ACCESS_CONFIG.foundingPlans).map(p => ({
+            id: p.id,
+            name: p.name,
+            amount: p.amount,
+            amountFormatted: p.amountFormatted,
+            billingText: p.billingText,
+            subtext: p.subtext,
+            isRecurring: p.isRecurring,
+            intervalCount: p.intervalCount
+        }));
+        return { isValid: true, path, plans };
+    }
+
+    if (path === 'new-clients') {
+        const plans: PlanDisplay[] = Object.values(PRIVATE_ACCESS_CONFIG.newClientPlans).map(p => ({
+            id: p.id,
+            name: p.name,
+            amount: p.amount,
+            amountFormatted: p.amountFormatted,
+            billingText: p.billingText,
+            subtext: p.subtext,
+            isRecurring: p.isRecurring,
+            isDefault: p.isDefault,
+            badge: (p as any).badge
+        }));
+        return { isValid: true, path, plans };
+    }
+
+    return { isValid: false, path: null, plans: [] };
 }
 
 /**
- * Creates a new submission record (initial 'invited' state)
- * and returns the record ID.
+ * Resumes an existing pending submission (e.g. waiver pending) and returns its original code's pricing.
+ */
+export async function resumeSubmission(submissionId: string) {
+    try {
+        const supabaseAdmin = getSupabaseAdmin();
+        const { data: sub, error } = await supabaseAdmin
+            .from('private_training_submissions')
+            .select('*')
+            .eq('id', submissionId)
+            .maybeSingle();
+
+        if (error || !sub) {
+            return { error: "Submission not found." };
+        }
+
+        const path = resolveAccessPath(sub.access_code);
+        if (!path) {
+            return { error: "Submission has an invalid access code." };
+        }
+
+        const validation = await validateAccessCode(sub.access_code);
+
+        let resumeStep: 'info' | 'waiver' | 'plan-selection' = 'info';
+        if (sub.waiver_completed) {
+            resumeStep = 'plan-selection';
+        } else if (sub.status === 'waiver pending' || sub.athlete_name) {
+            resumeStep = 'waiver';
+        }
+
+        return {
+            success: true,
+            submission: {
+                id: sub.id,
+                athleteName: sub.athlete_name,
+                parentName: sub.parent_name || '',
+                email: sub.email,
+                phone: sub.phone,
+                accessCode: sub.access_code,
+                waiverCompleted: sub.waiver_completed,
+                status: sub.status,
+                digitalSignature: sub.digital_signature || ''
+            },
+            path,
+            plans: validation.plans,
+            step: resumeStep
+        };
+    } catch (err: any) {
+        console.error("[RESUME_SUBMISSION_ERROR]", err);
+        return { error: `Failed to resume submission: ${err.message}` };
+    }
+}
+
+/**
+ * Creates or updates a submission record.
  * 
  * SECURITY & PROFILE LINKING RULES:
  * - May ONLY use the signed-in user's authenticated auth id and verified email.
@@ -33,6 +128,8 @@ export async function validateAccessCode(code: string) {
  * - NEVER attaches an existing goalie record that belongs to another account.
  * - If signed in and the user already has a Goalie Card explicitly linked to their auth ID, links that card.
  * - New signups / unlinked users get a fresh, empty profile.
+ * - Sport is taken directly from the form (defaulting to 'Lacrosse').
+ * - Resumes an existing pending submission (by submissionId) rather than creating duplicates.
  */
 export async function createPrivateSubmission(data: {
     athleteName: string;
@@ -40,8 +137,15 @@ export async function createPrivateSubmission(data: {
     email: string;
     phone: string;
     accessCode: string;
+    sport?: string;
+    submissionId?: string;
 }) {
     try {
+        const path = resolveAccessPath(data.accessCode);
+        if (!path) {
+            return { error: "Invalid access code. Please check your invitation." };
+        }
+
         const supabaseAdmin = getSupabaseAdmin();
         const serverSupabase = await createServerSupabase();
         
@@ -49,6 +153,7 @@ export async function createPrivateSubmission(data: {
         const { data: { user } } = await serverSupabase.auth.getUser();
 
         let rosterId: string | null = null;
+        const selectedSport = data.sport && data.sport.trim() ? data.sport.trim() : 'Lacrosse';
 
         // If signed in, only attach a card explicitly linked to THIS user's auth ID.
         // Never match by typed email, name, or arbitrary roster lookup.
@@ -73,10 +178,10 @@ export async function createPrivateSubmission(data: {
                 .insert({
                     goalie_name: data.athleteName,
                     parent_name: data.parentName || null,
-                    email: user?.email || data.email.trim(), // Verified email if signed in, otherwise typed email for the new record
+                    email: user?.email || data.email.trim(),
                     athlete_phone: data.phone,
                     assigned_unique_id: uniqueId,
-                    sport: 'Lacrosse',
+                    sport: selectedSport,
                     is_claimed: !!user?.id,
                     linked_user_id: user?.id || null
                 })
@@ -90,35 +195,62 @@ export async function createPrivateSubmission(data: {
             }
         }
 
-        const { data: submission, error: insertError } = await supabaseAdmin
-            .from('private_training_submissions')
-            .insert({
-                athlete_name: data.athleteName,
-                parent_name: data.parentName,
-                email: user?.email || data.email,
-                phone: data.phone,
-                access_code: data.accessCode,
-                status: 'invited',
-                roster_id: rosterId
-            })
-            .select()
-            .single();
-        
-        if (insertError) {
-            console.error("[SUBMISSION_INSERT_ERROR]", insertError);
-            return { error: `Database Error: ${insertError.message}` };
+        // 2. Resume existing submission if ID provided, otherwise insert new
+        let submissionId = data.submissionId;
+
+        if (submissionId) {
+            const { error: updateError } = await supabaseAdmin
+                .from('private_training_submissions')
+                .update({
+                    athlete_name: data.athleteName,
+                    parent_name: data.parentName || null,
+                    email: user?.email || data.email,
+                    phone: data.phone,
+                    access_code: data.accessCode,
+                    roster_id: rosterId,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', submissionId);
+
+            if (updateError) {
+                console.error("[SUBMISSION_UPDATE_ERROR]", updateError);
+                return { error: `Database Error: ${updateError.message}` };
+            }
+        } else {
+            const { data: submission, error: insertError } = await supabaseAdmin
+                .from('private_training_submissions')
+                .insert({
+                    athlete_name: data.athleteName,
+                    parent_name: data.parentName,
+                    email: user?.email || data.email,
+                    phone: data.phone,
+                    access_code: data.accessCode,
+                    status: 'invited',
+                    roster_id: rosterId
+                })
+                .select()
+                .single();
+            
+            if (insertError) {
+                console.error("[SUBMISSION_INSERT_ERROR]", insertError);
+                return { error: `Database Error: ${insertError.message}` };
+            }
+            submissionId = submission.id;
         }
+
+        const validation = await validateAccessCode(data.accessCode);
         
         return { 
-            submissionId: submission.id, 
-            hasExistingCard: !!rosterId 
+            submissionId, 
+            hasExistingCard: !!rosterId,
+            path,
+            plans: validation.plans
         };
     } catch (err: any) {
         console.error("[ACTION_EXCEPTION]", err);
         return { error: `Internal Server Error: ${err.message}` };
     }
 }
-
 
 /**
  * Updates the waiver status of a submission.
@@ -154,13 +286,19 @@ export async function updateWaiverStatus(submissionId: string, confirmed: boolea
 }
 
 /**
- * Creates a Stripe Checkout Session for the private training one-time package.
+ * Creates a Stripe Checkout Session.
+ * 
+ * SERVER-SIDE ENFORCEMENT RULES:
+ * - Reads access_code strictly from the database submission record. Never trusts client prices.
+ * - 'goalie2026' (founding): mode = 'subscription', uses founding subscription prices.
+ * - 'goalie2027' (new-clients): mode = 'payment', uses one-time package prices.
+ * - Mismatched or invalid plans are rejected server-side.
  */
 export async function createEmbeddedCheckoutSession(submissionId: string, planId: string, isTestMode: boolean) {
     try {
         const supabaseAdmin = getSupabaseAdmin();
         
-        // 1. Fetch submission details
+        // 1. Fetch submission details from database
         const { data: submission, error: subError } = await supabaseAdmin
             .from('private_training_submissions')
             .select('*')
@@ -175,60 +313,117 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
             return { error: "Waiver must be completed before payment." };
         }
 
-        const planKey = (planId === 'block8' || planId === '8-lessons') ? 'block8' : 'block4';
-        const plan = PRIVATE_ACCESS_CONFIG.plans[planKey];
+        // 2. Resolve pricing path strictly from the stored access code
+        const path = resolveAccessPath(submission.access_code);
+        if (!path) {
+            return { error: "Invalid access code associated with submission." };
+        }
 
         const headersList = await headers();
         const host = headersList.get('host') || 'goaliecard.app';
         const proto = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
         const origin = `${proto}://${host}`;
 
-        // 2. Line Items based on mode
         const stripe = getStripe();
-        const lineItems = isTestMode
-            ? [
-                {
-                    price_data: {
-                        currency: 'usd',
-                        product_data: {
-                            name: plan.name,
-                            description: `${plan.name} (${plan.subtext}) - One-time payment (Test Mode)`,
-                        },
-                        unit_amount: 100, // $1.00 test amount
-                    },
-                    quantity: 1,
-                }
-            ]
-            : [
-                {
-                    price: plan.priceId,
-                    quantity: 1,
-                }
-            ];
+        let checkoutMode: 'subscription' | 'payment';
+        let lineItems: any[];
+        let planName: string;
+        let selectedPlanId: string;
 
-        // 3. Create Embedded Session (one-time payment mode)
+        if (path === 'founding') {
+            const plan = (PRIVATE_ACCESS_CONFIG.foundingPlans as any)[planId];
+            if (!plan) {
+                return { error: `Invalid plan "${planId}" for founding membership.` };
+            }
+            checkoutMode = 'subscription';
+            planName = plan.name;
+            selectedPlanId = plan.id;
+
+            lineItems = isTestMode
+                ? [
+                    {
+                        price_data: {
+                            currency: 'usd',
+                            product_data: {
+                                name: plan.name,
+                                description: `${plan.name} (${plan.subtext}) - Founding Member Subscription (Test Mode)`,
+                            },
+                            unit_amount: 100, // $1.00 test subscription
+                            recurring: { interval: 'month', interval_count: plan.intervalCount || 1 },
+                        },
+                        quantity: 1,
+                    }
+                ]
+                : [
+                    {
+                        price: plan.priceId,
+                        quantity: 1,
+                    }
+                ];
+        } else if (path === 'new-clients') {
+            const plan = (PRIVATE_ACCESS_CONFIG.newClientPlans as any)[planId];
+            if (!plan) {
+                return { error: `Invalid plan "${planId}" for new client training.` };
+            }
+            checkoutMode = plan.isRecurring ? 'subscription' : 'payment';
+            planName = plan.name;
+            selectedPlanId = plan.id;
+
+            lineItems = isTestMode
+                ? [
+                    {
+                        price_data: {
+                            currency: 'usd',
+                            product_data: {
+                                name: plan.name,
+                                description: `${plan.name} (${plan.subtext}) - ${plan.isRecurring ? 'Monthly Subscription' : 'One-time payment'} (Test Mode)`,
+                            },
+                            unit_amount: 100, // $1.00 test amount
+                            ...(plan.isRecurring ? { recurring: { interval: 'month', interval_count: 1 } } : {})
+                        },
+                        quantity: 1,
+                    }
+                ]
+                : [
+                    {
+                        price: plan.priceId,
+                        quantity: 1,
+                    }
+                ];
+        } else {
+            return { error: "Unsupported access path." };
+        }
+
+        // 3. Create Embedded Checkout Session
         const session = await stripe.checkout.sessions.create({
             ui_mode: 'embedded',
-            mode: 'payment', // One-time payment
+            mode: checkoutMode,
             line_items: lineItems,
+            branding_settings: {
+                background_color: '#121215',
+                button_color: '#FFFFFF',
+            },
             return_url: `${origin}/private-training-access/success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submissionId}`,
             metadata: {
                 submissionId: submission.id,
                 athleteName: submission.athlete_name,
                 email: submission.email,
                 productType: 'private training access',
-                planSelected: plan.id,
-                packageName: plan.name,
+                accessPath: path,
+                accessCode: submission.access_code,
+                planSelected: selectedPlanId,
+                packageName: planName,
                 isTestMode: String(isTestMode)
             }
         } as any);
         
-        // 4. Update submission with session ID
+        // 4. Update submission with session ID and mode
         await supabaseAdmin
             .from('private_training_submissions')
             .update({
                 stripe_session_id: session.id,
-                is_test_mode: isTestMode
+                is_test_mode: isTestMode,
+                package_type: selectedPlanId
             })
             .eq('id', submissionId);
         
@@ -240,7 +435,7 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
 }
 
 /**
- * Fetches submisison by ID for the success page.
+ * Fetches submission by ID for the success page.
  */
 export async function getSubmissionById(id: string) {
     const supabaseAdmin = getSupabaseAdmin();
@@ -250,43 +445,46 @@ export async function getSubmissionById(id: string) {
         .eq('id', id)
         .single();
     
-    if (error) return null;
+    if (error) {
+        console.error("[GET_SUBMISSION_ERROR]", error);
+        return null;
+    }
     return data;
 }
 
 /**
- * Fetches the Stripe receipt URL for a given session.
+ * Retrieves the hosted invoice/receipt URL from Stripe.
  */
 export async function getReceiptUrl(sessionId: string) {
     try {
         const stripe = getStripe();
         const session = await stripe.checkout.sessions.retrieve(sessionId, {
-            expand: ['payment_intent', 'invoice', 'subscription'],
+            expand: ['payment_intent', 'invoice', 'subscription']
         });
-        
-        // Handle one-time payment mode
-        if (session.payment_intent) {
-            const paymentIntent = session.payment_intent as any;
+
+        // 1. If it has a payment intent with latest charge
+        if (session.payment_intent && typeof session.payment_intent === 'object') {
+            const paymentIntent: any = session.payment_intent;
             if (paymentIntent.latest_charge) {
                 const charge = await stripe.charges.retrieve(paymentIntent.latest_charge);
-                return { receiptUrl: charge.receipt_url };
+                if (charge.receipt_url) return { receiptUrl: charge.receipt_url };
             }
         }
 
-        // Handle subscription mode
+        // 2. If it's a subscription with invoice
         if (session.invoice) {
-            const invoice = typeof session.invoice === 'string' 
+            const invoice: any = typeof session.invoice === 'string' 
                 ? await stripe.invoices.retrieve(session.invoice) 
-                : session.invoice as any;
+                : session.invoice;
             
-            if (invoice && invoice.hosted_invoice_url) {
+            if (invoice?.hosted_invoice_url) {
                 return { receiptUrl: invoice.hosted_invoice_url };
             }
         }
 
-        return { error: "Payment not yet finalized or charge not found." };
+        return { error: "Receipt is still being finalized. It has been sent to your email." };
     } catch (err: any) {
-        console.error("[RECEIPT_FETCH_ERROR]", err);
+        console.error("[RECEIPT_URL_ERROR]", err);
         return { error: `Failed to fetch receipt: ${err.message}` };
     }
 }

@@ -11,6 +11,8 @@ interface BrandProps {
   text?: string;
   flowerSize?: string;
   gap?: string;
+  variant?: 'dark' | 'light';
+  iconClassName?: string;
 }
 
 /**
@@ -25,8 +27,11 @@ export function BrandLogo({
   text = "Goalie Card",
   flowerSize = "1.0em",
   gap = "gap-[0.4ch]",
+  variant = 'dark',
   iconClassName
-}: BrandProps & { iconClassName?: string }) {
+}: BrandProps) {
+  const logoSrc = variant === 'light' ? '/flower-logo-white.png?v=3' : '/flower-logo.png?v=5';
+
   return (
     <div 
       className={twMerge("flex items-center", gap, textClassName, className)}
@@ -34,7 +39,7 @@ export function BrandLogo({
     >
       <div className="relative flex items-center justify-center shrink-0" style={{ height: flowerSize, width: flowerSize }}>
         <img
-          src="/flower-logo.png?v=5"
+          src={logoSrc}
           alt="Goalie Card Logo"
           draggable={false}
           className={twMerge("h-full w-full object-contain pointer-events-none select-none opacity-100 transition-all duration-300", iconClassName)}
