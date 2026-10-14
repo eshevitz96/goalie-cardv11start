@@ -523,10 +523,11 @@ function PrivateTrainingAccessContent() {
 
     const billingDetails = useMemo(() => {
         if (!currentPlan) return null;
-        if (accessPath === 'new-clients') {
-            const base = currentPlan.amount; // 500 or 960
+        const isNewClientPlan = currentPlan.id === 'monthly-access' || currentPlan.id === 'block8' || accessPath === 'new-clients';
+        if (isNewClientPlan) {
+            const base = currentPlan.id === 'block8' ? 960 : 500;
             // Formula: Total = (base + 0.30) / 0.971
-            const total = currentPlan.id === 'monthly-access' ? 515.25 : 988.99;
+            const total = currentPlan.id === 'block8' ? 988.99 : 515.25;
             const fee = Number((total - base).toFixed(2));
             return {
                 hasFeeBreakdown: true,
@@ -1068,10 +1069,6 @@ function PrivateTrainingAccessContent() {
                                             <div className="border-t border-zinc-800/80 pt-3 flex justify-between items-center text-xs">
                                                 <span className="text-zinc-400 uppercase tracking-wider font-bold text-[10px]">Total Due Today</span>
                                                 <span className="text-white font-black text-base">{currentPlan.amountFormatted || `$${currentPlan.amount}`}.00</span>
-                                            </div>
-                                            <div className="pt-2 border-t border-zinc-800/40 flex justify-between items-center text-[10px] text-zinc-400 font-medium">
-                                                <span>Card processing & transaction fees</span>
-                                                <span className="text-zinc-300 font-semibold uppercase tracking-wider">Included</span>
                                             </div>
                                         </>
                                     )}

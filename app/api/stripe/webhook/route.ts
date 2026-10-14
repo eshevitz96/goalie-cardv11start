@@ -129,6 +129,13 @@ export async function POST(req: Request) {
                                 } catch (e) {
                                     console.error("[STRIPE_WEBHOOK] Failed to fetch receipt url:", e);
                                 }
+                            } else if (session.invoice) {
+                                try {
+                                    const invoice = await stripe.invoices.retrieve(session.invoice as string);
+                                    receiptUrl = (invoice as any).hosted_invoice_url || '';
+                                } catch (e) {
+                                    console.error("[STRIPE_WEBHOOK] Failed to fetch invoice url:", e);
+                                }
                             }
 
                             const isGroup = metadata.productType === 'september group training';
