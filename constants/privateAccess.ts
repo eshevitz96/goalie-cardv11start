@@ -70,11 +70,11 @@ export const PRIVATE_ACCESS_CONFIG = {
         'monthly-access': {
             id: 'monthly-access',
             name: 'Private Training',
-            amount: 500,
-            amountFormatted: '$500',
+            amount: 515.25,
+            amountFormatted: '$515.25',
             billingText: '/month',
             subtext: '4 lessons a month. Unused roll over.',
-            priceId: process.env.STRIPE_PRICE_MONTHLY_ACCESS || 'price_1UQU8EGj0SdRYIlhrEywE2B5',
+            priceId: process.env.STRIPE_PRICE_MONTHLY_ACCESS || 'price_1UQV8gGj0SdRYIlhVjWEqsdk',
             interval: 'month' as const,
             intervalCount: 1,
             isRecurring: true,
@@ -83,11 +83,11 @@ export const PRIVATE_ACCESS_CONFIG = {
         'block8': {
             id: 'block8',
             name: '8 Lessons',
-            amount: 960,
-            amountFormatted: '$960',
+            amount: 988.99,
+            amountFormatted: '$988.99',
             billingText: 'one-time',
-            subtext: '$120 per lesson. No subscription.',
-            priceId: process.env.STRIPE_PRICE_BLOCK8 || 'price_1UQTKuGj0SdRYIlhDU9uRDLx',
+            subtext: '$120/lesson base. No subscription.',
+            priceId: process.env.STRIPE_PRICE_BLOCK8 || 'price_1UQV8gGj0SdRYIlhRryQPRPs',
             isRecurring: false,
             isDefault: false,
         },
@@ -109,7 +109,7 @@ export const PRIVATE_ACCESS_CONFIG = {
 4) I, for myself and on behalf of my heirs, assigns, personal representatives and next of kin, HEREBY RELEASE AND HOLD HARMLESS the Releasees, their officers, officials, agents, and/or employees, other participants, sponsoring agencies, sponsors, advertisers, and if applicable, owners and lessors of premises used to conduct the event ("RELEASEES"), WITH RESPECT TO ANY AND ALL INJURY, DISABILITY, DEATH, or loss or damage to person or property, WHETHER ARISING FROM THE NEGLIGENCE OF THE RELEASEES OR OTHERWISE, to the fullest extent permitted by law.`,
         
         paymentPolicy: `By signing below, I acknowledge that I have voluntarily enrolled in services provided by The Goalie Brand:
-1. Payment Requirement: Full payment is required in advance to reserve any lesson, session, or clinic/event spot.
+1. Payment Requirement: Full payment is required in advance to reserve any lesson, session, or clinic/event spot. All listed totals include applicable transaction and processing fees.
 2. No Refund Policy: All payments are non-refundable. This includes, but is not limited to, cancellations due to illness, injury, scheduling conflicts, or weather-related issues.
 3. Transfer Policy: Request must be made at least 48 hours in advance and space is available.
 4. Legal Exceptions: Refunds may be considered only in extraordinary circumstances (e.g., documented medical emergencies with official physician verification).`,

@@ -1017,7 +1017,11 @@ function PrivateTrainingAccessContent() {
                                     </div>
                                     <div className="border-t border-zinc-800/80 pt-3 flex justify-between items-center text-xs">
                                         <span className="text-zinc-400 uppercase tracking-wider font-bold text-[10px]">Total Due Today</span>
-                                        <span className="text-white font-black text-base">{currentPlan.amountFormatted || `$${currentPlan.amount}`}.00</span>
+                                        <span className="text-white font-black text-base">{currentPlan.amountFormatted || `$${currentPlan.amount}`}</span>
+                                    </div>
+                                    <div className="pt-2 border-t border-zinc-800/40 flex justify-between items-center text-[10px] text-zinc-400 font-medium">
+                                        <span>Card processing & transaction fees</span>
+                                        <span className="text-zinc-300 font-semibold uppercase tracking-wider">Included</span>
                                     </div>
                                 </div>
 

@@ -376,7 +376,7 @@ export async function createEmbeddedCheckoutSession(submissionId: string, planId
                             currency: 'usd',
                             product_data: {
                                 name: plan.name,
-                                description: `${plan.name} (${plan.subtext}) - ${plan.isRecurring ? 'Monthly Subscription' : 'One-time payment'} (Test Mode)`,
+                                description: `${plan.name} (${plan.subtext}) - Total includes card processing & transaction fees (Test Mode)`,
                             },
                             unit_amount: 100, // $1.00 test amount
                             ...(plan.isRecurring ? { recurring: { interval: 'month', interval_count: 1 } } : {})
